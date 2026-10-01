@@ -39,9 +39,15 @@ read this PM chat's setup turn using `read_thread` before sending.
 
 Use the app's `send_message_to_thread` with the PM chat ID and host above.
 Messages are visible in the destination chat and can start a turn. Preserve
-its existing model/settings. Send meaningful registrations, completed
-reports, interface questions, or blockers; do not send repeated unchanged
-status messages. If messaging tools are unavailable, save the status file
+its existing model/settings. After the one-time registration, continue the
+assigned mission independently and make routine internal decisions yourself.
+Message PM only for coordination: cross-module contract/ownership/dependency
+decisions, blockers requiring PM action, or a completed frozen handoff requiring
+review/commit. Bundle related findings and state the exact decision needed.
+Keep ordinary progress in owned reports; do not send check-ins, starting-work
+notices, acknowledgments, routine milestones or repeated unchanged issues.
+Continue independent work while a coordination question is pending.
+If messaging tools are unavailable, save the status file
 and tell the user it has not been delivered; do not claim PM was notified.
 
 ## Team startup

@@ -16,9 +16,15 @@ PM coordinates boundaries and reviews evidence rather than writing all modules.
   Never switch branches, overwrite another team or stage the whole checkout.
 - Decide internal design details yourself within the agreed boundaries.
   Send exact cross-module contract changes to PM; do not wait for routine choices.
-- Report milestones with saved paths, actual evidence and unresolved risks.
-  Freeze a ready-to-commit revision until PM confirms it. Request a contract
-  decision early if it blocks independent work; continue unrelated work.
+- Continue the assigned mission independently and make routine internal choices
+  yourself. Record progress in owned reports rather than sending PM check-ins,
+  starting-work notices, acknowledgments or routine milestone messages.
+- Message PM only when coordination is needed: a cross-module contract/ownership/
+  dependency decision, a blocker requiring PM action, or a completed frozen
+  handoff requiring review/commit. Bundle related findings with saved paths,
+  actual evidence and the exact decision needed. Do not repeat unchanged issues.
+  Continue independent work while a coordination question is pending.
+  Freeze a ready-to-commit revision until PM confirms it.
 - No mock replies at platform handoff. Isolated research tests remain evidence,
   not implemented module functionality. Never expose `local/.env` values.
 
