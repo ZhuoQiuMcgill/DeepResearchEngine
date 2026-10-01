@@ -21,7 +21,16 @@ npm run dev
 Open http://127.0.0.1:5180. For another local backend, copy `.env.example` to `.env.local` and set `ENGINE_BASE_URL` to its `/api/v1` URL. The UI server only accepts a loopback Engine URL. Python owns the store and credentials; JavaScript does not open the database or call providers directly.
 
 ## Models
-Choose an Engine profile in the header. Catalog availability does not mean credentials are present. DeepSeek/OpenAI need the corresponding key in ignored `local/.env` at the repository root. Custom models must be registered by trusted Python host configuration. The old NInfer service is not a vLLM deployment and is deliberately not represented as one. No local model configuration or secrets were copied.
+Choose an Engine profile in the header. Catalog availability does not mean credentials are present. DeepSeek/OpenAI need the corresponding key in ignored `local/.env` at the repository root. Custom models must be registered by trusted Python host configuration.
+
+For a running local NInfer service, set these host settings in ignored `local/.env` before starting `ebd serve`:
+
+```dotenv
+NINFER_BASE_URL=http://127.0.0.1:18086/v1
+NINFER_MODEL=qwen38-ninfer-256k
+```
+
+The service registers a distinct loopback-only `ninfer` Chat Completions profile. The UI selects it by default when present. Thinking is disabled, temperature is 0.2 and output is bounded to 4096 tokens per model call. Start the model server separately; the Engine does not change its context/cache/MTP settings. The live local endpoint reported 262144 context tokens. No secrets are committed.
 
 ## Features and mapping
 - Existing canvas, draggable node library, node/edge editing, resize handles, dark mode, import/export, timeline and final Markdown report.

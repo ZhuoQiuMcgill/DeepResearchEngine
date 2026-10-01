@@ -10,6 +10,23 @@ from ebd.contracts import EngineError
 from ebd.providers import ProviderConfig
 
 
+def local_profiles(workspace, env_file=None):
+    """Load opt-in host configuration; never accept endpoints from browser input."""
+    path = Path(env_file or Path(workspace) / "local" / ".env")
+    values = {str(k).upper(): v for k, v in dotenv_values(path).items() if v}
+    values.update({k.upper(): v for k, v in os.environ.items()})
+    base = values.get("NINFER_BASE_URL")
+    if not base:
+        return {}
+    model = values.get("NINFER_MODEL", "qwen38-ninfer-256k")
+    config = ProviderConfig("ninfer", model, base,
+        settings={"max_tokens": 4096, "temperature": 0.2},
+        profile_name="ninfer", endpoint_id="local-ninfer")
+    from ebd.providers.factory import _validate_config
+    _validate_config(config)
+    return {"ninfer": config}
+
+
 class ProfileRegistry:
     def __init__(self, settings):
         self.settings = settings

@@ -1,5 +1,19 @@
 # Agent Container and real model connectors
 
+Local NInfer is also supported through an explicit `ninfer` provider. For
+`ebd serve`, set `NINFER_BASE_URL` and `NINFER_MODEL` in ignored `local/.env`
+or the process environment. The endpoint must be loopback. It uses Chat
+Completions with registered function tools and native tool continuation,
+separate from the vLLM deployment profile. Thinking is disabled using
+`chat_template_kwargs.enable_thinking=false`. Output defaults to 4096 tokens
+per call and temperature 0.2. Start/configure the model server independently.
+Python hosts can supply the same ProviderConfig via EngineSettings.profiles.
+
+A live local Qwen planning request and a fetch/read/report conversation
+completed on October 1, 2026. The latter run was
+`run_9bbe8e94205740a5b5c0a2c1a0951d0c`, with a committed report and token usage.
+These small runs do not measure performance at full 256K context.
+
 Use the platform through `ebd.connections.Engine`. `AgentDefinition` is a
 serializable reusable definition. Connections supplies live bindings, scopes,
 deadlines, grants and a shared lineage budget; definitions and saved references

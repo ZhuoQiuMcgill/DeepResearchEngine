@@ -108,19 +108,22 @@ class ProviderFactory:
 
 
 def _validate_config(config: ProviderConfig) -> None:
-    if config.provider not in {"deepseek", "openai", "vllm"}:
+    if config.provider not in {"deepseek", "openai", "vllm", "ninfer"}:
         raise ValueError("Unsupported provider kind")
     if not config.model_id or not isinstance(config.settings, dict):
         raise ValueError("Model and closed settings are required")
     parsed = urlsplit(config.base_url)
     if parsed.scheme not in {"http", "https"} or not parsed.hostname or parsed.username or parsed.password or parsed.query or parsed.fragment:
         raise ValueError("Provider endpoint must be a plain HTTP(S) base URL")
-    if config.provider != "vllm" and (parsed.scheme != "https" or not config.api_key):
+    if config.provider == "ninfer" and parsed.hostname not in {"127.0.0.1", "localhost", "::1"}:
+        raise ValueError("NInfer requires a loopback endpoint")
+    if config.provider not in {"vllm", "ninfer"} and (parsed.scheme != "https" or not config.api_key):
         raise ValueError("API provider requires HTTPS and a configured credential")
     allowed = {
         "openai": {"reasoning_effort", "max_output_tokens", "tool_choice"},
         "deepseek": {"thinking", "reasoning_effort", "max_tokens", "temperature", "top_p", "tool_choice"},
         "vllm": {"max_tokens", "temperature", "top_p", "tool_choice"},
+        "ninfer": {"max_tokens", "temperature", "top_p", "tool_choice"},
     }[config.provider]
     if set(config.settings) - allowed:
         raise ValueError("Unknown provider settings are rejected")
@@ -291,6 +294,8 @@ class ProviderSession:
             body["thinking"] = {"type": config.settings.get("thinking", "disabled")}
             if config.settings.get("thinking") == "enabled":
                 body["reasoning_effort"] = config.settings.get("reasoning_effort", "high")
+        if config.provider == "ninfer":
+            body["chat_template_kwargs"] = {"enable_thinking": False}
         for key in ("temperature", "top_p"):
             if key in config.settings:
                 body[key] = config.settings[key]

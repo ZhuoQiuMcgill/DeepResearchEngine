@@ -61,8 +61,10 @@ def main():
             import uvicorn
             from ebd.connections import EngineSettings
             from ebd.service import create_app
+            from ebd.connections.config import local_profiles
             app = create_app(EngineSettings(workspace=args.workspace, storage_root=args.store,
-                openalex_admission=args.admit_openalex), trusted_origins=tuple(args.origin))
+                openalex_admission=args.admit_openalex,
+                profiles=local_profiles(args.workspace)), trusted_origins=tuple(args.origin))
             uvicorn.run(app, host="127.0.0.1", port=args.port, workers=1,
                         timeout_graceful_shutdown=30, access_log=False)
             return

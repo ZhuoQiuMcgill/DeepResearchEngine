@@ -281,7 +281,7 @@ export default function App() {
       .then((info) => {
         if (info.error) throw new Error(info.error);
         setProfiles(info.profiles || []);
-        setProfileRef(info.profiles?.[0]?.profile_ref || "");
+        setProfileRef(info.profiles?.find((p: { profile_ref: string }) => p.profile_ref === "ninfer")?.profile_ref || info.profiles?.[0]?.profile_ref || "");
         setPlanStatus(
           info.configured
             ? "Connected to DeepResearch Engine. Select a model profile."
