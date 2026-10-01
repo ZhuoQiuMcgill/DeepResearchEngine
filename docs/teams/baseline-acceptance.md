@@ -1,9 +1,15 @@
 # Platform and EBD baseline acceptance
 
-Status: acceptance design only. No runtime or generated report exists yet.
-PM owns this workflow and final audit; module teams own their implementation
-and module verification as assigned in `missions.md`. Runtime work and live
-API calls wait for the authorized phase transition.
+Status: the runnable four-module platform and complete real baseline report
+are implemented. Root and in-chat subagents performed implementation and
+verification after the user ended cross-session coordination. The criteria
+below remain the acceptance requirements; the former design-phase hold is
+obsolete. See [actual acceptance evidence](../platform-acceptance.md).
+
+The accepted DeepSeek run is `run_9837219d984f4ad8b9be32f96442c9b8`.
+Both API providers now have successful real tool conversations: the GPT run
+`run_b855c1961ef24553ba88f7bdd24de713` supersedes the retained quota failures.
+Qwen live verification remains explicitly deferred until local deployment.
 
 ## Exact requested end state
 

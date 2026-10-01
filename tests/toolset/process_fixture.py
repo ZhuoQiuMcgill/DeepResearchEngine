@@ -15,6 +15,12 @@ elif mode == "descendant":
     child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(120)"])
     print(child.pid, flush=True)
     if len(sys.argv) > 2: time.sleep(120)
+elif mode == "crash_with_descendant":
+    child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(120)"])
+    print(child.pid, flush=True)
+    sys.stderr.buffer.write(b"worker aborted before a response\n")
+    sys.stderr.buffer.flush()
+    os._exit(61)
 elif mode == "memory":
     chunks = []
     while True: chunks.append(bytearray(8 << 20))

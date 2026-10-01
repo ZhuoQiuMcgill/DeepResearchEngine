@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from ebd.toolset.process import ProcessRunner
+from ebd.toolset.process import ProcessOutcome, ProcessRunner
 
 FIXTURE = str(Path(__file__).with_name("process_fixture.py"))
 
@@ -40,7 +40,10 @@ def test_actual_stream_flood_terminates_tree(mode):
 def test_sleeping_descendant_and_inherited_pipes_are_removed(root_wait):
     result = run("descendant", timeout=.3, extra=("wait",) if root_wait else ())
     assert result.cleanup_complete
-    child_pid = int(result.stdout.strip())
+    assert_child_terminated(int(result.stdout.strip()))
+
+
+def assert_child_terminated(child_pid):
     if os.name == "nt":
         from ctypes import wintypes
         kernel = ctypes.WinDLL("kernel32", use_last_error=True)
@@ -53,6 +56,17 @@ def test_sleeping_descendant_and_inherited_pipes_are_removed(root_wait):
             kernel.CloseHandle.argtypes = [wintypes.HANDLE]; kernel.CloseHandle(handle)
     else:
         with pytest.raises(ProcessLookupError): os.kill(child_pid, 0)
+
+
+def test_abrupt_worker_crash_preserves_nonzero_exit_and_settles_descendant_pipes():
+    result = run("crash_with_descendant")
+    assert isinstance(result, ProcessOutcome) and result.exit_code == 61
+    assert result.termination_reason is None  # actual root crash, no parent limit
+    assert result.cleanup_complete
+    assert result.stdout_bytes == len(result.stdout)
+    assert result.stderr == b"worker aborted before a response\n"
+    assert result.stderr_bytes == len(result.stderr)
+    assert_child_terminated(int(result.stdout.strip()))
 
 
 def test_python_cancellation_settles_actual_worker():

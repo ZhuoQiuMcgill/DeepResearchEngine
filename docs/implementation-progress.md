@@ -11,6 +11,8 @@ Toolset and Storage implementations and meaningful module verification.
 The former design-only blocker is addressed by the takeover direction.
 The runnable modules and real EBD report are now delivered; see
 [platform acceptance](platform-acceptance.md) for actual proof and limitations.
-GPT-6-Luna live verification needs OpenAI API credit (`insufficient_quota`);
-Qwen live verification remains pending local deployment. All implementation
-coordination stays in the root chat and its subagents.
+GPT-6-Luna live verification now passes in
+`run_b855c1961ef24553ba88f7bdd24de713`: two Responses turns and one successful
+recorded tool call, complete recording and cleanup. Earlier quota failures
+are retained. Qwen live verification remains pending local deployment.
+All implementation coordination stays in the root chat and its subagents.
