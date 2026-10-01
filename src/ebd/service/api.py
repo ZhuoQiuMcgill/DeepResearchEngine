@@ -190,7 +190,8 @@ def create_app(settings: EngineSettings | None = None, *, engine: Engine | None 
             allowed_tools=[ToolRef(t.name, t.revision) for t in data.allowed_tools],
             input_schema=data.input_schema, output_schema=data.output_schema,
             output_mode=data.output_mode, output_media_type=data.output_media_type,
-            limits=data.limits, revision=data.revision)
+            limits=data.limits, revision=data.revision,
+            error_policy={"finalize_on_limit": data.finalize_on_limit})
         rules = tuple(InvocationRule(destination=AgentRef(r.agent_id, r.revision),
             allowed_tools=tuple(r.allowed_tools), allow_model=r.allow_model,
             allow_export=r.allow_export, allow_onward=r.allow_onward,

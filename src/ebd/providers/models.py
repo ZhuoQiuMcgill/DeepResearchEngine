@@ -67,6 +67,7 @@ class ModelRequest:
     output_contract: dict[str, Any] = field(default_factory=dict)
     context_items: tuple[dict[str, Any], ...] = ()
     max_context_tokens: int | None = None
+    finalize: bool = False
 
 
 @dataclass(frozen=True)

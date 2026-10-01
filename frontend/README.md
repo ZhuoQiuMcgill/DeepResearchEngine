@@ -34,6 +34,8 @@ The service registers a distinct loopback-only `ninfer` Chat Completions profile
 
 UI NInfer agents explicitly use a 258048 context allowance (262144 minus 4096 output tokens) and a 180-second per-call timeout, rather than the Runtime's 32768 / 45-second defaults. This allowance still uses the Engine's conservative UTF-8 byte estimate, not a tokenizer measurement. Tool attempts match the selected tool-call budget. Accumulated input that exceeds an allowance returns `CONTEXT_LIMIT_EXCEEDED` with safe numeric details.
 
+UI agents opt into `finalize_on_limit`. Near the tool/model allowance, Runtime switches to a final answer with `tool_choice=none`. An oversized tool batch is declined in full and returned as not executed; a saved final answer may explicitly state insufficient source material. Tool limits, recording failures, cancellation, unauthorized calls and malformed arguments remain enforced. An answer being saved does not establish that every research question was answered. Search instructions request focused queries and reserve calls for reading.
+
 ## Features and mapping
 - Existing canvas, draggable node library, node/edge editing, resize handles, dark mode, import/export, timeline and final Markdown report.
 - Inspector tabs: Configuration, Performance, Output. Node metrics stay with the workflow history. The formal API reports token usage; context size, tokens/s and first-token timing stay unknown because this API does not expose them.

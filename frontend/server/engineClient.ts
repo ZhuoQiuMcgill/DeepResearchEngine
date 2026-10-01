@@ -93,6 +93,7 @@ export class EngineClient {
         input_schema: { type: "string" },
         output_schema: { type: "string" },
         allowed_tools: tools,
+        finalize_on_limit: true,
         limits: {
           max_run_seconds: 600,
           max_model_calls: 16,

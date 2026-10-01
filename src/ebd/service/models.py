@@ -42,6 +42,7 @@ class RegisterAgentRequest(RequestModel):
     output_mode: Literal["text", "json"] = "text"
     output_media_type: str = Field(default="text/markdown", min_length=1, max_length=128)
     limits: dict[str, int | float] = Field(default_factory=dict, max_length=64)
+    finalize_on_limit: bool = False
     invocation_rules: list[InvocationSelection] = Field(default_factory=list, max_length=32)
 
 

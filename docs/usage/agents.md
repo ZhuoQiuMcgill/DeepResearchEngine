@@ -1,5 +1,15 @@
 # Agent Container and real model connectors
 
+`error_policy.finalize_on_limit` is an opt-in boolean (default false), also
+exposed as `finalize_on_limit` during HTTP agent registration. It reserves
+the last model call for a final answer and enters final mode when two or fewer
+tool calls remain after research has begun. An oversized registered tool batch
+is not dispatched: an `agent.finalizing` event records the declined call IDs,
+and correlated not-executed results are returned to the model. Final mode uses
+`tool_choice=none` and asks for explicit missing information. If the model still
+requests tools, Runtime fails without dispatch. This does not bypass model,
+tool, time, recording or authority limits, and a saved answer can be partial.
+
 Local NInfer is also supported through an explicit `ninfer` provider. For
 `ebd serve`, set `NINFER_BASE_URL` and `NINFER_MODEL` in ignored `local/.env`
 or the process environment. The endpoint must be loopback. It uses Chat

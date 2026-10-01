@@ -46,6 +46,59 @@ def final_response(text="Exact\r\nreport\n"):
 
 
 @pytest.mark.asyncio
+async def test_over_budget_batch_finalizes_without_dispatching_tools(tmp_path):
+    import json
+    from ebd.toolset import ToolCatalog
+    from ebd.contracts import ToolRef
+    calls = []
+    def handler(req):
+        body = json.loads(req.content)
+        calls.append(body)
+        if len(calls) == 1:
+            name = body["tools"][0]["function"]["name"]
+            return httpx.Response(200, json={"choices": [{"finish_reason": "tool_calls", "message": {"role": "assistant", "content": "", "tool_calls": [{"id": f"c{i}", "type": "function", "function": {"name": name, "arguments": '{"query":"test"}'}} for i in range(2)]}}]})
+        assert body["tool_choice"] == "none"
+        returned = [m for m in body["messages"] if m["role"] == "tool"]
+        assert [m["tool_call_id"] for m in returned] == ["c0", "c1"]
+        assert all(json.loads(m["content"])["status"] == "not_executed" for m in returned)
+        return final_response("Insufficient source material; no live figures available.")
+    storage, binding, context, definition = await setup(tmp_path, handler, limits={"max_tool_calls": 1})
+    definition.error_policy = {"finalize_on_limit": True}
+    definition.allowed_tools = [ToolRef("web.search")]
+    binding.catalog = ToolCatalog()
+    class NeverExecute:
+        async def execute(self, *args):
+            raise AssertionError("Over-budget batch must not execute")
+    binding.executor = NeverExecute()
+    context.grants.grants.append(Grant("tool.execute", object_ids=frozenset({"web.search"})))
+    runtime = Runtime()
+    result = await runtime.execute((await runtime.admit(definition, "task", binding, context)).unwrap())
+    assert result.status == "succeeded" and result.recording_status == "complete"
+    assert result.counters["tool_calls"] == 0 and len(calls) == 2
+    assert result.output_ref is not None
+    events = (await storage.activity.query(context)).unwrap().events
+    assert any(e.get("event", e)["kind"] == "agent.finalizing" for e in events)
+    await storage.close()
+
+
+def test_read_only_failure_can_reach_final_answer_after_last_tool():
+    from types import SimpleNamespace
+    observed = SimpleNamespace(error=EngineError("SEARCH_UNAVAILABLE", "No results"),
+        process={"cleanup": {"complete": True}}, persistence={"commit_state": "not_applicable"},
+        recording={"status": "complete"}, status="failed")
+    ledger = BudgetLedger()
+    ledger.consume("tool_calls", ledger.remaining("tool_calls"))
+    context = SimpleNamespace(assert_active=lambda: None, ledger=ledger)
+    tool = SimpleNamespace(capabilities=["network.search"])
+    definition = SimpleNamespace(error_policy={"finalize_on_limit": True})
+    limits = {"max_model_calls": 16, "max_tool_calls": 20, "max_tool_attempts": 20}
+    counters = {"model_calls": 12, "tool_calls": 20, "tool_attempts": 20}
+    assert Runtime._recoverable_source_failure(observed, tool, definition, context, limits, counters)
+    definition.error_policy = {}
+    assert not Runtime._recoverable_source_failure(observed, tool, definition, context, limits, counters)
+
+
+@pytest.mark.asyncio
 async def test_exact_output_is_published_before_terminal_and_survives_reopen(tmp_path):
     dispatched = 0
     def handler(request):

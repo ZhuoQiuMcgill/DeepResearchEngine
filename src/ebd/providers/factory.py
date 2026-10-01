@@ -215,6 +215,14 @@ class ProviderSession:
         elif request.tool_results:
             raise ValueError("Tool results require native continuation")
         body = self._render(request, config)
+        if request.finalize:
+            note = "Research allowance is ending. Do not call any more tools. Produce the best supported final answer from material already received. Explicitly describe missing information and failed sources. Never invent current facts, URLs or statistics."
+            if config.provider == "openai":
+                body["input"].append({"role": "user", "content": note})
+            else:
+                body["messages"].append({"role": "user", "content": note})
+            if request.tools:
+                body["tool_choice"] = "none"
         encoded = _bytes(body)
         if len(encoded) > request.max_request_bytes:
             raise ValueError("Rendered request exceeds its byte allowance")
@@ -245,7 +253,8 @@ class ProviderSession:
             "instruction_digest": digest_bytes((request.instructions + "\n\n" + PLATFORM_SEARCH_POLICY).encode()),
             "platform_search_policy": PLATFORM_SEARCH_POLICY,
             "function_tools": [{"tool": {"name": t.name, "revision": t.revision}, "provider_name": t.provider_name, "input_schema_digest": digest_json(t.input_schema)} for t in request.tools],
-            "safe_settings": dict(config.settings),
+            "safe_settings": {**config.settings, **({"tool_choice": "none"} if request.finalize and request.tools else {})},
+            "final_answer_mode": request.finalize,
             "context_measurement": {"estimated_tokens": context_estimate, "quality": "utf8_byte_estimate", "verified_tokenizer": False,
                                     "max_context_tokens": context_ceiling, "measurement_ref": None},
             "deployment_manifest_ref": config.deployment_manifest["manifest_ref"] if config.provider == "vllm" else None,

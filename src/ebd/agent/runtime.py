@@ -177,8 +177,10 @@ class Runtime:
                     raise EngineError("agent.validation", "Invalid token-budget declaration")
                 if token_budget["enforcement"] == "strict":
                     raise EngineError("agent.unsupported", "Strict token budgeting requires a verified pre-dispatch tokenizer/accounting profile")
-            if set(definition.error_policy) - {"recoverable_tool_errors", "unauthorized_tool", "invalid_arguments", "max_model_retries", "max_repairs"}:
+            if set(definition.error_policy) - {"recoverable_tool_errors", "unauthorized_tool", "invalid_arguments", "max_model_retries", "max_repairs", "finalize_on_limit"}:
                 raise EngineError("agent.validation", "Unknown error-policy field")
+            if type(definition.error_policy.get("finalize_on_limit", False)) is not bool:
+                raise EngineError("agent.validation", "finalize_on_limit must be boolean")
             if definition.error_policy.get("max_model_retries", 0) != 0 or definition.error_policy.get("max_repairs", 0) != 0:
                 raise EngineError("agent.unsupported", "This runtime profile permits no automatic retries or repair dispatches")
             if definition.error_policy.get("recoverable_tool_errors", "return_to_model") not in {"return_to_model", "terminate"} or definition.error_policy.get("unauthorized_tool", "terminate") != "terminate" or definition.error_policy.get("invalid_arguments", "terminate") != "terminate":
@@ -378,6 +380,7 @@ class Runtime:
         model_events = []
         tool_events = []
         pending_cancellation = False
+        finalizing = False
         try:
             start = await append_event(binding, root_context, "agent.started", {"definition_ref": definition.definition_ref, "admission": lease.descriptor(), "task_input_digest": digest_json(lease.task_input), "limits": limits})
             if isinstance(start, Err):
@@ -407,6 +410,12 @@ class Runtime:
                                        limits["max_output_tokens_per_call"], limits["max_model_request_bytes"], limits["max_model_response_bytes"], limits["max_continuation_bytes"], min(limits["max_model_seconds"], context.remaining_seconds()),
                                        definition.settings, {"mode": definition.output_mode, "schema": definition.output_schema, "native_enforcement": definition.output_contract.get("native_enforcement", "optional")}, lease.context_items,
                                        max_context_tokens=limits["max_context_tokens"])
+                remaining_tools = min(limits["max_tool_calls"] - result.counters["tool_calls"], limits["max_tool_attempts"] - result.counters["tool_attempts"], context.ledger.remaining("tool_calls"))
+                if definition.error_policy.get("finalize_on_limit") and (finalizing or
+                    (result.counters["tool_calls"] > 0 and remaining_tools <= 2) or
+                    result.counters["model_calls"] >= limits["max_model_calls"] - 1):
+                    finalizing = True
+                    request = dataclasses.replace(request, finalize=True)
                 prepared = session.prepare(request, model_context)
                 model_context.authorize("model.generate", object_id=_provider_config(binding.provider_config).model_id)
                 if result.counters["model_calls"] == 0:
@@ -486,7 +495,22 @@ class Runtime:
                     raise response.error or EngineError("provider.incomplete", "Provider did not return a complete outcome")
                 continuation = response.continuation
                 if response.completion == "tool_calls":
+                    if finalizing:
+                        raise EngineError("provider.protocol", "Model requested tools after final-answer mode was selected")
                     if result.counters["tool_calls"] + len(response.tool_calls) > limits["max_tool_calls"] or result.counters["tool_attempts"] + len(response.tool_calls) > limits["max_tool_attempts"] or context.ledger.remaining("tool_calls") < len(response.tool_calls):
+                        if definition.error_policy.get("finalize_on_limit") and result.counters["model_calls"] < limits["max_model_calls"] and all(c.argument_error is None and any(t.name == c.name and str(t.revision) == str(c.revision) for t in definition.allowed_tools) for c in response.tool_calls):
+                            # Decline the entire batch; no tools are executed or counted as executed.
+                            finalizing = True
+                            tool_results = tuple({"provider_call_id": c.provider_call_id,
+                                "status": "not_executed", "result": None,
+                                "error": {"code": "LIMIT_EXCEEDED", "message": "Tool batch not executed: insufficient allowance. Return a final answer from existing material."}} for c in response.tool_calls)
+                            boundary = await append_event(binding, model_context, "agent.finalizing", {"reason": "tool_batch_allowance", "declined_call_ids": [c.provider_call_id for c in response.tool_calls], "remaining_tool_calls": remaining_tools})
+                            if isinstance(boundary, Err):
+                                result.recording_status = "incomplete"
+                                result.recording_error = boundary.error
+                                raise boundary.error
+                            step += 1
+                            continue
                         raise EngineError("LIMIT_EXCEEDED", "Whole tool batch exceeds the remaining allowance")
                     requests = []
                     for call in response.tool_calls:
@@ -641,9 +665,11 @@ class Runtime:
             context.assert_active()
         except EngineError:
             return False
-        if counters["model_calls"] >= limits["max_model_calls"] or counters["tool_calls"] >= limits["max_tool_calls"] or counters["tool_attempts"] >= limits["max_tool_attempts"]:
+        if counters["model_calls"] >= limits["max_model_calls"]:
             return False
-        if context.ledger.remaining("model_calls") <= 0 or context.ledger.remaining("tool_calls") <= 0:
+        if not definition.error_policy.get("finalize_on_limit") and (counters["tool_calls"] >= limits["max_tool_calls"] or counters["tool_attempts"] >= limits["max_tool_attempts"] or context.ledger.remaining("tool_calls") <= 0):
+            return False
+        if context.ledger.remaining("model_calls") <= 0:
             return False
         error = observed.error
         if error.code == "LIMIT_EXCEEDED" and error.details.get("kind"):
