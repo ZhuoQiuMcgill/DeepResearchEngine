@@ -38,6 +38,7 @@ DDGS is best-effort and replaceable; research-task availability remains unverifi
 Use [missions.md](missions.md) for each team's sustained module mission,
 expected evidence and PM responsibilities. The current assignment is full
 owned-design alignment; runtime implementation still awaits authorization.
+PM's final verification plan is [baseline-acceptance.md](baseline-acceptance.md).
 
 Background sources:
 
