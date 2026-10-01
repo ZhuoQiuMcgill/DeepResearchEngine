@@ -1,98 +1,155 @@
-# Connections team status
+# Connections team status: v1 alignment
 
-Date: 2026-09-30 (America/Toronto).
-Phase: design and research; implementation is not authorized.
-State: design assignment completed; DRAFT ready for PM reconciliation and commit.
-Runtime implementation and shared-contract approval remain outstanding.
+Date: 2026-10-01 (America/Toronto).
+Phase: design alignment; implementation/API phase remains unauthorized.
+State: full owned design and limited PM corrections completed for review/commit.
+Owner: Connection Team, chat `01a0f546-f888-7353-b103-72f3f930fc79`, local.
 
-## Completed
+## Completed mission
 
-- Read AGENTS.md, team README, shared-platform, coordination, Connections,
-  and the sibling Container/CLI/Storage briefs and current PM decision log.
-- Verified PM's exact chat and its human coordination authorization using
-  the app thread reader. Registered with PM through the authorized channel.
-- Verified this chat as `Connection Team`,
-  `01a0f546-f888-7353-b103-72f3f930fc79`, host `local`.
-- Assigned independent design reviews for child permissions/limits and
-  Windows-compatible CLI scoped-storage transport.
-- Consulted primary Python 3.11 and python-dotenv documentation for
-  deadlines, cancellation, configuration parsing, and precedence.
-- Reviewed the saved Container and Storage proposals, adopted Storage's
-  snapshot operation names/end-exclusive ranges, and identified remaining
-  shared-schema/event/retry differences for PM.
-- Completed independent reviews of context/grants/shared accounting, recorder
-  bootstrap, admission/terminal ownership, shutdown and all three CLI transports.
-- Read root CONTRIBUTING.md and latest shared guidance. Honored PM's temporary
-  document-write hold; resumed owned files after its baseline-ready notice.
+- Read missions.md, platform-contract-v1.md, CONTRIBUTING.md, the Connections
+  brief, relevant peer interface declarations and baseline-acceptance.md.
+- Replaced the whole legacy proposal with the common v1 composition/identity/
+  authority/result/recording vocabulary; no competing commit action or duplicate
+  agent start. Initial Storage bridge is bounded preparation/read injection/commit.
+- Defined all Engine consumer operations, lazy dotenv/named-profile behavior,
+  immutable BindingSet/BoundSession leases, control-recorder bootstrap,
+  scope provisioning, use/delegate attenuation, child export and shared budgets.
+- Aligned Runtime.admit -> parent invocation intent -> Runtime.execute(single-use
+  lease), common admission status/release, exact-ID uncertainty, revocation,
+  bounded record_cleanup and ordered resource ownership/shutdown.
+- Specified ToolStoragePlan and the common RecordedToolAction producer runtime
+  for standalone_tool, with no model/provider initialization or extra logger.
+- Supplied complete interface-only researcher-to-writer and explicit-grant
+  standalone saved-read sequences; neither is live execution evidence.
+- Resolved the post-run consumer gap with PM: accepted public signature
+  Engine.open_run_access(run_ref, request, options) -> Result[RunAccessSession].
+  Section 12 defines closed request/options/session fields, fresh host authority/
+  action/deadline/I/O quotas, owner-restricted recorder and no execution capability.
+- Added the complete baseline run -> exact Runtime-published report read -> normal
+  manifest/terminal checkpoint publication -> close -> reopen/read/history flow.
+  AgentResult/RunRef/terminal_state are authority free; no expired agent grant or
+  record_cleanup business writes; checkpoint is terminal evidence, not resume.
+- Aligned the baseline with the selected registered web.search,
+  scholar.crossref.search, scholar.openalex.search, web.fetch and document.read
+  catalog. All three search tools use the none Storage plan without worker
+  Storage access/publication rights. Platform-only search and fetched/saved
+  citation evidence remain required; Toolset owns the exact scholarly schemas.
+- Added a compact v1 conformance checklist and seven exact cross-team DTO/factory
+  requests, distinguishing accepted semantics from uninstantiated executable types.
+- Applied PM's four limited review corrections: baseline run ID comes from
+  AgentResult.execution.run_id; standalone binds storage_plan_factory before the
+  helper allocates/validates actual IDs and constructs the attempt plan; worker
+  envelopes reject malformed input but do not authenticate a same-user launcher;
+  fresh host status uses explicitly granted read-only mode=observer authority.
+  Observer grants pin target store/run, exact IDs and receipt visibility; Storage
+  validates target origin. No prior actor/action/attempt is copied into host
+  context, no prior event/mutation is redelivered, no ledger is released and no
+  execution is replayed. Existing originator rules remain unchanged; fetch plans
+  explicitly grant operation.status for their assigned operation_id to the owner.
 
-## Owned outputs
+## Stable owned outputs
 
-- Proposal: `docs/teams/designs/connections-design.md` (completed DRAFT).
-- Status: `docs/teams/reports/connections-status.md` (this file).
+- `docs/teams/designs/connections-design.md`: complete aligned design 1.0.
+- `docs/teams/reports/connections-status.md`: this full mission status.
 
-## Recommendations for PM
+Current writes remain these two paths. Future authorized ownership is
+`src/ebd/connections/` and matching tests. PM owns shared types/CLI glue,
+manifest/lockfile, baseline/integration and all Git mutations.
 
-- Pin immutable binding descriptors; expose constrained module interfaces.
-- Distinguish capability use from permission to delegate that capability.
-- Child runs share runtime-owned lineage accounting and inherit narrower
-  deadlines, cancellation and scopes; nesting must not reset budgets.
-- Connections owns parent invocation intent/outcome; Container owns the
-  corresponding child run and model/tool lifecycle records.
-- For the initial `web.search`, `web.fetch` and `document.read`, prefer
-  launcher-mediated bounded read injection/postprocess snapshot commit, if
-  Toolset/Storage accept explicit caps. Successful worker extraction becomes
-  canonical fetch success only after Storage returns its committed receipt.
-- Initial injection limits proposed: 8 MiB original, 4 MiB normalized text,
-  1 MiB index, 64 KiB provenance/read text, 20 MiB private fetch stdout,
-  1 MiB stdin and 2 concurrent fetches. Actual memory feasibility is untested.
-- Retain a scoped loopback broker for dynamic Storage operations or larger
-  streamed transfers; private separate pipes remain viable with a complete
-  Windows/standalone adapter. No transport/backend is approved by this team.
-- Use trusted Storage recorder bootstrap, one-use runtime admission leases,
-  control-plane-only bounded cleanup, per-owner revocation gates and resource
-  leases that preserve sibling/shared services during child shutdown.
-- Central configuration uses explicit `local/.env`, allowlisted process-env
-  overrides and non-secret configuration references; selected bindings only.
+## Conformance summary
 
-## Verification and limitations
+| Requirement | Design section |
+| --- | --- |
+| Engine APIs, central config, lazy selected profile | 1-3 |
+| Common schema/IDs/live authority, BindingSet and recorder bootstrap | 4-5 |
+| Delegation/scope/export/shared ancestor limits | 6-7 |
+| Canonical recording, unknown status, revocation and cleanup mode | 8 |
+| Bounded tool plan after actual ID allocation; exact fetch status grant; worker envelope limits | 9, 11 |
+| Complete root-to-child consumer sequence | 10 |
+| Fresh host result access, exact-ID observer grants and baseline close/reopen | 12 |
+| Ordered close and owner retention | 13 |
+| Exact shared requests and actual evidence limits | 14-15 |
 
-Document/coordination/primary-source review and saved-file QA were performed.
-Both owned Markdown files were nonempty with paired fenced blocks; the design's
-one JSON example parsed successfully. Independent reviews covered delegation
-and three transport candidates. No runtime code,
-dependency changes, installations, provider/tool/storage smoke tests or model
-calls have occurred. `local/.env` was not opened or inspected. Git was absent at
-initial startup; PM has since initialized the private shared repository. This
-team made no Git mutations and follows PM-only staging/commit/branch ownership.
-Normal native helper refresh failed during setup; read-only QA subsequently ran
-successfully through reviewed host execution. Document checks are evidence of
-saved-file structure, not implementation correctness.
+## Cross-team requests to PM
 
-No binding, credential, provider reachability, IPC interoperability or peak
-memory/live integration is verified. No external dependency has been selected.
-The local vLLM Qwen service remains pending deployment and live verification.
+R1 (Container/PM): instantiate the agreed AdmissionLease/release and
+Runtime.admission_status DTOs, preflight AgentResult and InvocationOutcome fields.
+After process loss, unknown consumption remains unknown; no live lease is rebuilt.
 
-## Decisions requested from PM
+R2 (Storage/PM): finalize asynchronous Storage startup/provision/describe_run,
+principal-filtered run association lookup, owner-recorder/scoped-handle factories
+and purpose/object/range/quota constraint enforcement. Instantiate the agreed
+read-only mode=observer grant for existing status APIs, pinning target store/run,
+exact event/operation IDs and receipt visibility with Storage target-origin
+validation. Observer authority cannot impersonate/redeliver as the originator
+or release its ledger. No circular unrecorded bind.
 
-1. Reconcile context/grants, child-scope creation, result export, shared lineage
-   ledger, admission lease and nesting/concurrency defaults.
-2. Select CLI transport with Storage/Toolset; settle private/public response
-   schemas, injected-plan validity, Storage receipts/ranges, caps and standalone
-   common tool-action helper. Compare the full three-candidate section.
-3. Reconcile logical-action/attempt IDs versus Container's fresh action-per-retry
-   proposal; `schema_major`/`schema_version`; binding/invocation/run event names;
-   commit causal identity and standalone event producer. Parent invocation
-   intent/outcome and child lifecycle remain distinct, with durable intent gates.
-4. Approve configuration precedence, current-grant revocation semantics,
-   control-plane recording/cleanup and resource drain/close policy.
-5. Confirm shared contract/package/dependency ownership. Explicit user design
-   approval and implementation authorization remain required.
+R3 (Container/Toolset/PM): shared storage_plan_factory.for_attempt constructor
+consumed by RecordedToolAction and ToolExecutor, matching owner-allocated attempt
+IDs allocated/validated before plan construction, reference/range/continuation,
+operation IDs and inline limits. snapshot_commit explicitly grants operation.status
+for its assigned operation_id to the current originator with receipt visibility.
 
-## Blockers and handoff
+R4 (Container/Storage/PM): instantiate agreed output_delivery/output/raw artifact/
+digest/persistence/terminal receipt/terminal_state types and child result-copy
+eligibility. Publication/lifetime semantics are resolved; raw and validated JSON
+remain separate. No native continuation export is implied.
 
-No blocker to the completed design deliverable. The proposals await cross-team
-reconciliation and PM decisions; current authorization ends at design/research.
-The two owned paths are offered as a stable ready-to-commit revision. After the
-completed report is sent, hold edits until PM confirms its commit or coordinates
-the next revision. PM receives the exact paths, recommendation, checks,
-limitations and requested decisions through the authorized chat channel.
+R5 (Container/PM): typed strategy/Runtime delegation-selection request to the
+bound Python AgentInvoker, including model schema mapping if model-driven selection
+is required. No invented agent.invoke CLI or hidden scheduler.
+
+R6 (all action owners/PM): exact finite cleanup/close reports and supervisor/lease
+ownership for admitted mutations/execution surviving caller cancellation.
+
+R7 (PM/Storage/Container): shared executable forms of the accepted open_run_access
+surface and section 12 DTOs, target-to-host actor binding and normal publication
+constraints. Enforce the agreed exact-ID read-only mode=observer status authority
+from R2 using fresh host context, current policy and target-origin checks; no
+original actor/action/attempt copying, append/redelivery, ledger release or replay.
+Signature/authority/lifetime and observer semantics are agreed; executable forms
+remain pending. Current owner originator status/delivery rules are unchanged.
+
+These requests are precise integration inputs, not a blocker to delivering the
+complete design or permission to edit peer/shared files. Semantic decisions that
+PM has already resolved are not reopened. Any source-phase blocker must be reported
+before guessing an incompatible protocol.
+
+## Verification actually performed and limits
+
+Read and reviewed authoritative local design/mission/acceptance files; checked
+saved UTF-8/LF text, nonempty content, paired fences, sequential section headings,
+local Markdown link targets, common signatures and removal of legacy vocabulary.
+Reviewed all four corrections across request/session fields, plan construction,
+baseline/reopen sequence, conformance and R2/R3/R7 authority agreements.
+Read-only Git diff/whitespace checks cover only these owned paths. Evidence is
+saved-document integrity/conformance, not runtime correctness or API feasibility.
+The final QA summary/hashes are supplied in the PM handoff rather than embedded
+as self-changing document hashes.
+
+Native Windows sandbox helper refresh failed again. Reviewed host execution
+successfully performed authorized read-only file inspection/QA. No files outside
+owned paths were changed; no Git writes, source/tests, dependency/lockfile changes,
+installations, `.env` inspection, model/API calls, workers or live Storage trials.
+Earlier independent design reviews/primary Python/dotenv research remain design
+inputs; no new subagents or live provider/package verification were used here.
+
+Unverified: actual module factories/binding/admission behavior; scoped permissions,
+output export, concurrent lineage accounting, status durability, revocation,
+cancellation/close/root ownership, IPC/worker cleanup, PDF expansion/peak memory,
+provider/account access and complete baseline persistence/audit. Qwen live
+verification is explicitly pending deployment. No report/checkpoint/baseline run
+has been generated by this Connections mission.
+
+## Phase boundary and handoff
+
+PM reports that automatic approval review rejected runtime implementation under
+the earlier design-first instruction. A directly authorized phase transition is
+still required before source/dependency/model work. The present design assignment
+is complete; this team has not retried that blocked implementation action.
+
+After saved-file QA and notification, freeze both ready-to-commit files until PM
+confirms the commit or coordinates another revision. Continue ordinary internal
+implementation choices only after that authorized phase transition, through the
+shared uv/Python 3.11.15 environment and locked dependencies.

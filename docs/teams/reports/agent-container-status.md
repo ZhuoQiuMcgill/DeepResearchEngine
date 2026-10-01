@@ -1,62 +1,71 @@
 # Agent Container team status
 
-Date: September 30, 2026 (America/Toronto).
-Phase: current design/research assignment completed; DRAFT v0.1 awaiting PM/cross-team reconciliation and design approval. Implementation is not authorized.
+Owner: Agent Container Team. Revision: agent-container-v1-r3, October 1, 2026 (America/Toronto).
+Status: complete owned design alignment for PM review; design/research phase only. Freeze these two owned paths after completed QA/handoff until PM confirms the commit or coordinates another revision.
 
-Contribution state: stable ready-to-commit draft revision, frozen for PM's handoff and final saved-file QA. Do not edit either owned path until PM confirms the commit or coordinates a new revision. This handoff is not interface approval.
+## Completed deliverables
 
-## Identity and coordination
+- [Whole Agent Container design](../designs/agent-container-design.md): replaces the earlier competing interfaces with platform contract v1 throughout, rather than appending a reconciliation note.
+- This status records completion, actual checks, shared consolidation requests and the limits of the evidence.
 
-- Verified chat title: `Agent Container`.
-- Chat ID: `01a0f545-10ae-7b51-a754-3dc13e95a857`; host: `local`.
-- Workspace: `D:\Projects\DeepResearchEngine`.
-- PM: verified `PM` chat `01a0f501-2978-7c80-a5b2-4bb740570d2c`, host `local`.
-- Registration delivered through `send_message_to_thread`. PM confirmed registration and reiterated design-only scope, durable intent before dispatch, explicit recording failure after outcome persistence failure, and Container ownership of top-level model/tool activities.
-- Completed report notification delivered to the verified PM chat through `send_message_to_thread`, including exact output paths, recommendations, official evidence, unresolved decisions and the final-check limitation below. Tool returned success; PM review/reconciliation remains pending.
-- PM released the initial document-write hold after reporting the private `ZhuoQiuMcgill/DeepResearchEngine` Git baseline ready at pushed commit `c61f60f`, with shared `main` tracking `origin/main`. Completed team drafts were excluded from that baseline.
-- Read the current `CONTRIBUTING.md`. PM alone writes Git/index/branches and configures account attribution. This team uses shared uv-managed Python 3.11.15, locked project metadata and `uv run --locked`; dependency changes go through PM.
+The design defines closed AgentDefinition/input/output/context/error/limit schemas; exact ModelRequest/ModelResponse and native continuation/audit; AgentResult with raw/validated output refs/media/digests/operation observations and actual terminal receipt; single-use Runtime admission/status/release; committed intent before every model/tool dispatch; and one Container-owned RecordedToolAction for agent/standalone producer=runtime. It adopts integer schema_version=1, required dispatch attempts, parent invocation action AND attempt, six execution terminals, independent recording/commit/effect, EventReceipt and context-first Storage/status.
 
-## Completed work and owned outputs
+It covers bounded context/native history, batch preflight, counts/unknown usage/strict-budget gates, cancellation/task-cancellation distinction, finite cleanup/owner retention and no record_cleanup business writes. Provider profiles/configuration are mapped to primary official documentation: exact GPT-6-Luna Responses, requested DeepSeek V4.1 Flash/deepseek-flash Chat and explicit vLLM/Qwen manifest with native protocol differences. Future actual API/tool/storage/permission/resource/reopen acceptance is specified; no synthetic example is labeled execution evidence.
 
-- Design: `docs/teams/designs/agent-container-design.md`.
-- Status: `docs/teams/reports/agent-container-status.md` (this file).
-- Proposed serializable AgentDefinition, ModelRequest/Response, continuation, tool/result, capabilities, execution context/result/error contracts, and asynchronous interfaces with example payloads.
-- Defined state and sequence diagrams, sequential batch behavior, provider/tool/validation lifecycle, grants/identity/child-budget propagation, limits and cancellation/cleanup semantics.
-- Proposed precise durable `RecordAck`, deduplicated event IDs, unknown-commit errors and fail-closed dispatch. Known execution outcome and recording completeness remain distinct; incomplete actions never authorize replay.
-- Researched current official OpenAI, DeepSeek, Qwen and vLLM documentation; compiled capability matrix, continuation differences, source links and pending access/deployment checks.
-- Included cross-team requests, proposed implementation work/dependencies without making changes, and real-service verification plan.
+PM accepted Runtime automatic publication of exact final visible-content UTF-8 bytes and separately canonical validated JSON before cleanup/agent.finished. Runtime constructs the final AgentResult only after its terminal receipt. PM/Connections also accepted Engine.open_run_access -> RunAccessSession for fresh normal host result/source/history access and citation-manifest/checkpoint/export publication. This resolves the earlier missing post-run context; no expired agent grant, saved descriptor or cleanup capability supplies business authority.
 
-## Recommendations
+Known publication failure with fully recorded failure can be recording_status=complete and persistence_state=not_committed. Unknown admitted commitment or lost outcome/terminal recording remains incomplete with observations/IDs retained. Later host preservation cannot retroactively mark failed execution successful.
 
-Use one bounded asynchronous Container loop and provider-specific native continuation codecs. Connections binds only the chosen provider and immutable permitted tools/storage; ToolExecutor owns subprocess execution/cleanup; Storage owns durability and commit events. Container is independent of the currently unselected scoped CLI-storage transport.
+## V1 conformance
 
-For exact `gpt-6-luna`, recommend OpenAI Responses with stateless native-item replay. Official docs establish function calling/structured outputs; Chat function calling requires reasoning effort `none`. Account access and real behavior remain unverified. [Official model page](https://developers.openai.com/api/docs/models/gpt-6-luna), [Reasoning continuation](https://developers.openai.com/api/docs/guides/reasoning).
+| Area | Evidence in design |
+| --- | --- |
+| strict/versioned definitions and input/output validation | 1-2 |
+| exact requests/responses/native codecs/tool IDs/nullable usage/audit | 3, 9 |
+| AgentResult/output lifetime/normal publication/fresh host access | 4, 8, 10-11 |
+| admission/accepted-start-terminal/unknown consumption | 5 |
+| shared RecordedToolAction, standalone root and READY/public result | 6 |
+| canonical IDs/producers/receipts/status and no uncertain replay | 5-7 |
+| context/ranges/ledger/token uncertainty/cancellation/cleanup | 2-3, 7-8 |
+| complete future module and full baseline acceptance gates | 10 |
+| precise shared consolidation versus resolved decisions | 11 |
 
-For DeepSeek, propose Chat Completions first; model/thinking selection is open. Current documented candidates are `deepseek-flash` and `deepseek-v4-pro`. Tool conversations require full supplied `reasoning_content` from preceding assistant turns; ordinary normalized text is insufficient. Native final schema enforcement is a separate profile decision. [Official catalog](https://api-docs.deepseek.com/quick_start/pricing/), [Thinking mode](https://api-docs.deepseek.com/guides/thinking_mode/).
+## Actual checks and evidence
 
-For Qwen/vLLM, require a pinned model/server/tokenizer/template/parser deployment manifest. Qwen3 history omits historical thinking, unlike the current DeepSeek tool-history rule. Deployed tool/output/usage/context capabilities must be checked against that exact profile. Live acceptance remains **pending deployment**. [Qwen3 model card](https://huggingface.co/Qwen/Qwen3-8B), [vLLM tool calling](https://docs.vllm.ai/en/stable/features/tool_calling/).
+Read the team routing documents/brief, CONTRIBUTING, missions, decisions, platform-contract-v1, baseline-acceptance and relevant peer status/host-access excerpts. Reviewed current official model/protocol documentation through browsing. The latest DeepSeek model catalog refresh returned a web Internal Error; its current thinking guide uses deepseek-flash and the shared v1 selects it. Replaced the stale OpenAI Responses reference URL after its 404 with the verified current Python API reference. Documentation capability evidence does not verify actual account/server capability.
 
-First handoff: sequential, non-streaming model/tool cycles, local final validation, finite count/byte/time/context allowances, no default retries/repairs, scoped Storage and durable lifecycle recording. Optional concurrency, strict native schema modes, streaming and resume require separate explicit capabilities.
+Draft-buffer checks completed before saving: three JSON examples parse, each has integer schema_version=1; five opening/closing code-fence pairs. Examples use symbolic identifiers/digests and are illustrative shapes, not instantiated configurations or records.
 
-## Verification actually performed
+Historical pre-correction r1 saved-file QA passed using Python 3.11.15 through uv --cache-dir .uv-cache run --locked --offline --no-sync python -: strict UTF-8 without BOM, LF/final newline/no trailing whitespace, paired fences (five pairs in design), finite unique-key JSON at depth <=32 (three examples), integer schema_version=1, example field/default checks, all relative local links, required v1 contract fields and absence of obsolete version/receipt/producer vocabulary. This is document/example validation, not implemented JSON Schema or runtime testing. The first content check required parent_attempt_id to be named explicitly; the design was corrected and the complete check reran successfully. Read-only git diff --check passed; owned-path git status/diff inspected. Ordinary sandbox process startup intermittently failed with helper_unknown_error; those document-only checks succeeded through approved host execution, with no sync/install or model/platform execution.
 
-- Read required team/shared/coordination specs and relevant sibling-team boundary sections; inspected non-secret project metadata.
-- Verified this chat and PM identity through app listing, read the human PM setup authorization, and delivered registration.
-- Opened official documentation, with parallel independent DeepSeek/Qwen research and a contract audit. Incorporated material review fixes for cleanup, outcome recording, checkpoint boundaries, multi-tool limits, vLLM citations and deployment versions.
-- Document content was manually reviewed and the owned-file edits were acknowledged by `apply_patch`. Initial native QA attempts hit `helper_unknown_error: setup refresh had errors` in root shell, root Node REPL and a second review session. After PM's ready notice, one read-only command successfully read `CONTRIBUTING.md`, this saved status document and the design's historical Git/verification paragraphs. The subsequent full saved-file/JSON/fence/section/URL/hash check failed during helper setup before executing, even with shell login disabled. Partial saved-file readback is verified; JSON parsing, fence balance, full section/URL coverage, final file hashes and post-edit readback remain unverified. This is process-setup infrastructure failure, not a policy/approval rejection. PM is requested to verify the final saved files through working host execution before committing.
-- No runtime source implemented, packages installed, dependencies changed, `local/.env` values read, authenticated provider/credential checks run, or model calls made.
-- Initial Git status failed because the repository had not yet been initialized; that is historical. PM subsequently reported the private repository and pushed baseline ready. This team did not independently rerun Git successfully after initialization and performed no Git writes. This team's file writes remain confined to the two owned paths above.
+PM independently verified the r1 saved bytes/hashes and document checks. Its semantic review identified one peer ordering discrepancy: the r1 child sequence recorded invocation.outcome before export. The coordinated r2 revision now performs authorized bounded export first, then records the parent invocation.outcome containing the export receipt/failure while preserving the child's terminal facts, matching Connections section 7. Related future acceptance wording also follows this order. AgentResult run identity remains execution.run_id; no public fields or runtime were changed.
 
-## Unverified claims, blockers and PM decisions
+Historical pre-catalog r2 saved-file QA passed with the same locked/offline/no-sync Python 3.11.15 document checks listed above, plus assertions that authorized child export precedes parent invocation.outcome and that the outcome includes export receipt/failure with preserved child terminal facts. All three JSON examples and five design fence pairs pass; both files identify revision r2; local links/format/stale vocabulary/required contract checks and read-only git diff --check pass. The initial sandbox helper failed; approved document-only host execution completed the checks. These checks do not validate runtime behavior.
 
-No blocker prevents delivery of the current draft. Approval/reconciliation and configured services gate later implementation/acceptance.
+PM's independent saved-byte QA and full boundary review of frozen r2 passed. The coordinated r3 delta only aligns the baseline/catalog references with Yahoo primary/gated corrected-Google fallback and the two separate scholarly discovery tools. Prior child export/parent-outcome ordering and all reviewed authority/publication/continuation corrections are preserved. CLI owns the exact scholarly schemas; generic catalog, recording and Storage-plan interfaces are unchanged. No public fields, runtime or other modules were changed.
 
-1. Reconcile shared schema/version owner, model settings/capability policy, identity/action allocation, terminal/error taxonomy and inherited budget handles.
-2. Select exact DeepSeek model/protocol/thinking profile; preserve the exact OpenAI target without fallback.
-3. Specify Qwen deployment owner, model/revision/served alias, server version/hardware/runtime, template/parsers, generation defaults and schema backend. Its service is undeployed here.
-4. Agree with Storage on durable acknowledgment/dedup lookup, uncertain commit handling, restricted continuation retention, immutable artifact/range references and checkpoint boundaries.
-5. Agree with CLI Toolset on canonical-to-provider tool names, result/diagnostic/cleanup metadata and sequential batch policy. Storage/Toolset/Connections select the scoped subprocess transport; Container consumes it through bindings.
-6. Agree Connections resource leases, delegation event versus child-run event ownership, permission intersection and nesting/inherited budget enforcement.
-7. Approve baseline numeric defaults and eventual dependency choices; runtime implementation and bounded real API smoke tests need explicit later authorization.
+Coordinated r3 saved-file QA passed under the same locked/offline/no-sync Python 3.11.15 command: strict UTF-8/LF/no BOM/final newline/whitespace, all three finite unique-key/version1/depth-bounded JSON examples, five design fence pairs, local links and required/stale contract vocabulary. Added assertions verify all five selected tool names in both baseline references, removal of the obsolete three-tool restriction, saved citation-evidence requirement, r3 revision identifiers and preservation of export-before-parent-outcome semantics. Read-only git diff --check passed. The sandbox helper failed on the initial check; approved host execution completed document-only QA. Runtime, binding, Storage-plan interfaces and public fields were not changed or executed.
 
-Documentation findings are not live acceptance. OpenAI/DeepSeek account access, continuation/tool cycles and output/usage behavior remain unverified; Qwen live checks remain pending deployment. Deterministic fixtures may support future local checks but cannot replace real models, CLI tools and durable Storage handoff evidence.
+PM's earlier draft commit/QA at 4210b8c is historical and does not validate this replacement. PM announced baseline-acceptance design at 3d25c7c. PM is the only Git writer; this team performs no stage/commit/push. Private repository and shared environment are already initialized; there is no outstanding no-Git/no-project-environment blocker.
+
+## Shared consolidation needed before implementation
+
+1. PM pins one canonical JSON byte/digest codec for definition/event/request/write/continuation comparisons and tool-name mapping.
+2. PM consolidates the owned exact schemas and peer ToolExecutionResult/ToolResult/ToolStoragePlan/refs/error/cleanup fields in one shared contract package, including DefinitionRef={agent_id,revision,digest}, output publication IDs/receipts and admission/ledger enum spellings.
+3. Connections/Container finalize the shared live lineage reservation/consume/settle/release protocol and trusted factory wiring; uncertain consumption retains identity/reservation. No metadata can issue authority.
+4. Connections/Storage/Toolset consolidate owner cleanup/supervision and event/operation status observations so admitted work can settle without losing root ownership.
+5. Connections binds the same Container RecordedToolAction to tool catalog/executor/plan, recorder/Storage and ID/ledger handles for both paths; no duplicate lifecycle helper/logger.
+
+These are exact common-package integration requests, not unresolved internal design work or reasons to stop the current mission. Output-publication behavior, host-access signature, DeepSeek baseline selection, resource caps, DELETE/EXTRA, receipt/status/ID and standalone producer decisions are resolved in v1.
+
+## Phase and evidence limits
+
+No runtime source/test/dependency/lockfile changes, installations, local/.env inspection, model API calls, CLI workers or real Storage execution occurred. Runtime implementation and live acceptance remain unperformed and await PM confirmation of a directly human-authorized phase transition. PM reported automatic approval review rejected that transition because the user's design-first instruction still applies; this design task does not retry it.
+
+The future module belongs wholly to src/ebd/agent/, src/ebd/providers/, tests/agent/ and tests/providers/. PM owns shared types/integration/dependencies/Git. Use shared uv/Python 3.11.15 and locked project commands after authorization. Local vLLM Qwen live verification remains explicitly pending because it is not deployed on this machine; missing local deployment must not block API profiles.
+
+The real DeepSeek baseline uses the selected five registered tools (web.search, scholar.crossref.search, scholar.openalex.search, web.fetch and document.read) under the platform-only search policy in [baseline-acceptance.md](../baseline-acceptance.md); citations still require fetched/saved source evidence. It must save a complete model-generated sourced Markdown report, citation manifest, request audit, paired durable trace and terminal checkpoint, then verify them through fresh authorized close/reopen access. The baseline does not replace GPT, child/standalone, permission/CAS, uncertainty, resource or cleanup gates. No report/trace/checkpoint/runtime has been generated yet.
+
+## PM handoff
+
+Ready-to-commit and frozen for PM review: docs/teams/designs/agent-container-design.md and docs/teams/reports/agent-container-status.md. Handoff reports the actual checks and limitations above. Keep these files stable until PM confirms the commit or coordinates another revision. PM stages/reviews/commits/pushes sequentially; the team does not modify shared or peer files.

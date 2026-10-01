@@ -73,7 +73,8 @@ model keys, project dependency changes or runtime source. Do not claim reliable
 search from the earlier five-of-twelve outcome. Record exact attempts/outages.
 
 After authorized implementation, this team owns real registered `web.search`,
-`web.fetch` and `document.read`, catalog/executor and CLI parsing/formatting.
+`scholar.crossref.search`, `scholar.openalex.search`, `web.fetch` and
+`document.read`, catalog/executor and CLI parsing/formatting.
 Use explicit configurable named search backends and bounded fallbacks, with
 outages surfaced. Retain original fetched representation and derive text from
 the same body. Execute only fixed argv without a shell. Commit/read through
@@ -82,8 +83,16 @@ The host standalone composition uses the common recorded tool helper, with
 no model initialization. Browser/OCR/paid services require a measured scope
 proposal rather than silently adding dependencies.
 
+The selected general profile is Yahoo primary with corrected Google as a gated
+fallback. Scholarly tools have separate closed discovery-only schemas, fixed
+providers, bounded metadata requests and explicit current rate/budget failures.
+No hidden query rewrite, automatic pagination/merge or paid escalation. Their
+returned locations need normal fetch/read before report citation. The whole
+module mission includes representative availability and Yahoo/Google URL fidelity,
+metadata identity/relevance and actual full-text follow-through verification.
+
 Definition of done: aligned schemas and complete evidence/measurement plan;
-then real search/HTML/text-PDF/reopen/read, immutable locators, max-fit/oversize
+then real discovery/HTML/plain-text/text-PDF/reopen/read, immutable locators, max-fit/oversize
 protocol checks, measured parent/worker RAM, actual cleanup and uncertainty
 without refetch. Report reproducible commands, exact results and search
 limitations. Tool output cannot become public fetch success before Storage

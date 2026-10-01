@@ -1,832 +1,950 @@
-# Connections design proposal
+# Connections design aligned with platform contract v1
 
-Owner: Connections (`Connection Team`).
-Date: 2026-09-30 (America/Toronto).
-Revision: proposal 0.1, contract major 1 proposed.
-Status: DRAFT for PM and module review. This is documentation, not an
-implementation or an approved shared contract.
+Owner: Connection Team.
+Date: 2026-10-01 (America/Toronto).
+Revision: aligned design 1.0; wire/event compatibility `schema_version: 1`.
+Status: complete design contribution for PM review; runtime implementation is
+not authorized. This replaces the team's earlier competing contract proposals.
 
-## 1. Recommended boundary
+Authority: [platform-contract-v1.md](../platform-contract-v1.md),
+[Connection mission](../missions.md), and
+[CONTRIBUTING.md](../../../CONTRIBUTING.md). The common contract wins over any
+older peer draft. This document defines Connections' composition behavior and
+lists the remaining shared-protocol requests explicitly; it is not runnable code.
+The [baseline acceptance design](../baseline-acceptance.md) additionally requires
+fresh post-run access to exact Runtime-published output and terminal receipts.
 
-Connections resolves registered implementations into an immutable, constrained
-binding for one run. It supplies configuration references, context propagation
-and explicit call-and-result delegation. Container retains the real provider
-adapters, context/model/tool loop, validation and runtime accounting; Toolset
-retains command registration and process execution; Storage retains access
-enforcement, durable state, artifacts and activity persistence.
+## 1. Ownership and composition boundary
 
-Recommend launcher-mediated bounded Storage injection for the three initial
-tools if PM/Toolset accepts the explicit snapshot/JSON caps in section 10.
-Retain a capability-authenticated loopback broker for tools requiring dynamic
-Storage operations or larger streaming transfers; compare CLI's private-pipe
-candidate before settling the topology. Each is a transport to the existing
-Storage interface. No model/tool backend, Python package layout or dependency is selected
-here. PM must reconcile the proposal before user design approval.
+Connections is the host composition root: named registration/configuration,
+trusted context/grant issuance, binding and leases, Engine consumer operations,
+permitted child invocation and authorized result export. It consumes module-owned
+factories/protocols. It does not implement provider HTTP, a model/tool loop,
+subprocess launching, durable persistence, a scheduler or EBD strategy.
 
-## 2. Definitions, registration and compatibility
+| Owner | Supplied capability | Connections' use |
+| --- | --- | --- |
+| Container | AgentDefinition validation, Runtime.admit/execute, provider factories, shared ledger, RecordedToolAction | Bind exact profiles; submit one admitted execution; consume validated terminal facts; use the common recorded tool helper |
+| Toolset | Catalog, fixed command definitions, ToolExecutor, worker parsing/formatting and prepare/finalize adapters | Bind permitted catalog/executor and ToolStoragePlan; compose standalone without a model |
+| Storage | Store-root ownership, scopes, state/artifacts/snapshots/checkpoints, recorder/status and recovery | Open through its factory; provision via its administrative boundary; supply narrowed handles; reconcile by existing IDs |
+| PM | Shared executable types, package/host CLI glue, dependencies, integration and Git | Request exact missing protocols; leave shared files and Git writes to PM |
 
-Propose these serializable definitions; immutable maps/sets are required in
-memory, not merely a frozen outer object containing mutable dictionaries.
+Current editable outputs are this file and `reports/connections-status.md`.
+After a directly authorized phase transition, future ownership is
+`src/ebd/connections/` and matching Connections tests. Shared uv/Python 3.11.15,
+`.python-version`, `pyproject.toml` and `uv.lock` remain authoritative.
 
-| Definition | Required fields |
-| --- | --- |
-| `DependencyDefinition` | `schema_major`, `kind` (`model`, `toolset`, `storage`), `name`, immutable `revision`, `implementation_id`, `implementation_revision`, supported contract majors, `config_ref`, advertised capabilities, ownership (`application_shared` or `session_owned`) |
-| `RegisteredAgent` | Container-owned `AgentDefinition`, exact definition revision/digest, accepted contract major, named outbound invocation rules; no executable or secret supplied by an agent |
-| `InvocationRule` | Exact caller/destination definition identities, delegable model/tool/storage capabilities, delegable downstream destinations, result-export grant, maximum child depth/duration/output, cycle rule |
-| `ConfigReference` | Symbolic configuration identity/revision and allowed credential-key references; never credential values |
+The initial CLI Storage bridge is bounded launcher-mediated read injection and
+postprocess snapshot commit. No broker, extra pipe, worker database/root access
+or alternate snapshot store is composed. Larger/dynamic transfers require a
+measured scope decision; the old broker/pipe comparison is not an implementation
+assignment. The selected search/fetch stack belongs to Toolset/PM, not Connections.
 
-Implementation factories/objects are a separate trusted bootstrap registration,
-owned by the corresponding module. A serialized definition cannot import an
-arbitrary dotted Python name or supply arbitrary argv. Connections verifies
-that a named implementation exists; it does not construct its HTTP protocol,
-registered tool command or SQLite implementation.
+## 2. Public Engine contract and expected results
 
-Proposed public signatures (documentation only):
+Exact public signatures follow v1; the parameter schemas below define the
+consumer boundary. Signatures are interface-only documentation.
 
 ```text
-ConnectionRegistry.register(definition, implementation_handle) -> RegistrationReceipt
-ConnectionRegistry.register_agent(container_definition, invocation_rules) -> RegistrationReceipt
-ConnectionRegistry.freeze() -> RegistrySnapshot
-async ConnectionResolver.bind(agent_definition, context) -> Result[BoundSession, ConnectionError]
-async ConnectionResolver.check_readiness(reference, mode, context) -> ReadinessReport
-async AgentInvoker.invoke(destination_ref, typed_input, parent_context, options) -> InvocationOutcome
-async ConnectionSession.close(mode="drain", grace_ms=5000) -> CloseReport
+async Engine.open(settings) -> Result[Engine]
+Engine.register_agent(definition, invocation_rules) -> Result[RegisteredAgent]
+async Engine.bind(agent_ref, context) -> Result[BoundSession]
+async Engine.run_agent(agent_ref, task_input, options) -> AgentResult
+async Engine.run_tool(tool_ref, arguments, options) -> ToolResult
+async AgentInvoker.invoke(caller_context, destination, input, options) -> InvocationOutcome
+async Engine.close(deadline) -> CleanupReport
 ```
 
-Registration/freeze are synchronous, local operations. Identical identity,
-revision and content is idempotent; a changed definition under the same
-identity/revision is `REGISTRATION_CONFLICT`. Duplicate trusted handles must
-also agree. New revisions coexist. Freeze validates references, schema shapes,
-cycle policy and interface majors against the bootstrap catalog, with no live
-service calls. Required references must exist; registered optional provider
-configurations may be explicitly unconfigured. A run pins a snapshot and exact
-revisions, preventing mid-run replacement. New configuration requires a new
-snapshot; existing sessions continue under their pinned version or are revoked
-through explicit application policy.
+PM accepted this additive host-access signature during the design mission:
 
-First handoff: require exact supported major; permit additive optional fields
-only when declared by that schema. Reject unknown permission/security fields,
-unknown requested capabilities and unsupported major versions. Registry
-snapshots are not a substitute for runtime grant revocation checks.
+```text
+async Engine.open_run_access(run_ref: RunRef, request: RunAccessRequest,
+                             options: RunAccessOptions) -> Result[RunAccessSession]
+```
 
-## 3. Binding contract and resolution
+It supplies the trusted application context/scoped binding missing from
+bind(context). Section 12 specifies its fresh authority, lifetime and baseline use.
 
-`BoundSession` contains a `BindingSet` and a lifecycle lease. It is an async
-context manager. `BindingSet` contains:
-
-| Field | Meaning |
+| Input/type | Exact meaning |
 | --- | --- |
-| `descriptor` | Non-secret binding ID, contract major, registry/config/agent revisions and effective-grant digest |
-| `model` | Container's provider factory/profile capability for the selected named configuration; Runtime opens its session using the restricted configuration accessor; no unguarded client exposed to strategy code |
-| `tools` | Approved Toolset catalog view and constrained `ToolExecutor` facade |
-| `storage` | Storage's own scoped handle, rechecking grants on every operation |
-| `recorder` | Restricted owner/event-kind recorder lease from trusted host Storage bootstrap, distinct from agent data access |
-| `invoker` | Connections facade exposing only exact allowed destination identities |
-| `context_sources` | Explicit Storage/context references and read limits; Container assembles the context |
-| `effective_permissions` | Non-secret granted capabilities and limitations, including delegation authority |
-| `readiness` | Local-validation results and any separately obtained reachability evidence with timestamps |
+| `EngineSettings` | Version, trusted workspace/config references, bootstrap policy reference, module-owned factory catalog, selected Storage settings and finite shutdown policy. Live factory/authority objects are host supplied; not imported from arbitrary agent strings. No credential values in serializable settings. |
+| `AgentRef` / `ToolRef` | Registered identity plus exact revision, resolved before binding. A new revision is a new identity/version pair; no silent latest-version replacement during a run. |
+| `RunOptions` | Optional stricter deadline/limits, registered grant-preset requests, bounded metadata and output preferences allowed by the definition. Requests attenuate trusted policy; they cannot supply authority, argv, endpoint, secret value or a model substitution. |
+| `ToolRunOptions` | Same root bounds plus explicit registered grants for any saved snapshot. No AgentDefinition/model/profile requirement. |
+| `InvocationOptions` | Stricter child timeout/limits/grant attenuation and permitted result-export selection. No arbitrary destination definition or automatic replay setting. |
+| `RegisteredAgent` | Exact Container-owned validated definition reference/digest plus validated outgoing invocation rules; immutable registration receipt. |
 
-The immutable descriptor is serializable. Live handles, secrets, tokens,
-cancellation objects and resource leases are not. Descriptor digests exclude
-secrets and transport tokens. Reopening a saved descriptor requires fresh
-configuration/permission validation and leases; it cannot authorize access.
+`Engine.open` returns only after Storage startup/root ownership/recovery and a
+control-recorder binding succeed. Registration is synchronous and local: invoke
+Container's static definition validator, reject incompatible versions/unknown
+security fields, and register trusted references without opening a model.
+Identical identity/revision/content is idempotent; different content under the
+same identity/revision is `REGISTRATION_CONFLICT`. Forward destination references
+may be registered but must resolve before that agent binds or dispatches.
 
-Resolution sequence:
+Each root run pins a registry/config snapshot and exact revisions. Trusted
+registration can add a new revision for future roots; it cannot mutate an active
+BindingSet. Per-operation revocation still applies to pinned snapshots.
 
-1. Check pinned registry, Container definition validation, schema compatibility,
-   deadline/cancellation and trusted execution authority.
-2. Select only the agent's referenced provider, tools, scopes and context
-   sources. An unused/unconfigured Qwen profile does not block API agents.
-3. Compute effective permissions under section 5. Required capabilities denied
-   or unavailable fail the entire binding; do not silently remove them.
-   Optional capabilities may be absent only when explicitly optional in the
-   definition, with an absence reason recorded.
-4. Resolve required configuration keys through the central loader. Pass needed
-   configuration to the implementation owner through a non-serializable secret
-   accessor. Validate supported capabilities locally; do not substitute a model.
-5. Acquire scoped module handles according to declared ownership. If any step
-   fails, release only acquired session leases in reverse order. No model call,
-   external tool execution or agent loop occurs during binding.
-6. Append `binding.resolved` and await durable acknowledgment before returning
-   a usable session. On failure append `binding.failed` where recording is
-   available, containing references and sanitized reasons. Recording failure
-   fails binding closed; report it separately if the failure event cannot be
-   persisted. There is no recursive attempt to record recorder failures.
+`run_agent` owns root context creation, scope/binding and Runtime admission;
+Container owns the actual run and AgentResult. Preflight failures return the
+agreed AgentResult error shape with no claim that an agent started. `run_tool`
+creates a standalone context and calls RecordedToolAction; it never starts an
+agent or opens a provider. `bind` consumes a trusted context issued by the host
+identity/authority service, not JSON supplied by strategy/model code.
+It intersects that context's live authority; a result-access context cannot be
+rebound into agent execution by falling back to Engine's broader host policy.
 
-Bootstrap prerequisite: the trusted host first opens its configured Storage
-instance and obtains a restricted control-plane recorder through Storage's
-interface. This uses central configuration and module-owned startup, outside
-agent binding; it is not an alternate persistence path. A recorder lease is
-passed to the resolver so a provider/tool/scope binding failure can be logged
-without depending on the failed capability. Storage registers candidate run
-linkage for preflight events without claiming Container accepted that run.
-If Storage itself cannot start or its required configuration is missing, return
-the safe bootstrap error; no durable record is possible and no agent dispatch
-is allowed. The system recorder is never exposed as an agent's broader grant.
+Expected failures use common `Ok(value) | Err(error)` where the signature names
+Result; execution APIs return their common result types with structured errors.
+Execution terminals are only `succeeded`, `failed`, `validation_failed`,
+`limit_exhausted`, `timed_out`, `cancelled`. Rejection/admission/dispatch phases
+are observations, not extra terminal statuses. Recording is separately
+`complete`, `incomplete`, `unavailable`; external effect and commit state remain
+separate. Unexpected defects retain exception semantics after bounded cleanup.
+Python task cancellation is cleaned up and re-raised; explicit engine cancellation
+returns the appropriate execution result. Request R1 below fixes remaining result
+and admission-status wire shapes before executable shared types are frozen.
 
-Terminal recording and cleanup use an engine-only control context with a fresh
-bounded cleanup deadline, referencing the original execution/action metadata.
-It authorizes only the owner's event append, operation-status reconciliation
-and lease/staging cleanup, not new model/tool calls or business data writes.
-This avoids trying to append an outcome through an already cancelled/expired
-execution handle. Storage must validate this distinction and event ownership.
+## 3. Configuration precedence and lazy named profiles
 
-Binding is an API boundary guarantee for normal engine calls. Trusted Python
-plugins in the same process can access their process environment/files; this
-does not establish an OS sandbox. All standard strategy paths use Container,
-ToolExecutor, Connections and Storage hooks, rather than raw adapter handles.
+The central loader explicitly reads only workspace-relative `local/.env` during
+authorized runtime bootstrap. No upward/nested dotenv discovery, file rewrite or
+independent provider/worker loaders. This design did not inspect that file.
+Parse allowlisted keys into a private mapping without modifying `os.environ`;
+disable variable interpolation so resolution precedence is explicit.
 
-## 4. Execution context and identifier allocation
+Non-secret precedence, low to high: schema defaults; trusted explicitly selected
+non-secret configuration; allowlisted `local/.env` keys; allowlisted process
+keys captured at Engine.open; permitted trusted bootstrap non-secret overrides.
+Credentials resolve by SecretRef: an explicitly present process key overrides
+the same `local/.env` key; absent process key falls back to that exact file.
+Present-but-empty/invalid is an error, not a fallback. Do not accept credential
+values in checked-in config, agent definitions/input or command-line overrides.
 
-Propose one shared type, defined centrally by PM rather than duplicated by each
-module. Split persisted metadata from live execution controls.
+Configuration references name allowed variables without presuming this machine's
+existing variable names. A missing key error names the reference/key only.
+Profile descriptors record identity/revision and source category, not secret
+values or secret-derived hashes. Raw mappings, credential-bearing endpoints,
+headers, stdin and unrestricted stderr never enter exceptions/events/checkpoints.
 
-| Persisted `ContextMetadata` | Rule |
+Validate the selected Storage configuration at Engine.open. Register provider
+profiles as named descriptors/factories and validate only the selected agent's
+required profile at bind. Missing Qwen endpoint/model/parser/credential settings
+fail only an agent selecting Qwen; standalone/API agents do not resolve them.
+Do not select a different model if the requested one is unavailable. The fixed
+OpenAI target remains Container's GPT-6-Luna Responses profile; DeepSeek and Qwen
+configuration requirements are supplied by Container, including any selected
+DeepSeek V4.1 Flash baseline profile. Connections does not guess service IDs or
+implement request formatting.
+
+Binding validates local profile/capability metadata, configuration presence and
+interface compatibility. `supported`, `unsupported`, `unknown` feature evidence
+is preserved; unknown cannot satisfy a required capability. Registration,
+Engine.open and binding make no incidental network/model probes. A future explicit
+live-check operation requires trusted authorization, a bounded context/cost and
+owner-provided real evidence; it cannot be assumed from a successful local bind.
+Local Qwen live verification remains pending deployment.
+
+Only the implementation owner receives a restricted, nonserializable secret
+accessor for its selected profile. Runtime uses ProviderFactory.open; Connections
+never exposes a raw client to strategy code. Tool workers receive a controlled
+allowlisted process environment and no model credentials. Rotation takes a new
+bootstrap/config snapshot and owner-managed session replacement; it is not a
+mid-run descriptor mutation. Python secret wrappers redact repr/diagnostics but
+do not promise secure-memory zeroization. Any loader dependency needs PM approval.
+
+## 4. Common ExecutionContext, authority and identities
+
+Only integer `schema_version: 1` expresses wire/event compatibility. Definition,
+tool, configuration, extraction and continuation codec revisions are independent.
+Use strict finite JSON, unique keys, depth 32 and explicit UTF-8 byte limits.
+Unknown execution/security fields fail validation rather than becoming grants.
+
+| Persisted metadata | Required rule |
 | --- | --- |
-| `schema_major`, `run_id`, `agent_id`, `agent_revision` | Required for agent execution; opaque IDs allocated by trusted engine services, not model arguments |
-| `root_run_id`, `correlation_id` | Required; unchanged across the invocation lineage |
-| `context_kind` | `agent`, `standalone_tool` or `system`; `agent_id`/revision may be null only for the latter two |
-| `action_id`, `parent_action_id` | Action-scoped context; `action_id` required on dispatch/events, nullable before the run-root action is allocated; parent null only at the lineage root |
-| `parent_run_id` | Null for a root run; caller run ID for a child |
-| `attempt_id` | Null without an execution attempt; fresh ID per actual provider/tool retry under one logical action |
-| `deadline_at_utc` | RFC 3339 UTC instant, required before binding/admission; finite root allowance comes from trusted bootstrap policy |
-| `depth`, `ancestor_agents` | Root depth 0; exact ancestor definition identities, engine controlled |
-| `permission_ref`, `limit_lineage_ref` | Durable policy/accounting references and versions, not authority derived from arbitrary strings |
-| `application_metadata` | Optional bounded JSON, e.g. mission identifiers; never grants access |
+| `context_kind` | Exactly `agent` or `standalone_tool`; no invented system agent |
+| `run_id`, `root_run_id`, `correlation_id` | Trusted Connections identity service; new child run ID, unchanged root/correlation across lineage |
+| `agent_id`, `definition_ref` | Registered agent identity/revision for agent context; null for standalone |
+| `action_id`, `attempt_id` | Action owner; logical operation plus fresh attempt for every dispatch reservation including the first; nondispatch preflight may omit attempt |
+| `parent_run_id`, `parent_action_id`, `parent_attempt_id` | Null at root; child links to the exact caller invocation attempt |
+| `deadline_at_utc` | Finite RFC 3339 UTC deadline established before binding/admission |
+| `depth`, `ancestry` | Root depth zero and engine-owned ancestor identities; cannot be altered by worker/model input |
+| `binding_ref`, `policy_ref`, lineage reference | Non-secret pinned descriptor/policy and accounting identities; references themselves confer no authority |
+| `metadata` | Bounded application JSON; mission identifiers are optional data only |
 
-`ExecutionControl` holds linked cancellation signals, the local monotonic
-deadline, runtime accounting handle, live scoped permissions/leases and local
-task handles. Never put it in stored JSON/checkpoints.
+Live context contains linked cancellation, a reconstructed monotonic deadline,
+trusted effective grants/revocation authority, the Runtime shared lineage ledger
+and resource leases. Live authority is binder issued, never restored from a saved
+metadata object or an opaque artifact/snapshot reference. Persist no cancellation
+objects, open resources, secret accessors or monotonic clock values.
 
-Connections allocates root/child run IDs through a shared ID service; the action
-owner allocates its logical action ID and event IDs. Container allocates each
-run-root/model/tool action; Connections allocates binding and parent invocation
-actions; Storage allocates commit action/event identities under its agreed API.
-The child run-root action has `parent_action_id = invocation_action_id` from
-the caller run. Actions within the child parent to its run-root or originating
-model action as agreed with Container. Child dependency calls retain the child
-run/agent identity, correlation and narrowed grants. A transport PID is merely
-execution detail, never an authorization principal.
+Connections allocates run/root/correlation IDs. Each action owner allocates
+logical action and first/next attempt before reservation. A changed request/new
+model turn is a new action; an explicitly permitted retry retains action and
+changes attempt. Event producers allocate event IDs once before append and reuse
+them with frozen content for delivery retry. Native provider call IDs remain
+independent and are never invented for standalone tools.
 
-Container's preparation/identity service reserves the run-root action anchor
-before binding; Connections preflight actions can reference this anchor without
-claiming the run was accepted. Storage permits this planned linkage for binding
-events. A rejected preflight remains a rejected candidate, not an executed run.
+Storage commits reuse the supplied causal run/agent/action/attempt/parent/
+correlation fields. The trusted caller allocates operation_id before mutation;
+Storage allocates its publication event_id and receipt. No separate Connections
+commit action exists. Distinct snapshot components may have subordinate operation
+IDs; they do not become model/tool dispatch actions. A recorded digest is not
+permission to execute an external action again.
 
-Persist an absolute UTC deadline and checkpoint accounting version. On resume,
-restore the ledger, revalidate grants, reject expired deadlines, and rebuild a
-monotonic timer from remaining wall-clock duration capped by approved remaining
-duration. Never persist/reuse a monotonic clock reading between processes.
-Clock discontinuities on restart require conservative rejection or an explicit
-resume decision; they must not silently renew the original allowance. Within a
-live session, timing uses the event loop's monotonic clock. [Python event-loop
-documentation](https://docs.python.org/3.11/library/asyncio-eventloop.html#asyncio.loop.time)
+Root/child run-root anchors are reserved through the shared identity preparation
+boundary before binding, so preflight records have planned parent linkage.
+Storage provisioning records linkage/scope facts, not an agent start. Container
+alone emits `agent.started` and `agent.finished`; no additional accepted/start
+lifecycle event is emitted for the same boundary.
 
-## 5. Permissions, delegation, result access and limits
+On resume, revalidate definitions/grants/leases, restore trusted shared accounting,
+reject expired/uncertain execution and rebuild a local monotonic timer from the
+remaining UTC deadline capped by approved remaining duration. A restart never
+renews the original allowance. Clock discontinuity or unresolved dispatched work
+requires reconciliation, not a fresh ledger or a blind replay.
 
-Capabilities distinguish `use` from `delegate`; access does not imply authority
-to pass it on. Definition permissions are requests, not grants. The trusted
-bootstrap authority supplies root grants, policy revision and creation rights.
+## 5. BindingSet, BoundSession and recorder bootstrap
 
-Root effective capabilities = definition requests intersect bootstrap grants
-intersect application policy. Child effective capabilities = destination
-requests intersect caller's delegable grants intersect the exact invocation
-rule intersect current application policy and any stricter invocation options.
-Intersection means matching resource and operation, narrower constraints and
-the minimum applicable quotas; a wildcard never expands a concrete grant.
+`BoundSession = {binding: BindingSet, lease: ResourceLease}` is an async context
+manager. Only its non-secret descriptor is serializable; the live set is restricted
+to Runtime/Toolset/Connections consumers through the common protocols.
 
-Use a shared revocation authority checked by Container before each model
-attempt, ToolExecutor before each launch, Connections at binding/invocation
-admission and Storage on each operation/before publication. After revocation
-acknowledgment, newly admitted operations are denied. Already admitted remote
-calls/commits may complete; linked cancellation is best effort without rollback
-claims. A pinned snapshot cannot reinstate revoked grants. Previously returned
-bytes cannot be recalled.
-
-For each capability specify resource identity, permitted operations, scope,
-read/write/output maxima and whether/how much further delegation is permitted.
-Child-selected model configurations must be delegable as well as registered.
-Child outbound agent destinations are similarly narrowed; the destination's
-own invocation rules cannot replenish them. Optional caller options may narrow
-grants/limits but cannot replace the engine's authority object.
-
-Storage grants are exact Storage-issued scope handles with operations such as
-`state.read`, `state.commit`, `snapshot.commit`, `snapshot.read`,
-`checkpoint.read` and `checkpoint.save`, matching Storage's draft operation
-names. Correlation IDs, scope strings and artifact locators
-are not grants. A fresh child run scope requires explicit
-`create_child_scope` authority with inherited storage quotas: Storage
-materializes that scope and gives the child only approved operations. Without
-that right, an agent requiring its own writable scope fails admission. Existing
-shared scopes require explicit delegated grants; no automatic parent-store
-visibility is implied by ancestry.
-
-By default, invocation input is bounded typed JSON copied by value. Input
-artifact references require explicit child read grants. A validated output
-returned by value is the allowed result channel. Output artifacts require an
-explicit result-export rule: Storage either grants the caller read access to
-that specific finalized result or copies it into an authorized caller-readable
-scope through its interface. A returned locator alone never opens the child's
-other state/artifacts. Failed export produces a structured invocation failure
-while preserving the child's actual terminal status.
-
-Runtime owns a shared lineage ledger for model/tool/child admission counts,
-concurrency, usage reservations and byte/storage quotas. All inherited ancestor
-caps and the child's own caps apply simultaneously. Each action atomically
-reserves applicable budget in this ledger before dispatch, then settles actual
-known consumption. Children receive the same live ledger reference plus a
-local restriction, not copied remaining counters. Counts already dispatched
-are not refunded on failure; cancellation releases only unconsumed reservations.
-Unknown token/cost usage remains unknown, retaining conservative reservation
-until policy reconciliation, never recorded as zero. A hard monetary cap
-requires a defensible provider-side/reservation bound; otherwise reject that
-unsupported guarantee. Mission planning/budget allocation is application work.
-
-Recommend first-handoff nesting defaults: maximum depth 4, maximum 16 accepted
-descendant calls per root, maximum 4 active descendant runs, and no invocation
-of a definition identity already in the ancestry chain. These are proposed
-bounded defaults configurable downward by agents, subject to PM approval.
-Runtime enforces counters/depth; Connections validates destinations/ancestry
-and carries restrictions. Definition revision changes do not evade a cycle
-check on stable agent identity. No hidden scheduling or automatic broadcasts.
-
-Example (symbolic design data): caller can delegate `document.read` and
-read-only scope `shared:sources`, destination requests these plus `web.fetch`
-and unrelated scope `shared:finance`. The latter required capabilities cause
-binding failure before child dispatch. If explicitly optional, the child binds
-without them, with recorded reasons. Its new run ID does not increase the
-parent's remaining model/tool limits.
-
-## 6. Invocation result, admission and cancellation
-
-`InvocationOptions` can request stricter timeout/output/permission bounds and
-an existing invocation identity for status lookup; it cannot request silent
-replay. Caller allocates a fresh invocation action for each new call.
-
-`InvocationOutcome` fields: contract major, caller run/action IDs,
-`child_run_id` (nullable before admission), destination definition reference,
-`status` (`rejected`, `succeeded`, `failed`, `timed_out`, `cancelled`),
-validated output or accessible output reference, optional child terminal event
-reference, sanitized structured error, usage including unknown values,
-`recording_status` (`durable`, `incomplete`) and cleanup status. The child's
-terminal status remains separately preserved if export or parent recording
-fails. Success requires validated child output, authorized export and durable
-parent outcome acknowledgment.
-
-Proposed execution sequence:
-
-1. Validate caller session, destination rule and destination input schema. Check
-   ancestry, cancellation, deadline and delegable grants before external work.
-2. Allocate candidate child identity/context; child deadline is the earliest of
-   parent deadline, requested timeout and destination limit. Bind only its
-   selected dependencies. Input/grant/binding rejection records a Connections
-   rejection/failure when Storage is available; no child execution starts.
-3. Container's admission operation validates the bound input/context and
-   atomically reserves the child-count/concurrency budget, returning a short
-   live admission lease. This is preparation of the existing runtime, not a
-   second execution loop. PM must agree `Runtime.admit(...)` and
-   `Runtime.execute(admission)` or an equivalent atomic gate inside its public
-   entry point. Release an unconsumed lease on all pre-dispatch failures.
-   The lease is consumed once and atomically by runtime execution; concurrent
-   reuse is denied. Expiration/shutdown before consumption releases reservations.
-   A lost execute acknowledgment preserves the reserved identity and uncertain
-   accounting until runtime reconciliation, rather than releasing possibly used
-   budget or issuing another child. Rejected admission never emits a child
-   accepted/terminal lifecycle.
-   Runtime rechecks lease expiry, current grants, context/binding/ledger identity,
-   cancellation, deadline and admission state on consumption. Reserve concurrency
-   during preparation; settle accepted-child count only at actual acceptance.
-   Container durably records its accepted/start boundary before child external work.
-4. Connections appends parent `invocation.intent`, with the reserved child ID,
-   destination, input reference, grant/limit/binding descriptors, and waits for
-   durable acknowledgment. If append fails, release admission and do not call
-   the runtime. Recheck cancellation/deadline immediately before dispatch.
-   If this check fails after a durable intent, append a known parent outcome with
-   `child_started=false`; do not leave a known non-dispatch looking ambiguous.
-   If that outcome append fails, retain `recording_status=incomplete`.
-5. Execute through Container. It emits child `run.accepted`/terminal events and
-   all child model/tool actions. Connections awaits the validated result,
-   applies result export, appends parent `invocation.outcome`, then returns.
-6. Release child binding/admission leases after terminal handling; preserve
-   incomplete recording/cleanup diagnostics. Do not retry the child implicitly.
-
-Parent cancellation links to child and downstream operations; child-local
-cancellation does not cancel its parent/siblings. Cancellation of the awaiting
-Python task requests runtime cancellation and bounded cleanup; after handling
-recording/cleanup it re-raises `CancelledError`, rather than pretending an
-ordinary successful result. Explicit cancellation through the engine's signal
-returns `cancelled` when the caller remains alive. Deadline expiration returns
-`timed_out`. If child terminal completion was already durably established,
-preserve it; otherwise Container decides the cancellation/completion race at
-its authoritative terminal-state boundary and returns that result. Connections
-does not independently recategorize the child's terminal status. Record remote
-completion uncertainty.
-
-Runtime/provider owns interruption of model requests; stopping the local wait
-does not prove remote cancellation or absence of charges. ToolExecutor owns
-terminating/reaping CLI processes and any registered descendant-process policy.
-Storage governs whether a commit crossed its finalization point: cancellation
-cannot roll back an already published artifact/state change. Cleanup uses a
-separate bounded control-plane allowance; it never authorizes new model/tool
-work after an execution deadline.
-
-Python 3.11 supplies `TaskGroup` and `timeout_at`; cancellation must be handled
-with cleanup and propagated, and awaiting cancellation can exceed the nominal
-timeout. An `asyncio` task is not forcefully terminable arbitrary Python code.
-The implementation needs explicit bounded module cleanup semantics in addition
-to a timer. [Python task/cancellation documentation](https://docs.python.org/3.11/library/asyncio-task.html)
-
-## 7. Error and retry contract
-
-Expected connection/configuration/admission failures are typed results, not
-unstructured provider exceptions. `ConnectionError` contains `code`, `phase`,
-safe message, dependency/key reference, run/action/child IDs where allocated,
-optional safe downstream error and `retry_advice` (`never`, `after_fix`,
-`after_reconcile`). No advice automatically triggers a replay.
-
-| Code | Meaning / behavior |
+| Binding member | Meaning and ownership |
 | --- | --- |
-| `UNKNOWN_DEPENDENCY`, `UNKNOWN_AGENT` | Missing pinned registration; fail before dispatch |
-| `INVALID_BINDING`, `INVALID_INPUT` | Invalid definition/config/schema; name the reference/field |
-| `CONFIG_MISSING`, `CONFIG_INVALID` | Required key absent/empty/malformed; never include its value |
-| `REGISTRATION_CONFLICT`, `INCOMPATIBLE_CONTRACT` | Conflicting revision or unsupported protocol/capability |
-| `PERMISSION_DENIED`, `INVOCATION_DENIED` | Use/delegation/scope/destination denied; no prohibited action |
-| `CYCLE_DENIED`, `LIMIT_EXCEEDED` | Ancestry, depth or shared admission/accounting denied |
-| `DEPENDENCY_UNAVAILABLE`, `SESSION_CLOSED` | Resource absent, revoked, inaccessible or closing |
-| `DEADLINE_EXCEEDED`, `CANCELLED` | Execution gate terminates under the propagated context |
-| `CHILD_EXECUTION_FAILED`, `CHILD_OUTPUT_INVALID` | Runtime's validated child failure, preserving child reference |
-| `RESULT_EXPORT_DENIED` | Child output artifact cannot be made readable under its export grant |
-| `RECORDING_FAILED`, `CLEANUP_FAILED` | Action may have happened; surface incomplete state and reconcile |
-| `CAPABILITY_INVALID`, `CAPABILITY_EXPIRED`, `PROTOCOL_INVALID` | Scoped CLI transport/grant violation |
+| `descriptor` | Binding ID/digest, schema version, registry/definition/config revisions and non-secret grant/limit references; deep immutable |
+| `provider_factory/profile` | Container-owned selected provider capability and restricted configuration accessor; absent in standalone binding |
+| `catalog/executor` | Toolset-owned allowed descriptor view and constrained executor; no arbitrary argv launcher |
+| `storage` | Storage-owned scoped clients enforcing trusted grants on every operation |
+| `recorder` | Owner/event-kind-restricted engine recorder; separate from agent business data grants |
+| `invoker` | Connections allowed-destination facade for agent context; absent for standalone unless a future scope is approved |
+| `identity_service`, `storage_plan_factory` | Trusted per-owner ID allocation and Connections plan binding for an actual tool attempt |
+| `context_sources/limits` | Explicit allowed references/ranges and finite inherited limits; Container assembles context and owns accounting |
 
-Connections performs no model, tool or agent retries. Container/provider owns
-visible model retries; Container/Toolset must agree actual tool-attempt policy.
-Event append may resubmit the same event ID through Storage's deduplication
-contract. Changing event IDs is a new record, not safe retry deduplication.
-Storage transport write retries are limited to the exact same request/content
-under the operation's documented idempotency contract. An unknown child outcome
-is queried/reconciled by ID, never replayed because its waiter disappeared.
+Registry definitions contain trusted module factory references, not arbitrary
+import strings supplied by agents. The binder resolves selected references,
+validates definition/schema/config/capabilities and computes attenuation before
+acquiring module leases. It obtains only handles owned by those factories and
+releases newly acquired leases in reverse order on failure.
 
-Raw exceptions, request headers, stdin envelopes, provider configuration objects
-and stderr are not embedded in messages/events. Use allowlisted fields and
-module error translation. Secret-value redaction is additional protection, not
-the only protection against arbitrary diagnostic leaks. Programming defects
-surface to the trusted host with safe diagnostics; they are not classified as
-retryable provider failures.
+Bootstrap avoids a circular requirement to bind Storage before recording bind:
+Engine.open uses StorageSession.open(resolved_settings, trusted_issuer), obtains
+the store-root lock and verified recovery/settings, then a restricted engine
+control-recorder handle. An administrative host capability installs scope/run
+facts; it is not a third ExecutionContext kind or an agent data grant. If this
+startup fails, return its safe error, dispatch nothing and report recording
+unavailable. No alternative file/logger is treated as durable engine history.
+Connections passes the explicit DELETE/EXTRA baseline profile to Storage's
+factory, which owns linked-runtime/settings validation and root locking. An
+explicit opt-in WAL profile requires Storage's patched-runtime gate; binding
+never silently switches journal modes. Hardware power-loss behavior is not
+established by configuration presence or this design.
 
-## 8. Event ownership and recording failure
+For a candidate run, provision its bounded run scope through StorageAdmin,
+issue separate data and owner-recorder authorities, and create a binding action.
+`binding.resolved` must return EventReceipt before the binding becomes usable;
+`binding.failed` records a local rejection when Storage remains available.
+Failure of either append is surfaced with its original event ID and recording
+state; no recursive logging. Binding does not claim that Container accepted or
+started a run. Bootstrap/provision/bound-handle factory details need the exact
+Storage/PM protocol confirmation in R2.
 
-Event names below are proposed for Storage/Container reconciliation. Event
-timestamps are UTC; Storage's committed sequence defines record order.
+Shared resources are application-owned with borrower leases. Session-owned
+exclusive handles close with their last authorized borrower. Closing a child
+BoundSession releases its lease; it cannot terminate a sibling's provider pool,
+executor or store. Snapshot descriptors do not change these ownership rules.
 
-| Semantic event | Sole producer | Correlation |
-| --- | --- | --- |
-| `binding.resolved`, `binding.failed` | Connections | Binding action, candidate/root run, non-secret descriptors |
-| `invocation.rejected` | Connections | Caller invocation action; no dispatched child |
-| `invocation.intent`, `invocation.outcome` | Connections | Caller action and reserved child run ID; outcome references child terminal |
-| `run.accepted`, run terminal, model/tool lifecycle | Container | Child run-root action parents to caller invocation action |
-| State/artifact/checkpoint commit events | Storage | Authorized originating action and separate commit identity |
+## 6. Use, delegation, scopes, result export and shared limits
 
-The distinct parent invocation intent is mandatory in this proposal. Container's
-child `run.accepted` does not replace it: the parent authorization/dispatch must
-be durably identifiable before the child starts. Parent invocation outcome and
-child run terminal describe different operations; Connections cannot emit or
-overwrite the child's terminal event.
+An AgentDefinition requests capabilities; it issues none. Each grant specifies
+resource/profile/tool, operations, scope/object selectors, expiry, finite quotas
+and whether/how much further delegation is permitted. Use differs from delegate.
+Root authority = definition requests intersect trusted bootstrap policy. Child
+use/delegation authority = destination requests intersect caller's delegable
+rights intersect exact invocation edge intersect current policy and stricter
+caller options. Match resource and operation; narrow selectors and take the
+minimum applicable constraints. Required denial fails before child dispatch;
+explicitly optional capabilities can be omitted with a recorded reason.
 
-Intent acknowledgment failure prevents dispatch. Outcome acknowledgment failure
-returns `RECORDING_FAILED` with the known child outcome/reference and
-`recording_status=incomplete`. Do not report fully recorded success. Host crash
-after intent leaves a visibly unfinished invocation; recovery checks the child
-identity and Storage history before any application-directed decision. It does
-not infer whether the child ran from an absent event alone. Recorder unavailable
-before an execution context exists returns a bootstrap error to the host;
-durable recording cannot be claimed.
+Model-profile use must be delegable for that destination; registering a privileged
+writer never enlarges a researcher's rights. Tool names/revisions and outbound
+agent edges remain explicit. Callers cannot delegate another child's acquired
+rights unless the original lineage allowed that onward delegation.
 
-Context/config descriptors, safe input/output references, grants' non-secret
-identities and child IDs may be recorded. Credential values, capability tokens,
-authorization headers and credential-bearing URLs must never be recorded.
-Storage append operations and internal transport reads do not recursively
-generate activity. Snapshot finalization records a Storage commit event;
-Container records the enclosing tool action once.
+Run scopes are tagged `run(run_id)`; shared scopes are registered
+`shared(scope_id)`. Connections issues trusted bounded grants; Storage validates
+issuer/store/principal/context and enforces them. StorageAdmin.provision_run
+materializes the new scope only with explicit root/child scope-creation authority.
+Provisioning itself grants no data access. Ancestry, correlation, a scope string,
+a saved reference or a continuation cursor does not grant parent/shared reads.
+Authorize before existence disclosure. Root/child scope quotas charge the same
+ancestor ledger; child creation cannot obtain unlimited new storage allowances.
 
-## 9. Central configuration and readiness
+Input is validated bounded JSON by value. An input artifact/snapshot reference
+requires an explicit destination read grant on that object/range. Output by
+value uses only the declared validated result channel. For artifact-backed child
+output, the InvocationRule requires explicit export authority and a bounded
+caller destination scope; otherwise do not expose an unreadable locator as success.
 
-The central loader is the only engine loader. It explicitly reads the existing
-workspace-relative `local/.env` when implementation is authorized; it performs
-no upward/root/nested `.env` search and never rewrites that file. No existing
-secret variable names or values were inspected for this design.
+Default export copies only the finalized validated result through existing
+ArtifactStore.open and ArtifactStore.put interfaces: use a narrowly authorized
+export context with source-object read and destination-scope write; allocate a
+stable export operation_id; verify bytes/digest/media and retain the committed
+receipt. This is Connections' invocation/export step, not another persistence
+implementation. It reuses the parent invocation action/attempt and Storage emits
+its own artifact publication event. Do not export arbitrary child state,
+checkpoints or provider continuation. Object-only grant export is an optional
+future policy, not an implicit parent right.
 
-Proposed non-secret precedence, low to high:
+Export is normal bounded business work inside the parent deadline. If cancelled,
+revoked or expired before export admission, perform no new copy/write; preserve
+the child's known terminal facts and return the parent failure/cancellation.
+An admitted copy/put follows Storage commit uncertainty rules. Authorized output
+can be preserved internally as an observation even when the parent outcome append
+fails, but incomplete recording cannot be exposed as fully successful execution.
 
-1. Schema defaults.
-2. Explicit bootstrap-selected checked-in non-secret TOML configuration (path
-   selected by PM; no new file created during this assignment).
-3. Allowlisted non-secret keys from `local/.env`.
-4. Allowlisted process-environment keys present at bootstrap.
-5. Explicit trusted bootstrap overrides for documented non-secret settings.
+Runtime's shared ledger reserves every operation atomically against all applicable
+ancestor caps plus child-local limits. Children receive the same ledger handle,
+not copies of remaining counters. Every dispatched retry/repair/child consumes
+limits; release only known unused reservations. Unknown usage stays unknown;
+unresolved dispatch retains conservative reservation. Hard cost guarantees require
+supported conservative bounds; Connections does not manufacture usage or budgets.
+Finite definition/root policy provides model/tool attempt, byte/time and storage
+limits. Proposed invocation defaults are depth 4, at most 16 descendant
+admissions and 4 active descendants, with stable-agent cycle rejection. These
+may narrow; trusted policy can explicitly approve a different finite profile.
+No hidden mission scheduler or autonomous fan-out is added.
+These are API boundaries for trusted modules/registered workers. Arbitrary
+Python code or a same-user executable is not OS-sandboxed by scoped facades;
+normal engine paths nevertheless must retain grants, limits and recording.
 
-Credentials resolve by an allowlisted `SecretRef`: an explicitly present
-process environment key overrides the same key in `local/.env`. Absent process
-key falls back to that exact file. An empty/present invalid key fails rather
-than falling through to another value. Credentials are forbidden in checked-in
-config, agent input/definitions and command-line overrides. No arbitrary
-environment key is forwarded to a provider/tool. Grant policy cannot be
-expanded by agent options or unreviewed environment strings.
+## 7. Admission, child invocation and canonical outcome
 
-Parse `.env` into a private mapping without changing global `os.environ`, with
-variable interpolation disabled for deterministic explicit precedence. Validate
-missing, empty, null and malformed values separately. A candidate library,
-`python-dotenv`, documents `dotenv_values` without environment mutation and an
-`interpolate` parameter. This is a dependency proposal only. [python-dotenv
-documentation](https://bbc2.github.io/python-dotenv/), [API reference](https://bbc2.github.io/python-dotenv/reference/)
-Python 3.11 has a standard TOML reader, so non-secret TOML parsing need not add
-a separate reader dependency. [Python tomllib](https://docs.python.org/3.11/library/tomllib.html)
+InvocationRule binds exact caller/destination revisions, delegable rights and
+onward edges, scope creation, child-local bounds and result-export selection.
+Connections uses Container's validators and admission gate rather than validating
+outputs or constructing another agent loop.
 
-The implementation owner resolves its secret accessor immediately before use
-and owns authentication/provider request formatting. Scoped accessors cannot
-enumerate other credentials. Secret wrappers must have redacted representations;
-tracebacks/diagnostics cannot dump locals. Python cannot guarantee all copies
-are zeroized; claim bounded exposure, not secure-memory erasure. Credentials
-rotate by fresh bootstrap/config snapshot and explicit provider session policy.
+1. Check caller's active binding, destination/input, required capabilities,
+   cycle/depth, current delegation grants and cancellation/deadline. Allocate
+   invocation action/attempt plus a candidate child run; retain root/correlation.
+2. Derive child metadata: parent run/action/attempt, destination identity,
+   depth/ancestry and minimum parent/options/destination deadline. Materialize
+   only authorized child scope and bind selected child dependencies.
+3. Call Runtime.admit(definition, input, binding, child_context). Runtime validates
+   and reserves the shared lineage limits; it returns a single-use expiring
+   AdmissionLease or a typed rejection. Admission performs no model/tool work.
+4. Freeze parent `invocation.intent`, including candidate child and binding/
+   grant/limit/input references. Append and obtain EventReceipt. If receipt is
+   unavailable/unknown, do not execute; reconcile its exact event identity.
+5. Recheck deadline/cancellation/grants and consume only through
+   Runtime.execute(admission_lease). Runtime atomically verifies lease/binding/
+   identity/ledger, consumes once, records `agent.started`, executes its existing
+   loop and records `agent.finished`. Reuse of a consumed lease cannot start
+   another child. No Connections agent lifecycle event is emitted.
+6. Observe Runtime's validated AgentResult; perform only authorized bounded
+   result export; record parent `invocation.outcome` with dispatched/effect/
+   child terminal/export/receipt/recording observations. Await its receipt.
+   Runtime has already published the exact final provider-visible UTF-8 candidate
+   and validated output representation through normal Storage before cleanup and
+   agent.finished. JSON raw candidate and canonical validated output remain
+   distinct. AgentResult includes output/raw refs/digests, persistence observation,
+   obtained terminal receipt and authority-free terminal_state descriptor/ref;
+   it is not stored self-referentially before obtaining its own receipt.
+7. Release leases only when runtime/commit/recording ownership is settled.
+   Connections never implicitly retries a child, model or tool.
 
-Provider profiles use references for the specified DeepSeek API, GPT-6-Luna API
-and local vLLM/Qwen targets. Exact DeepSeek settings and Qwen server/model/parser
-requirements remain Container's research inputs. Do not inspect credentials or
-call any model to verify profiles during design. API access and the local Qwen
-deployment are unverified; Qwen live acceptance remains pending deployment.
+Known nondispatch after a committed intent produces an outcome with
+`dispatched=false`; no fictional child terminal is emitted. Release the lease
+only when Runtime confirms it unconsumed/nonadmitted. Unknown consumption keeps
+its identity/accounting and blocks resubmission. Runtime must own status/release
+semantics; a missing durable child event alone does not establish nonconsumption.
+Use the now-agreed Runtime.admission_status(context, admission_id) and
+AdmissionLease.release() boundaries. Status is reserved, consumed/accepted,
+terminal, released, expired or unknown, with known receipts. The live owner is
+authoritative; process-loss history establishes only known facts, not a new live
+lease. R1 requests exact shared DTO/peer conformance, not a replacement API.
 
-Readiness reports distinguish:
+`InvocationOutcome` proposal, using the common vocabulary: schema version;
+caller run/action/attempt; destination; nullable candidate child run; admission/
+dispatch observation; canonical execution status and safe error; child terminal
+status/event/result references where known; authorized output or exported
+reference/operation receipt; unknown-aware usage; recording status; effect/
+commit/cleanup observations. AgentResult observation fields are output_delivery,
+output/output_ref/raw_output_ref with digest/size/media, persistence_state,
+admitted operation IDs, terminal_event_receipt and terminal_state. Rejected preflight maps to the relevant failed,
+validation_failed or limit_exhausted result and records a nondispatch rejection;
+it is not a new `rejected` agent terminal. Child output/terminal facts remain
+separate if export or parent recording fails. Exact serialization is R1.
 
-| State/mode | Evidence and cost |
+Parent cancellation propagates to child and active dependencies; child-local
+cancellation does not cancel parent/siblings. Container alone arbitrates child
+completion/cancellation and final status. A parent task cancellation initiates
+bounded cleanup/recording and re-raises CancelledError. A completed child whose
+terminal append failed stays a known completed observation with incomplete
+recording, rather than being reclassified by Connections. Local interruption
+does not prove remote provider cancellation or absence of billing.
+
+## 8. Recording, uncertainty and revocation
+
+| Operation | Canonical producer / identity |
 | --- | --- |
-| `local_valid` | Catalog/contracts/required configuration present; no remote request or claim that the connection works |
-| `unconfigured` | Named optional profile lacks required settings; required selected binding fails |
-| `live_unchecked` | Local validation exists but reachability/account permissions have not been tested |
-| `live_verified`, `live_failed` | Explicit timestamped owner-supplied real check and its scope; neither guarantees future health |
+| Binding resolved/failed | Connections binding action; nondispatch attempt may be null |
+| Invocation intent/outcome/rejection | Connections parent invocation action/attempt; child linkage in payload/context |
+| Agent/model/tool/validation/limit/cancel lifecycle | Container runtime; child run-root parents to exact invocation attempt |
+| Artifact/state/snapshot/checkpoint publication | Storage; original causal context plus operation ID and own event ID |
+| Standalone tool lifecycle | Same RecordedToolAction, producer runtime, context_kind standalone_tool; no model/agent/native-call ID |
 
-Binding defaults to local validation only. `check_readiness(..., mode="live")`
-requires trusted application authorization and an explicit deadline/cost cap;
-it delegates to the implementation owner. TCP/HTTP reachability does not prove
-model/tool correctness. A model smoke request may be billable; never run it as
-a side effect of registration. All actual execution failures remain typed even
-after a previous successful readiness check.
+EventReceipt is exactly v1: schema_version, store_id, event_id, recorded_seq,
+recorded_at, duplicate. Successful return is the verified Storage commit;
+Connections adds no alternate acknowledgement type, durability flag or sequence. Append a
+frozen intent and obtain its receipt before external/read/worker activity.
+Outcome recording and cleanup precede public success. Recorder append/query does
+not recursively record itself; Storage publication and enclosing tool lifecycle
+are different events, not duplicate tool outcomes.
 
-## 10. Joint proposal: three CLI scoped-storage transports
+After uncertain append, ActivityRecorder.status(context, event_id,
+expected_event_digest) reauthorizes and reconciles the same frozen event. After
+uncertain write, OperationStore.status(context, operation_id) reconciles the same
+mutation/receipt. Do not change timestamps/content/event IDs for delivery retry.
+These originator status/delivery rules retain the original producer and causal
+identity under current authority. Fresh host observation of prior IDs instead
+uses the read-only mode=observer grant in section 12; it cannot redeliver them.
+An absent status observation does not prove no queued operation; require confirmed
+nonadmission/rollback/durable abort before claiming not_committed. Pending/sealed
+work remains unknown until its owner resolves. No status query fetches the URL,
+resubmits a model request or launches a child.
 
-### Initial-tool candidate: launcher-mediated bounded injection
+`record_cleanup` is a separately bounded trusted mode preserving original
+context kind/IDs with an owner-restricted recorder/status/lease-cleanup binding.
+Use a fresh local cleanup token/deadline, initially at most 5 seconds and no later
+than the enclosing shutdown allowance. It permits owner-event append, existing
+operation/admission status reconciliation and lease cleanup only; no new model,
+tool, scope/result export or business write. An expired work token must not
+prevent this terminal audit attempt. Audit rights are separate from revoked
+business grants; their narrow lifetime cannot revive execution authority.
 
-For `web.search`, `web.fetch` and `document.read`, recommend this smaller
-first-handoff candidate, conditional on joint acceptance of strict content caps.
-It needs no additional listener, HTTP library, secret bearer or inherited
-channel. The capability is a trusted launcher-owned scoped Storage handle plus
-a per-attempt approved operation plan; no serialized grant can authorize itself.
+Revocation authority is checked by Connections before bind/invocation admission,
+Container before each model/agent admission, ToolExecutor before worker launch,
+and Storage at each operation/publication gate. After acknowledged revocation,
+new admissions fail. Already admitted remote calls/commits may finish; request
+linked cancellation without a rollback guarantee. Previously returned bytes
+cannot be recalled. Revocation and pinned immutable definitions are compatible:
+the descriptor selects what may be used, while live authority decides whether
+that operation remains allowed now.
 
-Connections binds an immutable `ToolStoragePlan` to the registered tool
-revision, run/action/attempt, Storage instance, allowed operation, approved
-scope/object/range, quotas and deadline. Scope selectors are engine supplied;
-the worker's JSON cannot change them. The plan is valid for one attempt only
-and cannot enumerate data, widen ranges, create peers or reset quotas.
-Toolset owns the plan's process-boundary adapter and calls Storage's exact
-`SnapshotStore.commit/read` methods; Storage owns validation and receipts.
-Container's common tool-action helper owns lifecycle recording around both
-parent-side Storage work and the worker. Connections neither launches the tool
-nor finalizes snapshots itself.
+## 9. ToolStoragePlan and standalone no-model composition
 
-| Tool | Injected input and returned output | Storage authority |
-| --- | --- | --- |
-| `web.search` | Ordinary bounded arguments/results | No worker Storage operation needed |
-| `document.read` | After durable tool intent, launcher calls scoped `SnapshotStore.read` with the validated reference/range, injects the bounded authoritative `DocumentSlice` in reserved stdin, and runs the deterministic registered worker | Exactly that snapshot/range; worker cannot ask for more or change snapshot identity |
-| `web.fetch` | Launcher allocates stable commit operation ID; worker retrieves once and returns one bounded JSON response containing a private `SnapshotProposal` (original bytes, normalized text, index, provenance) plus preview/status; launcher validates and commits through Storage | Exactly one approved `snapshot.commit` into the prebound scope; no worker-selected store/path/scope |
+The trusted plan is a live capability, not authority reconstructed from worker
+JSON. Connections creates it for an actual context/attempt via the bound plan
+factory; RecordedToolAction supplies the owner-allocated tool action/attempt.
+Its descriptor pins tool/revision, store/context/attempt, operation kind, exact
+scope/object/range/continuation, finite limits, expiry and assigned mutation
+operation_id. Public arguments cannot set reserved plan/authority/receipt fields.
+The constructor-to-helper protocol is request R3; no Storage read occurs merely
+to prepare the descriptor before tool intent.
 
-Reserved fields: stdin `execution.storage_input` for an authoritative read slice
-or fetch plan identity; stdout `storage_proposal` for fetch only. They are
-outside model-visible tool argument/result schemas. No secrets, raw roots or
-provider configuration are injected. Toolset validates a single response,
-byte/digest/index/provenance bounds, declared operation/plan correlation and
-canonical Storage format before commit. It derives the final agent-visible
-`ToolResult` from the receipt, not from a worker's invented snapshot reference.
-An untrusted/fake receipt supplied on stdout is rejected.
+| Plan kind | Allowed behavior |
+| --- | --- |
+| `none` for web.search, scholar.crossref.search and scholar.openalex.search | Bound search configuration/limits; no worker Storage access or publication rights |
+| `snapshot_commit` for web.fetch | One complete validated SnapshotProposal committed into the exact prebound scope under the assigned operation ID |
+| `read_injection` for document.read | Exact authorized SnapshotStore.read reference/range/byte cap/continuation; inject only the returned immutable DocumentSlice |
 
-Fetch's exit code 0 means retrieval/extraction completed and a complete proposal
-was emitted. It does not establish durable snapshot publication. The outer
-ToolExecutor/runner returns successful `web.fetch` only after
-`SnapshotStore.commit` returns a committed `SnapshotReceipt`. Snapshot-ref
-fields in that final result come from Storage. The private response bundle is
-never inserted into the model context or ordinary diagnostics; Container
-records finalized refs, a bounded preview and receipt. An explicit range/read
-result is bounded and may enter model context under the existing context policy.
+The snapshot_commit plan builder explicitly grants operation.status for its
+assigned operation_id to the current owner under originator rules, matching
+store/run/producer/action/attempt and receipt visibility. This permits exact-ID
+reconciliation after an uncertain commit without a refetch or new operation ID.
+It does not grant arbitrary status/history access. The worker receives neither
+this live status authority nor Storage publication authority.
 
-Proposed injection profile: original bytes <=8 MiB; normalized text <=4 MiB;
-location index <=1 MiB; provenance <=64 KiB; read text <=64 KiB and <=200 lines
-or 10 pages; stdin <=1 MiB; fetch stdout <=20 MiB; stderr <=64 KiB. Binary
-content uses base64 in the one JSON result. Serializer uses UTF-8 with ordinary
-Unicode emitted directly and minimal escaping; the actual wire cap still
-applies even when component caps pass. Lower root/tool/grant limits always win.
-Oversized/unsupported documents fail explicitly before publication, rather than
-truncating an original into a purported complete snapshot. PM/Toolset must
-confirm these useful-but-smaller document limits against the research cases.
+RecordedToolAction owns validation, reservation, intent/outcome and public
+ToolResult. ToolExecutor owns prepare -> worker -> finalization observations,
+process cleanup and ToolExecutionResult. Storage owns authorization, byte/index/
+manifest validation, READY publication/receipt and recovery. Connections supplies
+plans/leases, never performs worker parsing or snapshot persistence.
 
-ToolExecutor drains stdout/stderr concurrently while enforcing wire-byte caps;
-it terminates/reaps a producer that exceeds its allowance. Do not use unbounded
-`communicate()` buffering for this adapter. Base64/JSON can create several
-in-memory copies; cap concurrent fetches at 2 for this profile and validate
-actual peak memory during the later Windows trial before accepting these caps.
-The wire bound is a design constraint, not a proved process memory ceiling.
-Python documents that `communicate()` buffers data in memory and that waiting
-without draining output pipes may deadlock; the asyncio reader buffer `limit`
-does not cap the total captured result. [Python subprocess buffering](https://docs.python.org/3.11/library/subprocess.html#subprocess.Popen.communicate),
-[asyncio subprocess documentation](https://docs.python.org/3.11/library/asyncio-subprocess.html)
+Fetch worker `phase=prepared` and exit zero establishes complete process output,
+not publication. Executor validates the one private response and commits via
+SnapshotStore.commit; the helper exposes success only after a READY complete
+receipt and complete lifecycle recording. Worker-provided final snapshot refs,
+receipts or scope changes are protocol errors. Public model context receives
+bounded preview/reference/results, never the private raw bundle.
 
-Worker death, nonzero exit, partial/invalid JSON or cancellation before parent
-commit produces a typed tool failure and no snapshot publication. Complete bytes
-received before cancellation do not authorize a new commit after the action's
-deadline/cancellation gate. If commit was already admitted, Storage determines
-its actual committed/unknown state and recovery; cancellation cannot undo it.
-An admitted commit with lost acknowledgment is reconciled by the same stable
-operation ID, never by refetching the URL. Parent death during Storage staging
-uses Storage's existing seal/finalization recovery. Successful fetch data lost
-before commit remains unpersisted; the interrupted tool action stays visible.
+For read, the intent receipt precedes SnapshotStore.read and worker dispatch.
+Forward any supplied continuation unchanged; Storage checks its immutable
+snapshot/extraction/original range and current grants. Use tagged one-based,
+end-exclusive lines/pages; preserve physical empty PDF pages, zero-line text and
+zero-based UTF-8 offsets. Valid boundaries are 1 <= start <= end_exclusive <= N+1;
+N=0 allows only [1,1). Never clamp or repeat a truncated first fragment. Toolset
+validates the worker returned exactly the authoritative slice/locations; it cannot
+invent data from another ref or expand a read. A cursor carries no authority.
 
-Standalone uses exactly the same trusted launcher/ToolExecutor/Storage adapter
-and fresh scoped context. Direct internal worker invocation without the matching
-injected plan/slice fails before work; no loader fallback or alternate store.
-This is suitable only when Storage reads are known before launch and writes
-are one bounded end-of-command bundle. It cannot satisfy arbitrary dynamic
-Storage RPC or stream very large snapshots. Those requirements favor the broker
-or private separate channel. No transport has been selected or trialed.
+Initial mediation profile is exactly v1: original 8 MiB; text 4 MiB; index 1 MiB;
+provenance 64 KiB; stdin 1 MiB; fetch stdout 20 MiB; public JSON 512 KiB; stderr
+64 KiB; JSON depth 32; read text 64 KiB and 200 lines/10 physical pages. Measure
+one fetch before at most two concurrent fetches. All limits may narrow. Actual
+wire escaping/base64 and decoded aggregate bounds both apply. Bytes/JSON depth
+do not bound PDF expansion or peak RAM; Toolset must measure parent/worker memory,
+max-fit/oversize content and Windows descendant cleanup before handoff. No
+streaming service is silently composed if a required source fails those gates.
 
-### Dynamic-operation candidate: scoped loopback broker
+The standalone host CLI entry-point glue is PM owned; Toolset owns argument/worker
+parsing. It calls Engine.open/settings and Engine.run_tool, which uses the same
+Container RecordedToolAction. No independent standalone lifecycle logger or
+producer is added. No provider is opened or selected; agent/native provider IDs
+remain null. Engine may register static factories without initializing models.
+Standalone obtains a fresh run scope and explicit configured grants for older
+snapshots. If the store root is already owned, Engine.open returns STORAGE_BUSY;
+attachment to an active engine or fallback store is outside this initial design.
+Internal workers are unsupported direct entry points and reject missing or
+malformed envelopes. Workers do not load dotenv or discover a database root;
+parent-held bindings enforce Storage read/publication authority. A valid-looking
+envelope does not authenticate its launcher or prevent forged direct invocation
+by a trusted same-user command. This interface adds no launcher authentication
+or OS isolation subsystem.
 
-For dynamic operations, propose a session-owned Storage broker on `127.0.0.1` at an
-OS-assigned port, with a private bounded HTTP/JSON protocol and per-tool opaque
-bearer capability. The trusted engine starts it in-process; no persistent
-public server, peer discovery or global reusable administrative token is needed.
-Storage owns broker request validation, authorization and its normal commit
-methods. Connections obtains a narrowed capability from Storage; ToolExecutor
-alone launches the registered CLI and delivers its bootstrap envelope.
+## 10. Complete interface-only sequence: researcher to child writer
 
-### Capability, delivery and correlation
+This is a proposed consumer/runtime sequence, not execution evidence. Agent
+names/profile aliases below are illustrative registrations, not verified local
+service configuration. The example begins at v1's explicit Python invoker
+boundary when strategy/Runtime elects to delegate; it adds no Connections scheduler.
 
-Storage maintains a live server-side record: token digest, non-secret grant ID,
-contract major, allowed operation/resource scopes, current authority revision,
-run/agent/action/attempt IDs, expiration and local monotonic deadline,
-process-launch lease, quotas, revocation state and owned upload IDs. Propose a
-cryptographically random 256-bit token, opaque rather than a client-editable
-signed claim. The broker authorizes from this server record, never from a scope
-string or PID supplied by the CLI. The wire carries only token and grant ID,
-endpoint and bounded context metadata, not store paths or model credentials.
+1. Trusted host supplies EngineSettings with Storage/control authority, exact
+   Container/Toolset/Storage factories and named profile `research_api`.
+   Engine.open opens/recover-verifies real Storage, then control recorder. It
+   registers researcher and writer definitions via Engine.register_agent.
+   Researcher requests search/fetch/read, its private run scope and invocation of
+   writer. Writer requests only the delegated model profile, document.read on
+   selected source refs, its own bounded run scope and validated report output.
+   Both require explicit rights; registration makes no network request.
+2. Host calls Engine.run_agent(researcher_ref, typed_question, root_options).
+   Connections allocates root run/correlation, trusted grants/shared ledger and
+   finite deadline, provisions the root scope, binds selected dependencies and
+   durably records binding.resolved. Runtime.admit validates/reserves, then
+   Runtime.execute consumes once and records agent.started before real model work.
+3. Researcher's Container loop uses its registered tools through
+   RecordedToolAction. Toolset fetches real sources and commits complete snapshots
+   through plans; Runtime receives only final ToolResult and immutable source refs.
+   These are future real effects, not manually supplied result fixtures.
+4. When the caller strategy/Runtime selects writing, it calls the bound
+   AgentInvoker.invoke(researcher_context, writer_ref, typed_writer_input,
+   stricter_options). Input contains selected saved refs/notes by value. The
+   edge permits writer model use, object-specific snapshot reads, isolated child
+   scope creation and result-only export into the researcher scope; no web.fetch,
+   researcher state read or onward agent invocation is delegated.
+5. Connections allocates parent invocation action/attempt and new writer run,
+   retaining root/correlation and parent run/action/attempt linkage. It narrows
+   deadline/grants/limits, provisions/binds writer, obtains Runtime admission,
+   persists parent invocation.intent and rechecks authority before execute.
+6. Runtime records writer agent.started and runs the same real provider/tool loop.
+   document.read uses exact delegated SnapshotStore slices; limits charge the
+   shared ancestor ledger. Runtime validates writer output, publishes any result
+   artifact through Storage and returns AgentResult with agent.finished receipt
+   or truthful recording/commit uncertainty. Connections does not validate the
+   output a second time or emit a competing child terminal.
+7. Connections exports only the validated report artifact: scoped open child
+   result, scoped put in researcher result scope using the stable export operation
+   ID, and committed receipt. It records parent invocation.outcome with child
+   terminal/export facts, returns authorized output to the caller, then releases
+   settled child leases. Researcher continues/finishes in its existing Runtime.
+8. Engine.close stops admission, drains/cancels and records as below, then closes
+   owned resources. Stored parent/child/tool/publication IDs remain inspectable.
 
-Mint one token for a single tool attempt. Expiry is the earliest of run
-deadline, tool timeout or 300 seconds proposed maximum lease. Long tools need
-an explicitly larger approved limit; the CLI cannot self-renew. Revoke on exit,
-cancellation, deadline, cancel-phase session shutdown or policy revocation.
-Drain-mode close stops new independent issuance but leaves admitted attempt tokens valid
-until exit/their own deadline or grace expiry; then revoke and cancel. A token is not
-persisted, returned in ToolResult or copied to a child agent. Check validity at
-each request and immediately before finalization. ToolExecutor reports the
-actual PID after launch, before delivering stdin; record it as correlation only.
-Loopback HTTP cannot prove which process possesses a bearer token.
+Denial, exhausted root budget or missing writer profile fails before its external
+work. After committed parent intent, known nondispatch records dispatched=false.
+Cancelled/revoked export does not undo a completed child; uncertain admission or
+commit stops replay and is looked up under existing identities. R5 asks Container
+how its strategy/model dispatch selects this agreed invoker boundary; this design
+neither invents an agent.invoke CLI nor claims that routing already exists.
 
-ToolExecutor adds a reserved engine-only `execution` field to the single UTF-8
-JSON stdin request. Container/model arguments cannot populate this field.
-`arguments` remains the agent-facing schema; the executor validates then adds
-context/storage bootstrap data. The command consumes the envelope and still
-emits exactly one JSON result on stdout. Diagnostics go to stderr but may never
-echo the envelope/token. Persist the redacted logical request, never the actual
-transport envelope. Do not put the token in argv, URL query, environment or a
-temporary file. Toolset must redact captured output with an allowlisted result
-schema and token-aware sanitation before storage/model exposure. A compliant
-registered tool is trusted to handle its short-lived token; this is not an OS
-isolation guarantee against malicious installed code.
+## 11. Complete interface-only sequence: standalone saved read
 
-Illustrative redacted envelope (the token placeholder is not a usable secret):
+1. Trusted operator supplies the existing store-qualified SnapshotRef and a
+   configured read grant for its exact scope/object, plus lines [10,31),
+   max_text_bytes <=64 KiB and optional immutable continuation. The argument
+   reference/range requests access; only the live configured grant supplies it.
+2. Host CLI calls Engine.open using non-secret Storage settings and bootstrap
+   policy/factories. Storage acquires the root and validates/recover-verifies it;
+   if already owned, return STORAGE_BUSY without attaching or creating another
+   store. Open control recorder. Do not resolve a model credential or call
+   ProviderFactory.open; no AgentDefinition is required.
+3. Engine.run_tool(document.read_ref, arguments, tool_options) creates
+   context_kind=standalone_tool with null agent/definition/native-call IDs, new
+   run/root/correlation and finite deadline/ledger. Provision fresh run scope;
+   bind only allowed catalog/executor, data/read authority and owner-recorder
+   leases plus storage_plan_factory. Persist binding.resolved; no attempt-specific
+   read_injection plan or Storage read exists yet.
+4. RecordedToolAction allocates the actual logical action/first attempt, validates
+   context/arguments and reserves their limits, then calls the bound factory.for_attempt to
+   construct the read_injection plan for that validated action/attempt. Freeze
+   tool.intent and obtain EventReceipt. Recheck gates. Only then ToolExecutor
+   calls SnapshotStore.read with the original continuation
+   and exact grant/reference/range/byte cap. Unauthorized/missing/range errors
+   return a typed observation with no worker launch/content disclosure.
+5. ToolExecutor injects the authoritative DocumentSlice in the single private
+   UTF-8 WorkerRequest, starts only registered argv and enforces bounded pipes,
+   timeout/cancellation and process-tree cleanup. Worker returns one prepared
+   response matching the injected snapshot/extraction/range/text and advancing
+   continuation. No raw store paths, credentials or worker-minted grants.
+6. Executor returns ToolExecutionResult; the common helper completes cleanup and
+   appends tool.outcome, producer runtime/context_kind standalone_tool. Public
+   ToolResult is successful only with valid slice/worker observation and complete
+   recording. The CLI prints that public result once; no extra runner logger,
+   model response or fictional agent events are produced.
+7. Engine.close releases the standalone leases and owned store last. A later
+   read opens the same Store again with an explicit grant; its old snapshot and
+   line/page references remain immutable. No network refetch is implied by read.
 
-```json
-{
-  "schema_major": 1,
-  "arguments": {"snapshot_ref": "<opaque snapshot reference>", "range": {"kind": "lines", "start": 1, "end_exclusive": 41}},
-  "execution": {
-    "run_id": "<allocated run ID>",
-    "action_id": "<allocated tool action ID>",
-    "deadline_at_utc": "<UTC deadline>",
-    "storage": {
-      "transport": "loopback-http-v1",
-      "endpoint": "<engine-supplied literal loopback endpoint>",
-      "grant_id": "<non-secret grant ID>",
-      "token": "<redacted ephemeral token>"
-    }
-  }
+Cancellation after a successful read preserves that observation but cannot
+claim a fully recorded success if terminal append fails. Task cancellation cleans
+up/re-raises; explicit cancellation returns the canonical result. A guessed old
+SnapshotRef or resumed cursor never creates a grant.
+
+## 12. Fresh host/result access and complete baseline lifetime
+
+PM accepted Engine.open_run_access as a normal host/application binding with
+current explicit policy, a new deadline/quota and an owned lease. It does not
+reactivate a finished agent, retain its expired capability, or authorize business
+writes through record_cleanup. This resolves how application consumers obtain
+the trusted context required by scoped Storage after Engine.run_agent returns.
+
+```text
+async Engine.open_run_access(run_ref: RunRef, request: RunAccessRequest,
+                             options: RunAccessOptions) -> Result[RunAccessSession]
+RunAccessSession.context -> ExecutionContext
+RunAccessSession.storage -> ScopedStorage
+RunAccessSession.history -> ActivityReader
+RunAccessSession.identity_service -> ScopedIdentityService
+async RunAccessSession.close(deadline) -> CleanupReport
+```
+
+| Type/field | Exact proposed semantics |
+| --- | --- |
+| `RunRef` | schema_version, store_id, run_id. Authority-free target identifier; Store resolves verified run/root/agent/definition association under current host policy. An arbitrary run ID never authorizes lookup. |
+| `RunAccessRequest.read_objects` | Exact store-qualified report/raw/validated output, checkpoint/audit artifact refs and saved source SnapshotRefs, each with permitted range/max bytes as applicable. Empty by default. No implicit child/private continuation access. |
+| `RunAccessRequest.history` | Optional bounded run/action/kind filters and explicit events.read request; only currently permitted visibility scopes. No global history enumeration. |
+| `RunAccessRequest.publications` | Requested artifact.put/checkpoint.save operations into explicit already provisioned target scopes, purpose/media/format selectors and byte/count limits. Baseline presets allow citation manifest, terminal checkpoint and saved-output review copy. Requests grant nothing by themselves. |
+| `RunAccessRequest.status_operations` | Exact existing event/operation identities to observe under a trusted read-only mode=observer grant. Current host policy pins target store/run, allowed IDs and receipt visibility; Storage validates target origin before disclosure. The request supplies selectors, never authority or original producer identity. |
+| `RunAccessOptions` | Required finite timeout/deadline capped by current host policy; optional lower aggregate/read/write/op quotas; selected registered host grant preset; bounded application metadata. No credential, arbitrary authority or execution-resume flag. |
+| `RunAccessSession.context` | Fresh binder-issued normal Storage context associated with the verified target run. New access/binding action ID parents to target run-root; no old model/tool/invocation attempt is reused. Nondispatch attempt is null. |
+| `RunAccessSession.storage/history` | Only approved scoped Storage data/status/history capabilities. Prior-ID status uses read-only facades for the existing ActivityRecorder.status/OperationStore.status APIs, bound to mode=observer. Never raw database/root access or prior-producer append/delivery. Written objects become readable only under an explicitly granted created-output selector or subsequent fresh grant. |
+| `RunAccessSession.identity_service` | May allocate stable mutation operation IDs for this authorized session. Cannot create agent admissions, execution attempts or grants. |
+| `RunAccessSession.lease` | Engine-owned live access lease pinning store/config/current authority, deadline and I/O quotas. Async context-manager close is idempotent; admitted writes follow Storage settlement/cleanup rules. |
+
+Closed interface-only DTO shapes (unknown fields/roles fail; common reference,
+range/format/filter types retain their v1 definitions):
+
+```text
+RunRef = {schema_version: 1, store_id: StoreId, run_id: RunId}
+RunAccessRequest = {
+  schema_version: 1,
+  read_objects: tuple[ArtifactReadRequest | SnapshotReadRequest | CheckpointReadRequest],
+  history: HistoryReadRequest | null,
+  publications: tuple[PublicationRequest],
+  status_operations: tuple[EventStatusRequest | OperationStatusRequest]
+}
+ArtifactReadRequest = {kind: artifact, ref: ArtifactRef, range: ByteRange, max_bytes: int}
+SnapshotReadRequest = {kind: snapshot, ref: SnapshotRef, range: DocumentRange,
+                       max_text_bytes: int, continuation: str | null}
+CheckpointReadRequest = {kind: checkpoint, ref: CheckpointRef,
+                         accepted_formats: tuple[FormatVersion], max_bytes: int}
+HistoryReadRequest = {filters: ActivityFilters, max_pages: int,
+                     max_events: int, max_total_bytes: int}
+PublicationRequest = {
+  operation: artifact.put | checkpoint.save, scope: ScopeRef,
+  purpose: citation_manifest | terminal_checkpoint | review_export,
+  allowed_media_types: tuple[str], allowed_formats: tuple[FormatVersion],
+  max_object_bytes: int, max_total_bytes: int, max_operations: int,
+  read_created: bool
+}
+EventStatusRequest = {kind: event, event_id: EventId, expected_event_digest: Digest}
+OperationStatusRequest = {kind: operation, operation_id: OperationId}
+RunAccessOptions = {
+  schema_version: 1, grant_preset_ref: PolicyRef,
+  deadline_at_utc: UTCInstant | null, timeout_ms: int | null,
+  max_total_read_bytes: int, max_total_write_bytes: int,
+  max_operations: int, max_active_operations: int, metadata: JsonObject
 }
 ```
 
-The dedicated client disables proxies/environment proxy discovery and
-redirects; accepts only the supplied literal IPv4 loopback endpoint and exact
-service path. Broker validates Host, rejects browser Origin/CORS requests,
-does not enable cookie authentication or access logs containing authorization,
-and exposes only fixed methods. Bind no wildcard/network address. Do not use
-the general web-fetch client for this control channel.
+The target RunRef applies to every status selector. Event/operation IDs and the
+expected event digest are authority-free; the request cannot select an actor,
+action, attempt or grant mode. The binder installs immutable mode=observer
+status grants from current host policy, pinning target store/run, the exact
+allowed event/operation IDs and permitted receipt visibility. No omitted selector
+means all IDs. Storage validates the stored target origin against that grant;
+it does not substitute the requesting host's new causal IDs for the original
+producer identity or disclose a foreign origin/payload on a mismatch.
 
-### Proposed wire protocol and bounded content
+Exactly one deadline/timeout is supplied and finite/positive where applicable;
+UTC deadline must be future. Quotas are nonnegative (zero means no operation in
+that category), active-operation limit is positive, and all requested constraints
+intersect the current preset. A baseline checkpoint allows only its registered
+terminal format; review/citation artifacts permit explicit media types.
+read_created is requested authority, not a receipt side effect. Newly written
+refs are returned but only a granted created-output selector or new explicit
+read grant makes them readable. No request enables state mutation, event append,
+model/tool execution, native continuation export or scope creation.
 
-Every request has protocol major, `request_id`, grant ID and operation body;
-authentication is in the authorization header, never in URL/logged bodies.
-Broker obtains action/context/grants from the token record. Any echoed context
-must match that record. Response contains matching request ID, typed data/error
-and any commit receipt. First handoff serializes one request per CLI capability
-at a time; each request is independently bounded and interruptible.
+Request lists have an initial local cap of 64 selectors per category and the
+aggregate request has 64 KiB/depth-32 bounds; trusted settings may choose other
+finite caps before binding. Omitted fields use empty tuples/null/empty metadata,
+never all objects/scopes. Returned session stores an immutable effective access
+descriptor with access_session_id, target RunRef, host principal/policy revision,
+purpose, new binding action, expiry, effective quota/selector summary and the
+read-only observer status bounds (target store/run, exact IDs, receipt visibility).
+This descriptor is inspectable but not authority. Returned context/handles/lease are
+live and nonserializable. A scoped client checks the selected read range, format,
+purpose and quota at each use; client arguments cannot expand the admitted plan.
+R2/R7 specify the module-owned facade/constraint enforcement handshake, including
+the agreed observer grant and Storage target-origin validation.
 
-| Fixed operation | Permission and semantics |
+Every selector/operation is intersected with the host bootstrap policy and current
+revocation state. Reauthorize before object existence/status disclosure, at each
+operation and on reopen. RunRef, AgentResult, terminal_state, digest and binding
+descriptor contain no capability. A returned ref cannot add a permission.
+Configured policy may authorize own-run result/source/history access; the fact
+that a report was returned is not that policy. Source/shared scopes need their
+own current grant, and guessed refs fail without disclosure.
+The proposed StorageAdmin.describe_run(admin_context, run_ref) administrative
+metadata read supplies verified context-kind/owner/root/agent/definition facts;
+the Engine must restrict the lookup to its already authorized target/principal
+predicate before any existence-sensitive reply. It cannot expose its bootstrap
+administrative capability through the resulting session. This factory/read
+handshake is included in R2.
+
+Preserve the verified target's context_kind, agent/definition and run/root/
+correlation association for Storage history. Issue a fresh live grant to the
+host principal with purpose=result_access; binding.resolved records actor/purpose,
+target root and new access deadline/quota. This is a host access action linked to
+the completed run, not a new agent dispatch or an extended agent work deadline.
+No new application/system ExecutionContext kind is required. The original agent
+deadline/terminal facts remain unchanged; post-run publication records explicitly
+identify the new host binding rather than pretending the agent performed them.
+
+Observer status uses ActivityRecorder.status(context, event_id,
+expected_event_digest) or OperationStore.status(context, operation_id) with this
+fresh host context and its bound observer grant. It may return authorized original
+receipts or pending/unknown facts. Never copy original actor/action/attempt IDs
+into the host context, append as that producer, redeliver its event/mutation,
+release its execution ledger/admission or replay execution. Observation does not
+authorize a write. A new publication by this session has its own host-origin
+operation ID and normal grant; its current owner retains the unchanged originator
+status/identical-delivery rules for that publication.
+
+Session I/O quotas are new bounded host-publication limits, not replenishment of
+the finished Runtime execution ledger. No provider factory/profile, ToolExecutor,
+Invoker or Runtime admission capability is returned. A session cannot start/resume
+an agent or execute a tool. Current host authority is installed by Engine.open's
+trusted policy; public request/options only attenuate it. If the target's terminal
+status is unknown, result access can inspect explicitly authorized evidence but
+cannot infer success, release uncertain execution accounting or resume work.
+
+Allocate and persist binding.resolved for this fresh access action before returning
+the session. If that append is unknown, preserve its original ID and reconcile;
+do not hand out a usable new session. Reads do not need a fictional tool lifecycle.
+Storage generates artifact/checkpoint publication records within normal commits,
+reusing the access action and their own operation IDs. An internal recorder facade
+is Connections-owner/event-kind restricted; the application cannot append
+agent/model/tool lifecycle as producer runtime. History is read-only.
+
+Each artifact/checkpoint publication uses a stable session-issued operation_id,
+the current normal context/deadline and Storage's commit receipts. No write is
+started after session expiry/cancellation/revocation. Already admitted work may
+settle; bounded record_cleanup may reconcile/record it but cannot publish a new
+manifest/checkpoint. A cancelled result session cannot roll back an already
+committed report copy. Keep borrowed Storage ownership until unsettled operations
+are resolved or retained by the supervisor. Closing this session does not close
+the Engine store while other borrowers remain.
+
+The terminal checkpoint is an application checkpoint format, e.g.
+baseline_terminal/1, containing exact task/run/definition/config/flat-plan/source/
+report refs, the final AgentResult status/recording/persistence observations and
+its obtained agent.finished receipt plus authority-free terminal_state descriptor
+or ref. It is saved after AgentResult returns. It neither embeds its own eventual
+CheckpointReceipt nor grants resume. Native provider continuation/checkpoints
+require their own separate restricted permissions; a baseline output grant does
+not include them. CheckpointStore.load only retrieves data; Runtime owns any
+future separately authorized resume decision.
+
+Complete interface-only baseline sequence (future real workflow, not a report):
+
+1. Engine.open uses shared factories and verified Storage/control recorder; host
+   policy grants the baseline root profile and later exact result/source/history
+   reads plus manifest/checkpoint publication. Register one flat research agent
+   for the exact question What is EBD (Environment Based Design), named actual
+   deepseek-flash profile, only the registered web.search, scholar.crossref.search,
+   scholar.openalex.search, web.fetch and document.read tools, plus the platform-only
+   search instruction/audit. This sequence does not schedule children.
+2. Engine.run_agent returns a real AgentResult after Container's actual model/tool
+   loop. Runtime must already have published exact provider-visible UTF-8 report
+   bytes and validated output via normal scoped Storage before cleanup and
+   agent.finished. Retain report/raw/validated refs/digests, request-audit/source
+   refs, persistence observation, obtained terminal receipt and terminal_state.
+   Do not publish a self-referential complete AgentResult before that receipt.
+3. Call Engine.open_run_access with RunRef built from the obtained
+   terminal_event_receipt.store_id and AgentResult.execution.run_id, exact
+   requested objects/history/publications and new bounded host access options.
+   The original agent BoundSession may already be closed or expired. The call
+   checks current host authority independently; it never revives that binding.
+   Request known prior event/operation IDs explicitly when receipt observation is
+   required; current host policy creates exact-ID read-only observer grants.
+4. Through access.storage and access.context, ArtifactStore.open the exact saved
+   report/raw output and SnapshotStore.read the citation ranges under explicit
+   grants. Preserve/verify their digests/UTF-8 bytes; do not replace them with text
+   from an unrelated model buffer or live refetch. The application checks citation
+   mappings against saved slices and publishes the citation manifest with
+   ArtifactStore.put using a fresh stable operation ID and committed receipt.
+5. Save the bounded terminal baseline checkpoint with CheckpointStore.save under
+   normal access authority, after all its referenced objects/AgentResult receipt
+   are available. Publication events are automatic. Record the returned manifest/
+   checkpoint refs/receipts externally in the acceptance record; the checkpoint
+   cannot contain its own not-yet-obtained receipt. Any failed/unknown publication
+   leaves acceptance incomplete. Its current owner reconciles the same operation
+   ID under originator rules; a later fresh host may only observe that ID under
+   an explicit observer grant and cannot redeliver the earlier mutation.
+6. An optional review-file export reads the persisted bytes through the granted
+   artifact handle; the application/PM may write an authorized ignored review
+   copy. That file is not an alternate store or replacement report. Close the
+   access session, settle writes/receipts, then Engine.close in owner order.
+7. Reopen Engine using the same verified store_id/root and freshly authorized
+   host policy. No model registration/open/call is needed for these reads. Call
+   open_run_access again requesting the exact report/manifest/checkpoint/source
+   refs, bounded history and exact known event/operation status selectors as
+   needed. Old session objects/grants/cursors and producer identities are not
+   restored. Fresh observer grants pin receipt visibility and the target run.
+8. Read identical report bytes/digests, CheckpointStore.load the accepted terminal
+   format, and read the same cited immutable slices. ActivityReader.query starts
+   a freshly authorized paginated history query; do not assume an old grant-bound
+   cursor remains valid. Use the existing status APIs with the new host context
+   and observer grants to inspect original receipts/pending facts; Storage checks
+   target origin. Do not append/redeliver as the earlier producer or release its
+   ledger. Check all receipts/status/recording and saved request
+   audits. A changed/missing object, unknown commit, wrong model, unrecorded outcome
+   or unsupported citation is failure/incomplete evidence, not permission to
+   regenerate a report or refetch sources to conceal the durability fault.
+
+Container's raw/validated result artifact schema, trusted actor/authority matching,
+RunAccessRequest/session serialization and scoped facade factories remain R2/R4/R7
+shared-type details. PM has accepted the public signature and lifetime/ownership
+decision plus exact-ID read-only observer authority; these requests specify the
+remaining concrete handshake, not a new authorization to implement. The flat
+baseline does not replace child/standalone,
+GPT-6-Luna, revocation, uncertainty or resource/shutdown module acceptance gates.
+
+## 13. Resource shutdown and failure contract
+
+Engine states are opening -> open -> closing -> closed, with cleanup_incomplete
+reported if a live owner cannot settle. Engine.close(deadline) is idempotent and
+stops new root/child admissions immediately. Default drain waits for already
+accepted runs under original bounds and the supplied close deadline; they may
+finish model/tool attempts during grace, but cannot admit a new child subtree.
+A run needing another child receives SESSION_CLOSING. Deadline/grace expiration
+signals cancellation; it is not authority for new business work.
+
+Order: stop admission; request drain/cancellation through Runtime; let ToolExecutor
+finish/reap processes and Storage settle admitted mutations; record known parent/
+terminal outcomes through bounded record_cleanup; release per-attempt and
+child/binding leases; close module-owned providers/executor after borrowers
+settle; close Storage/control recorder last. The initial profile has no broker
+resource. An unresolved admitted write/admission keeps its owner/root lock and
+supervisor reference; do not close the store underneath it or advertise root reuse.
+CleanupReport lists unresolved IDs/resources, primary/secondary failures and
+observed remote/commit uncertainty. Process exit remains a trusted host decision,
+not proof that a remote model stopped or that a filesystem/SQLite write rolled back.
+
+| Failure | Required Connections behavior |
 | --- | --- |
-| `snapshot.begin` | `snapshot.commit`; approved scope/media metadata and declared size/parts; returns opaque staging ID |
-| `snapshot.chunk` | Same grant/owned staging ID; part name, sequence, content digest and base64 chunk; duplicate identical sequence is idempotent, changed content conflicts |
-| `snapshot.finalize` | Same grant; complete original/derived-text/provenance bundle, digests and lengths; Storage publishes once with its commit event and returns immutable snapshot reference |
-| `snapshot.status` | Own authorized creation/read; resolve an ambiguous finalization using its stable operation ID, no new snapshot publication |
-| `snapshot.abort` | Own staging only; idempotent cleanup; cannot delete finalized snapshots |
-| `snapshot.read` | `snapshot.read`; opaque authorized snapshot reference, explicit normalized line or PDF page range and byte limit |
+| Unknown reference/conflicting revision/incompatible schema | Safe typed error before binding/dispatch; no fallback dependency |
+| Missing/invalid selected config | Name reference/key, never value; unused profile remains deferred |
+| Denied use/delegation/scope/export | Fail required request; do not fabricate optional grants or expose child private output |
+| Limit/cycle/deadline/cancellation | Narrow/reject through Runtime/owner gates; inherited ledger remains authoritative |
+| Intent receipt missing/unknown | No new dispatch; exact frozen event/status reconciliation |
+| Admission consumption unknown | Keep lease/run identity and reservation; owner lookup, no second execute |
+| Commit reply lost/pending | Same operation/status lookup; no refetch/replay; preserve committed/unknown state |
+| Outcome/terminal append fails | Incomplete recording with known facts; stop further dispatch; bounded cleanup only |
+| Cleanup/close fails | Preserve primary outcome plus secondary safe error; retain unresolved owner/leases |
+| Reused worker scope/receipt/plan mismatch | Protocol error; no public success or unrestricted Storage path |
 
-Do not expose unrestricted `state.commit`, event append/query, checkpoints,
-filesystem paths, arbitrary SQL or all-artifact enumeration to a retrieval CLI.
-Extra tools require separately declared operations and joint review.
+Error envelope uses common code, sanitized message/details and observed effect;
+Storage/delivery errors preserve commit_state/retryable_delivery. Advice to
+retry delivery is not permission to execute. No Connections model/tool/agent
+retry policy exists. Event/mutation delivery can retry identical frozen IDs/
+content only under the owner contract and within a finite reconciliation allowance.
 
-Proposed initial bounds: 64 KiB decoded chunks; 128 KiB total HTTP JSON body;
-64 KiB maximum returned UTF-8 read bytes; 25 MiB original content; 8 MiB
-derived text; 256 KiB provenance; 1 active upload per tool capability; 1,024
-requests per capability. All bounds intersect lower tool/run/grant limits and
-consume ledger quotas. Base64 expansion is included in the HTTP body bound;
-broker checks declared and actual lengths before decoding/writing. Read ranges
-are tagged 1-based, end-exclusive `lines/pages{start,end_exclusive}`, following
-Storage's draft; require a valid stored count/mapping. Storage defines normalized line semantics and authoritative
-locators/digests. The response reports actual range, next location/truncation
-and extraction version, without silently refetching live content.
+## 14. Conformance checklist and exact cross-team requests
 
-HTTP bodies use explicit lengths; reject unbounded/chunked bodies in v1 and
-unsupported major/operations. Requests have bounded connect/read durations no
-longer than the remaining execution deadline. Uploads are Storage-owned staging
-data through its API. Only complete verified bundles are published; metadata and
-commit events are one SQLite transaction, while filesystem durability/recovery
-is Storage's separate staging/finalization protocol. The CLI never writes raw
-durable snapshot files or opens the database.
+| Common v1 requirement | Aligned location |
+| --- | --- |
+| Engine public signatures; module-owned composition | 1-2 |
+| Sole schema_version, action/attempt/event/operation identities | 4, 8 |
+| Canonical terminals/recording/commit/effect split | 2, 7-8, 13 |
+| Explicit dotenv precedence, lazy selected profile, no incidental probe | 3 |
+| Trusted metadata versus live authority | 4-6 |
+| BindingSet/BoundSession leases and independent control recorder | 5 |
+| Runtime.admit -> parent intent -> single-use execute | 7, 10 |
+| agent.started/finished only; distinct parent invocation events | 4, 7-8 |
+| Attenuation, child scope/export, common ancestor ledger | 6-7 |
+| Revocation, uncertain admission/commit and record_cleanup | 7-8, 12-13 |
+| Bounded ToolStoragePlan after actual ID allocation; exact fetch operation.status grant; prepared versus public success | 9, 11 |
+| Runtime producer for standalone; no provider initialization; worker envelope does not authenticate launcher | 9, 11 |
+| Fresh host result access; read-only exact-ID observer grants/target-origin checks; normal publication and close/reopen | 12 |
+| Ordered shutdown; Storage retained for unsettled work | 13 |
+| Root researcher -> child writer / explicit-grant saved read | 10-11 |
+| Actual evidence separated from future acceptance | 15 |
 
-No automatic replay of ambiguous writes. Exact duplicate chunk/finalize request
-IDs/content return the existing receipt under Storage's idempotency contract;
-new content with an existing ID conflicts. If a finalize response disappears,
-query status while the capability is valid; after revocation the trusted host
-reconciles by operation ID through Storage. Cancellation revokes new admission,
-aborts incomplete uploads after bounded in-flight work, and reports any commit
-that had already passed finalization. Broker crash/expiry is a typed transport
-failure. Storage's recovery owns orphan staging cleanup; no second store.
+The full design is aligned; the following precise executable-protocol details
+still need PM/affected-owner confirmation. These are not permission to edit peers.
 
-### Standalone path and comparison
-
-Standalone means outside a model loop, using an approved tool runner. That
-runner is trusted bootstrap glue: loads non-secret configuration/policy via
-Connections, creates a real run/action context and scoped Storage session,
-records intent through Container's common tool-action helper, launches through
-ToolExecutor, records outcome and closes its broker/leases. It does not construct
-an agent/model loop or choose arbitrary commands. A raw registered command
-requiring Storage fails `CAPABILITY_INVALID` before retrieval if no valid
-engine-issued envelope is supplied; it must not discover a store root or open
-`local/.env` on its own. PM must approve runner name/layout after reconciliation.
-Proposed future command shape is `uv run --locked <approved-tool-runner> ...`;
-there is no runnable entry point in this design phase.
-
-| Candidate | Benefit | Cost / first-handoff concern |
+| Request | Owner / proposed minimum contract | Effect if absent |
 | --- | --- | --- |
-| Launcher-mediated injection (recommended for the three initial tools, conditional on caps) | Existing stdin/stdout only, no bearer/listener/channel dependency; parent Storage checks exact input/read/commit; standalone uses identical adapter | One bounded whole snapshot bundle plus JSON/base64 copies; no dynamic worker reads/writes; successful worker extraction is not yet a durable tool result |
-| Loopback broker (dynamic/streaming alternative) | Separate storage traffic preserves the one-request/one-result stdin/stdout protocol; ordinary sockets support Windows; chunk limits and standalone runner use the same transport | Listener/authentication/parser/client policy to maintain; bearer possession is authority, no OS peer attestation; loopback must remain excluded from web retrieval controls |
-| Private named pipe / inherited separate channel | Private channel can reduce network exposure; Windows named pipes offer OS ACL/identity controls | Requires explicit Windows/POSIX channel adapters, launch/inheritance/framing and standalone bootstrap; stdin/stdout cannot also carry multiplexed Storage RPC without revising the tool protocol |
-| Raw database/root paths | Simple bootstrap | Reject: unrestricted store exposure and access/recording bypass |
+| R1 Admission/result DTO conformance | Container + PM: instantiate the agreed Runtime.admission_status(context, admission_id) -> Result[AdmissionStatus] and AdmissionLease.release() -> Result[ReleaseReceipt], bound lease IDs/expiry and observed states/known receipts; provide AgentResult preflight and InvocationOutcome serialization under the six common terminals | No safe automatic release/re-execute after ambiguous consumption; preserve unknown. Process loss never recreates admission authority; agree DTOs before source integration. |
+| R2 Bootstrap/scope/scoped-handle factories | Storage + PM: confirm StorageSession.open(settings, issuer), StorageAdmin.provision_run(admin_context, RunDescriptor) -> Result[ScopeRef], StorageAdmin.describe_run(admin_context, RunRef) -> Result[RunDescriptor], owner-recorder and scoped-client factory accepting binder authority; define principal-filtered target lookup, purpose/object/range/quota enforcement, root lock/scope idempotency and orphan candidate-scope handling. Instantiate the agreed exact-ID mode=observer status grant with target store/run, allowed IDs, receipt visibility and Storage target-origin validation through the existing status APIs | Observer authority is read-only and does not impersonate the original producer or permit redelivery/ledger release; originator rules stay unchanged. No circular unrecorded bind, alternate persistence or scope-string authority; bootstrap fails closed. |
+| R3 Plan/helper bridge | Container + Toolset + PM: publish bound storage_plan_factory.for_attempt(tool_ref, validated_arguments, ExecutionContext) -> Result[ToolStoragePlan] consumed by RecordedToolAction/ToolExecutor after helper allocation/validation of actual causal IDs; use none/snapshot_commit/read_injection, matching IDs and limits. snapshot_commit grants operation.status for its exact assigned operation_id to the current originator with receipt visibility | Do not construct an attempt plan before IDs, read Storage before intent, reimplement helper or let workers author grants/receipts. Status reconciliation never refetches. |
+| R4 Result-reference DTO conformance | Container + Storage + PM: instantiate agreed output_delivery/output/output_ref/raw_output_ref, digest/size/media, persistence_state, terminal_event_receipt and authority-free terminal_state types; normal child-result open -> put copy under exact export authority/operation ID | Lifetime/publication decision is resolved. Export only validated output; separate raw/validated JSON; no native continuation or fabricated caller-readable locator. Existing Storage methods suffice for copy. |
+| R5 Delegation selection boundary | Container + PM: specify the typed strategy/Runtime delegation request that calls bound AgentInvoker.invoke(caller_context, destination, input, options), including model-schema mapping if model-selected delegation is required | The interface-only call-and-result example is valid at the Python boundary; do not invent an agent.invoke CLI, hidden scheduler or claim model routing is implemented. |
+| R6 Owner drain/cleanup leases | Container + Toolset + Storage + PM: publish finite cleanup/close reports and lease transfer semantics for admitted operations surviving caller cancellation | Keep supervisor/root ownership and report unresolved work rather than abandoning it or closing shared resources early. |
+| R7 Accepted post-run access DTOs | PM + Storage + Container: instantiate the common Engine.open_run_access signature and exact section 12 DTOs/scoped field views, target-to-host actor binding and normal publication constraints. Enforce the agreed read-only mode=observer grant for requested prior IDs through existing status APIs: current host policy pins target store/run, exact IDs and receipt visibility; Storage validates target origin. Confirm this authority handshake with R2 | Signature/lifetime/ownership and observer authority are resolved. Fresh host context never copies original actor/action/attempt, appends/redelivers as that producer, releases its ledger or replays execution. No expired-grant reuse or record_cleanup business publication; new host action/deadline/authority required on use/reopen. |
 
-Windows subprocess handle inheritance differs from POSIX-only `pass_fds`, and
-Windows asyncio pipe/subprocess support has specific event-loop constraints.
-This supports a portability argument, not a live feasibility claim. A named
-pipe remains a viable alternative if the CLI team supplies a complete separate
-channel design. For named-pipe candidates using `multiprocessing.connection`,
-use bounded `send_bytes/recv_bytes` with strict JSON, not object `send/recv`
-that deserializes pickle. [Python subprocess](https://docs.python.org/3.11/library/subprocess.html#popen-constructor),
-[Windows asyncio support](https://docs.python.org/3.11/library/asyncio-platforms.html#windows),
-[Python connection API](https://docs.python.org/3.11/library/multiprocessing.html#listeners-and-clients)
-PM, Storage and Toolset must agree the topology and protocol; no
-code or interoperability trial has been run.
+Use the authoritative v1 target values/ownership while peers update their own
+legacy signatures. Request changes centrally before constructing executable
+shared types. No current user decision is needed for routine internal choices.
+If representative required documents fail the bounded profile, PM should present
+measured document-size/PDF-memory evidence and the explicit larger-transfer scope
+tradeoff before adding IPC. Numeric bytes are acceptance targets, not RAM claims.
 
-## 11. Resource lifecycle and shutdown
+## 15. Actual verification, implementation plan and limits
 
-Registry definitions own no live resources. Trusted bootstrap owns shared
-provider pools, ToolExecutor and Storage session/broker as explicitly registered.
-Each BoundSession owns leases/scoped facades; exclusive resources belong to
-that session. Closing a child binding releases its lease without closing a
-shared provider pool/store/broker used by siblings. Connections never kills
-tools directly or closes another module's borrowed handle.
+Performed in this mission: read missions/common v1/contribution guidance and
+peer interface excerpts, reconcile the entire owned design/status, and saved-file
+QA described in the status report. Earlier primary-source design research covered
+Python 3.11 deadlines/cancellation/IPC and python-dotenv loading. This revision
+relies on the local common contract; it does not revalidate live package/service
+behavior. No runtime source, tests or dependency/lockfile changes; no Git writes,
+credential-file inspection, installations, provider calls or worker/storage trials.
+Normal native Windows helper refresh fails; authorized read-only host inspection
+has succeeded. Any unavailable check must be reported rather than inferred.
 
-Propose session states `open -> closing -> closed`, with failure details in a
-CloseReport. Close is idempotent and forbids new independent bindings/invocations
-immediately. `drain` allows already accepted runtime runs to finish existing
-work under their inherited bounds; model/tool attempts and capability issuance
-inside those runs remain allowed during grace. New child-run admissions are
-denied after closing begins, so a run requiring another child returns a typed
-closing/admission failure. This drains accepted work rather than admitting new
-subtrees. `drain` waits for owned in-flight calls under existing
-deadlines up to 5 seconds default grace; then requests runtime cancellation.
-`cancel` requests cancellation immediately. A bounded 2-second cleanup allowance
-follows grace; values require PM/module agreement and must not authorize new
-execution. Runtime resolves child results; ToolExecutor terminates/reaps
-processes; Storage finishes or reports commits; Connections records outstanding
-invocation outcomes before releasing their recorder leases where possible.
+After explicit phase-transition authorization, implement Connections registry/
+config, trusted context/grants and leases, Engine composition, plan binding and
+child invocation by consuming PM's shared types and real peer modules. Next
+consumer docs must contain actual uv run --locked entry points with configured
+services/Storage and reproducible failure/cleanup evidence. Do not add another
+loop, subprocess executor, database, scheduler or dummy provider to fill a gap.
 
-CloseReport lists completed/cancelled actions, failed outcome persistence,
-unconfirmed remote completion and resources still cleaning up. Resources with
-live borrowers are not forcibly closed: keep the host shutdown supervisor's
-reference until owners confirm release; report `cleanup_incomplete` and no new
-work. Process exit is a final host decision, not a claim that remote effects
-were stopped. Only the application owner closes shared resources after borrowers
-finish: stop admission; drain/cancel runtime work; let Storage settle admitted
-commits and ToolExecutor finish/reap processes; persist available parent outcomes;
-release attempt and child/session leases; close broker/provider/tool resources
-after remaining borrowers finish; close Storage/recorder last. Keep a draining
-broker alive for active uploads/status queries until its owning attempts settle.
+Meaningful future checks: lazy profile/config errors without fallback; denied
+bindings and owner-recorder kinds; real root/child/standalone composition;
+concurrent ancestor-limit enforcement; scope creation/input read/result export
+isolation; grant revocation at dispatch/publication gates; duplicate/expired/
+unknown admission; exact-ID append/write uncertainty; cancellation before/after
+commit and failed outcome recording; borrowed resource survival and ordered
+close/root ownership. Toolset's max-fit/oversize/PDF expansion/peak-memory and
+Windows process-tree checks are prerequisites to accepting the inline caps.
 
-## 12. Verification plan and PM decisions
-
-Current verification is document/primary-source review, independent design
-reviews and saved-document structure/JSON-example checks, not executable platform
-proof. No credentials inspected, runtime code installed, runtime source/dependency
-changed or providers/tools invoked. Read the new root CONTRIBUTING.md and latest
-shared guidance after PM's private repository baseline. Eventual implementation
-uses the shared uv/Python 3.11.15 interpreter and locked manifest, with
-dependencies/layout approved centrally; Python 3.11+ remains the support target.
-
-| After approval: meaningful check | Required evidence |
-| --- | --- |
-| Bind a real API agent to configured model, actual CLI and durable Storage | Local validation distinguished from a real bounded execution and its receipts; pending authorized API smoke calls |
-| Unknown/missing/denied required references | No model/tool/child dispatch and actionable typed errors |
-| Permitted A invokes real B | Distinct child/run action linkage, typed validated output, single parent invocation and child terminal records |
-| Concurrent siblings at inherited limits | Atomic shared ledger denies overspend; no budget reset with depth/revision changes |
-| Scope/delegation/export denial | Parent/sibling references do not grant reads; child result artifact needs explicit export |
-| Cancellation/deadline/shutdown | Local interruption/cleanup observed; remote completion uncertainty retained; siblings' shared handles survive child close |
-| Selected CLI adapter plus standalone runner | Actual fetch snapshot bundle and bounded read; same Storage implementation; mismatched plans/grants denied; broker tokens tested only if that topology is approved |
-| Interrupted/ambiguous finalization or recording | Complete artifacts only; status reconciliation; no duplicate publication or blind replay |
-| Redaction/secret boundary | Dedicated synthetic secret/token leakage checks and inspected saved errors/events/diagnostics; no populated credentials in fixtures |
-| vLLM Qwen | Connector contract/local validation only until deployment; live acceptance explicitly pending |
-
-PM decisions requested:
-
-1. Adopt/reconcile shared context metadata/control split, identity allocation,
-   use-versus-delegate permissions, child scope creation and result export.
-2. Agree Runtime admission/execution gate, shared lineage ledger and proposed
-   bounded nesting/concurrency defaults; reconcile accounting checkpoint resume.
-3. Settle distinct Connections invocation intent/outcome and Container child-run
-   events with Storage's durable acknowledgment/error contract.
-4. Choose bounded injection, loopback broker or fully specified private channel
-   with CLI/Storage; agree reserved/private versus public reply schemas, inline
-   or chunk quotas, finalization/status semantics and
-   common standalone tool-action helper.
-5. Approve fixed `local/.env` plus allowlisted process-env precedence, future
-   non-secret config path/example placeholders and selected-profile readiness.
-6. Reconcile current sibling differences: Container proposes fresh action IDs
-   per retry; Storage proposes logical action plus mandatory attempt IDs. This
-   proposal uses logical action/optional attempt IDs and requests one PM decision
-   before freezing event uniqueness. Also reconcile `schema_major` versus sibling
-   `schema_version`, `agent.started` versus `run.accepted`, exact grant/commit
-   identity fields, and standalone producer (`runtime` helper versus trusted
-   `standalone_driver`). No alias is assumed accepted.
-7. Agree resource lease/close semantics, shared type/module layout and any
-   dependencies before implementation. User design approval and explicit
-   implementation authorization remain outstanding.
-
-## 13. Sources, assumptions and limitations
-
-Primary sources checked on 2026-09-30; technical claims are documentation findings,
-not local execution observations. Permission rules, protocol bounds and lifecycle
-choices above are Connections proposals. Sibling design reconciliation is pending
-while the teams prepare their owned reports.
-
-- Python 3.11 task/cancellation and monotonic event-loop documentation, cited
-  above, support local timer/cleanup design. They do not guarantee remote abort.
-- python-dotenv documentation/reference and Python tomllib, cited above,
-  support explicit non-mutating configuration loading; no library installed.
-- Python subprocess, Windows asyncio and connection APIs, cited in section 10,
-  verify pipe portability, buffering and serialization concerns. Python's secure
-  token generator is appropriate for a broker alternative; no token minted in
-  this design. [Python secrets](https://docs.python.org/3.11/library/secrets.html)
-- If HTTP transport is approved, `aiohttp` is a candidate implementation because
-  its documented runner/site lifecycle supports explicit loopback binding and
-  application request limits. It needs separately approved/pinned dependencies
-  and explicit aggregate-byte accounting. [aiohttp server reference](https://docs.aiohttp.org/en/stable/web_reference.html#running-applications)
-  Do not select `http.server` for the production broker: its own documentation
-  limits its security checks. [Python HTTP server documentation](https://docs.python.org/3.11/library/http.server.html)
-- Reviewed sibling `agent-container-design.md` and `storage-design.md` as they
-  became available; adopted Storage's snapshot operations/end-exclusive ranges
-  and Container's ownership of terminal status. Conducted independent reviews
-  of context/accounting/shutdown and all three transport candidates. Cross-team
-  agreements, feasibility, peak memory and interoperable code remain unverified.
-
-At initial startup, before PM initialization, Git status reported no repository.
-PM subsequently initialized the private repository and released its temporary
-document-write hold. This historical observation is not the current repository
-state. PM is the sole Git writer; this team performs direct document QA and hands
-off stable owned paths without staging/committing. Native sandbox helpers later
-failed refreshing; read-only saved-file QA ran successfully through the reviewed
-host execution path. Only this Connections proposal and status are owned outputs.
-No shared spec/decision/dependency files were
-edited. No endpoint readiness, real interoperability, account access or API
-credential correctness is verified. Local Qwen live testing is pending deployment.
+Provider verification belongs to later authorized Container integration using
+real DeepSeek/GPT-6-Luna, with research internal/provider search disabled and safe
+request/tool audits. Qwen config/adapter may be designed without deployment; local
+Qwen live acceptance stays explicitly pending. A saved design, synthetic schema
+example or unimplemented contract is not real integration evidence.

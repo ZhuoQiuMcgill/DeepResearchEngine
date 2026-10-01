@@ -11,6 +11,14 @@ See [decisions.md](decisions.md) for evidence, named-engine policy, and the
 research-task search availability/URL-fidelity gate. This does not authorize
 implementation or project dependency changes. Reconcile schemas/transport next.
 
+After the expanded report, PM selected explicit Yahoo primary, corrected Google
+as a disabled-until-fidelity-passes fallback, and separate
+`scholar.crossref.search` / `scholar.openalex.search` tools. The old Google/DDG
+default failed all 18 EBD calls. This revised selection still needs real
+availability/fidelity acceptance; anonymous metadata access is bounded, with
+no paid escalation or requirement for new credentials. The complete owned
+design defines exact schemas under `platform-contract-v1.md`.
+
 ## Start here
 
 You are the leader of the **CLI Toolset team**. Read this specification,
@@ -122,14 +130,16 @@ the PM according to [coordination.md](coordination.md).
 
 ## Proposed agent-facing tools
 
-The initial design is three deterministic tools. Names and fields remain draft
-until reconciled with the shared-platform contracts.
+The selected design has five registered tools. The complete owned design supplies
+closed schemas under the common contract; the table summarizes their purposes.
 
 | Tool | Purpose | Proposed input semantics | Proposed output semantics |
 | --- | --- | --- | --- |
-| `web.search` | Discover source candidates | Query, result limit, and explicitly supported domain/date/language/region filters | Ranked title/URL/snippet candidates, available source dates, provider identity, query, rank, and search timestamp |
-| `web.fetch` | Retrieve a source and create a document snapshot | URL, permitted retrieval mode, deadline, and resource limits | Requested/final URL, response/media metadata, retrieval time, content hash, snapshot reference, extraction information, bounded text preview, and an explicit result status |
-| `document.read` | Read a bounded range from an existing snapshot | Snapshot reference and line/chunk/page range with a maximum output size | Text from that snapshot, stable reference locations, returned range, remaining-content indicator, and truncation information |
+| `web.search` | General source discovery | Query and result limit; trusted named backend plan | Ranked discovery candidates with query/time/backend identity and bounded fallback observations |
+| `scholar.crossref.search` | Bibliographic discovery | Query and result limit; fixed Crossref provider | Closed metadata candidates preserving DOI/publisher/landing identities; discovery only |
+| `scholar.openalex.search` | Scholarly and OA-location discovery | Query and result limit; fixed OpenAlex provider | Closed work/DOI/location metadata with access observations; discovery only |
+| `web.fetch` | Retrieve a source and create a document snapshot | URL and static mode; trusted bounds | READY snapshot reference, provenance, immutable counts and bounded preview |
+| `document.read` | Read a bounded range from an existing snapshot | Snapshot reference, exact line/page range, UTF-8 byte budget and continuation | Authoritative DocumentSlice with stable locations and advancing continuation |
 
 An optional `document.find` can locate literal or explicitly defined pattern
 matches within an existing snapshot. It should return bounded locations and

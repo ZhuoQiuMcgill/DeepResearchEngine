@@ -248,3 +248,92 @@ The shared contract contains the same ordering rule. Design acceptance and
 file integrity do not prove runnable Storage or its future fault tests.
 Runtime implementation/API phase authorization remains pending after automatic
 approval review; the platform goal remains blocked on that transition.
+
+## 2026-09-30: Full handoff boundary reconciliation
+
+Independent full-document review found four Connections/Container mismatches:
+child export ordering, the nested AgentResult run ID, standalone plan construction
+before actual action/attempt IDs, and an overstatement of direct-worker launcher
+authentication. Owners received limited revisions; the shared contract now fixes
+export before parent outcome, `execution.run_id`, plan factory then actual-ID
+`for_attempt` before intent, and parent-held authority with no OS sandbox claim.
+
+PM selected an explicit read-only observer status grant for fresh result access.
+Existing ActivityRecorder.status/OperationStore.status stay the public APIs;
+trusted binding pins exact store/run/event or operation selectors and permitted
+receipt facts. Storage validates the original target origin while the requester
+keeps its fresh host principal/action. This grants no producer impersonation,
+append/delivery retry, business write, external replay, admission/ledger release
+or broader scope. Current authorization, expiry/revocation/deadline and finite
+read/status quotas still apply; business-write exhaustion alone cannot deny
+authorized observation. Originator delivery/idempotency semantics remain intact.
+Connections and Storage received the same limited revision, including positive
+observer lookup and negative delivery acceptance cases. These are design
+decisions only; runtime/API implementation remains blocked pending confirmation.
+
+## 2026-10-01: Corrected full module handoffs accepted as designs
+
+Container r3, Connections' full corrected design and Storage r4 are frozen.
+Independent cross-module review found no remaining material inconsistency in
+observer authority, quota-safe reconciliation, plan ordering, result run ID,
+export ordering or worker trust boundaries. PM saved-byte QA passed strict
+UTF-8/no BOM/LF/final newline, paired fences, local links and applicable JSON
+examples. Connections/Container hashes matched the owners; PM computed Storage's
+because its native helper failed before process creation.
+The final catalog-reference delta updates Container/Connections to the five-tool
+selection without changing their reviewed fields or authority/ordering rules.
+
+| Frozen path | SHA-256 |
+| --- | --- |
+| designs/agent-container-design.md | e8fc9f8677251cc0bd2d35c6ab2d5d52d2e600873a3ccca2eca4dedf2b59c9b3 |
+| reports/agent-container-status.md | 06d8ec55fcd86b9d0c396e85cdc4a61bb177125dc65719ddfe29141c366d3afe |
+| designs/connections-design.md | 86bebaf6ef9801ef375ac98ea2f24ad68609c8dd2bc325adf09874ebf0b1cd2a |
+| reports/connections-status.md | b2618be6705e10df91e1e7a37a76155285f9fe5cfbd75257e42379ae2f51047f |
+| designs/storage-design.md | 5e360221f2689f8d036803f51c9b003ab66a2d95258ac05d77f6ad2db3a82e10 |
+| reports/storage-status.md | 0acc216ec4128a9118433efdb390898e8658743ee11d3a5cdf35294b138afbb5 |
+
+Paths are relative to docs/teams/. These checks establish design/file integrity,
+not runnable modules, grant enforcement, durability or provider verification.
+Each owner retains its complete implementation and verification mission after
+phase confirmation; PM retains shared integration, baseline acceptance and Git.
+
+## 2026-10-01: Expanded discovery selection
+
+PM read the complete expanded CLI report, checked all three frozen document
+hashes and both ignored evidence hashes, and obtained an independent full design,
+evidence-summary and primary-doc review. Google/DDG returned 9/48 sets and failed
+all 18 EBD searches. Yahoo returned 3/4 in one smaller pass; Crossref/OpenAlex
+each returned three metadata responses, with explicit relevance/access limits.
+These results justify changing the design candidate, not a reliability claim.
+
+Retain DDGS 9.16.0, HTTPX 0.28.1, Trafilatura 2.2.0 and pypdf 6.19.0. General
+web.search uses explicit Yahoo primary with its declared Bing relationship and
+corrected Google as a bounded fallback, one call each per worker attempt. Google
+stays disabled until its integrated URL-fidelity gate passes. Controlled parser
+correction 4/4 does not establish live query coverage or availability. DDG is an
+optional reviewed profile, without hidden auto/merge or unsupported filters.
+
+Register separate scholar.crossref.search and scholar.openalex.search tools,
+each with closed query/result-limit inputs, fixed provider, bounded anonymous
+metadata response and no automatic paging/retry/query rewriting. Their closed
+discovery-only schemas preserve DOI/work/publisher/landing/OA-location identities.
+Relevant metadata is not verified source content; normal fetch/read still gates
+citations. No mandatory paid API, new account/key or paid quota escalation is
+selected. This does not claim zero operating cost or open-source search indexes.
+
+Current primary docs confirm Crossref public access and list-query limit 1/s;
+pace locally and honor narrower response headers. OpenAlex currently permits
+casual keyless queries with 0.10 USD/day free allowance and 0.001 USD/keyword query.
+Surface exhaustion/429; local bounds do not control unrelated callers or promise
+remaining account/IP allowance. Source access/rights are separate from metadata.
+Sources: [Crossref access](https://www.crossref.org/documentation/retrieve-metadata/rest-api/access-and-authentication/),
+[Crossref July limits](https://community.crossref.org/t/refining-rest-api-limits-for-improved-stability-and-reliability/16137),
+[OpenAlex authentication](https://help.openalex.org/api/authentication/),
+[OpenAlex budgets](https://help.openalex.org/access/example-costs/).
+
+CLI owns the coordinated schema/research/status revision and subsequent entire
+module verification: repeated availability, Yahoo/Google URL fidelity, metadata
+identity/relevance/quota behavior, real source follow-through and existing
+recording/Storage/process/resource gates. Existing raw observations stay intact.
+PM owns shared catalog-policy/baseline/brief alignment. This is design-only;
+runtime/API phase remains blocked by the earlier automatic review rejection.

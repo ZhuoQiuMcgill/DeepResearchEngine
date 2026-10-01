@@ -2,7 +2,7 @@
 
 Status: complete owned design alignment for PM review; runtime implementation
 is not authorized. Date: 2026-09-30 (America/Toronto).
-Revision: `storage-design-r3-v1` (coordinated quota/deduplication correction).
+Revision: `storage-design-r4-v1` (coordinated read-only observer authority).
 Owner: Storage Team, chat `01a0f546-8fc3-76f0-84fe-ffde8c2c89e5`.
 
 [platform-contract-v1.md](../platform-contract-v1.md) is the authority for shared
@@ -48,7 +48,8 @@ are no duplicate context/grant definitions in module packages.
 Definition/tool/extraction/continuation codec revisions and database schema
 versions remain independent of the shared compatibility major.
 
-Authorization precedes disclosure and deduplication. Validate current issuer/store,
+Authorization precedes disclosure and deduplication. For originator delivery,
+validate current issuer/store,
 principal/context identity, scope/object selectors, operation, revocation/expiry,
 deadline, valid lease and receipt visibility. Then inspect the same event/operation
 ID and compare frozen origin/content. Return its existing committed receipt or
@@ -67,9 +68,31 @@ conveys no authority. Histories require their own read grant.
 Granted operation labels are state.read/state.commit, artifact.read/artifact.put,
 snapshot.read/snapshot.commit, checkpoint.read/checkpoint.save, events.append,
 events.status/events.read and operation.status. Historical state uses state.read
-with its version selector. Exact status grants are limited to the originating
-producer/operation, not arbitrary history. Provisioning/migration/recovery are
-trusted administrative rights, never worker grants.
+with its version selector. Exact status uses two closed trusted grant modes:
+`originator` and `observer`; unknown modes are rejected, and request JSON cannot
+select or change a mode. Originator authority retains the existing frozen
+producer/caller and run/action/attempt restrictions, with separately authorized
+delivery/write rights. Observer authority permits only `events.status` and/or
+`operation.status` for its exact targets. Neither mode implies arbitrary history.
+Provisioning/migration/recovery are trusted administrative rights, never worker
+grants.
+
+Connections' binder may install `mode=observer` on a fresh normal host access
+binding. It checks the current host principal, policy, deadline, lease,
+revocation/expiry and finite status/read limits. The grant selects the exact
+target store, run and event IDs or operation IDs, permitted frozen target origin
+(principal, producer/caller, scope and run/action/attempt, including literal
+nulls where applicable), and receipt visibility. Caller identity remains the
+fresh host principal/action; it never becomes the stored origin. Selectors are
+trusted binding constraints, not extra status API arguments, wildcard run
+access or authority derived from a digest.
+
+Observer mode grants no append, delivery retry, new write, execution replay,
+ledger/admission release or scope expansion. Worker bindings receive no observer
+grants. RunRef, AgentResult, saved binding descriptors, IDs/digests and returned
+refs do not issue one automatically. Separate authorized object/history or
+publication grants, if present on a host session, remain separate: observing a
+receipt cannot enlarge them.
 
 Child scopes require explicit creation authority, and child output must be
 exported into a parent-readable scope or explicitly granted. Parent linkage
@@ -140,7 +163,8 @@ by a required declared length/SHA-256 descriptor, then verified against bytes.
 Different base64 spellings are not different content after validated decoding.
 All producers use the one PM-owned canonicalizer.
 
-Deduplication is by store/event ID or store/operation ID. Reauthorize current
+Originator delivery deduplication is by store/event ID or store/operation ID.
+Reauthorize current
 identity/visibility first, compare frozen canonical content/origin, then return
 an existing committed receipt before fresh write quota/reservation, queue-admission
 or expected-version checks. Identical pending delivery returns OPERATION_PENDING
@@ -150,6 +174,8 @@ ID claim prevents concurrent identical submissions reserving twice. Different
 content/origin is IDEMPOTENCY_CONFLICT. Never overwrite/REPLACE a history or
 receipt row. Reconciliation consumes no source stream or additional write quota;
 independent finite delivery/status/read limits and current authority still apply.
+A fresh host observer does not submit the stored origin/content as its own;
+section 4 defines its read-only status authorization separately.
 
 ## 3. Async context-first APIs and exact results
 
@@ -227,12 +253,43 @@ batches are outside v1.
 
 ## 4. Exact event/operation status and error semantics
 
-`ActivityRecorder.status` is exact-ID/digest lookup, not history search.
-Expected digest is the shared canonical producer-event digest, excluding
-Storage sequence/time/receipt. It is not authority. Check the requesting
-producer/run/action/attempt and its restricted status grant before lookup.
-If a visible committed or pending ID has another canonical digest/origin,
-return IDEMPOTENCY_CONFLICT with no foreign payload.
+The existing `ActivityRecorder.status(context, event_id, expected_event_digest)`
+and `OperationStore.status(context, operation_id)` signatures serve both modes;
+neither accepts a caller-issued observer flag or origin override. Event status
+is exact-ID/digest lookup, not history search. Expected digest is the shared
+canonical producer-event digest, excluding Storage sequence/time/receipt; it
+verifies target content and never grants authority.
+
+Authorization order:
+
+1. Validate the live caller's issuer/store, principal/context binding, policy,
+   mode, permitted status method, deadline, lease, expiry/revocation and finite
+   status/read allowances. Intersect exact target IDs/run/scope and receipt
+   visibility before any existence or status disclosure. Exhausted
+   business-write quota alone does not deny this observation; no new write
+   quota/reservation/CAS is evaluated or consumed.
+2. For `originator`, retain the original producer/caller and run/action/attempt
+   checks. An authorized same-ID request with changed canonical content/origin
+   remains IDEMPOTENCY_CONFLICT. This revision changes no originator delivery,
+   fresh-write admission or idempotency rules.
+3. For `observer`, use a non-disclosing scoped lookup of the stored or admitted
+   target origin and match it to the binder's exact selector. Compare the
+   target's frozen origin, not the fresh host's action/attempt. A target origin
+   outside that selector or insufficient receipt visibility is ACCESS_DENIED,
+   with no existence, foreign payload, hash, sequence or phase disclosure.
+   Authorization failures precede any absent/unknown answer.
+4. Only after authority/origin/receipt visibility is satisfied, compare the
+   expected event digest. A mismatch on an authorized target returns
+   IDEMPOTENCY_CONFLICT without returning target content. Operation status has
+   no caller digest argument and returns only its permitted frozen operation
+   observation.
+
+Authorized observation returns the same original receipt or bounded
+pending/aborted/interrupted/absent/unknown disposition below. It does not append
+an event, retry delivery, consume source bytes, publish an object, release
+execution/admission accounting or confer access to refs carried in the receipt.
+Status/read quotas remain finite and current authority is checked on every
+call, including reopened access. No background write is admitted by polling.
 
 ```text
 EventStatus = {
@@ -288,12 +345,12 @@ reports the observed Storage effect; it is separate from a model/tool's effect.
 
 | Code | Exact persistence consequence |
 | --- | --- |
-| ACCESS_DENIED | Invalid/expired/revoked authority or scope/operation denial; no write admission. |
+| ACCESS_DENIED | Invalid/expired/revoked authority, mode/scope/operation denial, observer target-origin mismatch or insufficient receipt visibility; no existence disclosure or write admission. |
 | NOT_FOUND | No visible authorized object/revision; ordinary latest-state absence uses Missing. |
 | INVALID_DATA / INCOMPATIBLE_SCHEMA | Invalid strict JSON/type/reference/version; no silent conversion. |
 | LIMIT_EXCEEDED | Byte/depth/key/unit/version cap; minimum next UTF-8 codepoint size may be included. |
 | VERSION_CONFLICT | Batch rollback confirmed; caller rereads and chooses a new logical mutation/new operation ID. |
-| IDEMPOTENCY_CONFLICT | Same ID with changed content/origin; no overwrite or duplicate publication. |
+| IDEMPOTENCY_CONFLICT | Authorized originator same-ID changed content/origin, or authorized exact-event status digest mismatch; no overwrite, duplicate publication or foreign payload. |
 | OPERATION_PENDING | Existing owned admitted write; status/same-ID reconciliation only. |
 | INCOMPLETE_ARTIFACT | Non-READY artifact/snapshot/checkpoint; no partial content. |
 | INTEGRITY_ERROR | Missing/altered READY bytes or invalid containment; fail read and preserve history. |
@@ -604,6 +661,13 @@ contexts or invent a grant extension. Cleanup expiry can leave terminal history
 incomplete; a pending writer still retains root/resources. No Storage method
 replays an external effect to reconstruct missing output.
 
+A fresh host observer uses normal current authority rather than an expired
+owner context or record_cleanup. Its read-only observation does not activate
+cleanup, settle/release an uncertain execution ledger or admission, close a
+writer's lease/root, reclassify a recorded outcome or authorize another dispatch.
+Already admitted work remains with its original owner/resources until the
+ordinary settlement rules are satisfied.
+
 ## 9. Pagination, checkpoints and ordered close
 
 ActivityFilters supports authorized run/action/attempt/correlation IDs,
@@ -661,6 +725,9 @@ database, installation or model calls have been produced in this phase.
 | Delivery dedup/conflict | Concurrent same ID/content/origin returns original receipt; changed data/origin conflicts, including replay after later state revision. |
 | Exhausted-quota lost reply | A real state write with expected_version=0 commits and consumes the final write quota; lose its reply. Identical same-ID/content/origin retry with current receipt visibility returns the original receipt/version/sequence despite the now-nonzero head, without another write reservation, quota charge or CAS. Changed content conflicts; revoked authority denies reconciliation. |
 | Exact status/uncertainty | Lose append/write reply at known boundaries; lookup/retry same ID only, distinguish pending/absent/unknown and never redispatch external work. |
+| Fresh host observer | Commit an event and operation under an original run/action/attempt, let that owner deadline expire, then issue a fresh host binding with exact observer selectors and receipt visibility. Both existing status APIs return the permitted original receipt; queued targets expose only bounded pending/unknown observations. Caller principal/action stays fresh and stored origin stays unchanged. Exhausted original business-write quota does not deny a status call within current status/read limits. |
+| Observer delivery denial | With only that observer grant, try append, same-ID write/delivery retry, a new write and a different target ID/run. Each fails authorization before admission, reservation, source consumption or foreign existence disclosure. Observation cannot redispatch execution, release an uncertain ledger/admission or widen object/history access. Workers/RunRef/result refs cannot acquire observer authority automatically. |
+| Observer origin/visibility/digest | Wrong frozen origin selector or missing visibility for any receipt field denies without existence/phase/hash/sequence leakage. On an authorized target, a changed expected event digest conflicts. Expired/revoked observer authority, exceeded status/read limits and unknown mode fail before disclosure. Unchanged originator lost-reply/quota/CAS vectors still pass. |
 | Artifact interruption | Kill at reservation, stream, seal, rename, READY and receipt boundaries; unsealed remains unreadable, sealed recovers once, ABORTED never promotes. |
 | Composite recovery | Parent+child IDs stable; complete sealed parent publishes once, incomplete becomes interrupted with recorded orphans. |
 | Integrity/containment | Missing/changed READY bytes and traversal/junction/reparse invalid containment fail closed. Verify Windows lock and root exclusivity. |
@@ -674,6 +741,7 @@ Compact v1 conformance checklist:
 - [x] Logical action/fresh dispatch attempt and stable event/operation delivery IDs.
 - [x] Exact six-field EventReceipt; successful return means committed.
 - [x] ActivityRecorder.status exact-ID/digest and OperationStore.status.
+- [x] Closed originator/observer modes, exact target-origin selectors, fresh host identity and read-only status/receipt visibility before disclosure.
 - [x] Same-content/origin receipt reconciliation precedes fresh quota/reservation/CAS; tombstones, rollback and pending/unknown remain explicit.
 - [x] Single-root/owned-worker DELETE/EXTRA, settings checks and opt-in patched WAL.
 - [x] Sealed READY publication, deterministic composite recovery and owned close.
@@ -698,7 +766,10 @@ Actual evidence: entry/mission/v1/contribution/baseline acceptance and owned/sib
 prior official SQLite/Python/Microsoft source research and PM's r1 saved-file
 UTF-8/fence/five-JSON QA confirmation at commit 4210b8c. PM's pre-correction r2
 saved-byte QA passed; its historical hashes and resolved ordering finding are
-recorded in storage-status.md. Revised r3 bytes/hashes require fresh QA. No runtime profile setting,
+recorded in storage-status.md. PM subsequently verified the final r3 saved bytes
+and committed them at c061b29. This limited r4 observer design preserves that
+quota/dedup/commit ordering; its own saved-byte QA is recorded in the status.
+No runtime profile setting,
 fault/recovery, performance, provider or power-loss behavior is claimed tested.
 Local vLLM/Qwen live verification remains pending deployment. The private
 repository and contributions are coordinated by PM; this revision is frozen

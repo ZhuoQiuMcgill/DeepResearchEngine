@@ -199,7 +199,8 @@ The terminal event references output and preterminal-state artifacts; only
 after its append receipt exists does Runtime construct the final AgentResult.
 Do not publish a complete self-referential result before its own receipt.
 
-AgentResult carries execution/recording status, `output_delivery`, bounded
+AgentResult carries run identity in `execution.run_id`, execution/recording
+status, `output_delivery`, bounded
 validated `output`, `output_ref`, `raw_output_ref`, digest/size/media metadata,
 `persistence_state`, relevant admitted operation IDs, `terminal_event_receipt`
 and an authority-free `terminal_state` descriptor/ref. Observation fields do
@@ -300,6 +301,42 @@ Standalone uses a fresh scope; reading an old snapshot needs an explicit
 grant. An already-owned store root returns `STORAGE_BUSY`; attachment to an
 active engine is outside this initial interface.
 
+Binding supplies a live Storage-plan factory, not a plan with invented action
+IDs. `RecordedToolAction` allocates and validates the actual action/attempt,
+constructs `for_attempt` from those IDs, and obtains the committed intent
+receipt before any Storage read or worker dispatch. The same order applies
+to agent and standalone tools. Fetch plans explicitly authorize status lookup
+for their assigned snapshot operation ID when reconciliation is permitted.
+
+## Selected discovery profile
+
+The registered tools are `web.search`, `scholar.crossref.search`,
+`scholar.openalex.search`, `web.fetch` and `document.read`. General search uses
+explicit DDGS Yahoo primary (retain its declared Bing relationship), with
+corrected Google as a bounded fallback: at most one named call each inside one
+worker attempt. Google stays disabled until integrated raw-wrapper URL fidelity
+passes. Its parser correction is not evidence of improved availability. DDG
+remains an optional reviewed profile; automatic/hidden merging is not selected.
+Reject enforced filters that a configured backend cannot honor.
+
+Each scholarly tool has closed query/result-limit inputs, a fixed trusted
+provider and one bounded anonymous metadata request with no automatic paging,
+retry or query rewriting. Its separate closed discovery-only payload preserves
+provider/query/time/rank and actual DOI/work/publisher/landing/OA-location
+identities. Metadata and snippets are not verified source content or guaranteed
+full-text access. Citation evidence still comes from fetched, saved reads.
+Toolset owns the precise schemas. Existing recorded execution and prepared
+worker protocol apply; scholarly workers get no Storage publication rights.
+
+Respect current provider limits and narrower headers. Crossref public list
+requests are locally paced at no faster than one per second per owned executor.
+OpenAlex's anonymous design profile uses its current free budget without key or
+paid escalation; explicit 429/exhaustion stops the attempt. Local bounds do not
+control unrelated callers or guarantee remaining account/IP allowance. Bound
+metadata response bytes/time and public JSON. Retain HTTPX/Trafilatura/pypdf for
+same-body retrieval/extraction; representative availability, Yahoo/Google URL
+fidelity, scholarly relevance and source follow-through remain acceptance gates.
+
 ## Storage interface and failure semantics
 
 All operations are async, context-first and scoped. SQLite work runs on its
@@ -331,8 +368,9 @@ requires sealed verified bytes and READY metadata/event. Files and SQLite
 have separate recovery boundaries, not a joint atomic transaction. References
 are store-qualified opaque identifiers, never file paths or authority.
 
-Same ID plus identical canonical request/origin returns the original receipt;
-different content/origin is an idempotency conflict. Reauthorize before lookup.
+Originator delivery with the same ID and identical canonical request/origin
+returns the original receipt; different content/origin is an idempotency
+conflict. Reauthorize before lookup.
 Validate current identity/scope/operation, revocation, expiry/deadline, lease
 and receipt visibility before returning a receipt. Compare frozen origin/content
 and resolve existing committed/pending identity before checking fresh-write
@@ -345,6 +383,22 @@ Absence at one observation does not prove no queued write exists. Known
 not-committed requires confirmed nonadmission/rollback or durable abort;
 an admitted/sealed write remains pending/unknown until its owner settles.
 Cancellation cannot undo a committed mutation or trigger external replay.
+
+Fresh host/result-access bindings may receive an explicit read-only observer
+grant for `ActivityRecorder.status` or `OperationStore.status`. The trusted
+binder pins its mode, current host principal/policy, exact target store/run and
+event/operation IDs, permitted receipt visibility, expiry/revocation and deadline.
+Storage validates the persisted target origin against that selector; the caller
+keeps its fresh host action and does not copy the original actor/action/attempt.
+Only permitted original receipt, pending or unknown facts may be returned.
+An expected event digest checks content and never grants permission.
+
+Observer status grants authorize no append or delivery retry, business write,
+external execution/replay, admission or ledger release, producer impersonation
+or scope enlargement. Workers receive no observer grants; references alone
+convey no authority. Originator status/delivery semantics are unchanged.
+Observation has normal finite read/status quotas; exhausted business-write quota
+alone cannot deny currently authorized receipt observation.
 
 Baseline settings: single store-root owner, SQLite DELETE journal,
 synchronous EXTRA, foreign keys enabled, short bounded transactions and
@@ -407,11 +461,18 @@ each operation. Publication uses normal business commits, never record_cleanup.
 Reopen obtains a new RunAccessSession under current explicit authority and
 fresh bounds; old agent/session grants are not restored.
 
+Requested status IDs are bound through the exact-target observer grants above.
+The session can inspect a completed run's receipts without reviving its producer
+binding or acquiring write/delivery authority for those IDs.
+
 Child invocation validates destination/input/grants, allocates/binds a child,
 obtains Runtime admission, durably records parent invocation intent, then
 consumes that admission. Runtime owns the child loop/start/terminal; Connections
-owns parent intent/outcome and authorized result export. Preserve child terminal
-facts even if export or parent recording fails. Release an unconsumed lease
+owns parent intent/outcome and authorized result export. Authorized bounded
+export precedes the parent invocation outcome, which includes the export
+receipt or failure and preserves child terminal facts. Await its recording
+receipt; export or parent recording failure never changes the child's observed
+terminal outcome. Release an unconsumed lease
 on known nondispatch; retain uncertain accounting for lookup. Cancellation
 propagates downward. Stop admission, drain execution/recording, release module
 leases, then close Storage. This adds no hidden scheduler or implicit retry.
@@ -432,6 +493,7 @@ Before runnable teammate handoff, verify:
 2. Real DeepSeek and GPT-6-Luna tool conversations and preserved continuation;
    Qwen implementation/configuration checks with live deployment explicitly pending.
 3. DDGS named-backend outcomes, representative research queries and URL fidelity;
+   separate Crossref/OpenAlex identity, relevance, quotas and source follow-through;
    static HTML/plain-text/text-PDF fetch, retained-body hashes and stable reads.
 4. Intent-before-dispatch, denied/no-recording nondispatch, exact-ID deduplication,
    ambiguous append/commit recovery and no external replay; CAS/scope isolation.

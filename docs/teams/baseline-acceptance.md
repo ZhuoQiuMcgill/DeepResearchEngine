@@ -23,13 +23,21 @@ for this question. The full platform still must pass child/binding checks.
 1. Open Engine through Connections. It starts real Storage/control recording
    and supplies scoped module bindings. Register one bounded AgentDefinition
    with the exact question as input, the selected named DeepSeek profile,
-   output contract and only `web.search`, `web.fetch`, `document.read`.
+   output contract and only the registered `web.search`,
+   `scholar.crossref.search`, `scholar.openalex.search`, `web.fetch`,
+   `document.read` tools.
 2. Agent instructions define a finite research plan: discover relevant
    Environment Based Design sources, prefer primary scholarly/institutional
    material, fetch selected sources, read immutable snapshots, and produce
    a complete explanatory report with traceable citations. Do not seed it
    with an existing EBD explanation or report. Disambiguate the target term
    from other uses of EBD based on the fetched evidence.
+
+   General discovery uses the selected bounded Yahoo/gated-Google profile;
+   scholarly tools retain distinct provider/DOI/work/location metadata and the
+   supplied query. Strategy chooses keyword/phrase queries. Metadata access
+   does not guarantee relevant or accessible full text and cannot substitute
+   for saved source reads. Respect explicit provider quota/outage failures.
 3. Engine.run_agent executes Container's real provider/tool loop. It must
    perform genuine discovery, fetch and saved reads through the CLI interface.
    Named backend failures remain visible. Unsupported/blocked source access
@@ -42,7 +50,8 @@ for this question. The full platform still must pass child/binding checks.
    the report with a manually authored answer or substitute another model.
 6. Runtime persists the exact final model-visible report and validated output
    through normal scoped Storage before cleanup and agent.finished. AgentResult
-   returns their immutable refs and the obtained terminal receipt. Open a fresh
+   returns their immutable refs and the obtained terminal receipt; its run ID
+   is `execution.run_id`. Open a fresh
    authorized `Engine.open_run_access(run_ref, request, options)` session to
    read/export those bytes and publish
    a citation manifest and terminal CheckpointStore checkpoint. Retain task/definition/
@@ -60,6 +69,12 @@ writes. Diagnostic preservation of a failed run cannot convert it into success.
 It exposes scoped Storage/history only, with no model/tool/invocation interface
 or renewed agent execution budget. Binding records distinguish the host
 principal/purpose from the verified target run/agent association.
+
+Post-run status reconciliation uses explicit read-only observer grants for
+exact target event/operation IDs. Keep the fresh host principal/action and
+validate the original target origin; never copy producer identities, replay
+delivery or release execution reservations. Ordinary finite read/status bounds
+apply even when the completed run's business-write allowance is exhausted.
 
 The baseline imports public Engine/contracts and consumes scoped Storage
 through bindings. It contains no direct model SDK/HTTP request, DDGS call,
@@ -119,11 +134,11 @@ requirement. Audit the following independently with the owning teams:
 | Agent definitions/runtime | Container: documented runnable entry points; real validation, model/tool loop, limits and lifecycle results |
 | DeepSeek and GPT-6-Luna APIs | Container: real bounded tool conversations, native continuation and actual request/response evidence for both |
 | Local vLLM Qwen connector | Container: complete configurable implementation/deployment manifest and local interface checks; live verification explicitly pending because no deployment exists here |
-| CLI search/fetch/read | Toolset: real subprocess/JSON operation, named backend research availability and URL fidelity, HTML/plain-text/text-PDF provenance and immutable reads |
+| CLI discovery/fetch/read | Toolset: real recorded subprocess/JSON operation, named web backend availability and URL fidelity, separately typed Crossref/OpenAlex discovery/relevance/quotas/source follow-through, HTML/plain-text/text-PDF provenance and immutable reads |
 | Resource/process behavior | Toolset: encoded max-fit/oversize/escaped inputs, PDF expansion/peak-memory evidence, deadline/cancel/crash/overflow and actual worker/descendant cleanup |
 | Storage and automatic hooks | Storage/Container: verified startup settings, durable intent-before-dispatch and publication events; successful state/artifact/snapshot/checkpoint close/reopen |
 | Permission and CAS isolation | Storage/Connections: real scoped denial/version conflicts, references without implicit authority, child export and shared-lineage limit evidence |
-| Retry/uncertainty/recovery | Storage/Container/Connections: exact-ID append/write delivery reconciliation, no external replay, interrupted admitted writes/leases settled or explicitly unknown |
+| Retry/uncertainty/recovery | Storage/Container/Connections: originator exact-ID append/write reconciliation without fresh-write quota; separately authorized host observer status and denied observer delivery; no external replay; interrupted admitted writes/leases settled or explicitly unknown |
 | Connections/standalone/children | Connections: real module binding, dotenv/lazy-profile errors, same recorded standalone helper, permitted invocation and ordered cancellation/shutdown |
 | Module ownership and handoff | PM/leaders: source boundaries, runnable consumer docs, completed owned tests and sequential reviewed Git contribution |
 

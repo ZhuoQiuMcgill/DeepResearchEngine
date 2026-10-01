@@ -2,7 +2,7 @@
 
 Date: 2026-09-30 (America/Toronto).
 Phase: active design alignment; runtime implementation not authorized.
-Revision: `storage-design-r3-v1`, limited coordinated correction, ready for PM QA/commit.
+Revision: `storage-design-r4-v1`, limited observer-authority correction, ready for PM QA/commit.
 Owner: Storage Team, `01a0f546-8fc3-76f0-84fe-ffde8c2c89e5`, host local.
 
 ## Completed mission and exact owned paths
@@ -28,7 +28,7 @@ lockfile environment remains the required future runtime.
 | Async context-first Result APIs | All 14 v1 operations retained; terminal close follows the exact lifecycle close(deadline) exception. Unexpected defects and Python task cancellation preserve common exception behavior. |
 | Canonical identity | Logical action, fresh attempt before each dispatch, immutable event and preallocated operation IDs. Storage commits retain causal action/attempt; no extra commit action. |
 | EventReceipt | Exactly schema_version/store_id/event_id/recorded_seq/recorded_at/duplicate. Ok means committed; no competing receipt or durability flag. |
-| Exact status | ActivityRecorder.status exact event ID/digest and OperationStore.status, with field/state/phase invariants. Absent observation does not prove no queued write. |
+| Exact status | Existing ActivityRecorder.status exact event ID/digest and OperationStore.status retain their schemas. Closed originator/observer modes separate original caller reconciliation from fresh host observation; exact target origin and full receipt visibility are checked before disclosure. Absent observation does not prove no queued write. |
 | CAS/delivery | Current authorization/receipt visibility, then same-ID frozen content/origin reconciliation before any fresh write quota/reservation/queue/CAS. Exhausted write quota alone cannot deny an authorized existing receipt. New admissions alone reserve quota; tombstones and conflict semantics remain. |
 | SQLite/root | Single root owner/owned worker, verified DELETE/EXTRA/FK settings, bounded transactions and explicit patched-WAL gate; no silent profile or interpreter switch. |
 | Files/composites | Persisted seal and deterministic parent/child reservation IDs; READY/event/receipt metadata commits only after complete bytes. Incomplete and durable abort recovery are distinct. |
@@ -45,7 +45,7 @@ matching tests after PM confirms the authorized phase transition.
 
 ## Actual checks and verification limits
 
-Completed now:
+Earlier completed design checks (r2):
 - Reads of current mission/v1/contribution/baseline acceptance and existing owned
   designs/status; successful full saved-file update acknowledgments.
 - Nine checks executed on the final prepared text held in session memory:
@@ -81,11 +81,58 @@ though expected_version=0 would now conflict if CAS ran. It reserves/charges no
 new write quota; changed-content and revoked-authority controls remain explicit.
 This is a test plan, not an executed persistence test.
 
-R3 saved-byte QA/hash computation was attempted with the shared locked/offline
-uv command; native helper_unknown_error/setup refresh again prevented process
-creation. No r3 checks ran and no current hashes were obtained. The historical
-r2 hashes are not hashes of this correction. Do not treat prepared-text checks
-as proof of revised saved bytes. PM will rerun QA before staging exact paths.
+Storage's r3 saved-byte QA attempt failed before process creation due to the
+native helper_unknown_error/setup refresh. PM then ran saved-byte QA through
+locked/offline uv: UTF-8/no BOM/LF/final LF/paired fences/local links passed and
+accepted/committed r3 at c061b29. Its frozen pre-r4 hashes were:
+
+- Design SHA-256: 1645a48802d2e02eaf4587d12a686c7b663eda61b9ea6763eb2a0bd97b67bb51.
+- Status SHA-256: 9e4d78c8872b44dabffc8075ac5a48b338ee35a0d2b6163015c5c3689ccb0cda.
+
+These historical hashes do not identify r4. Current r4 saved-byte QA is recorded
+below; prepared-text checks are not proof of saved bytes.
+
+## Limited r4 observer alignment
+
+PM selected the explicit read-only observer grant for fresh-host result access
+because originating-only status authority conflicted with Connections'
+Engine.open_run_access design. Both existing status API signatures and result
+schemas are retained. No irreducible interface conflict remains.
+
+- Closed trusted modes are originator and observer; caller arguments/descriptors
+  cannot select a mode or impersonate the stored origin.
+- Binder installs observer mode on the current host principal/action binding,
+  under current policy/expiry/revocation/deadline/lease and finite status/read
+  limits. Exact store/run/event or operation selectors, frozen target origin and
+  full receipt visibility are required before existence/status disclosure.
+- Event digest verifies an authorized target's content; mismatches conflict.
+  A wrong target-origin selector or insufficient receipt visibility denies
+  without existence/phase/hash/sequence leakage.
+- Observer permits no append, delivery retry, new write, execution replay,
+  ledger/admission release, scope expansion or automatic worker/RunRef/result
+  grant. Receipt refs add no object/history permissions.
+- Original originator behavior and reviewed r3 quota/dedup/commit ordering are
+  preserved. Exhausted business-write quota alone cannot deny authorized
+  observation within finite current status/read limits.
+
+Added future acceptance cases for a fresh host observing old committed/pending
+targets, observer-only delivery/write denial and origin/receipt-visibility/
+digest/revocation/limit controls. They are meaningful planned cases; no runtime
+persistence, grant enforcement or execution accounting test was run.
+
+R4 prepared-text review passed 13 checks: closed modes, exact target selectors,
+fresh caller identity, authorization-before-disclosure, event digest role,
+read-only restrictions, no worker/automatic grants, preserved r3 quota ordering,
+the three meaningful observer cases, all 14 APIs, exact EventReceipt fields,
+paired fences and LF/final LF. These were session-memory checks, not saved-byte
+or runtime evidence.
+
+R4 saved-byte QA/hash computation was attempted through shared locked/offline
+uv. The native execution helper failed with helper_unknown_error/setup refresh
+before process creation, so no saved-byte checks ran and no final r4 hashes
+were obtained. Successful patch acknowledgments confirm the two owned edits;
+they do not substitute for byte-level QA. PM must verify final saved bytes and
+compute their hashes before staging. The r2/r3 hashes above remain historical.
 
 Historical evidence: PM confirmed r1 UTF-8/fence/JSON saved-file QA and pushed
 the module drafts at 4210b8c. Prior official SQLite/Python/Microsoft research

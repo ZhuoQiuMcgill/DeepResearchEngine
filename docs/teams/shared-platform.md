@@ -6,7 +6,10 @@ implementation.
 
 Research update: PM selected DDGS 9.16.0 (replaceable best-effort search),
 HTTPX 0.28.1, Trafilatura 2.2.0, and pypdf 6.19.0 for the initial tool design.
-See `decisions.md`; research-task search coverage remains unverified.
+Expanded research changed the discovery design to explicit Yahoo primary with
+corrected Google as a gated fallback, plus separate Crossref/OpenAlex scholarly
+tools. See `decisions.md`; representative availability and live URL fidelity
+still need acceptance evidence.
 The common interfaces are consolidated in `platform-contract-v1.md` for
 review. Runtime implementation authorization remains outstanding.
 
