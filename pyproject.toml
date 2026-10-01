@@ -1,0 +1,7 @@
+[project]
+name = "ebd-deepresearch"
+version = "0.1.0"
+description = "An execution platform for Environment-Based Design deep research agents."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
