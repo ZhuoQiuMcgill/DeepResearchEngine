@@ -18,6 +18,7 @@ from .models import (
     ModelCall, ModelRequest, ModelResponse, NativeContinuation, PLATFORM_SEARCH_POLICY,
     PreparedRequest, ProviderConfig,
 )
+from .usage import normalize_usage, provider_usage_projection, unknown_usage
 
 
 def _bytes(value: Any) -> bytes:
@@ -54,7 +55,7 @@ def _retry_after(value: str | None) -> float | None:
     return seconds if math.isfinite(seconds) and 0 <= seconds <= 86400 else None
 
 
-async def _http_error_facts(response) -> dict[str, Any]:
+async def _http_error_facts(response):
     """Observe allowlisted enums only; messages and other headers never escape."""
     facts = {"provider_error_code": None, "provider_error_type": None,
              "error_capture_state": "unknown", "retry_after_seconds": _retry_after(response.headers.get("retry-after"))}
@@ -62,11 +63,14 @@ async def _http_error_facts(response) -> dict[str, Any]:
     async for chunk in response.aiter_bytes():
         if len(retained) + len(chunk) > 16384:
             facts["error_capture_state"] = "oversize"
-            return facts
+            return facts, unknown_usage(), provider_usage_projection(None)
         retained.extend(chunk)
     try:
         value = strict_json_loads(bytes(retained), max_bytes=16384, max_depth=8)
         error = value.get("error") if isinstance(value, dict) else None
+        raw_usage = value.get("usage") if isinstance(value, dict) else None
+        if raw_usage is None and isinstance(error, dict):
+            raw_usage = error.get("usage")
         if isinstance(error, dict):
             for field in ("code", "type"):
                 item = error.get(field)
@@ -75,39 +79,14 @@ async def _http_error_facts(response) -> dict[str, Any]:
             facts["error_capture_state"] = "parsed_allowlist"
         else:
             facts["error_capture_state"] = "unsupported_shape"
+        return facts, normalize_usage(raw_usage), provider_usage_projection(raw_usage)
     except (ValueError, TypeError):
         facts["error_capture_state"] = "invalid_json"
-    return facts
+    return facts, unknown_usage(), provider_usage_projection(None)
 
 
-def _usage(value: Any) -> dict[str, Any] | None:
-    if not isinstance(value, dict):
-        return None
-    def count(*keys):
-        for key in keys:
-            item = value.get(key)
-            if type(item) is int and item >= 0:
-                return item
-        return None
-    input_tokens = count("input_tokens", "prompt_tokens")
-    output_tokens = count("output_tokens", "completion_tokens")
-    total_tokens = count("total_tokens")
-    breakdown = value.get("output_tokens_details") or value.get("completion_tokens_details") or {}
-    reasoning = breakdown.get("reasoning_tokens") if isinstance(breakdown, dict) else None
-    if type(reasoning) is not int or reasoning < 0:
-        reasoning = None
-    input_details = value.get("input_tokens_details") or value.get("prompt_tokens_details") or {}
-    cached = input_details.get("cached_tokens") if isinstance(input_details, dict) else None
-    if type(cached) is not int or cached < 0:
-        cached = count("prompt_cache_hit_tokens")
-    return {
-        "input_tokens": input_tokens, "output_tokens": output_tokens,
-        "total_tokens": total_tokens,
-        "cached_input_tokens": cached,
-        "reasoning_output_tokens": reasoning,
-        "completeness": "complete" if None not in (input_tokens, output_tokens, total_tokens) else "partial",
-        "source": "provider", "measurement_ref": None,
-    }
+def _usage(value: Any) -> dict[str, Any]:
+    return normalize_usage(value)
 
 
 class ProviderFactory:
@@ -330,28 +309,36 @@ class ProviderSession:
         timeout = prepared.request.max_seconds
         if context is not None and hasattr(context, "remaining_seconds"):
             timeout = min(timeout, context.remaining_seconds())
+        observed_usage = unknown_usage()
+        native_usage = provider_usage_projection(None)
         try:
             async with asyncio.timeout(timeout):
                 async with self.client.stream("POST", url, content=prepared.body_bytes, headers=headers) as response:
                     request_id = _safe_id(response.headers.get("x-request-id"))
                     if response.status_code != 200:
-                        facts = await _http_error_facts(response)
-                        return ModelResponse("failed", request_audit=prepared.audit, provider_request_id=request_id, error=_error("provider.http", "Provider returned a non-success response", http_status=response.status_code, effect_state="observed", **facts), dispatched=True)
+                        facts, observed_usage, native_usage = await _http_error_facts(response)
+                        return ModelResponse("failed", usage=observed_usage, provider_usage=native_usage, request_audit=prepared.audit, provider_request_id=request_id, error=_error("provider.http", "Provider returned a non-success response", http_status=response.status_code, effect_state="observed", **facts), dispatched=True)
                     data = bytearray()
                     async for chunk in response.aiter_bytes():
                         if len(data) + len(chunk) > prepared.request.max_response_bytes:
                             return ModelResponse("incomplete", request_audit=prepared.audit, provider_request_id=request_id, error=_error("provider.response_oversize", "Provider response exceeds its byte allowance", effect_state="observed"), dispatched=True)
                         data.extend(chunk)
+                    native = None
                     try:
                         native = strict_json_loads(bytes(data))
+                        raw_usage = native.get("usage") if isinstance(native, dict) else None
+                        observed_usage, native_usage = _usage(raw_usage), provider_usage_projection(raw_usage)
                         result = self._parse(native, prepared, request_id)
-                    except (ValueError, TypeError, KeyError, IndexError) as exc:
-                        return ModelResponse("failed", request_audit=prepared.audit, provider_request_id=request_id, error=_error("provider.protocol", "Provider returned an invalid or unsupported native response", exception_type=type(exc).__name__, effect_state="observed"), dispatched=True)
+                    except (ValueError, TypeError, KeyError, IndexError, AttributeError) as exc:
+                        safe_native = native if isinstance(native, dict) else {}
+                        response_id, model_id = _safe_id(safe_native.get("id")), _safe_id(safe_native.get("model"))
+                        audit = {**prepared.audit, "provider_request_id": request_id, "provider_response_id": response_id, "reported_model_id": model_id}
+                        return ModelResponse("failed", usage=observed_usage, provider_usage=native_usage, request_audit=audit, provider_request_id=request_id, provider_response_id=response_id, reported_model_id=model_id, error=_error("provider.protocol", "Provider returned an invalid or unsupported native response", exception_type=type(exc).__name__, effect_state="observed"), dispatched=True)
                     return result
         except TimeoutError:
-            return ModelResponse("incomplete", request_audit=prepared.audit, error=_error("provider.timeout", "Provider request deadline elapsed; remote completion is unknown", effect_state="unknown"), dispatched=True)
+            return ModelResponse("incomplete", usage=observed_usage, provider_usage=native_usage, request_audit=prepared.audit, error=_error("provider.timeout", "Provider request deadline elapsed; remote completion is unknown", effect_state="unknown"), dispatched=True)
         except httpx.HTTPError as exc:
-            return ModelResponse("failed", request_audit=prepared.audit, error=_error("provider.transport", "Provider transport failed; remote completion is unknown", exception_type=type(exc).__name__, effect_state="unknown"), dispatched=True)
+            return ModelResponse("failed", usage=observed_usage, provider_usage=native_usage, request_audit=prepared.audit, error=_error("provider.transport", "Provider transport failed; remote completion is unknown", exception_type=type(exc).__name__, effect_state="unknown"), dispatched=True)
 
     def _parse(self, native: dict[str, Any], prepared: PreparedRequest, request_id: str | None) -> ModelResponse:
         request = prepared.request
@@ -437,7 +424,7 @@ class ProviderSession:
         reported = _safe_id(native.get("model"))
         response_id = _safe_id(native.get("id"))
         audit = {**prepared.audit, "provider_request_id": request_id, "provider_response_id": response_id, "reported_model_id": reported}
-        return ModelResponse(completion, "".join(text), tuple(parsed_calls) if completion == "tool_calls" else (), finish, _usage(native.get("usage")), continuation, audit, request_id, response_id, reported, _error("provider." + completion, "Provider did not return a complete callable/final response", effect_state="observed") if completion in {"refused", "incomplete"} else None, True)
+        return ModelResponse(completion, "".join(text), tuple(parsed_calls) if completion == "tool_calls" else (), finish, _usage(native.get("usage")), continuation, audit, request_id, response_id, reported, _error("provider." + completion, "Provider did not return a complete callable/final response", effect_state="observed") if completion in {"refused", "incomplete"} else None, True, provider_usage_projection(native.get("usage")))
 
     async def aclose(self):
         if not self.closed:

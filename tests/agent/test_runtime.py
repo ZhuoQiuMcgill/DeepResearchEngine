@@ -269,9 +269,13 @@ async def test_python_task_cancellation_is_recorded_and_reraised(tmp_path):
     events = [e.get("event", e) for e in events]
     terminal = next(e for e in events if e["kind"] == "agent.finished")
     assert terminal["payload"]["status"] == "cancelled"
-    assert terminal["payload"]["usage"]["completeness"] == "partial"
+    assert terminal["payload"]["usage"]["completeness"] == "unknown"
     assert len(terminal["payload"]["usage"]["unknown_attempt_ids"]) == 1
-    assert any(e["kind"] == "model.outcome" for e in events)
+    model_outcome = next(e for e in events if e["kind"] == "model.outcome")
+    assert model_outcome["payload"]["usage"]["completeness"] == "unknown"
+    assert model_outcome["payload"]["usage"]["total_tokens"] is None
+    assert terminal["payload"]["usage"]["known_subtotals"]["total_tokens"] is None
+    assert terminal["payload"]["usage"]["per_attempt_usage_refs"][0]["event_id"] == model_outcome["event_id"]
     await storage.close()
 
 
@@ -463,3 +467,220 @@ async def test_admission_capacity_expiry_and_retention_do_not_replenish_consumed
     await storage.close()
     await second_storage.close()
     await third_storage.close()
+
+
+@pytest.mark.asyncio
+async def test_received_usage_is_preserved_when_outcome_acknowledgement_fails(tmp_path):
+    import json
+    from ebd.contracts import ToolRef
+    from ebd.toolset import ToolCatalog
+    requests = 0
+    def handler(req):
+        nonlocal requests
+        requests += 1
+        name = json.loads(req.content)["tools"][0]["function"]["name"]
+        return httpx.Response(200, json={"choices": [{"finish_reason": "tool_calls", "message": {"role": "assistant", "tool_calls": [
+            {"id": "known-tokens-call", "type": "function", "function": {"name": name, "arguments": '{"query":"source query"}'}}
+        ]}}], "usage": {"prompt_tokens": 12, "completion_tokens": 4, "total_tokens": 16, "prompt_cache_hit_tokens": 8,
+                       "prompt_cache_miss_tokens": 4, "completion_tokens_details": {"reasoning_tokens": 2}}})
+    storage, binding, context, definition = await setup(tmp_path, handler)
+    definition.allowed_tools = [ToolRef("web.search")]
+    context.grants.grants.append(Grant("tool.execute", object_ids=frozenset({"web.search"})))
+    binding.catalog = ToolCatalog()
+    class NoDispatch:
+        async def execute(self, *args):
+            pytest.fail("An unacknowledged model outcome cannot activate a tool")
+    binding.executor = NoDispatch()
+    real = binding.recorder
+    class FailOutcome:
+        async def append(self, ctx, event):
+            if event.kind == "model.outcome":
+                assert event.payload["usage"]["total_tokens"] == 16
+                return Err(EngineError("RECORD_FAILURE", "Controlled outcome failure", commit_state="not_committed"))
+            return await real.append(ctx, event)
+        async def status(self, *args):
+            return await real.status(*args)
+    binding.recorder = FailOutcome()
+    runtime = Runtime()
+    result = await runtime.execute((await runtime.admit(definition, "task", binding, context)).unwrap())
+    assert requests == 1 and result.counters["tool_calls"] == 0 and result.recording_status == "incomplete"
+    assert result.usage["known_subtotals"] == {"input_tokens": 12, "output_tokens": 4, "total_tokens": 16,
+        "cached_input_tokens": 8, "reasoning_output_tokens": 2, "uncached_input_tokens": 4}
+    assert result.usage["completeness"] == "partial" and result.usage["per_attempt_usage_refs"] == []
+    assert len(result.usage["unknown_attempt_ids"]) == 1
+    events = [row.get("event", row) for row in (await storage.activity.query(context)).unwrap().events]
+    assert not any(event["kind"] == "tool.intent" for event in events)
+    terminal = next(event for event in events if event["kind"] == "agent.finished")
+    assert terminal["payload"]["usage"]["known_subtotals"]["total_tokens"] == 16
+    await storage.close()
+
+
+@pytest.mark.asyncio
+async def test_completed_response_cancellation_race_retains_usage_but_starts_no_tool(tmp_path):
+    import json
+    from ebd.contracts import ToolRef
+    from ebd.toolset import ToolCatalog
+    context = None
+    requests = 0
+    def handler(req):
+        nonlocal requests
+        requests += 1
+        context.cancellation.set()
+        name = json.loads(req.content)["tools"][0]["function"]["name"]
+        return httpx.Response(200, json={"choices": [{"finish_reason": "tool_calls", "message": {"role": "assistant", "tool_calls": [
+            {"id": "cancel-race-call", "type": "function", "function": {"name": name, "arguments": '{"query":"source query"}'}}
+        ]}}], "usage": {"prompt_tokens": 5, "completion_tokens": 4, "total_tokens": 9}})
+    storage, binding, context, definition = await setup(tmp_path, handler)
+    definition.allowed_tools = [ToolRef("web.search")]
+    context.grants.grants.append(Grant("tool.execute", object_ids=frozenset({"web.search"})))
+    binding.catalog = ToolCatalog()
+    class NoDispatch:
+        async def execute(self, *args):
+            pytest.fail("Completed response metadata cannot restart cancelled execution")
+    binding.executor = NoDispatch()
+    runtime = Runtime()
+    result = await runtime.execute((await runtime.admit(definition, "task", binding, context)).unwrap())
+    assert result.status == "cancelled" and result.recording_status == "complete"
+    assert requests == 1 and result.counters["tool_calls"] == 0 and result.output_ref is None
+    assert result.usage["known_subtotals"]["total_tokens"] == 9 and result.usage["completeness"] == "complete"
+    assert len(result.usage["per_attempt_usage_refs"]) == 1
+    await storage.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("cancel_phase", ["wait", "cleanup"])
+@pytest.mark.parametrize("completion", ["tool_calls", "final"])
+async def test_caller_cancellation_after_received_response_records_usage_and_reraises(tmp_path, cancel_phase, completion):
+    import json
+    from ebd.contracts import ToolRef
+    from ebd.toolset import ToolCatalog
+
+    caller = None
+    received = None
+    closed = False
+    requests = 0
+
+    def handler(req):
+        nonlocal requests
+        requests += 1
+        name = json.loads(req.content)["tools"][0]["function"]["name"]
+        message = {"role": "assistant", "content": "Completed candidate must not be published"}
+        if completion == "tool_calls":
+            message["tool_calls"] = [{"id": "received-call", "type": "function", "function": {
+                "name": name, "arguments": '{"query":"source query"}',
+            }}]
+        return httpx.Response(200, json={
+            "id": "received-response", "model": "deepseek-flash",
+            "choices": [{"finish_reason": "tool_calls" if completion == "tool_calls" else "stop", "message": message}],
+            "usage": {"prompt_tokens": 5, "completion_tokens": 4, "total_tokens": 9,
+                      "prompt_cache_hit_tokens": 2, "prompt_cache_miss_tokens": 3,
+                      "completion_tokens_details": {"reasoning_tokens": 1}},
+        })
+
+    storage, binding, context, definition = await setup(tmp_path, handler)
+    native_factory = binding.provider_factory
+
+    class ReceivedSession:
+        def __init__(self, session):
+            self.session = session
+
+        def prepare(self, *args):
+            return self.session.prepare(*args)
+
+        async def generate(self, *args):
+            nonlocal received
+            received = await self.session.generate(*args)
+            if cancel_phase == "wait":
+                # Cancel the caller after native parsing has returned the
+                # response, before asyncio.wait resumes the runtime.
+                asyncio.get_running_loop().call_soon(caller.cancel)
+            return received
+
+        async def aclose(self):
+            nonlocal closed
+            await self.session.aclose()
+            closed = True
+
+    class ReceivedFactory:
+        @staticmethod
+        async def open(config, ctx):
+            return Ok(ReceivedSession((await native_factory.open(config, ctx)).unwrap()))
+
+    class CleanupCancellationEvent(asyncio.Event):
+        async def wait(self):
+            try:
+                return await super().wait()
+            finally:
+                # The helper has selected the received response and is now
+                # cancelling its monitor task during final cleanup.
+                caller.cancel()
+
+    class NoDispatch:
+        async def execute(self, *args):
+            pytest.fail("Caller cancellation cannot dispatch a received tool call")
+
+    if cancel_phase == "cleanup":
+        context.cancellation = CleanupCancellationEvent()
+    binding.provider_factory = ReceivedFactory
+    binding.catalog = ToolCatalog()
+    binding.executor = NoDispatch()
+    definition.allowed_tools = [ToolRef("web.search")]
+    context.grants.grants.append(Grant("tool.execute", object_ids=frozenset({"web.search"})))
+    runtime = Runtime()
+    lease = (await runtime.admit(definition, "task", binding, context)).unwrap()
+    caller = asyncio.create_task(runtime.execute(lease))
+    with pytest.raises(asyncio.CancelledError):
+        await caller
+
+    assert received is not None and received.usage["total_tokens"] == 9
+    assert caller.cancelled() and closed and requests == 1
+    events = [row.get("event", row) for row in (await storage.activity.query(context)).unwrap().events]
+    outcomes = [event for event in events if event["kind"] == "model.outcome"]
+    assert len(outcomes) == 1
+    outcome = outcomes[0]
+    payload = outcome["payload"]
+    assert payload["status"] == "cancelled" and payload["completion"] == completion
+    assert payload["dispatched"] is True
+    assert payload["usage"] == received.usage
+    assert payload["provider_usage"] == received.provider_usage
+    assert payload["request_audit"]["provider_response_id"] == "received-response"
+    assert payload["request_audit"]["reported_model_id"] == "deepseek-flash"
+    assert [call["provider_call_id"] for call in payload["tool_calls"]] == (["received-call"] if completion == "tool_calls" else [])
+    terminal = next(event for event in events if event["kind"] == "agent.finished")
+    assert events.index(outcome) < events.index(terminal)
+    assert terminal["payload"]["status"] == "cancelled"
+    assert terminal["payload"]["recording_status"] == "complete"
+    assert terminal["payload"]["cleanup"]["complete"] is True
+    assert terminal["payload"]["counters"]["model_calls"] == 1
+    assert terminal["payload"]["counters"]["tool_calls"] == 0
+    assert terminal["payload"]["usage"]["known_subtotals"] == {
+        "input_tokens": 5, "output_tokens": 4, "total_tokens": 9,
+        "cached_input_tokens": 2, "uncached_input_tokens": 3, "reasoning_output_tokens": 1,
+    }
+    assert terminal["payload"]["usage"]["completeness"] == "complete"
+    assert terminal["payload"]["usage"]["unknown_attempt_ids"] == []
+    assert terminal["payload"]["usage"]["per_attempt_usage_refs"] == [{
+        "store_id": storage.store_id, "event_id": outcome["event_id"],
+        "action_id": outcome["context"]["action_id"], "attempt_id": outcome["context"]["attempt_id"],
+    }]
+    assert terminal["payload"]["output_ref"] is None
+    assert not any(event["kind"] in {"tool.intent", "artifact.committed"} for event in events)
+    await storage.close()
+
+
+@pytest.mark.asyncio
+async def test_unexpected_provider_exception_records_explicit_unknown_usage(tmp_path):
+    def handler(req):
+        raise RuntimeError("controlled private exception")
+    storage, binding, context, definition = await setup(tmp_path, handler)
+    runtime = Runtime()
+    with pytest.raises(RuntimeError):
+        await runtime.execute((await runtime.admit(definition, "task", binding, context)).unwrap())
+    events = [row.get("event", row) for row in (await storage.activity.query(context)).unwrap().events]
+    outcome = next(event for event in events if event["kind"] == "model.outcome")
+    assert outcome["payload"]["usage"]["completeness"] == "unknown"
+    assert all(outcome["payload"]["usage"][key] is None for key in ("input_tokens", "output_tokens", "total_tokens"))
+    terminal = next(event for event in events if event["kind"] == "agent.finished")
+    assert terminal["payload"]["usage"]["per_attempt_usage_refs"][0]["event_id"] == outcome["event_id"]
+    assert "controlled private" not in str(outcome)
+    await storage.close()

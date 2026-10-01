@@ -61,7 +61,7 @@ commit, missing recording and unconfirmed cleanup still stop work.
 
 ## Module evidence
 
-Final combined verification: **144 tests passed in 10.59 seconds** on the
+Original platform verification: **144 tests passed in 10.59 seconds** on the
 shared Windows/Python 3.11 environment. The source distribution and wheel
 build successfully; the wheel includes the registered tool schemas and CLI.
 The installed wheel's CLI opened real Storage and listed all five tools using
@@ -127,9 +127,41 @@ deployment and extraction limitations above.
 | Request audit and execution trace | Proven: nine model and twelve tool intent/outcome pairs preserve ordering and native call identities; exported events match SQLite |
 | Terminal checkpoint and post-run authority | Proven: standard saved checkpoint identifies the question, plan, run, definition, result, manifest and source refs; fresh exact observer authority confirms the obtained terminal receipt |
 | Close/reopen without regeneration or refetch | Proven: the report, manifest, checkpoint and every cited slice compare byte for byte under renewed host grants; verification dispatches no model or fetch |
-| Full platform beyond the flat baseline | Proven by the module evidence above and 144 tests, including real Windows crash/descendant cleanup, scoped child/budget/export checks and actual live conversations for both API providers |
+| Full platform beyond the flat baseline | Proven by the module evidence above and the platform suite, including real Windows crash/descendant cleanup, scoped child/budget/export checks and actual live conversations for both API providers |
 | Qwen implementation and live-deployment exception | Configurable connector and native protocol checks proven; live verification explicitly deferred because the service is not deployed here, as the user specified |
 
 The independent reviews found no remaining required implementation work for
 this profile. Earlier failed runs and quota checks are retained alongside the
 successful evidence rather than overwritten or reported as successes.
+
+## Per-response token accounting
+
+The user's additional requirement is implemented through the existing
+`model.outcome` hook. Every new outcome carries explicit normalized token
+usage, including unavailable counts as null, valid zero counts as zero, and
+input/output/total plus reported cache, cache-miss and reasoning breakdowns.
+Bounded allowlisted native numeric metadata is preserved separately. Run
+aggregates link committed outcome identities and never add subset counts to
+the primary totals. Previously saved records are retained without inventing
+missing historical metadata.
+
+Received counts survive refused/incomplete/malformed content, reported HTTP
+failures and completed-response cancellation races. Caller task cancellation
+still re-raises after recording, before another tool/model dispatch. A failed
+recording retains known facts with incomplete recording rather than claiming
+commitment. Same-ID receipt reconciliation never counts another API request.
+
+Verification: **181 tests passed in 14.84 seconds**, including real SQLite
+close/reopen, missing/partial/zero usage, committed-reply loss and four caller
+cancellation race cases. Actual DeepSeek and GPT conversations each completed
+two model turns and one real recorded tool. Renewed host access confirmed
+identical normalized usage, native numeric projection and stored terminal
+aggregates/refs after Engine close/reopen:
+
+- `local/provider-acceptance/deepseek-run_2bb1ae82406d467097e56644ff3db935/token-usage-acceptance.json`
+- `local/provider-acceptance/openai-run_0680945ef67647da8ba62d689b32cd19/token-usage-acceptance.json`
+
+The updated source and wheel build successfully, and the wheel includes
+`ebd/providers/usage.py`. Retrieval is documented in `docs/usage/storage.md`;
+the bounded real verification command is `python examples/live_provider_check.py`
+through the locked uv environment.

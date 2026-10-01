@@ -14,7 +14,8 @@ from ebd.contracts import (
     ToolRequest, ToolRef, canonical_json, deadline_after, digest_bytes, digest_json, new_id,
     strict_json_loads, to_json_value,
 )
-from ebd.providers import ModelRequest, ModelTool, ProviderConfig, ProviderFactory
+from ebd.providers import ModelRequest, ModelResponse, ModelTool, ProviderConfig, ProviderFactory
+from ebd.providers.usage import PRIMARY_COUNTS, TOKEN_COUNTS, normalize_usage, provider_usage_projection, unknown_usage
 from .recording import RecordedToolAction, append_event, maybe_await, status_for
 from .validation import validate_schema, validation_errors
 
@@ -41,6 +42,14 @@ RECOVERABLE_SOURCE_ERRORS = frozenset({
     "UNSUPPORTED_ENCODING", "DECODING_ERROR", "EXTRACTION_EMPTY", "PDF_NO_TEXT",
     "PDF_ENCRYPTED", "PDF_INVALID", "PDF_PAGE_LIMIT", "TEXT_LIMIT", "RESPONSE_LIMIT",
 })
+
+
+class _ReceivedResponseCancellation(asyncio.CancelledError):
+    """Carry completed provider facts without turning cancellation into success."""
+
+    def __init__(self, response: ModelResponse, cancellation: asyncio.CancelledError):
+        super().__init__(*cancellation.args)
+        self.response = response
 
 
 @dataclass
@@ -300,7 +309,7 @@ class Runtime:
         result = AgentResult(root_context.descriptor(), "failed", definition_ref=definition.definition_ref, admission_id=lease.admission_id,
                              validation={"state": "not_run", "schema_digest": digest_json(definition.output_schema), "errors": []},
                              counters={"model_calls": 0, "tool_calls": 0, "tool_attempts": 0, "repairs": 0},
-                             usage={"known_subtotals": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}, "completeness": "complete", "unknown_attempt_ids": []})
+                             usage={"known_subtotals": dict.fromkeys(TOKEN_COUNTS), "completeness": "unknown", "unknown_attempt_ids": [], "per_attempt_usage_refs": []})
         session = None
         started_at = time.monotonic()
         model_events = []
@@ -355,46 +364,60 @@ class Runtime:
                     dispatched = True
                     response = await self._generate_cancel_aware(session, prepared, model_context)
                 except EngineError as error:
-                    if dispatched:
-                        result.usage["completeness"] = "partial"
-                        result.usage["unknown_attempt_ids"].append(attempt)
-                    outcome = await append_event(binding, model_context, "model.outcome", {"step_index": step, "dispatched": dispatched, "status": status_for(error), "error": error, "request_audit": prepared.audit}, cleanup=True)
+                    usage = unknown_usage()
+                    self._aggregate_usage(result, usage, attempt)
+                    outcome = await append_event(binding, model_context, "model.outcome", {"step_index": step, "dispatched": dispatched, "status": status_for(error), "error": error, "request_audit": prepared.audit,
+                                                "usage": usage, "provider_usage": provider_usage_projection(None)}, cleanup=True)
+                    self._usage_receipt(result, outcome, model_context)
                     if isinstance(outcome, Err):
                         result.recording_status = "incomplete"
                         result.recording_error = outcome.error
                     raise
-                except asyncio.CancelledError:
-                    result.usage["completeness"] = "partial"
-                    result.usage["unknown_attempt_ids"].append(attempt)
-                    outcome = await asyncio.shield(append_event(binding, model_context, "model.outcome", {"step_index": step, "dispatched": dispatched, "status": "cancelled", "effect_state": "unknown", "request_audit": prepared.audit}, cleanup=True))
+                except asyncio.CancelledError as cancellation:
+                    received = cancellation.response if isinstance(cancellation, _ReceivedResponseCancellation) else None
+                    usage = normalize_usage(received.usage) if received is not None else unknown_usage()
+                    self._aggregate_usage(result, usage, attempt)
+                    payload = self._model_outcome_payload(received, step, usage) if received is not None else {
+                        "step_index": step, "dispatched": dispatched, "effect_state": "unknown",
+                        "request_audit": prepared.audit, "usage": usage,
+                        "provider_usage": provider_usage_projection(None),
+                    }
+                    payload["status"] = "cancelled"
+                    outcome = await asyncio.shield(append_event(binding, model_context, "model.outcome", payload, cleanup=True))
+                    self._usage_receipt(result, outcome, model_context)
                     if isinstance(outcome, Err):
                         result.recording_status = "incomplete"
                         result.recording_error = outcome.error
+                    else:
+                        model_events.append(outcome.value.event_id)
                     raise
                 except Exception as exc:
-                    if dispatched:
-                        result.usage["completeness"] = "partial"
-                        result.usage["unknown_attempt_ids"].append(attempt)
+                    usage = unknown_usage()
+                    self._aggregate_usage(result, usage, attempt)
                     defect = EngineError("runtime.defect", "Model boundary raised an unexpected exception", {"exception_type": type(exc).__name__}, observed_effect_state="unknown" if dispatched else "not_observed")
-                    outcome = await append_event(binding, model_context, "model.outcome", {"step_index": step, "dispatched": dispatched, "status": "failed", "error": defect, "request_audit": prepared.audit}, cleanup=True)
+                    outcome = await append_event(binding, model_context, "model.outcome", {"step_index": step, "dispatched": dispatched, "status": "failed", "error": defect, "request_audit": prepared.audit,
+                                                "usage": usage, "provider_usage": provider_usage_projection(None)}, cleanup=True)
+                    self._usage_receipt(result, outcome, model_context)
                     if isinstance(outcome, Err):
                         result.recording_status = "incomplete"
                         result.recording_error = outcome.error
                     raise
-                outcome = await append_event(binding, model_context, "model.outcome", {"step_index": step, "dispatched": response.dispatched, "completion": response.completion, "native_finish_reason": response.native_finish_reason,
-                                             "request_audit": response.request_audit, "usage": response.usage,
-                                             "tool_calls": [{"provider_call_id": c.provider_call_id, "index": c.index, "provider_name": c.provider_name, "tool": {"name": c.name, "revision": c.revision}, "arguments_digest": digest_bytes(c.arguments_json.encode()), "argument_error": c.argument_error} for c in response.tool_calls],
-                                             "visible_text_sha256": digest_bytes((response.raw_visible_text or "").encode()), "error": response.error}, cleanup=True)
+                usage = normalize_usage(response.usage)
+                # Preserve the received observation even if Storage cannot
+                # acknowledge it; recording failure still halts all new work.
+                self._aggregate_usage(result, usage, attempt)
+                outcome = await append_event(binding, model_context, "model.outcome", self._model_outcome_payload(response, step, usage), cleanup=True)
+                self._usage_receipt(result, outcome, model_context)
                 if isinstance(outcome, Err):
                     result.recording_status = "incomplete"
                     result.recording_error = outcome.error
                     result.unfinished_actions.append({"action_id": action, "attempt_id": attempt, "event_id": outcome.error.details.get("event_id"), "operation_id": None, "phase": "outcome_acknowledgement"})
                     raise outcome.error
                 model_events.append(outcome.value.event_id)
-                self._aggregate_usage(result, response.usage, attempt)
                 token_budget = limits["token_budget"]
-                if token_budget and result.usage["known_subtotals"]["total_tokens"] > token_budget["max_total_tokens"]:
+                if token_budget and (result.usage["known_subtotals"]["total_tokens"] or 0) > token_budget["max_total_tokens"]:
                     raise EngineError("LIMIT_EXCEEDED", "Advisory token budget has been exceeded")
+                context.assert_active()
                 if response.completion in {"failed", "refused", "incomplete"}:
                     raise response.error or EngineError("provider.incomplete", "Provider did not return a complete outcome")
                 continuation = response.continuation
@@ -563,32 +586,75 @@ class Runtime:
         return error.code in RECOVERABLE_SOURCE_ERRORS or (error.code == "LIMIT_EXCEEDED" and reason == "stream_limit") or (error.code == "MEMORY_LIMIT" and reason == "memory_limit") or (error.code == "DEADLINE_EXCEEDED" and reason == "deadline")
 
     @staticmethod
+    def _model_outcome_payload(response, step, usage):
+        return {"step_index": step, "dispatched": response.dispatched,
+                "completion": response.completion, "native_finish_reason": response.native_finish_reason,
+                "request_audit": response.request_audit, "usage": usage, "provider_usage": response.provider_usage,
+                "tool_calls": [{"provider_call_id": c.provider_call_id, "index": c.index, "provider_name": c.provider_name,
+                                "tool": {"name": c.name, "revision": c.revision},
+                                "arguments_digest": digest_bytes(c.arguments_json.encode()), "argument_error": c.argument_error}
+                               for c in response.tool_calls],
+                "visible_text_sha256": digest_bytes((response.raw_visible_text or "").encode()), "error": response.error}
+
+    @staticmethod
     async def _generate_cancel_aware(session, prepared, context):
         generation = asyncio.create_task(session.generate(prepared, context))
         cancelled = asyncio.create_task(context.cancellation.wait())
         try:
-            done, _ = await asyncio.wait({generation, cancelled}, return_when=asyncio.FIRST_COMPLETED)
-            if cancelled in done and context.cancellation.is_set():
-                generation.cancel()
-                await asyncio.gather(generation, return_exceptions=True)
-                raise EngineError("CANCELLED", "Engine cancellation interrupted the provider request; remote completion is unknown", observed_effect_state="unknown")
-            return await generation
-        finally:
-            cancelled.cancel()
-            if not generation.done():
-                generation.cancel()
-            await asyncio.gather(generation, cancelled, return_exceptions=True)
+            try:
+                done, _ = await asyncio.wait({generation, cancelled}, return_when=asyncio.FIRST_COMPLETED)
+                if generation in done:
+                    return await generation
+                if cancelled in done and context.cancellation.is_set():
+                    generation.cancel()
+                    await asyncio.gather(generation, return_exceptions=True)
+                    if not generation.cancelled():
+                        return await generation
+                    raise EngineError("CANCELLED", "Engine cancellation interrupted the provider request; remote completion is unknown", observed_effect_state="unknown")
+                return await generation
+            finally:
+                cancelled.cancel()
+                if not generation.done():
+                    generation.cancel()
+                await asyncio.gather(generation, cancelled, return_exceptions=True)
+        except asyncio.CancelledError as cancellation:
+            # Caller cancellation can interrupt either the wait or its final
+            # cleanup after generation has already returned. Preserve those
+            # received facts for the runtime's cancelled outcome, then stop.
+            if generation.done() and not generation.cancelled():
+                try:
+                    response = generation.result()
+                except (Exception, asyncio.CancelledError):
+                    pass
+                else:
+                    if isinstance(response, ModelResponse):
+                        raise _ReceivedResponseCancellation(response, cancellation) from None
+            raise
 
     @staticmethod
     def _aggregate_usage(result, usage, attempt):
-        if usage is None or usage.get("completeness") != "complete":
-            result.usage["completeness"] = "partial"
+        usage = normalize_usage(usage)
+        if usage["completeness"] != "complete" and attempt not in result.usage["unknown_attempt_ids"]:
             result.usage["unknown_attempt_ids"].append(attempt)
-        if usage:
-            for key in ("input_tokens", "output_tokens", "total_tokens"):
-                count = usage.get(key)
-                if type(count) is int and count >= 0:
-                    result.usage["known_subtotals"][key] += count
+        for key in TOKEN_COUNTS:
+            count = usage[key]
+            if count is not None:
+                result.usage["known_subtotals"][key] = (result.usage["known_subtotals"][key] or 0) + count
+        Runtime._usage_completeness(result)
+
+    @staticmethod
+    def _usage_completeness(result):
+        known = sum(result.usage["known_subtotals"][key] is not None for key in PRIMARY_COUNTS)
+        result.usage["completeness"] = "complete" if known == 3 and not result.usage["unknown_attempt_ids"] else "partial" if known else "unknown"
+
+    @staticmethod
+    def _usage_receipt(result, outcome, context):
+        if isinstance(outcome, Ok):
+            result.usage["per_attempt_usage_refs"].append({"store_id": outcome.value.store_id, "event_id": outcome.value.event_id,
+                                                         "action_id": context.action_id, "attempt_id": context.attempt_id})
+        elif context.attempt_id not in result.usage["unknown_attempt_ids"]:
+            result.usage["unknown_attempt_ids"].append(context.attempt_id)
+        Runtime._usage_completeness(result)
 
     @staticmethod
     async def _publish_output(result, binding, context, raw, validated, value, definition):

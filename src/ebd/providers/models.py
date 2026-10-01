@@ -4,6 +4,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from .usage import unknown_usage
+
 PLATFORM_SEARCH_POLICY = (
     "Do not use internal, provider-hosted or implicit web search. "
     "Research only through registered platform function tools; "
@@ -92,7 +94,7 @@ class ModelResponse:
     raw_visible_text: str | None = None
     tool_calls: tuple[ModelCall, ...] = ()
     native_finish_reason: str | None = None
-    usage: dict[str, Any] | None = None
+    usage: dict[str, Any] = field(default_factory=unknown_usage)
     continuation: NativeContinuation | None = field(default=None, repr=False)
     request_audit: dict[str, Any] | None = None
     provider_request_id: str | None = None
@@ -100,3 +102,4 @@ class ModelResponse:
     reported_model_id: str | None = None
     error: Any = None
     dispatched: bool = False
+    provider_usage: dict[str, Any] = field(default_factory=dict)

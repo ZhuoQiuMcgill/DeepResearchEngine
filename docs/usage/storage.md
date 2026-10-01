@@ -71,6 +71,54 @@ writes, history, access to receipt refs or execution reservation release.
 `record_cleanup` permits only owner event append/status and lease cleanup;
 it cannot admit artifact, state, snapshot or checkpoint writes.
 
+Per-response model token usage is recorded by the agent runtime in the existing
+`model.outcome` activity. Storage commits that activity and its receipt; there
+is no separate token-usage writer or additional dispatch. The event's
+`context.action_id` and `context.attempt_id` identify the model attempt, and its
+`payload.request_audit` retains the safe provider response identity. The
+`payload.usage` fields are `input_tokens`, `output_tokens`, `total_tokens`,
+`cached_input_tokens`, `uncached_input_tokens` and `reasoning_output_tokens`, plus `completeness`,
+`source` and `measurement_ref`. Counts are nonnegative integers or null.
+Missing counts stay unknown; a real zero stays zero. Cache and reasoning
+counts are subsets, so consumers must not add them to the primary totals.
+Uncached input is retained only when the provider explicitly reports cache
+misses; it is never computed by subtracting cached input. The companion
+`payload.provider_usage` preserves bounded allowlisted provider fields and
+capture/invalid-field facts rather than raw response bodies or diagnostics.
+
+Retrieve committed usage through a fresh read-only result-access lease:
+
+```python
+from ebd.connections import RunAccessRequest, RunAccessOptions, HistoryReadRequest
+from ebd.contracts import RunRef
+
+request = RunAccessRequest(history=HistoryReadRequest(max_pages=20, max_events=1000))
+access = (await engine.open_run_access(
+    RunRef(engine.storage.store_id, saved_run_id), request, RunAccessOptions()
+)).unwrap()
+async with access:
+    cursor = None
+    while True:
+        page = (await access.history.query(access.context, None, cursor, 100)).unwrap()
+        for row in page.events:
+            if row["event"]["kind"] == "model.outcome":
+                response_usage = row["event"]["payload"]["usage"]
+                # Persist/export row["receipt"]["event_id"] with response_usage.
+        cursor = page.cursor
+        if cursor is None:
+            break
+```
+
+This access requires current host authority over the selected run; a saved run
+reference does not revive execution. The terminal `agent.finished` payload and
+`AgentResult.usage` contain known subtotals, completeness, unknown attempt IDs
+and refs to the committed per-attempt usage activities. A subtotal stays null
+until that counter has a real observation. Reconciliation and repeated history
+reads reuse the original event identity: consumers deduplicate by store/event
+ID rather than counting an acknowledgement or pagination repeat as another
+API response. Earlier persisted records lacking normalized usage remain
+historical unknowns, not evidence of zero consumption.
+
 `SnapshotProposal` carries retained original/text/index bytes, provenance,
 media type and extraction/normalization versions. The strict
 `document_index/1` index contains its text digest, LF-excluding logical line
@@ -125,6 +173,7 @@ Real persistence and controlled fault checks:
 ```powershell
 uv --cache-dir .uv-cache run --locked --offline pytest tests/storage -q
 uv --cache-dir .uv-cache run --locked --offline pytest tests/integration/test_result_access.py -q
+uv --cache-dir .uv-cache run --locked --offline pytest tests/integration/test_token_usage.py -q
 ```
 
 The tests use actual SQLite and files for close/reopen, CAS/tombstones,
@@ -132,4 +181,8 @@ lost committed replies with final quota, immutable integrity, scoped denial,
 observer status, Unicode/empty physical pages, fixed history watermarks,
 composite/seal/rename/publication interruptions and cancellation/root ownership.
 The result-access tests use actual Connections and Storage without invoking a
-model. These controlled checks complement the separate live baseline evidence.
+model. Token-usage integration uses controlled native provider HTTP responses,
+the actual registered document.read subprocess, real Storage, paginated fresh
+history and close/reopen. It checks complete/partial/missing/zero counts and
+committed acknowledgement loss without external API calls. These controlled
+checks complement the separate live baseline evidence.

@@ -42,7 +42,8 @@ def test_deepseek_preserves_native_reasoning_and_correlates_calls():
             session.prepare(request(continuation=first.continuation, step_index=1))
         second = await session.generate(request(continuation=first.continuation, step_index=1, tool_results=({"provider_call_id": "call1", "status": "succeeded", "result": {"hits": []}},)))
         assert second.raw_visible_text == "Exact\nreport\n"
-        assert second.usage is None
+        assert second.usage["completeness"] == "unknown"
+        assert second.usage["input_tokens"] is None
         assert "test-secret" not in json.dumps(second.request_audit)
         await session.aclose()
     run(exercise())
@@ -149,7 +150,8 @@ def test_configured_qwen_native_pairing_omits_deepseek_reasoning_and_caps_output
             assert body["model"] == "Qwen-test-alias" and body["max_tokens"] == 1024
             assert "thinking" not in body and "reasoning_effort" not in body
             if len(bodies) == 1:
-                return httpx.Response(200, json={"model": "Qwen-test-alias", "choices": [{"finish_reason": "stop", "message": {
+                return httpx.Response(200, json={"model": "Qwen-test-alias", "usage": {"prompt_tokens": 6, "completion_tokens": 2, "total_tokens": 8,
+                    "prompt_tokens_details": {"cached_tokens": 1}, "completion_tokens_details": {"reasoning_tokens": 0}}, "choices": [{"finish_reason": "stop", "message": {
                     "role": "assistant", "content": None, "reasoning_content": "private Qwen reasoning",
                     "tool_calls": [{"id": "qwen-original", "type": "function", "function": {"name": "t_search", "arguments": '{"query":"EBD"}'}}],
                 }}]})
@@ -163,6 +165,8 @@ def test_configured_qwen_native_pairing_omits_deepseek_reasoning_and_caps_output
         assert prepared.audit["deployment_manifest_ref"] == qwen_manifest()["manifest_ref"]
         first = await session.generate(prepared)
         assert first.completion == "tool_calls" and first.native_finish_reason == "stop"
+        assert first.usage["input_tokens"] == 6 and first.usage["total_tokens"] == 8
+        assert first.usage["cached_input_tokens"] == 1 and first.usage["reasoning_output_tokens"] == 0
         second = await session.generate(request(continuation=first.continuation, step_index=1, tool_results=({"provider_call_id": "qwen-original", "status": "succeeded", "result": []},)))
         assert second.raw_visible_text == "Qwen final\r\n" and len(bodies) == 2
         with pytest.raises(ValueError, match="advisory"):

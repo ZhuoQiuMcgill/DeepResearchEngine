@@ -150,6 +150,17 @@ observed outcome and cleanup before exposing success. Outcome recording
 failure stops further dispatch and returns incomplete recording with the
 known observation. Terminal-event failure preserves known execution facts.
 
+For every model attempt, Container records explicit per-response token usage
+in `model.outcome.payload.usage`. Preserve provider-reported input, output and
+total counts, with nullable cached/uncached input and reasoning output
+breakdowns. Missing or invalid counts remain null, with explicit accounting
+completeness; they never become fabricated zero. A received response retains
+valid usage even if its content cannot be used. Record the outcome before
+dispatching another API/tool call. Storage uses its normal append transaction
+and event identity, so receipt reconciliation does not count another API call.
+Terminal usage aggregates link the committed per-attempt records; cache and
+reasoning breakdowns are subsets rather than additions to total tokens.
+
 `record_cleanup` is a separately bounded trusted context for owner-event
 append, status reconciliation and lease cleanup after cancellation/deadline.
 It authorizes no new model/tool calls or business writes. Storage stays alive

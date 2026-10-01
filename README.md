@@ -84,6 +84,12 @@ Storage publication mediated by their parent. Connections owns trusted
 configuration, grants, lineage budgets, leases and result export. The Runtime
 owns native model/tool pairing, admission and execution lifecycle.
 
+Each model response records provider-reported input/output/total tokens in
+its `model.outcome` Storage activity, including available cache and reasoning
+breakdowns. Run totals link those individual records. Missing counts remain
+unknown; valid usage is retained even when response content fails validation.
+See [token usage retrieval](docs/usage/storage.md) for the public history API.
+
 Local vLLM Qwen requires a configured deployment manifest and a deployed
 service; live verification remains pending on this machine. API checks depend
 on the configured account's model access and available credit.

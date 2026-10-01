@@ -86,6 +86,27 @@ including schemas and native history. The request audit records this measurement
 as unverified. It can reject a request conservatively and does not prove the
 provider's exact token count. The independent request byte cap remains enforced.
 
+Every `model.outcome` contains normalized per-attempt token usage in Storage,
+including failed, refused, incomplete, malformed-content and cancelled attempts.
+Missing or invalid counts are null; reported zero stays zero. Input/output/total
+are preserved as reported, without inferring a missing total. Cache hits,
+reasoning tokens and DeepSeek's reported cache misses (`uncached_input_tokens`)
+are nullable subsets and never added to the primary totals. A bounded numeric
+`provider_usage` projection retains known native detail fields and records invalid
+fields or conflicting aliases; arbitrary provider text is excluded.
+When a response supplies both input/prompt or output/completion aliases,
+normalized input/output fields take precedence. Conflicting native values remain
+in the projection with an explicit conflict marker; no value is reconciled by
+inventing a new count.
+
+Run `usage.known_subtotals` sums each observed counter independently and leaves a
+counter null until reported. `per_attempt_usage_refs` contains
+`store_id`, `event_id`, `action_id` and `attempt_id` for acknowledged outcome
+records, so consumers can retrieve the actual per-response facts. Missing primary
+counts or an unacknowledged outcome make the aggregate partial/unknown. Received
+counts remain visible in a failed AgentResult even if recording fails; execution
+halts before another dispatch and never claims that those facts were committed.
+
 ## Runtime, recording and output lifetime
 
 The module exposes `Runtime.admit(definition,input,binding,context)` followed by
@@ -130,7 +151,10 @@ unknown remote effects never trigger a replay. Known publication failure may
 be completely recorded while execution fails. An unknown publication or missing
 outcome receipt remains incomplete. Engine cancellation returns a cancelled
 result after bounded cleanup; Python task cancellation records cleanup and is
-re-raised. Recording cleanup does no business publication or external dispatch.
+re-raised. A response completed before caller cancellation retains its actual
+usage and response metadata in the cancelled outcome. Its tools and final output
+are not dispatched or published. Recording cleanup does no business publication
+or external dispatch.
 
 The default `recoverable_tool_errors=return_to_model` permits a different source
 URL or discovery query after a fully recorded read-only source failure, including

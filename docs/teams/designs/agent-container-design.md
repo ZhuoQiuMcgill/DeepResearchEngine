@@ -139,7 +139,7 @@ ModelToolSchema is {tool:ToolIdentity, provider_name:string, description:string,
 | raw_visible_text | R string|null; exact ordered final/intermediate provider-visible content without added separators or normalization; required for a final candidate in the selected text/JSON profiles |
 | tool_calls | R ordered ToolCall list, empty except a complete callable response |
 | native_finish_reason | R string or null; an unknown reason becomes an explicit unsupported protocol failure |
-| usage | R UsageReport or null |
+| usage | R UsageReport; unavailable counts are explicit nulls with unknown completeness |
 | provider_request_id, provider_response_id, reported_model_id | R nullable safe strings; missing means unknown |
 | continuation | R matching envelope or null if no supported continuation is returned/needed |
 | request_audit | R RenderedRequestAudit or null only when rendering never completed |
@@ -149,7 +149,7 @@ ToolCall is exactly {provider_call_id:string, index:nonnegative int, provider_na
 
 ProviderSession.generate returns this domain outcome for anticipated HTTP/protocol/refusal/incomplete failures, not a second Result wrapper. ProviderFactory.open is an infrastructure operation returning Result[ProviderSession]. Unexpected defects and caller Python cancellation retain exception semantics after bounded cleanup. Adapter translation preserves native turn pairing; it does not execute a function or switch a model. HTTP/SDK automatic external retries are disabled; a runtime-approved retry has a new attempt and counted intent.
 
-UsageReport is {input_tokens:int|null, output_tokens:int|null, total_tokens:int|null, cached_input_tokens:int|null, reasoning_output_tokens:int|null, completeness:complete|partial|unknown, source:provider|verified_local|estimate, measurement_ref:string|null}. All counts are nonnegative and nullable when unavailable. Completeness concerns authoritative primary input/output/total accounting for that attempt; nullable cache/reasoning breakdowns remain explicit. They are subsets/diagnostics of provider totals, not additional totals to double-add. Failure/interrupt usage is retained when reported. UsageAggregate contains known_subtotals, completeness, unknown_attempt_ids and per_attempt_usage_refs; a missing dispatched attempt makes whole-run totals partial/unknown, never fabricated zero. A run with no dispatch can truthfully have zero dispatch counters.
+UsageReport is {input_tokens:int|null, output_tokens:int|null, total_tokens:int|null, cached_input_tokens:int|null, uncached_input_tokens:int|null, reasoning_output_tokens:int|null, completeness:complete|partial|unknown, source:provider|verified_local|estimate, measurement_ref:string|null}. All counts are nonnegative and nullable when unavailable. Completeness concerns authoritative primary input/output/total accounting for that attempt; nullable cache/reasoning breakdowns remain explicit. They are subsets/diagnostics of provider totals, not additional totals to double-add. Failure/interrupt usage is retained when reported, including usable usage in an otherwise malformed response. Every model.outcome records explicit usage, even when its counts are unknown. UsageAggregate contains known_subtotals, completeness, unknown_attempt_ids and per_attempt_usage_refs; a missing dispatched attempt makes whole-run totals partial/unknown, never fabricated zero. A subtotal stays null until observed; a run with no dispatch can truthfully have zero dispatch counters.
 
 ContinuationEnvelope is exactly:
 
