@@ -30,8 +30,9 @@ You are the leader of Connections team, now read your spec.
 
 Each leader registers with PM, completes the current assignment, saves an
 owned report, and notifies PM. PM reconciles interface proposals and selects
-the web tool combination after the CLI research arrives. No search or fetch
-backend is selected by this brief.
+the web tool combination after the CLI research arrives. PM selected DDGS,
+HTTPX, Trafilatura, and pypdf for the initial design; see [decisions.md](decisions.md).
+DDGS is best-effort and replaceable; research-task availability remains unverified.
 
 Background sources:
 

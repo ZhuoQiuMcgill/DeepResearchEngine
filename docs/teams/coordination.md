@@ -64,10 +64,10 @@ below; teams must not concurrently edit it.
 
 | Team | Verified chat ID | State |
 | --- | --- | --- |
-| Agent Container | `01a0f545-10ae-7b51-a754-3dc13e95a857` (`local`) | Registered as `Agent Container Team`; design/capability research in progress |
-| CLI Toolset | `01a0f545-ea04-71e3-965e-2c53d2d241d3` (`local`) | Registered as `CLI Toolset Team`; free-tool research and CLI design in progress |
-| Storage | `01a0f546-8fc3-76f0-84fe-ffde8c2c89e5` (`local`) | Registered as `Storage Team`; persistence, recording, and CLI access design in progress |
-| Connections | `01a0f546-f888-7353-b103-72f3f930fc79` (`local`) | Registered as `Connection Team`; bindings, delegation, and CLI transport review in progress |
+| Agent Container | `01a0f545-10ae-7b51-a754-3dc13e95a857` (`local`) | `Agent Container Team`; draft delivered for reconciliation |
+| CLI Toolset | `01a0f545-ea04-71e3-965e-2c53d2d241d3` (`local`) | `CLI Toolset Team`; research/design delivered, PM selection revision coordinated |
+| Storage | `01a0f546-8fc3-76f0-84fe-ffde8c2c89e5` (`local`) | `Storage Team`; draft delivered for reconciliation |
+| Connections | `01a0f546-f888-7353-b103-72f3f930fc79` (`local`) | `Connection Team`; draft delivered for reconciliation |
 
 ## Owned files and reports
 

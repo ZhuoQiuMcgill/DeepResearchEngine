@@ -3,6 +3,14 @@
 Status: design and research phase. Shared contracts are **DRAFT**.
 Design date: 2026-09-30.
 
+## PM research decision, 2026-09-30
+
+PM selected DDGS 9.16.0 for replaceable best-effort search, HTTPX 0.28.1
+retrieval, Trafilatura 2.2.0 HTML extraction, and pypdf 6.19.0 text PDFs.
+See [decisions.md](decisions.md) for evidence, named-engine policy, and the
+research-task search availability/URL-fidelity gate. This does not authorize
+implementation or project dependency changes. Reconcile schemas/transport next.
+
 ## Start here
 
 You are the leader of the **CLI Toolset team**. Read this specification,

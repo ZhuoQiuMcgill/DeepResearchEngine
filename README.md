@@ -45,8 +45,10 @@ of CLI Toolset team, now read your spec" to the right documents.
 
 The CLI Toolset team researches free, open-source search and fetch tools
 and reports its comparison to the PM chat. PM selects the combination after
-reviewing that evidence. Backend selection and runtime implementation are
-still pending.
+reviewing that evidence. Initial design selection: DDGS search, HTTPX
+retrieval, Trafilatura HTML extraction, and pypdf text-PDF extraction. DDGS
+is replaceable and best-effort; research-task availability remains unverified.
+Shared contracts and runtime implementation are still pending.
 
 ## CLI tool contract
 

@@ -12,7 +12,7 @@ or by a later direct user instruction.
 | Current phase | User decided | Finish design; no runtime implementation yet. |
 | First module priorities | User directed | Agent Container and CLI Toolset first; other module interfaces can be designed in parallel. |
 | Shared contracts | Draft | Reconcile four team proposals before implementation. |
-| Search/fetch backends | Research assigned | CLI team researches free, open-source candidates; PM selects after report. No backend chosen. |
+| Search/fetch backends | PM selected for initial design | DDGS 9.16.0 best-effort search; HTTPX 0.28.1; Trafilatura 2.2.0; pypdf 6.19.0. Research-task search availability/URL fidelity remains a handoff gate. |
 | Team chats | User opens | Leaders read specs, register, and report to this PM chat. |
 
 Add dated entries with evidence paths, reasoning, affected contracts, and
@@ -127,3 +127,49 @@ outside the baseline. `.gitattributes` standardizes text line endings.
 All four leaders received the contribution rules and a temporary document
 write hold while PM publishes the baseline. Their read-only research can
 continue; PM releases owned edits after verifying the remote and push.
+
+## 2026-09-30: Free search/fetch combination selected
+
+PM reviewed the complete research, saved public-source trials, primary
+package metadata, and an independent review. Initial design targets:
+
+| Operation | Component |
+| --- | --- |
+| Discovery | DDGS 9.16.0, replaceable best-effort development backend |
+| HTTP retrieval/provenance | HTTPX 0.28.1 |
+| HTML extraction | Trafilatura 2.2.0 |
+| Text PDF extraction | pypdf 6.19.0 |
+| Saved content reads | Storage immutable snapshot interface |
+
+The stack ran on Windows/Python 3.11 in isolated real trials without required
+API keys or a separate service. Eight retrievals succeeded across four
+sources, including one 194-page PDF. This proves basic operation, not
+arbitrary-site coverage, extraction fidelity, or memory enforcement.
+
+Search returned results in five of twelve attempts across three queries/four
+modes; every mode failed for the technical query. Reliable research coverage
+is unproven. Use configurable explicit Google then DuckDuckGo initially,
+record named backend outcomes, bound fallback, reject unsupported filters,
+and expose outages. Avoid silent auto-merging and the zero-success Brave
+profile. Representative-task availability and URL-fidelity checks must
+precede teammate acceptance/experiments; those gates have not passed.
+
+Preserve content-decoded original response bytes with representation/encoding
+metadata, hashes, and extractor versions/options; derive text from the same
+retained body. This does not claim wire-byte retention. Initial scope stays
+static HTML and unencrypted text PDFs, without browsers or OCR.
+
+Local SearXNG was untested and one public request returned 429: greater
+administrative control is supported, better reliability is not. The corpus
+shows no necessary Requests/readability advantage. PyMuPDF's speed on one
+PDF does not require its additional license/runtime decision for this scope.
+Inventory the selected dependency/wheel notices before distribution; the
+closure is not established as entirely permissive.
+
+Evidence: `docs/research/free-search-fetch.md`,
+[DDGS](https://pypi.org/project/ddgs/9.16.0/),
+[HTTPX](https://pypi.org/project/httpx/0.28.1/),
+[Trafilatura](https://pypi.org/project/trafilatura/2.2.0/), and
+[pypdf](https://pypi.org/project/pypdf/6.19.0/) metadata.
+This is a design selection. No production dependencies or source changed;
+Storage transport, shared types/limits, and provider profiles remain drafts.
