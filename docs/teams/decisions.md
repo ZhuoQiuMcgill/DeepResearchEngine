@@ -202,3 +202,20 @@ rules. The phase remains design: automatic approval review rejected starting
 runtime/changing the phase due to the earlier design-first instruction. PM
 has requested explicit phase-transition authorization against this concrete
 design rather than retrying the rejected implementation.
+
+## 2026-09-30: Result publication and post-run access
+
+PM accepted Container's design choice to publish exact final provider-visible
+UTF-8 content and validated representation before cleanup/agent.finished.
+JSON retains raw candidate and canonical validated bytes separately; the final
+AgentResult is constructed only after its terminal receipt, avoiding a
+self-referential persisted result. Known failed publication and complete
+recording are independent; uncertain publication or failed lifecycle append
+remains explicit incomplete, without converting observations into success.
+
+Fresh normal host/result-access authority owns post-run citation-manifest,
+terminal-checkpoint and export operations. It cannot revive expired agent
+grants or use record_cleanup for business publication. Connections owns the
+exact public access surface and close/reopen consumer sequence. This is
+interface agreement; the platform goal remains blocked pending the human
+implementation/API phase confirmation after automatic approval review.

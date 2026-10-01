@@ -40,14 +40,21 @@ for this question. The full platform still must pass child/binding checks.
 5. The actual model generates the complete final report. Preserve its bytes;
    PM may rerun for a demonstrated substantive failure, but may not replace
    the report with a manually authored answer or substitute another model.
-6. Persist the report via ArtifactStore.put, a citation manifest via scoped
-   Storage, and a terminal CheckpointStore checkpoint. Retain task/definition/
+6. Runtime persists the exact final model-visible report and validated output
+   through normal scoped Storage before cleanup and agent.finished. AgentResult
+   returns their immutable refs and the obtained terminal receipt. Use a fresh
+   authorized host/result-access binding to read/export those bytes and publish
+   a citation manifest and terminal CheckpointStore checkpoint. Retain task/definition/
    configuration/run identities, flat plan, source refs, report ref, output
    status and recording status. Publication events are automatic.
 7. Close Engine in the defined order, reopen with newly authorized bindings,
    retrieve identical report bytes/checkpoint/cited slices and paginate its
    committed activities. Verification cannot refetch sources or regenerate
    the report to conceal a durability failure.
+
+The post-run binding has its own bounded deadline and explicit current grants;
+it does not revive expired agent authority or use record_cleanup for business
+writes. Diagnostic preservation of a failed run cannot convert it into success.
 
 The baseline imports public Engine/contracts and consumes scoped Storage
 through bindings. It contains no direct model SDK/HTTP request, DDGS call,

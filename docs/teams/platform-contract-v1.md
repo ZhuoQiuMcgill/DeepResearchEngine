@@ -190,6 +190,36 @@ authoritative; after process loss, saved history can establish known facts
 but unresolved dispatch remains unknown. No cross-process automatic replay
 or reconstituted admission is promised. Limits and cleanup have finite bounds.
 
+Runtime publishes the exact provider-returned final visible-content UTF-8 bytes
+and validated output representation through normal scoped Storage before cleanup
+and `agent.finished`. These are not raw HTTP response bytes. Do not normalize
+or rewrite the visible content. Text/Markdown may share one artifact; JSON
+retains raw candidate bytes separately from canonical validated-value bytes.
+The terminal event references output and preterminal-state artifacts; only
+after its append receipt exists does Runtime construct the final AgentResult.
+Do not publish a complete self-referential result before its own receipt.
+
+AgentResult carries execution/recording status, `output_delivery`, bounded
+validated `output`, `output_ref`, `raw_output_ref`, digest/size/media metadata,
+`persistence_state`, relevant admitted operation IDs, `terminal_event_receipt`
+and an authority-free `terminal_state` descriptor/ref. Observation fields do
+not grant access or resume. A known output-publication failure with its failed
+execution/terminal outcome durably recorded may have `recording_status=complete`
+and `persistence_state=not_committed`; it remains a failed execution. Unknown
+commitment or failed outcome/terminal recording remains incomplete. Preserve
+bounded observed candidate/validation and any known receipts without claiming
+the run succeeded. No new output write starts through `record_cleanup` after
+deadline/cancellation. Host diagnostic preservation cannot retroactively change
+the recorded execution status.
+
+After return, report/checkpoint/citation-manifest access uses a fresh normal
+Connections host/result-access binding with explicit current run/object read
+and publication grants plus a new bounded deadline. Saved run IDs/descriptors
+alone are not authority, and an expired agent binding is not revived. The host
+checkpoint includes the final obtained receipt/status/output refs and is terminal
+evidence, not execution replay. Connections supplies the precise public surface
+in its current owned design; this introduces no additional model loop.
+
 `ModelRequest` contains ordered input items, allowed tool schemas with an
 immutable provider-name map, output contract, validated settings, effective
 limits, action identity and optional continuation. `ModelResponse` contains
