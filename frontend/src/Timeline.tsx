@@ -79,7 +79,7 @@ export function Timeline({
           {expanded === row.id && (
             <div className="node-logs">
               <div className="log-note">
-                Recorded demo activity · elapsed time includes pauses
+                Recorded run activity · elapsed time includes pauses
               </div>
               {row.logs.map((log) => (
                 <article key={log.id}>

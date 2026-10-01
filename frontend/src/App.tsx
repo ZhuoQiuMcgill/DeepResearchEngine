@@ -407,7 +407,7 @@ export default function App() {
       status: "running",
       message:
         node.data.role === "Searcher"
-          ? "Searching public web results, then processing with the local model…"
+          ? "Starting Engine node; model and tool activity will appear below…"
           : "Processing upstream results with the local model…",
       details,
       time: new Date().toISOString(),
