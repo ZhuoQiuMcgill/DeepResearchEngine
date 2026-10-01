@@ -141,3 +141,11 @@ connection modules communicate through Python interfaces.
 
 - [Working on projects](https://docs.astral.sh/uv/guides/projects/)
 - [Locking and syncing](https://docs.astral.sh/uv/concepts/projects/sync/)
+
+## Visual workflow UI
+
+The editable INSE 691 console is in [frontend](frontend/README.md). Start the
+existing Python RunService on port 8765 and the UI on port 5180. It uses the
+public run, event, artifact and usage interfaces, with no direct Storage or
+provider access from the browser. See that guide for model profile setup,
+run controls, saved history and current orchestration boundaries.
