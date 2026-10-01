@@ -8,6 +8,15 @@
 - Project ID: `464b5ccb-4cd7-495b-9ba8-beffc4e9e7e7`.
 - Workspace: `D:\Projects\DeepResearchEngine`.
 
+## Shared repository
+
+- Private GitHub repository: https://github.com/ZhuoQiuMcgill/DeepResearchEngine
+- Shared checkout branch: `main`.
+- Initial baseline commit: `7dafa7b`.
+- Account attribution: `ZhuoQiuMcgill`, using its account-linked noreply identity.
+- PM alone manages the shared Git index, commits, branch changes, and pushes.
+- All leaders must read root `CONTRIBUTING.md` before resuming owned edits.
+
 These identifiers were verified through the app's thread listing when the
 team specs were created. There is another PM chat in a different project;
 use this exact chat ID, not a title-only match.

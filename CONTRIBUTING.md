@@ -7,6 +7,7 @@ spec, and these rules before changing files.
 
 - Use uv and Python 3.11+. The initial shared development interpreter is Python 3.11.15.
 - Use the committed `pyproject.toml`, `.python-version`, and `uv.lock`.
+- Follow `.gitattributes` for consistent text line endings across Windows and other hosts.
 - Run project commands through `uv run --locked`; synchronize with `uv sync --locked`.
 - Do not use globally installed Python or independently modify project dependencies.
 - Send dependency/version requests to PM. PM updates the manifest and lockfile together; teams synchronize after that commit.

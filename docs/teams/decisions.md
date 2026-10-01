@@ -114,3 +114,16 @@ backports. Storage must propose a patched-runtime check before enabling
 concurrent WAL, or explicitly justify a topology outside those trigger
 conditions. No runtime upgrade, database change, or bug reproduction was
 performed during design.
+
+## 2026-09-30: Private repository initialized
+
+Created `ZhuoQiuMcgill/DeepResearchEngine` as a private repository using the
+existing authenticated GitHub CLI account. The shared branch is `main`;
+initial local baseline is `7dafa7b`. Author/committer use the account-linked
+noreply identity. `local/.env`, local configuration, caches/environments, and
+downloaded package metadata were excluded. Active team outputs were left
+outside the baseline. `.gitattributes` standardizes text line endings.
+
+All four leaders received the contribution rules and a temporary document
+write hold while PM publishes the baseline. Their read-only research can
+continue; PM releases owned edits after verifying the remote and push.
