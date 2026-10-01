@@ -1,8 +1,10 @@
 # EBD DeepResearch Engine
 
 A group-project execution platform for Environment-Based Design deep research.
-The Python environment is configured; the four execution modules below are
-still to be implemented.
+The runnable platform provides independent Agent Runtime, CLI Toolset,
+Storage and Connections modules. Strategy is application code built on their
+public interfaces. Development now runs in one chat with in-chat subagents;
+the earlier cross-session team design is retained as historical context.
 
 ## Environment
 
@@ -22,8 +24,10 @@ Add a runtime dependency with `uv add PACKAGE`, or a development dependency
 with `uv add --dev PACKAGE`. Commit the resulting changes to `pyproject.toml`
 and `uv.lock` together. Run Python programs through `uv run --locked`.
 
-The current environment has no third-party dependencies. Each execution module
-will add the dependencies needed for its real implementation.
+Runtime dependencies and development checks are pinned in the lockfile.
+Credentials belong in ignored `local/.env`; `.env.example` lists the variable
+names. API values are loaded lazily and never included in worker requests or
+serializable configuration.
 
 ## Platform scope
 
@@ -32,27 +36,80 @@ will add the dependencies needed for its real implementation.
 3. Storage and recording: persist state, artifacts, and automatic execution events.
 4. Connections: bind agents to models, tools, storage, and permitted agent invocations.
 
-## Team design work
+## Runnable entry points
+
+```shell
+uv sync --locked
+uv run --locked pytest -q
+uv run --locked ebd tools
+uv run --locked ebd tool scholar.crossref.search --arguments '{"query":"Environment Based Design","max_results":3}'
+uv run --locked ebd --store local/ebd-baseline-store baseline
+```
+
+PowerShell can pipe a single-quoted JSON string to `ebd tool NAME` when command
+argument quoting is inconvenient. All registered commands use fixed argv,
+strict JSON and real subprocesses; the host records committed intent before
+dispatch and outcome after cleanup. A tool run does not open a model.
+
+The baseline generates a real DeepSeek report for the exact question
+`What is EBD (Environment Based Design)`, with platform function tools as its
+only research mechanism. It exports report, citations, request audit, trace,
+terminal checkpoint and byte-identical reopen verification under
+`local/runs/<run_id>/`. Failed runs retain their actual diagnostics.
+
+See [Connections](docs/usage/connections.md),
+[Agent Runtime and providers](docs/usage/agents.md),
+[Storage](docs/usage/storage.md), and [CLI tools](docs/usage/tools.md).
+Start a custom application with [examples/research.py](examples/research.py).
+Bounded provider checks are in
+[examples/live_provider_check.py](examples/live_provider_check.py).
+
+```mermaid
+flowchart TD
+    Application[Research or strategy application] --> Connections[Connections Engine]
+    Connections --> Runtime[Agent Runtime]
+    Connections --> Toolset[CLI Toolset]
+    Connections --> Storage[Storage and activity recording]
+    Runtime --> Providers[DeepSeek / GPT Responses / vLLM Qwen]
+    Runtime --> Toolset
+    Runtime --> Storage
+    Toolset --> Workers[Fixed argv JSON workers]
+    Toolset --> Storage
+    Connections --> Child[Permitted child Runtime invocation]
+```
+
+Storage owns state CAS, immutable artifacts/snapshots/checkpoints and event
+receipts. CLI workers receive bounded inputs and prepared evidence, with
+Storage publication mediated by their parent. Connections owns trusted
+configuration, grants, lineage budgets, leases and result export. The Runtime
+owns native model/tool pairing, admission and execution lifecycle.
+
+Local vLLM Qwen requires a configured deployment manifest and a deployed
+service; live verification remains pending on this machine. API checks depend
+on the configured account's model access and available credit.
+
+## Design references
 
 All teams follow [CONTRIBUTING.md](CONTRIBUTING.md): one uv/lockfile
 environment, assigned file ownership, GitHub account attribution through a
 noreply identity, and PM-only staging/commits/pushes in the shared checkout.
 
-The current phase is design and research. Team leaders start with
+The reviewed designs are indexed by
 [the team spec index](docs/teams/README.md), the shared platform draft, and
-their module spec. `AGENTS.md` routes a prompt such as "You are the leader
-of CLI Toolset team, now read your spec" to the right documents.
+their module spec. `AGENTS.md` defines current in-chat source ownership.
+See [platform acceptance](docs/platform-acceptance.md) for completed checks,
+the saved report and outstanding live-provider verification.
 
-The CLI Toolset team researches free, open-source search and fetch tools
-and reports its comparison to the PM chat. PM selects the combination after
-reviewing that evidence. Initial design selection: DDGS search, HTTPX
-retrieval, Trafilatura HTML extraction, and pypdf text-PDF extraction. DDGS
-is replaceable and best-effort; research-task availability remains unverified.
-Shared contracts and runtime implementation are still pending.
+The selected tools use DDGS Yahoo discovery, separate Crossref/OpenAlex
+scholarly discovery, HTTPX retrieval, Trafilatura HTML extraction and pypdf
+text-PDF extraction. Google remains disabled pending the URL-fidelity gate.
+Discovery availability is best effort; source access failures and quota limits
+remain explicit. OpenAlex reservations and settlement survive Engine restart
+through normal Storage state.
 
 ## CLI tool contract
 
-This is a draft design contract, subject to cross-team review.
+Executable shared values live in `src/ebd/contracts/`.
 
 - Register each tool's name, description, input/output schemas, command arguments, and execution limits.
 - Accept one UTF-8 JSON request on standard input.

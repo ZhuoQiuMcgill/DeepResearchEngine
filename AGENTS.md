@@ -1,43 +1,33 @@
-# EBD DeepResearch team entry point
+# EBD DeepResearch implementation entry point
 
-The user is organizing separate chats as module teams, with the existing PM
-chat coordinating their work. If asked "You are the leader of <team> team,
-now read your spec", use the routing table below. Do not ask the user to
-repeat the project background.
+The user ended cross-session development coordination. Development now happens
+in the current root chat and its in-chat subagents. Do not contact or dispatch
+work to the former module-team chats. Their reviewed documents remain design
+references, not active work assignments.
 
-Read these first:
+Current work is implementation and real verification of the reviewed platform,
+following the user's direction to take over development here and the existing
+goal to generate the EBD baseline report. Do not stop at design handoffs.
 
-Read `CONTRIBUTING.md` for the shared environment, GitHub identity, file
-ownership, and PM-only Git operations. Teams must not stage, commit, push,
-pull, switch branches, or change Git configuration in the shared checkout.
+Read `CONTRIBUTING.md`, `docs/teams/platform-contract-v1.md`,
+`docs/teams/baseline-acceptance.md` and the relevant module design under
+`docs/teams/designs/`. Root assigns exclusive source/test paths to subagents
+and owns shared contracts, integration, dependencies and Git.
 
-1. `docs/teams/README.md`
-2. `docs/teams/shared-platform.md`
-3. `docs/teams/coordination.md`
-4. `docs/teams/platform-contract-v1.md`
-5. `docs/teams/missions.md`
-6. Your team's spec below.
-
-| Team name / aliases | Team spec |
+| Owner | Paths |
 | --- | --- |
-| Agent Container / Agent Runtime / Agent | `docs/teams/agent-container.md` |
-| CLI Toolset / CLI Tool Set / Toolset / Tools | `docs/teams/cli-toolset.md` |
-| Storage / Records | `docs/teams/storage.md` |
-| Connections / Connection / Connection Interface | `docs/teams/connections.md` |
-| PM / Project Manager | `docs/teams/coordination.md` |
+| Agent/runtime subagent | `src/ebd/agent/`, `src/ebd/providers/`, `tests/agent/`, `tests/providers/`, `docs/usage/agents.md` |
+| Toolset subagent | `src/ebd/toolset/`, `tests/toolset/`, `docs/usage/tools.md` |
+| Storage subagent | `src/ebd/storage/`, `tests/storage/`, `docs/usage/storage.md` |
+| Root | Shared contracts, Connections, package/CLI composition, baseline, integration tests, environment, project docs and Git |
 
-Current phase: design and tool research. The user explicitly said not to rush
-implementation before the design is finished. Reading a spec authorizes its
-current design/research assignment, not implementation of its future module.
-The shared interfaces are drafts. Complete the current assignment and send
-its report to PM using the coordination instructions.
+Use uv and Python 3.11+. Only root edits the manifest/lockfile and performs Git
+writes. Subagents must not stage, commit, push, change branches or overwrite
+another owner's files. Request shared-interface changes through in-chat
+collaboration and continue independent work. Send only coordination needs and
+completed handoffs; no routine acknowledgments or check-ins.
 
-Keep changes within your team's owned documents. PM owns this file, shared
-specs, the decision log, and project dependency files. Do not modify another
-team's files; propose cross-team changes to PM. Never expose values from
-`local/.env` in messages, documents, traces, or command output.
-
-The development environment is uv and Python 3.11+. Eventual platform
-handoffs must execute real models/tools/storage; mock replies are not a
-deliverable. The local vLLM Qwen service is not deployed on this machine,
-so its live verification must remain explicitly pending.
+Handoffs must run real models/tools/storage. Controlled fault tests do not
+replace live acceptance. Never expose values from `local/.env` in messages,
+documents, traces or command output. Local vLLM Qwen is not deployed here;
+implement its configurable connector and retain explicitly pending live tests.

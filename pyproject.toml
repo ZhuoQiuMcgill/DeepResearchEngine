@@ -4,4 +4,29 @@ version = "0.1.0"
 description = "An execution platform for Environment-Based Design deep research agents."
 readme = "README.md"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "httpx==0.28.1",
+    "ddgs==9.16.0",
+    "trafilatura==2.2.0",
+    "pypdf==6.19.0",
+    "jsonschema>=4.23,<5",
+    "python-dotenv>=1,<2",
+    "pydantic>=2.10,<3",
+]
+
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ebd"]
+
+[project.scripts]
+ebd = "ebd.cli:main"
+
+[dependency-groups]
+dev = ["pytest>=8,<10", "pytest-asyncio>=0.24,<2"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"

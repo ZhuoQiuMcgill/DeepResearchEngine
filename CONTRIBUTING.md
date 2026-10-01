@@ -1,7 +1,8 @@
 # Shared environment and contribution rules
 
-All four module teams work in the same checkout. Read `AGENTS.md`, your team
-spec, and these rules before changing files.
+The current root chat and its in-chat subagents work in this checkout.
+Cross-session development coordination ended at the user's direction.
+Read `AGENTS.md`, the accepted module designs, and these rules before edits.
 
 ## Environment
 
@@ -10,7 +11,7 @@ spec, and these rules before changing files.
 - Follow `.gitattributes` for consistent text line endings across Windows and other hosts.
 - Run project commands through `uv run --locked`; synchronize with `uv sync --locked`.
 - Do not use globally installed Python or independently modify project dependencies.
-- Send dependency/version requests to PM. PM updates the manifest and lockfile together; teams synchronize after that commit.
+- Send dependency/version requests to root. Root updates the manifest and lockfile together.
 - Keep research trials in ignored scratch environments. Trial dependencies do not become platform dependencies automatically.
 - Keep `local/.env`, machine configuration, generated databases/artifacts, environments, and caches out of Git. Only placeholder examples may be checked in.
 
@@ -24,7 +25,7 @@ uv --cache-dir .uv-cache run --locked --offline python --version
 ```
 
 Offline synchronization requires cached dependencies. Report missing packages
-to PM; do not silently change versions. SQLite runtime requirements for WAL
+to root; do not silently change versions. SQLite runtime requirements for WAL
 are recorded in the design decision log; Python version support alone does
 not establish a suitable SQLite build.
 
@@ -38,7 +39,7 @@ not establish a suitable SQLite build.
 
 ## One shared checkout, one Git writer
 
-PM is the only session that stages, commits, pulls, merges, changes branches,
+Root is the only writer that stages, commits, pulls, merges, changes branches,
 or pushes in this shared checkout. Teams edit only their assigned files and
 report exact paths and validation evidence. PM stages completed paths,
 checks the diff, commits, and pushes sequentially.
@@ -48,9 +49,8 @@ Teams must not run `git add`, `commit`, `push`, `pull`, `checkout`, `switch`,
 Read-only `git status`, `diff`, and `log` are allowed. Do not revert another
 team's edits or stage the entire checkout.
 
-The shared branch is `main` during design. If implementation later benefits
-from separate branches/worktrees, PM first assigns isolated checkouts and an
-integration sequence. Do not switch branches underneath another session.
+The shared branch is `main`. Subagents work in exclusive paths and root
+integrates sequentially. Do not switch branches underneath another writer.
 
 ## File ownership
 
@@ -64,8 +64,9 @@ integration sequence. Do not switch branches underneath another session.
 
 Cross-team changes go to PM as proposals. Read the latest shared documents
 before drafting against an interface; do not overwrite them with stale copies.
-Implementation paths will be assigned before implementation begins. Current
-work remains design/research.
+The table above records historical design ownership. Current executable
+source/test ownership is assigned in `AGENTS.md`; root may refine assignments
+through in-chat collaboration. Current work is implementation and verification.
 
 ## Completed contribution handoff
 
