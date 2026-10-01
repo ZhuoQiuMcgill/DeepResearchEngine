@@ -37,10 +37,13 @@ $ebdDefinition = @{
     schema_version = 1
     agent_id = 'console-quickstart'
     revision = 1
-    instructions = 'Call scholar.crossref.search once with the supplied query and max_results=2. Summarize the returned titles and DOI links. Label this as bibliographic metadata; do not claim to have read full text.'
+    instructions = 'Call scholar.crossref.search once with the supplied query and max_results=2. Return Markdown summarizing the returned titles and DOI links. Label this as bibliographic metadata; do not claim to have read full text.'
     profile_ref = 'deepseek'
     model_ref = 'deepseek-flash'
     allowed_tools = @(@{ name = 'scholar.crossref.search'; revision = 1 })
+    output_mode = 'text'
+    output_media_type = 'text/markdown'
+    output_schema = @{ type = 'string' }
     limits = @{
         max_run_seconds = 180
         max_model_seconds = 45
@@ -53,6 +56,7 @@ $ebdDefinition = @{
 $ebdRegistered = Invoke-RestMethod "$ebdApi/agents" -Method Post `
     -ContentType 'application/json' -Body ($ebdDefinition | ConvertTo-Json -Depth 10)
 $ebdRegistered.agent_ref
+$ebdReportExtension = 'md'
 ```
 
 Registration returns HTTP 201 and the agent reference. Registration alone makes
@@ -60,6 +64,61 @@ no model call. Repeat the same definition/revision to reuse it; changed content
 needs a new revision. Definitions are process-local and must be registered on
 each service startup. A frontend can offer registration; an application can
 also register its definitions in trusted Python configuration.
+
+The three output fields above explicitly select the defaults: Markdown text,
+validated as a string. `output_media_type` labels the saved artifact; the string
+schema does not validate Markdown syntax. Changing the output mode, media type
+or schema under the same agent ID requires a new `revision`. Inspect the saved
+definition through `GET /api/v1/agents`.
+
+### Register structured JSON output instead
+
+After the registration block above, optionally run this alternative. It reuses
+the same profile, tools and execution limits under a different agent ID, and
+sets `$ebdRegistered` so the remaining walkthrough starts this JSON agent.
+
+```powershell
+$ebdJsonDefinition = $ebdDefinition.Clone()
+$ebdJsonDefinition.agent_id = 'console-quickstart-json'
+$ebdJsonDefinition.instructions = 'Call scholar.crossref.search once with the supplied query and max_results=2. Return only a JSON object, without Markdown fences or commentary, with kind="bibliographic_metadata" and entries containing title (string) and doi (string or null) for each result. Include no other fields and use null for an unavailable DOI. Do not claim to have read full text.'
+$ebdJsonDefinition.output_mode = 'json'
+$ebdJsonDefinition.output_media_type = 'application/json'
+$ebdJsonDefinition.output_schema = @{
+    type = 'object'
+    properties = @{
+        kind = @{ type = 'string'; const = 'bibliographic_metadata' }
+        entries = @{
+            type = 'array'
+            maxItems = 2
+            items = @{
+                type = 'object'
+                properties = @{
+                    title = @{ type = 'string' }
+                    doi = @{ type = @('string', 'null') }
+                }
+                required = @('title', 'doi')
+                additionalProperties = $false
+            }
+        }
+    }
+    required = @('kind', 'entries')
+    additionalProperties = $false
+}
+$ebdRegistered = Invoke-RestMethod "$ebdApi/agents" -Method Post `
+    -ContentType 'application/json' -Body ($ebdJsonDefinition | ConvertTo-Json -Depth 10)
+$ebdRegistered.agent_ref
+$ebdReportExtension = 'json'
+```
+
+JSON mode requires `application/json` and a JSON Schema for the parsed value.
+The Runtime parses and validates the final response locally before publishing
+successful output. Invalid JSON or a schema mismatch produces
+`status="validation_failed"` with no successful `output_ref`; these HTTP fields
+do not enable provider-native strict schema enforcement. Use the three flat
+HTTP fields shown here, not `output_format` or the Python-only
+`AgentDefinition.output_contract`. See the
+[output contract reference](service.md#agent-output-format) for validation,
+artifact and Python differences.
 
 ## 3. Start and observe a real run
 
@@ -129,7 +188,7 @@ try {
         $ebdOffset = $ebdChunk.next_offset
     } until ($ebdChunk.eof)
     New-Item -ItemType Directory -Force local/client-reports | Out-Null
-    $ebdReportPath = Join-Path (Get-Location) "local/client-reports/$ebdRunId.md"
+    $ebdReportPath = Join-Path (Get-Location) "local/client-reports/$ebdRunId.$ebdReportExtension"
     [System.IO.File]::WriteAllBytes($ebdReportPath, $ebdBytes.ToArray())
     Get-Item -LiteralPath $ebdReportPath | Select-Object FullName,Length
 } finally {
