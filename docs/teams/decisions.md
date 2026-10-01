@@ -156,8 +156,11 @@ precede teammate acceptance/experiments; those gates have not passed.
 
 Preserve content-decoded original response bytes with representation/encoding
 metadata, hashes, and extractor versions/options; derive text from the same
-retained body. This does not claim wire-byte retention. Initial scope stays
-static HTML and unencrypted text PDFs, without browsers or OCR.
+retained body. This does not claim wire-byte retention. Initial scope covers
+static HTML, ordinary plain text and unencrypted text PDFs, without browsers
+or OCR. Plain-text decoding/normalization uses the same retained HTTP body;
+no additional fetch service or dependency is needed. PM explicitly aligned
+this media choice with the common acceptance gate during mission review.
 
 Local SearXNG was untested and one public request returned 429: greater
 administrative control is supported, better reliability is not. The corpus
