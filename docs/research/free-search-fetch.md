@@ -1,12 +1,69 @@
 # Free search, retrieval, HTML and PDF research
 
-CLI Toolset team, 2026-09-30 (America/Toronto). **Research complete; PM has selected the initial design stack. Transport, shared schemas/limits and implementation remain pending approval.** Sources below were checked on this date. Package versions are the latest non-prerelease releases found, not a promise of stability. HTTPX still declares a Beta development classifier.
+CLI Toolset team, 2026-09-30 (America/Toronto). **Complete v1 research/design revision; production implementation remains pending phase authorization.** Sources below were checked on this date. Package versions are the latest non-prerelease releases found, not a promise of stability. HTTPX still declares a Beta development classifier.
 
-## PM selection and research recommendation
+Historical expanded evidence: Google/DDG returned 9/48 result sets and failed all 18 EBD calls. Stock Google query-URL parsing failed two controlled cases. PM selected the revised Yahoo/conditionally enabled Google and separate scholarly design below; its runtime, availability and fidelity gates remain unverified.
 
-PM selected **DDGS 9.16.0 + HTTPX 0.28.1 + Trafilatura 2.2.0 + pypdf 6.19.0** for the initial design, matching this report's recommendation. The decision is recorded in [decisions.md](../teams/decisions.md) and the [team brief](../teams/cli-toolset.md); it does not authorize production dependencies or implementation. All four installed and executed on Windows x64 with CPython 3.11.15 in an isolated uv environment without required API keys, browsers or OCR. HTML/PDF retrieval and extraction worked on the small public corpus. Search is the weak point: **5 of 12 DDGS attempts across three queries/four modes** returned results; all four attempts for the niche technical query failed. These are repeated modes over three queries, not validated research-task coverage.
+## PM-selected coordinated discovery revision
 
-DDGS is a **replaceable, best-effort development backend**. PM's initial configuration is explicit **Google then DuckDuckGo**, with named backend outcomes, centrally bounded fallback, unsupported-filter rejection and visible outages. Avoid silent automatic merging and the zero-success Brave profile. Google and DuckDuckGo returned useful candidates in these trials; generic failures do not establish a specific rate-limit/blocking cause. Representative-task availability and URL-fidelity checks must pass before teammate acceptance or experiments; those gates have not passed. Initial source scope is static HTML and unencrypted text PDFs. Preserve content-decoded source bytes, encoding/representation metadata and hashes, deriving text from that same retained response.
+PM has now selected the revised bounded design after reviewing the complete
+report, checking saved-document/evidence hashes and obtaining an independent
+contract/primary-doc review. This selects capabilities, not runtime
+implementation or reliability acceptance. No new probes were run for this
+coordinated document revision.
+
+- Keep DDGS 9.16.0 + HTTPX 0.28.1 + Trafilatura 2.2.0 + pypdf 6.19.0.
+- General web.search uses Yahoo primary (its adapter declares Bing), with
+  corrected Google fallback at most one call per named backend/worker attempt.
+  Google stays disabled until integrated raw-wrapper fidelity acceptance;
+  four isolated parser cases do not prove live fidelity or availability.
+  DDG is optional reviewed config, no default/auto/hidden merge.
+- Register separate scholar.crossref.search@1 and scholar.openalex.search@1,
+  closed query/max_results inputs, fixed provider and one bounded anonymous
+  metadata request each. No pages/retry/query rewriting or enforced ignored
+  filters. Strategy supplies literal keywords/quoted phrases.
+- Discovery-only results preserve actual provider/query/time/rank and DOI,
+  work/member/publisher/landing/OA-location identities. They do not establish
+  general web coverage, verified source quotes or full-text access. Source
+  evidence still needs web.fetch plus saved document.read.
+- Crossref public list pacing <=1/s per owned executor, narrowing on headers.
+  OpenAlex anonymous local allowance <=0.10 USD/day with 0.001 USD/keyword
+  reservation and remote-header narrowing; stop on exhaustion/429, no paid
+  escalation/key acquisition. Local counters do not control other hosts or
+  the full provider allowance. Current documented policy and prior actual
+  anonymous responses are distinct evidence.
+
+The [full CLI design](../teams/designs/cli-toolset-design.md) contains exact
+closed payload/observation/error schemas, private plan mapping, ownership,
+encoded response/time limits and quota/cancellation semantics. Existing generic
+ToolExecutionResult, ToolStoragePlan and Container recording path apply;
+scholarly tools acquire no Storage publication rights or model session.
+
+The final coordinated protocol correction closes a success-path gap identified
+in PM review: both prepared and failed scholarly workers now carry the same
+bounded allowlisted remote limit/cost/reset/Retry-After header captures. The
+parent alone parses these into a closed remote observation and uses them to
+narrow pacing/admission and update its own quota ledger. Missing and malformed
+evidence remain distinct unknowns; known zero remains zero. No worker local
+balance/grant/reservation/admission authority, inferred credit conversion or
+invented billing. The design adds a future HTTP200-narrowing/failure-malformed/
+worker-local-forgery protocol vector; it has not run here. Prior HTTP200 captures
+show why the facts need transport; they do not validate this future protocol.
+
+All observations below remain unchanged and historical: Google/DDG 9/48 and
+0/18 EBD, stock parser failure, Yahoo's single 3/4 pass, metadata relevance and
+403/source-access limitations. The revised Yahoo profile needs repeated
+representative and query/escape/plus fidelity checks; Google needs integrated
+controlled/live fidelity and separate availability; scholarly tools need
+identity/relevance/quota/error/source-follow-through checks. These are future
+gates, not passed by PM selection or a single anonymous 200 run.
+
+
+## Initial PM selection and research recommendation
+
+PM selected **DDGS 9.16.0 + HTTPX 0.28.1 + Trafilatura 2.2.0 + pypdf 6.19.0** for the initial design, matching the initial recommendation; the expanded evidence and revised conditional recommendation are below. The decision is recorded in [decisions.md](../teams/decisions.md) and the [team brief](../teams/cli-toolset.md); it does not authorize production dependencies or implementation. All four installed and executed on Windows x64 with CPython 3.11.15 in an isolated uv environment without required API keys, browsers or OCR. HTML/PDF retrieval and extraction worked on the small public corpus. Search is the weak point: **5 of 12 DDGS attempts across three queries/four modes** returned results; all four attempts for the niche technical query failed. These are repeated modes over three queries, not validated research-task coverage.
+
+DDGS is a **replaceable, best-effort development backend**. PM's initial configuration is explicit **Google then DuckDuckGo**, with named backend outcomes, centrally bounded fallback, unsupported-filter rejection and visible outages. Avoid silent automatic merging and the zero-success Brave profile. Google and DuckDuckGo returned useful candidates in these trials; generic failures do not establish a specific rate-limit/blocking cause. Representative-task availability and URL-fidelity checks must pass before teammate acceptance or experiments; those gates have not passed. PM-selected source scope is static HTML, ordinary text/plain and unencrypted text PDFs. Preserve content-decoded source bytes, encoding/representation metadata and hashes, deriving text from that same retained response.
 
 **SearXNG + the same fetch/extraction/PDF stack** is an alternative for centralized administrative control if the group accepts maintaining a Linux service. Better reliability is unproven: it was not deployed locally, and a single public-instance JSON trial returned HTTP 429. This report does not recommend depending on an arbitrary free public instance. SearXNG's upstream search engines can still block requests.
 
@@ -185,17 +242,290 @@ Body integrity evidence:
 | Documentation | `3387d642a52ab4efb614bb79dd8b4f217dd30ebc6c3e37aede64ed60407f033d` |
 | PDF | `60b30efa1048900833d1758440247fe8ac85a3134f2327388dcb24e07d814c89` |
 
-### Explicitly untested
+### Earlier baseline limits (before expanded study below)
 
 Sustained search availability/rate limits, paging stability, date/language/region correctness, backend fallback recovery under load, public-host privacy/maintenance guarantees, local SearXNG, ddgr, Playwright/JS pages, encrypted/scanned/malformed PDFs, OCR, arbitrary encodings, bot/login detection, error-status retrieval, adversarial compressed inputs, memory quotas, cancelled process trees and persistent Storage integration were not verified. There were no mock results, model calls or provider API tests; the undeployed local vLLM Qwen verification remains pending outside this assignment.
 
-## Remaining decisions and acceptance gates
 
-1. Define and pass representative research-task availability and URL-fidelity checks for the selected Google-then-DuckDuckGo profile before teammate handoff or experiments. Include niche/domain tasks and URLs with query parameters; criteria remain to be agreed. Existing trials do not satisfy the gate.
-2. Reconcile explicit per-engine provenance, bounded fallback accounting and the supported filter subset. Reject unsupported filters; label post-discovery hostname filtering without claiming an upstream guarantee.
-3. Reconcile byte/decompression bounds and safe metadata for PM's selected content-decoded original-body preservation; exact wire capture is not claimed.
-4. Determine limits/process memory policy within the selected static-HTML and unencrypted-text-PDF scope; browsers/OCR remain excluded.
-5. Reconcile scoped Storage access, complete snapshot-bundle finalization, immutable locators and lifecycle recording using the separate [CLI design](../teams/designs/cli-toolset-design.md). Search/fetch selection does not depend on choosing its transport now.
-6. Audit the selected resolved dependency/wheel license closure before teammate distribution; PM owns dependency/lockfile changes after approval.
+## Historical Google/DDG named-backend study and URL fidelity
 
-Project dependency integrity baseline, rechecked at delivery: `pyproject.toml` SHA-256 `054F4CE51130E1BBD8072FA3B3FFA40D2A3C77397016BFD45735CDD41234D7FD`; `uv.lock` SHA-256 `38CBB937D8DF92930FC872F65A57FB15FFD5E9F53CACFF7E7778C365B1FA7073`. The workspace did not resolve as a Git repository at trial startup. PM subsequently initialized the private repository during this assignment; read-only Git status now identifies the team's owned drafts. Hashes verify the dependency files remained intact. CONTRIBUTING.md was read; this team performs no Git/index/branch mutations.
+Completed 2026-09-30 Toronto (UTC 2026-10-01). This is isolated public-tool
+research, not platform implementation, a model run or Storage acceptance.
+Same installed CPython 3.11.15/Windows x64 and selected package versions;
+primp 2.0.1/lxml 6.1.3. The script and captured manifest/results/bodies remain
+in ignored .uv-cache/cli-toolset-research/. No credentials/env file were read.
+
+Reproduce from workspace with the already uv-provisioned isolated interpreter:
+
+```powershell
+& '.\.uv-cache\cli-toolset-research\.venv\Scripts\python.exe' '.\.uv-cache\cli-toolset-research\named_study.py'
+& '.\.uv-cache\cli-toolset-research\.venv\Scripts\python.exe' '.\.uv-cache\cli-toolset-research\plain_text_probe.py'
+& '.\.uv-cache\cli-toolset-research\.venv\Scripts\python.exe' '.\.uv-cache\cli-toolset-research\alternative_study.py'
+& '.\.uv-cache\cli-toolset-research\.venv\Scripts\python.exe' '.\.uv-cache\cli-toolset-research\alternative_followthrough.py'
+```
+
+These scripts append research evidence; preserve/archive their output directories
+before another run so counts cannot silently combine. These are actual research
+commands, not installed ebd CLI commands. The prior uv setup/version freeze is
+above; project dependencies were not installed or changed.
+
+Three runs each test eight fixed queries against Google and DuckDuckGo
+independently: 48 DDGS calls, max_results=5,page=1,region=us-en,safesearch=moderate.
+The DDG setting does not prove safesearch enforcement. DDGS timeout=8s,
+outer process ceiling=25s, 3s between searches and 120s between runs. No auto,
+wrapper retry or fallback was executed. Library-internal HTTP counts remain
+unknown. Named engines have random upstream behavior/UA; results are observations
+on this host, not deterministic output or uptime estimates.
+
+| Run | UTC start–finish (2026-10-01) | Returned / 16 calls |
+| --- | --- | ---: |
+| 1 | 03:12:57.688–03:13:57.272 | 1 |
+| 2 | 03:15:57.269–03:16:58.712 | 4 |
+| 3 | 03:18:58.710–03:20:01.967 | 4 |
+
+| Case and exact query | Google successes / 3 | DDG successes / 3 |
+| --- | ---: | ---: |
+| General: renewable energy storage | 2 | 3 |
+| Technical: Python asyncio TaskGroup cancellation | 1 | 0 |
+| Technical domain: site:docs.python.org asyncio TaskGroup | 1 | 0 |
+| EBD general: Environment Based Design Yong Zeng | 0 | 0 |
+| EBD niche: "Environment Based Design" contradiction requirements | 0 | 0 |
+| EBD domain: site:concordia.ca "Environment Based Design" | 0 | 0 |
+| Standard domain: site:rfc-editor.org RFC 9110 HTTP Semantics | 1 | 0 |
+| URL topic: Python urllib.parse parse_qs documentation | 1 | 0 |
+
+Overall **9/48 returned results, 39/48 DDGSException failures** reporting no
+results. Google 6/24, DDG 3/24; all **18 EBD calls failed**. Median search
+elapsed .5575s, range .250–.900s, measured inside each research worker and excluding outer process startup. Two successful domain cases each returned five matching hosts;
+the other domain attempts were unavailable. This does not prove filter support.
+A hypothetical either-backend availability calculation covers seven of 24
+query/run pairs; it is not an executed fallback test. Repeated short runs in
+one time window do not establish long-term or multi-host reliability.
+
+There were 43 returned result rows, 28 distinct URLs. All 53 raw Google
+post-extraction href observations were wrappers with no destination query;
+the unchanged stock postprocessor preserved those 53 targets. Zero observed
+query-bearing targets is **missing live query-fidelity coverage**, not a passed
+parameter test. First-ranked result was fetched for each successful call:
+nine fetches, nine completed HTTP responses, no redirect or HTTPX request-URL
+normalization change. Eight HTTP 200 HTML extractions had text; the technical
+Stack Overflow source returned 403. All nine retained bodies were hashed;
+the eight extracted texts were verified from saved same-response captures.
+
+| Rank-one source observation | Retained body bytes | Text UTF-8 bytes | Status |
+| --- | ---: | ---: | --- |
+| Canadian renewable association, run 1 DDG | 98,460 | 2,250 | 200 |
+| Grid energy storage Wikipedia, run 2/3 Google | 442,819 each | 35,506 each | 200 |
+| Energy storage Wikipedia, run 2/3 DDG | 834,373 each | 75,978 each | 200 |
+| Stack Overflow task cancellation, run 2 Google | 5,332 | 0 | 403 |
+| Python asyncio docs, run 2 Google | 177,639 | 42,481 | 200 |
+| RFC info page, run 3 Google | 4,788,631 | 5,127 | 200 |
+| Python urllib.parse docs, run 3 Google | 110,963 | 26,476 | 200 |
+
+Sample coverage is rank one only; other discoveries were not all fetched.
+Classification is heuristic/main-text presence, not proof of quote/semantic
+fidelity. The research process timeout/capture_output is a probe convenience,
+not the production bounded pump/Job Object design or cleanup evidence.
+
+### Controlled stock Google parser failure and correction candidate
+
+Installed [Google adapter at the selected tag](https://github.com/deedy5/ddgs/blob/v9.16.0/ddgs/engines/google.py)
+splits wrapped href at ampersand and then question mark, dropping destination
+query; it does not decode the outer encoded target. These actual method calls
+use controlled values, separately from real search evidence:
+
+| Controlled input | Expected destination | Stock actual | Exact |
+| --- | --- | --- | --- |
+| https://example.org/article?edition=2&lang=en | same URL | same URL | yes |
+| /url?q=https://example.org/article?edition=2&sa=U | https://example.org/article?edition=2 | https://example.org/article | no |
+| /url?q=https%3A%2F%2Fexample.org%2Farticle%3Fedition%3D2&sa=U | https://example.org/article?edition=2 | https%3A%2F%2Fexample.org%2Farticle%3Fedition%3D2 | no |
+
+Stock exact fidelity is **1/3**, so the gate fails despite live no-query URLs
+working. A bounded candidate parses the raw outer q once using urllib.parse
+before stock postprocessing discards information. Four isolated cases preserve
+direct, wrapped query, encoded wrapper and a multi-parameter destination with
+literal %26/%2B exactly (4/4). The last expected destination is
+https://example.org/article?edition=2&lang=en&literal=%26&plus=a%2Bb.
+Reject duplicate q or ambiguous unescaped outer parameters; do not double-decode
+destination escapes. This establishes feasibility on four fixtures, not a
+production patch, full malformed-input suite or live query-target acceptance.
+It cannot recover information from an already damaged returned href.
+
+### Ordinary text/plain same-body evidence
+
+One bounded GET of [RFC 9110 plain text](https://www.rfc-editor.org/rfc/rfc9110.txt)
+at 03:15:04.232–03:15:04.482 UTC returned 200, text/plain;charset=utf-8, no redirect,
+502,941 content-decoded bytes. Strict UTF-8 decoding agrees with the declared
+charset; the three-byte initial UTF-8 BOM was removed, CRLF/CR-to-LF policy
+applied (both counts zero). Text is 502,938 UTF-8 bytes, 10,785 logical lines.
+The saved-buffer range [1,201) contained 7,014 bytes, under 64 KiB. It is a
+research slice, not Storage authorization/continuation proof.
+
+Original SHA-256: 21c1cdce6ab0e5509b04d84a28000836c7a087cf786efe6f04877ebfff47232a.
+Canonical text SHA-256: ad3b38b7806783d5066714f7ac9aadcba8cec1605a400c7380173737a8adf902.
+Binary byte writes preserve the original and canonical text exactly. No second
+fetch/extraction was used. Non-UTF-8/UTF-16/binary and declared-charset conflict
+cases remain untested; their explicit design failures are in the CLI design.
+
+## Bounded alternatives after selected-backend outages
+
+PM authorized comparison, not candidate adoption. Same isolated environment.
+Twelve more DDGS calls test Mojeek/Yahoo/Startpage on the general, technical,
+EBD general and EBD niche cases above, once each, 3s apart, with the same
+result/deadline settings. Installed enabled registry was verified first:
+Bing/Yandex are disabled, so naming them could silently invoke auto. They were
+not used. Wikipedia/Grokipedia are specialized encyclopedias and were not treated
+as independent general-web substitutes. Brave's earlier 0/3 remains adverse
+evidence; it was not retried without a reason.
+
+| Explicit backend | General | Technical | EBD general | EBD niche | Total returned |
+| --- | --- | --- | --- | --- | ---: |
+| Mojeek | error | error | error | error | 0/4 |
+| Yahoo | 5 results | 5 results | 5 results | error | 3/4 |
+| Startpage | error | error | error | error | 0/4 |
+
+Nine failures were DDGSException/no-results. Fifteen Yahoo targets were valid
+absolute HTTP(S) URLs; parser-to-fetch parameter fidelity was not exhaustively
+audited. Installed Yahoo declares Bing as its provider, Startpage declares Google:
+these are not three independent upstream indexes. Startpage also performs a
+preliminary home-page request; backend-call counts are not HTTP counts.
+[Selected tagged registry](https://github.com/deedy5/ddgs/blob/v9.16.0/ddgs/engines/__init__.py),
+[Yahoo](https://github.com/deedy5/ddgs/blob/v9.16.0/ddgs/engines/yahoo.py),
+[Startpage](https://github.com/deedy5/ddgs/blob/v9.16.0/ddgs/engines/startpage.py)
+and [Mojeek](https://github.com/deedy5/ddgs/blob/v9.16.0/ddgs/engines/mojeek.py)
+are primary implementation evidence. This single alternative pass is weaker
+than the three selected-engine runs and cannot establish sustained improvement.
+
+### Anonymous scholarly discovery
+
+Crossref public REST metadata and OpenAlex works search were each tested with
+three queries: general, EBD general, EBD niche above. Crossref uses
+query.bibliographic/rows=5; OpenAlex search/per-page=5. Six single anonymous
+HTTP responses, all 200, each five results, max 1 MiB/30s metadata response,
+no env keys/mailto/paid account. Requests were sequential, spaced >=3s.
+
+| Provider/case | Results | EBD title matches | Elapsed |
+| --- | ---: | ---: | ---: |
+| Crossref general | 5 | n/a | .750s |
+| Crossref EBD general | 5 | 4 | .868s |
+| Crossref EBD niche | 5 | 1 | .504s |
+| OpenAlex general | 5 | n/a | .697s |
+| OpenAlex EBD general | 5 | 0 | .761s |
+| OpenAlex EBD niche, quoted phrase | 5 | 5 | .480s |
+
+Title matching means the title contains environment and design; it is a bounded
+relevance proxy, not full-paper verification. OpenAlex's unquoted broad query
+returned unrelated biomedical/environmental works; **HTTP 200 alone is not
+useful discovery**. Quoted niche search returned EBD/TRIZ methodology, creativity,
+comparative design methods and theses. Crossref broad returned EBD services,
+transdisciplinary design and the original EBD proceedings DOI.
+
+Crossref requires no signup for public metadata. Public list-query headers
+actually advertised 1 request/1s, pool public-array. Current July 2026 operator
+notice distinguishes list and singleton limits; use observed headers, not the
+older generic table. Metadata may include publisher-copyright abstracts;
+a returned DOI is not permission/access to full text.
+[Crossref API](https://www.crossref.org/documentation/retrieve-metadata/rest-api/),
+[access](https://www.crossref.org/documentation/retrieve-metadata/rest-api/access-and-authentication/)
+and [current operator limits](https://community.crossref.org/t/refining-rest-api-limits-for-improved-stability-and-reliability/16137)
+support this scope. Client uses existing HTTPX; no new package/deployment.
+
+OpenAlex's current August help allows casual keyless access; older February
+announcement/deprecation wording says keys are required for production.
+These anonymous calls actually succeeded. Current budget docs say $0.10/day
+without key, free account $1/day; ordinary keyword search $0.001/call. Observed
+three calls each reported 10 credits/$0.001 and free-budget remaining
+$0.099→$0.098→$0.097. Reported quota valuation $0.003 is not a billing invoice
+or zero operational expense. No key/account/payment was used. Full-text content
+API has different pricing/permissions and was not called: one returned public
+publisher OA URL was fetched directly using HTTPX.
+[Authentication](https://help.openalex.org/api/authentication/),
+[example costs](https://help.openalex.org/access/example-costs/),
+[search semantics](https://help.openalex.org/api/searching/) and
+[pricing/data CC0](https://help.openalex.org/access/pricing/)
+were checked 2026-09-30. Open metadata's CC0 does not relicense linked papers.
+The service/server and final client distribution are not a completed license audit.
+
+### Real returned source access and retained hashes
+
+Four additional source GET chains were selected from returned discoveries,
+not manually supplied EBD evidence. Five HTTP responses total (Crossref DOI
+one redirect). All four initial request URLs matched their supplied URLs without
+HTTPX normalization change. None bypassed a login/access restriction.
+
+| Discovery and rank | Actual fetch | Body / text UTF-8 | Interpretation |
+| --- | --- | --- | --- |
+| Crossref EBD broad rank 1 DOI 10.3233/jid-2014-0014 | Redirect to Sage, 403 | 5,607 / 0 bytes | Metadata discovery does not guarantee source access |
+| Yahoo EBD broad rank 1 Sage 10.3233/jid-2015-0004 | 403 | 5,571 / 0 | Blocked source, never article success |
+| Yahoo EBD broad rank 5 SJTU institutional journal page | 200 HTML | 56,332 / 3,802 | Same-body text extraction; landing page, not proof of full-paper access |
+| OpenAlex EBD niche rank 1 Cambridge OA PDF | 200 PDF, 18 physical pages | 1,437,398 / 97,463 | Same-body pypdf text; semantic/page-layout fidelity not fully audited |
+
+Successful original hashes: SJTU ea85ff58be6823aef8b15729101169551b95b6b00260433f80b7a087d9698083;
+Cambridge da62f12b6c390dae76426f1607fadce94083e31469bd7022e37f3cbedaa41e60.
+Successful text hashes: SJTU 3d777ee3ed91492248e2929fcdc23d572dbfcf7fdef169f142d1116f9a7d1124;
+Cambridge 97d78a16d158682147a26dccb78b87a32293303bf2690d4c7c153eb559bddbed.
+
+Offline integrity audit verified all 13 expanded source bodies and ten nonempty
+extracted text hashes. Windows text-mode writes had expanded LF to CRLF in the
+research capture files; the audit restored LF only after the inverse matched
+the original computed text hash, then verified byte-exact saved content.
+Original bodies and recorded outcomes were unchanged. Production uses binary
+canonical-byte writes. The separate plain-text original/text hashes also match.
+
+### Research recommendation before the coordinated PM selection
+
+Retain HTTPX/Trafilatura/pypdf and content-decoded same-body publication. Selected
+Google→DDG alone is **not ready for representative EBD research**. A reasonable
+next candidate is Yahoo primary plus corrected Google bounded fallback for
+general discovery, with Yahoo/Bing identity explicit; retain DDG as an optional
+reviewed profile rather than assume it improves niche coverage. The sample is
+too small to call this reliable; repeat the required cases after selection.
+
+For EBD/scholarly tasks, propose explicitly labeled scholarly discovery using
+Crossref bibliographic metadata and OpenAlex quoted search/OA locations, alongside
+general web discovery. Crossref needs no key here; OpenAlex anonymous budget is
+small and account/key policy differs at scale. Scholarly results are not generic
+web coverage and must retain provider/query/DOI/location identities. Fetch/read
+still establishes source evidence; inaccessible full text stays an explicit failure.
+
+This was the research recommendation before PM selected the revised profile
+above. The current CLI design now contains Yahoo/disabled-until-integrated-gate
+Google and separate scholar.crossref.search / scholar.openalex.search schemas.
+The historical Google/DDG selection is superseded; captured outcomes and known
+failed gates are unchanged. No runtime or new credentials were adopted. Self-hosted SearXNG reliability remains unproven;
+browser/OCR/paid credentials are not proposed as a concealed fallback.
+
+Expanded evidence files and SHA-256:
+named-study-20260930/evidence.jsonl = f6e0de7190a6f276f6036c1ace0e5d0dfd4114c069a0e8b8915d43dde919bd25;
+alternatives-20260930/evidence.jsonl = fc4a4ec1e853a476319d5ac1a03bb590c6358193cd281ff72ffd3ae33cf687bf.
+Both are under .uv-cache/cli-toolset-research; summaries retain timestamps,
+exact arguments/outcomes/component hashes and controlled expected/actual targets.
+Stored bodies/text are ignored research captures, not a second Engine store.
+DDGS total internal HTTP request count remains unknown. Across this expansion
+only, 60 DDGS calls returned 12 result sets; six metadata requests, fourteen
+source HTTP responses and one plain-text response were observed separately.
+
+## Current design conformance and acceptance gates
+
+1. Shared v1 catalog/results/private preparation/Storage plan/receipt/range/
+   lifecycle contracts are reconciled in the complete owned CLI design. No
+   runtime module or project dependency installation exists.
+2. Historical Google/DDG representative-search and stock fidelity gates failed.
+   PM has selected revised discovery design, not accepted availability/fidelity.
+   Repeat Yahoo representative and query/escape/plus checks; integrate controlled/
+   live corrected-Google checks before enabling fallback. Test scholarly relevance,
+   fixed identity, anonymous quota/error and real fetch/read source follow-through.
+3. Static HTML/plain text/unencrypted text PDF same-body research has positive
+   evidence; durable READY Storage commit/reopen/authorized read remain pending.
+4. The smaller 8/4/1 MiB components,20 MiB fetch stdout,512 KiB public JSON profile
+   is agreed. Actual encoded max-fit/escape tests, decompression/parser expansion,
+   parent/worker RAM ceiling and Windows descendants/drain cleanup are unmeasured.
+5. Real lifecycle recording, cancellation around admitted commit, lost-ack
+   same-ID status and no-refetch checks are unimplemented. No mock can satisfy them.
+6. Browser/OCR/local SearXNG/paid services remain outside selected scope or untested.
+   Selected wheel/license closure needs distribution audit; PM owns manifests/Git.
+
+Project dependency hashes remain the recorded baseline:
+pyproject.toml 054F4CE51130E1BBD8072FA3B3FFA40D2A3C77397016BFD45735CDD41234D7FD;
+uv.lock 38CBB937D8DF92930FC872F65A57FB15FFD5E9F53CACFF7E7778C365B1FA7073.
+No model calls/provider keys/source implementation/Git writes were performed.

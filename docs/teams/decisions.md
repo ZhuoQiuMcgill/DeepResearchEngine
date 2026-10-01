@@ -337,3 +337,42 @@ identity/relevance/quota behavior, real source follow-through and existing
 recording/Storage/process/resource gates. Existing raw observations stay intact.
 PM owns shared catalog-policy/baseline/brief alignment. This is design-only;
 runtime/API phase remains blocked by the earlier automatic review rejection.
+
+## 2026-10-01: Complete corrected CLI handoff accepted as design
+
+CLI delivered the complete five-tool design and preserved research evidence.
+The final independent semantic review found one worker-to-parent transport gap:
+successful scholarly observations could not carry the remote limit/cost facts
+required for parent admission. The owner corrected only that documented
+protocol, parsing/accounting rules and future verification vector, then froze
+the three owned files. A second review found the gap resolved with no new
+material issues.
+
+Both worker phases now require a closed bounded capture of 11 allowlisted remote
+header facts. Parent alone validates/parses them into a closed projection and
+applies authoritative quota/pacing. Missing/invalid observations remain distinct
+from known zero; credits remain distinct from USD, and excess cost is charged
+once. Workers cannot supply local balances, grants, reservations or admission
+authority through observations or error details. The HTTP200/error/forgery
+acceptance vector is future, unexecuted work.
+
+PM saved-byte QA matched all final hashes using locked/offline uv: strict
+UTF-8/no BOM/LF/final newline, paired fences, two finite unique-key JSON schema
+fragments, 20 closed objects, 41 internal references and 11 relative links.
+The single declared external SnapshotRef remains a design reference; runtime
+schema/type/semantic validation was not performed. The manifest/lockfile and
+both immutable evidence hashes are unchanged; owned git diff --check passed.
+
+| Final owned path | SHA-256 |
+| --- | --- |
+| docs/teams/designs/cli-toolset-design.md | 8b6f46812c8c67afd50200d5361216f4b324149e7cebbc0db01bdfc246c99775 |
+| docs/research/free-search-fetch.md | aeabc0401fdb2779b04072e08eb70eb7948d5bfc6b689324e98ff4f91e7125b6 |
+| docs/teams/reports/cli-toolset-status.md | 5dcdbf38635d2cf28fd7c652daaaa11c4b6eafbbf91aaceefa709683b7562838 |
+
+All four module designs now have reviewed handoffs. Each team retains its whole
+module implementation and meaningful verification mission; PM retains shared
+integration, baseline acceptance and Git. This closes the authorized design
+revision, not runnable platform acceptance. No new probes/API/model calls,
+runtime source or project dependencies were created. Runtime/API implementation
+and the real EBD baseline remain pending direct human phase confirmation after
+the earlier automatic-review rejection; the platform goal remains blocked.
