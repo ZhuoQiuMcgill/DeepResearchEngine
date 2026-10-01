@@ -369,6 +369,7 @@ Engine.register_agent(definition, invocation_rules) -> Result[RegisteredAgent]
 async Engine.bind(agent_ref, context) -> Result[BoundSession]
 async Engine.run_agent(agent_ref, task_input, options) -> AgentResult
 async Engine.run_tool(tool_ref, arguments, options) -> ToolResult
+async Engine.open_run_access(run_ref, request, options) -> Result[RunAccessSession]
 async AgentInvoker.invoke(caller_context, destination, input, options) -> InvocationOutcome
 async Engine.close(deadline) -> CleanupReport
 ```
@@ -378,6 +379,26 @@ dispatches nothing. BoundSession contains BindingSet and a resource lease;
 the binding supplies restricted provider factory/profile, catalog/executor,
 scoped Storage, owner-restricted recorder, invoker and identity service.
 Binding performs local validation and durable binding recording, not execution.
+
+`RunRef` is a store-qualified run selector without authority.
+`RunAccessRequest` names requested object/scope/history reads and permitted
+post-run artifact/manifest/checkpoint publications; `RunAccessOptions` requests
+finite deadline and Storage quotas under current host policy. The exact owned
+field schemas are supplied by Connections. `RunAccessSession` exposes fresh
+trusted context, narrowed Storage/history access and a resource lease; it has
+no provider, ToolExecutor, invoker or Runtime admission. It does not renew
+agent execution budgets. A recorder, if exposed, remains owner/event-kind
+restricted and cannot impersonate runtime agent/model/tool lifecycle.
+
+Host policy authorizes result access, not the run ID, AgentResult or saved
+descriptor. Verify target run association before constructing its context;
+preserve original context_kind/agent/run facts while recording distinct host
+principal and `purpose=result_access` in binding/audit. A fresh access/binding
+action links to the target root rather than pretending to reuse the completed
+agent's dispatch attempt. Reauthorize before existence/status disclosure and
+each operation. Publication uses normal business commits, never record_cleanup.
+Reopen obtains a new RunAccessSession under current explicit authority and
+fresh bounds; old agent/session grants are not restored.
 
 Child invocation validates destination/input/grants, allocates/binds a child,
 obtains Runtime admission, durably records parent invocation intent, then

@@ -219,3 +219,11 @@ grants or use record_cleanup for business publication. Connections owns the
 exact public access surface and close/reopen consumer sequence. This is
 interface agreement; the platform goal remains blocked pending the human
 implementation/API phase confirmation after automatic approval review.
+
+Connections proposed, and PM accepted for the shared design,
+`Engine.open_run_access(run_ref, request, options) -> Result[RunAccessSession]`.
+It binds fresh host-authorized Storage/history and publication access with
+finite bounds/leases and no provider/executor/invoker/admission authority.
+Binding audit distinguishes host principal/result_access purpose from the
+verified target run/agent and links a new access action to that root. Reopen
+reauthorizes; run IDs and saved results cannot revive old grants or budgets.
