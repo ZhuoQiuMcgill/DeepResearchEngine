@@ -2,7 +2,9 @@
 
 The current root chat and its in-chat subagents work in this checkout.
 Cross-session development coordination ended at the user's direction.
-Read `AGENTS.md`, the accepted module designs, and these rules before edits.
+Read `AGENTS.md`, `docs/team-start.md`, the relevant current usage guide and
+these rules before edits. Historical designs preserve rationale; they do not
+impose a new design-only phase or authorize messaging former team chats.
 
 ## Environment
 
@@ -25,9 +27,8 @@ uv --cache-dir .uv-cache run --locked --offline python --version
 ```
 
 Offline synchronization requires cached dependencies. Report missing packages
-to root; do not silently change versions. SQLite runtime requirements for WAL
-are recorded in the design decision log; Python version support alone does
-not establish a suitable SQLite build.
+to root; do not silently change versions. The current implementation supports
+the verified SQLite DELETE profile and rejects WAL; see platform acceptance.
 
 ## GitHub identity
 
@@ -56,17 +57,23 @@ integrates sequentially. Do not switch branches underneath another writer.
 
 | Owner | Editable paths in the current phase |
 | --- | --- |
-| Agent Container | `docs/teams/designs/agent-container-design.md`; `docs/teams/reports/agent-container-status.md` |
-| CLI Toolset | `docs/research/free-search-fetch.md`; `docs/teams/designs/cli-toolset-design.md`; `docs/teams/reports/cli-toolset-status.md`; ignored CLI research scratch |
-| Storage | `docs/teams/designs/storage-design.md`; `docs/teams/reports/storage-status.md` |
-| Connections | `docs/teams/designs/connections-design.md`; `docs/teams/reports/connections-status.md` |
-| PM | Shared specs, briefs, registry, decision log, root instructions/environment/dependencies, Git operations |
+| Agent/runtime subagent | `src/ebd/agent/`, `src/ebd/providers/`, `tests/agent/`, `tests/providers/`, `docs/usage/agents.md` |
+| Toolset subagent | `src/ebd/toolset/`, `tests/toolset/`, `docs/usage/tools.md` |
+| Storage subagent | `src/ebd/storage/`, `tests/storage/`, `docs/usage/storage.md` |
+| Root | Shared contracts, Connections, RunService/HTTP API, package/CLI composition, examples, baseline, integration tests, environment, project docs and Git |
 
-Cross-team changes go to PM as proposals. Read the latest shared documents
-before drafting against an interface; do not overwrite them with stale copies.
-The table above records historical design ownership. Current executable
-source/test ownership is assigned in `AGENTS.md`; root may refine assignments
-through in-chat collaboration. Current work is implementation and verification.
+Cross-module interface changes go to root with the affected consumers and a
+concrete proposed contract. Read current source/DTOs and usage guides before
+editing. Root may refine exclusive path assignments through in-chat
+collaboration. Application/frontend contributors agree their owned paths with
+root before parallel edits to this shared checkout.
+
+For an HTTP contract change, regenerate `docs/api/openapi.json` with
+`uv run --locked python examples/export_openapi.py`, review the schema diff,
+update the service guide/examples and run the relevant service checks. Python
+contract changes include matching usage examples and affected consumer checks.
+Breaking wire changes require a new schema major; do not silently reinterpret
+v1 fields. See `docs/teams/consumer-contract-v1.md` for consumer boundaries.
 
 ## Completed contribution handoff
 

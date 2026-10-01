@@ -1,5 +1,12 @@
 # Connections team specification
 
+> **Historical design record.** The original text below describes the earlier
+> design/review phase. Its phase holds, chat assignments and proposed API
+> signatures are not current instructions. Implementation and live acceptance
+> are complete within the documented platform scope; use [Team start](../team-start.md)
+> and the [current usage guides](../usage/connections.md) to begin work.
+> Do not contact former team chats based on this record.
+
 Status: **DRAFT — design work only.** Reconcile these proposed contracts with the other team designs, then obtain explicit user design approval before implementation begins.
 
 Read [shared-platform.md](shared-platform.md) for common types and [coordination.md](coordination.md) for session registration, reports, messaging authorization, and approval rules. This specification assigns connections design work; it does not authorize installations, source edits, model calls, or dependency mutations.

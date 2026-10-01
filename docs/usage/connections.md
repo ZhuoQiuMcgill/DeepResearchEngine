@@ -1,5 +1,8 @@
 # Engine composition and data access
 
+Start with [team setup and role boundaries](../team-start.md). The runnable
+[research example](../../examples/research.py) uses only these public APIs.
+
 The Engine is the trusted host composition root. It opens real SQLite/file
 Storage, registers fixed CLI tools, lazily resolves model credentials and
 binds the independent Runtime. Strategy belongs in an application.

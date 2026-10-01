@@ -1,5 +1,12 @@
 # Shared platform design brief
 
+> **Historical design record.** The original text below describes the earlier
+> design/review phase. Its phase holds, chat assignments and proposed API
+> signatures are not current instructions. Implementation and live acceptance
+> are complete within the documented platform scope; use [Team start](../team-start.md)
+> and the [current usage guides](../usage/connections.md) to begin work.
+> Do not contact former team chats based on this record.
+
 Status: DRAFT for team design review. This records the user's scope and
 proposes boundaries; it does not freeze Python types or authorize runtime
 implementation.

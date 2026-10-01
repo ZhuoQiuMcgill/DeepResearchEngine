@@ -1,5 +1,12 @@
 # CLI Toolset design against platform contract v1
 
+> **Historical design record.** The original text below describes the earlier
+> design/review phase. Its phase holds, chat assignments and proposed API
+> signatures are not current instructions. Implementation and live acceptance
+> are complete within the documented platform scope; use [Team start](../../team-start.md)
+> and the [current usage guides](../../usage/connections.md) to begin work.
+> Do not contact former team chats based on this record.
+
 CLI Toolset Team. Research baseline: 2026-09-30 America/Toronto.
 This complete revision follows the
 [current mission](../missions.md), [platform-contract-v1.md](../platform-contract-v1.md)

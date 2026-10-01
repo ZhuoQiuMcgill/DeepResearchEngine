@@ -78,3 +78,34 @@ at startup. Saved runs, artifacts and usage are durable. Checkpoints do not
 automatically resume execution. The service is local and single-owner;
 remote/multiuser deployment and token-by-token model streaming are outside
 this contract. Qwen live verification remains pending local vLLM deployment.
+
+## Teammate onboarding verification
+
+The current handoff starts at [Team start](team-start.md), with a complete
+[console walkthrough](usage/console-quickstart.md) and generated
+[OpenAPI contract](api/openapi.json). Historical design records are explicitly
+marked; current ownership and interface precedence are in AGENTS/CONTRIBUTING.
+
+On 2026-10-01, the four client-side PowerShell blocks from that walkthrough
+were executed against a real Uvicorn loopback service, using an isolated store
+and an allocated port. Only the base URL's port was changed. Registration,
+start, status/event polling, usage retrieval and artifact download succeeded.
+
+- Run: `run_cbc64327205648d2b8f15059d18f4b7b`.
+- Actual DeepSeek profile: two received responses and one successful Crossref
+  tool outcome. This was a bibliographic lookup, not a full-text research claim.
+- Terminal execution `succeeded`, recording `complete`, persistence `committed`.
+- Downloaded report: 1,174 bytes. Report bytes/hash and token aggregate matched
+  after graceful shutdown and service reopen through the public HTTP routes.
+- Reported usage: 1,353 input and 357 output tokens, 1,710 total; two persisted
+  per-attempt usage references, complete accounting.
+- Local evidence: `local/team-onboarding-check/acceptance.json`; the downloaded
+  report is under `local/client-reports/<run_id>.md`. These are ignored runtime
+  files; teammates reproduce the walkthrough with their own credentials.
+
+The generated OpenAPI snapshot matches `create_app().openapi()` and all internal
+schema references resolve (14 path entries). All 169 links checked in the
+onboarding/document cleanup resolved. `git diff --check` passed. The unchanged
+runtime suite was independently rerun during the handoff audit: 228 tests passed
+in 23.29 seconds. No runtime implementation or dependency versions changed for
+this documentation handoff.

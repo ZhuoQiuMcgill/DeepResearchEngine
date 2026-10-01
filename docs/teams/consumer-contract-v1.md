@@ -5,6 +5,13 @@ own phase transitions, agent selection and domain-specific checkpoint formats.
 The application RunService owns execution task handles and the console's HTTP
 boundary. All persistence and token accounting continue through platform Storage.
 
+New contributors start with [team setup](../team-start.md). Exact Python names
+come from the public source and [usage guides](../usage/connections.md); exact
+HTTP fields come from the generated [OpenAPI snapshot](../api/openapi.json)
+or the running service's `/openapi.json`. The
+[HTTP walkthrough](../usage/console-quickstart.md) covers registration through
+saved report retrieval without requiring frontend code first.
+
 ## Orchestrator boundary
 
 Use Engine registration, `open_agent_session`, public Runtime admission and
@@ -46,3 +53,19 @@ outside this v1 contract. Progress polling reads real committed activity.
 
 See [Connections usage](../usage/connections.md) and
 [service usage](../usage/service.md) for runnable consumer entry points.
+
+## Team integration ownership
+
+Platform maintainers own Engine, scoped evidence, Storage and the v1 run API.
+Orchestrator authors own mission inputs, phase/state schemas, scheduling and
+recovery decisions. Console authors own views and clients of the run API.
+The existing service starts individual agents; there is no mission-launch
+endpoint. A whole-mission console flow needs an application-level contract
+agreed by the orchestrator and frontend teams, while run/event/report/usage
+integration can proceed against v1 now.
+
+Contributors propose shared-interface changes with affected consumers, exact
+fields/signatures and verification to root. HTTP changes regenerate the
+OpenAPI snapshot and update examples in the same handoff. Agent definition
+revisions are immutable. Preserve integer schema major 1 for compatible
+additions; breaking changes require explicit versioning.

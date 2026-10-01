@@ -1,5 +1,10 @@
 # Local run service
 
+For setup and a complete registration/start/poll/download sequence, use the
+[console walkthrough](console-quickstart.md). Frontend tooling can consume the
+[generated OpenAPI snapshot](../api/openapi.json) without running a backend;
+the live server publishes the corresponding schema at `/openapi.json`.
+
 The service supplies asynchronous run control and durable inspection over the
 real Engine. One process owns one Storage root. A frontend talks to this process;
 it does not open SQLite or another Engine for that same store. Research strategy

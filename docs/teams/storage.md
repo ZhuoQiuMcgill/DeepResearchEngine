@@ -1,5 +1,12 @@
 # Storage and recording team specification
 
+> **Historical design record.** The original text below describes the earlier
+> design/review phase. Its phase holds, chat assignments and proposed API
+> signatures are not current instructions. Implementation and live acceptance
+> are complete within the documented platform scope; use [Team start](../team-start.md)
+> and the [current usage guides](../usage/connections.md) to begin work.
+> Do not contact former team chats based on this record.
+
 Status: **DRAFT — design work only.** The public contracts below require reconciliation with the other module designs and explicit user approval before implementation begins.
 
 Read [shared-platform.md](shared-platform.md) for the common platform contract and [coordination.md](coordination.md) for session registration, reporting, messaging, and approval rules. This specification assigns the storage module; it does not authorize source edits, dependency changes, installations, or implementation.

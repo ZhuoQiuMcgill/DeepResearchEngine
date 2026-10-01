@@ -35,20 +35,22 @@ The CLI worker has no database/root access. The executor mediates scoped
 Storage operations. Providers return requested tool calls and never execute
 tools themselves. Core modules contain no EBD strategy or task scheduler.
 
-Proposed package ownership after implementation authorization:
+Current package ownership (root may refine exclusive paths in-chat):
 
 | Owner | Exclusive paths |
 | --- | --- |
 | Agent Container | `src/ebd/agent/`, `src/ebd/providers/`, `tests/agent/`, `tests/providers/` |
 | CLI Toolset | `src/ebd/toolset/`, `tests/toolset/` |
 | Storage | `src/ebd/storage/`, `tests/storage/` |
-| Connections | `src/ebd/connections/`, `tests/connections/` |
-| PM | Shared contracts, package/CLI composition, baseline example, `tests/integration/`, manifests/lockfile and Git |
+| Root: Connections and service | `src/ebd/connections/`, `tests/connections/`, `src/ebd/service/`, `tests/service/` |
+| Root: integration | Shared contracts, package/CLI composition, examples, baseline, `tests/integration/`, manifests/lockfile and Git |
 
-These are future assignments. Current editable paths remain those in
-`CONTRIBUTING.md`. PM alone changes shared types/dependencies and performs
-Git writes. Interface-change requests include affected consumers; teams do
-not repair another module by editing its files.
+These assignments agree with `AGENTS.md` and `CONTRIBUTING.md`. Root alone
+changes shared types/dependencies and performs Git writes. Interface-change
+requests include affected consumers; teams do not repair another module by
+editing its files. Start from [team onboarding](../team-start.md) and current
+usage guides for exact executable names; the design signatures below record
+the architecture rather than replacing the public source/DTOs.
 
 ## Compatibility, identity and authority
 
@@ -520,7 +522,8 @@ Before runnable teammate handoff, verify:
    it saves a complete sourced report and auditable model/tool/storage trace.
    Provider/internal search remains disabled. No manually supplied mock report.
 
-Runtime implementation and live API acceptance require the design-phase
-transition to be authorized. Automatic approval review has blocked that
-transition based on the earlier design-first instruction; this document makes
-the proposed work concrete for that review without starting it.
+The earlier design-phase hold was superseded by the user's implementation
+takeover direction. These gates have recorded implementation and live evidence
+in [platform acceptance](../platform-acceptance.md) and
+[consumer acceptance](../consumer-acceptance.md), with Qwen's deployment
+exception retained. Use [team start](../team-start.md) for current handoff steps.

@@ -6,6 +6,15 @@ Storage and Connections modules. Strategy is application code built on their
 public interfaces. Development now runs in one chat with in-chat subagents;
 the earlier cross-session team design is retained as historical context.
 
+## Start working with the team
+
+Read [Team start](docs/team-start.md) for environment setup, role-specific
+entry points, interface ownership and the first integration milestone.
+Orchestrator authors use the [Python Engine guide](docs/usage/connections.md).
+Console authors use the [HTTP walkthrough](docs/usage/console-quickstart.md)
+and the generated [OpenAPI contract](docs/api/openapi.json). These are the
+current onboarding documents; old team briefs are historical design records.
+
 ## Environment
 
 - Use uv for Python, virtual environments, dependency resolution, and execution.
@@ -114,7 +123,7 @@ The reviewed designs are indexed by
 [the team spec index](docs/teams/README.md), the shared platform draft, and
 their module spec. `AGENTS.md` defines current in-chat source ownership.
 See [platform acceptance](docs/platform-acceptance.md) for completed checks,
-the saved report and outstanding live-provider verification.
+the saved report and the pending local Qwen deployment check.
 
 The selected tools use DDGS Yahoo discovery, separate Crossref/OpenAlex
 scholarly discovery, HTTPX retrieval, Trafilatura HTML extraction and pypdf
