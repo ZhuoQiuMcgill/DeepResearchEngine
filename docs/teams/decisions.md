@@ -227,3 +227,24 @@ finite bounds/leases and no provider/executor/invoker/admission authority.
 Binding audit distinguishes host principal/result_access purpose from the
 verified target run/agent and links a new access action to that root. Reopen
 reauthorizes; run IDs and saved results cannot revive old grants or budgets.
+
+## 2026-09-30: Storage aligned design accepted
+
+Storage handed off frozen `storage-design-r3-v1` in its two owned design/status
+paths. PM read the complete saved design and independently reviewed identity,
+receipts, publication/recovery, ranges and cancellation. One quota/dedup order
+issue was corrected by the owner: current authorization and receipt visibility
+precede exact-ID/content reconciliation; fresh-write quota/reservations/queue/CAS
+apply only to new admission. The lost-acknowledgment/exhausted-quota case is an
+explicit future acceptance vector, without consuming another write allowance.
+
+Independent saved-byte QA passed using the shared locked/offline uv-managed
+Python 3.11.15: strict UTF-8, no BOM, LF/final newline, paired fences and all
+relative Markdown links. These files contain zero JSON-language examples.
+Verified frozen hashes: design
+`1645a48802d2e02eaf4587d12a686c7b663eda61b9ea6763eb2a0bd97b67bb51`,
+status `9e4d78c8872b44dabffc8075ac5a48b338ee35a0d2b6163015c5c3689ccb0cda`.
+The shared contract contains the same ordering rule. Design acceptance and
+file integrity do not prove runnable Storage or its future fault tests.
+Runtime implementation/API phase authorization remains pending after automatic
+approval review; the platform goal remains blocked on that transition.

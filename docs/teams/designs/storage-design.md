@@ -1,830 +1,705 @@
-# Storage design proposal
+# Storage design aligned to platform contract v1
 
-Status: DRAFT for PM and joint interface review; design assignment completed,
-implementation not authorized. Date: 2026-09-30 (America/Toronto).
+Status: complete owned design alignment for PM review; runtime implementation
+is not authorized. Date: 2026-09-30 (America/Toronto).
+Revision: `storage-design-r3-v1` (coordinated quota/deduplication correction).
 Owner: Storage Team, chat `01a0f546-8fc3-76f0-84fe-ffde8c2c89e5`.
-Revision: storage-design-r1, ready for PM review; frozen at contribution handoff.
 
-This proposal follows the shared brief and all four team specifications.
-It specifies persistence behavior; the shared Python types, package layout,
-transport selection, dependency policy, and approval remain PM decisions.
-Only Storage's design/status documents are changed. No credentials are read.
+[platform-contract-v1.md](../platform-contract-v1.md) is the authority for shared
+types, identity, receipts, producer ownership, mediation and resource limits.
+This document supplies compatible persistence details. It supersedes r1's
+alternative standalone producer, larger transfer limits and cleanup-write
+proposal. PM owns shared types, dependencies and Git; current edits are only
+this design and `docs/teams/reports/storage-status.md`. Future ownership is
+`src/ebd/storage/` and matching tests after the authorized phase transition.
 
-## 1. Recommended boundary
+## 1. Boundary and shared vocabulary
 
-Use SQLite for scoped JSON state, mutation receipts, append-only events,
-artifact publication metadata, immutable snapshots, and checkpoint metadata.
-Use generated files beneath one configured local root for immutable bytes.
-Consumers use bound Storage clients, never SQL or object paths. Connections
-resolves non-secret settings and authority; Storage enforces every operation.
+SQLite stores scoped state and immutable revisions, operation receipts,
+append-only activities, artifact publication metadata, snapshots and
+checkpoints. Generated immutable files below one configured private local root
+store bytes. Consumers use scoped protocols, not SQL or filesystem paths.
+Connections is the composition root and issues live authority; Storage
+validates it on operations and before publication. The configured root and
+resolved non-secret settings come from Connections.
 
-Storage does not execute models/tools, schedule research, interpret evidence,
-infer run termination, or implement runtime resumption. A saved event is an
-application audit record, not proof of exactly-once external execution or
-cryptographic tamper resistance. Normal recording is automatic at the owning
-module's hooks. Recorder reads/appends do not recursively create activity.
+Storage owns one root lock, one serialized SQLite worker, migration/recovery
+and its resources. It does not run models/tools, infer external outcomes,
+schedule research, select goals or decide checkpoint resumption. References
+identify objects and never grant access. Files and SQLite have separate
+durability boundaries. Activity is application history, not cryptographic
+tamper proof or a guarantee of exactly-once external execution.
 
-The first implementation can use the Python 3.11 standard library for the
-persistence core (`sqlite3`, JSON, hashing, filesystem operations). Any schema
-validator, async facade, transport adapter, or stronger Windows path/durability
-support needs PM review before dependency changes. These are design choices,
-not a claim that an implementation or installed runtime has been validated.
+Shared types are supplied by PM's common contract package, with Connections
+owning allocation/binding and Storage supplying persistence schemas. There
+are no duplicate context/grant definitions in module packages.
 
-## 2. Shared types and scope authority
-
-Connections leads `ExecutionContext`, `ScopeRef`, and immutable effective
-`StorageGrant` definitions; PM places approved definitions in one shared
-contract package. Storage leads receipts, references, event persistence,
-snapshot manifests/ranges and errors. Other packages import these types.
-
-| Type | Proposed exact meaning |
+| Shared concept | Storage interpretation |
 | --- | --- |
-| `ScopeRef` | Tagged `run` plus `run_id`, or `shared` plus registered `scope_id`. No free-form scope grants. |
-| `StorageGrant` | Trusted binding authority naming store instance, principal, scope selectors, operations, optional object selectors, expiry and resource limits. |
-| `ExecutionContext` | `run_id`, nullable `agent_id`, `action_id`, nullable `attempt_id`, nullable `parent_action_id`, nullable `parent_run_id`, `correlation_id`, portable UTC deadline, live cancellation handle and nonserializable bound authority. Trusted persistence mode is `normal` or `record_cleanup`, with a separate cleanup binding when applicable. |
-| `ArtifactRef` / `SnapshotRef` / `CheckpointRef` | Store-instance-qualified opaque IDs with a type/version tag. No path, credential, or grant. |
-| `JsonValue` | Strict JSON: finite numbers, strings, booleans, null, arrays and objects with unique string keys; bounded depth/bytes. No pickle or live Python handles. |
-| `Version` | Positive 64-bit integer per `(scope, key)`; zero means never created. Deletes retain a tombstone and increment the version. |
-| `OperationId` | Stable caller-generated ID for one proposed write; retained across delivery retries with unchanged request bytes/meaning. |
+| `schema_version` | Integer 1, the sole wire/event compatibility major. Unknown majors/security fields are rejected. |
+| Context metadata | `context_kind: agent|standalone_tool`, run/root/correlation IDs, nullable agent/definition ref, action/attempt, parent run/action/attempt, UTC deadline, depth/ancestry, binding/policy refs and bounded metadata. |
+| Live context | Cancellation, reconstructed monotonic deadline, effective grants/revocation handle, shared lineage ledger and resource leases. No live handle is saved in JSON. |
+| `ScopeRef` | Tagged `run{run_id}` or registered `shared{scope_id}`. Arbitrary strings cannot create authority. |
+| Effective grant | Trusted store/principal/scope/operation/object selectors, lifetime/revocation and resource limits. JSON and saved descriptors cannot issue or restore it. |
+| Typed reference | Store-qualified opaque artifact/snapshot/checkpoint ID plus type/format tag; no raw path or capability. |
+| JSON | Finite numbers, unique string keys, strict UTF-8, depth <=32 and byte limits. No pickle or live Python objects. |
+| State version | Positive signed 64-bit revision per scope/key; zero means never created. Tombstones retain monotonically increasing revisions. |
 
-Authority is installed by a trusted binder, not reconstructed from tool JSON.
-Storage checks issuer/store identity, expiry, operation, scope, object selection,
-deadline and cancellation. A caller cannot enlarge grants by changing context
-IDs. Context metadata and authority must match the binding. New run scopes are
-provisioned only by the trusted run/binding path, not by `put` or `get`.
+Definition/tool/extraction/continuation codec revisions and database schema
+versions remain independent of the shared compatibility major.
 
-Core operations are `state.read`, `state.commit`, `artifact.read`,
-`artifact.put`, `snapshot.read`, `snapshot.commit`, `checkpoint.read`,
-`checkpoint.save`, `operation.status`, `events.read`, and trusted `events.append`. Recovery,
-migration and provisioning are administrative operations. CLI workers receive
-only snapshot operations needed by their tool, never general event append or
-state/database access.
+Authorization precedes disclosure and deduplication. Validate current issuer/store,
+principal/context identity, scope/object selectors, operation, revocation/expiry,
+deadline, valid lease and receipt visibility. Then inspect the same event/operation
+ID and compare frozen origin/content. Return its existing committed receipt or
+identical pending status without a fresh write reservation or consuming source
+bytes. Only NEW admission checks remaining business-write quota, fresh-use
+reservations, queue allowance and CAS. Exhausted write quota alone cannot deny
+authorized receipt reconciliation; current receipt/status/read visibility and
+finite delivery bounds still apply. No permission is revived and changed origin
+cannot replay. Caller metadata cannot enlarge its bound grant.
+Direct scope/operation denial returns `ACCESS_DENIED`. Opaque lookups are
+constrained to granted visibility and do not expose another scope's data,
+metadata, hashes or sequence; no-visible-object results are `NOT_FOUND`.
+A guessed ref, correlation ID, parent linkage or application mission ID
+conveys no authority. Histories require their own read grant.
 
-A child has its own run scope. Parent linkage/correlation does not grant data
-access. Reading a parent/shared scope requires an explicit attenuated grant;
-child grants are bounded by the caller's delegation authority and destination
-policy. Passing an artifact reference does not transfer read permission.
-Grants are checked again on resume and on each history page. Revocation prevents
-new operations; bytes already returned cannot be recalled.
+Granted operation labels are state.read/state.commit, artifact.read/artifact.put,
+snapshot.read/snapshot.commit, checkpoint.read/checkpoint.save, events.append,
+events.status/events.read and operation.status. Historical state uses state.read
+with its version selector. Exact status grants are limited to the originating
+producer/operation, not arbitrary history. Provisioning/migration/recovery are
+trusted administrative rights, never worker grants.
 
-Do authorization before disclosing object existence. An ungranted reference
-returns `ACCESS_DENIED`; a granted but absent reference returns `NOT_FOUND`.
-State keys and display filenames are data, never file paths. Initial limits
-proposed for review: keys <=256 UTF-8 bytes, state values <=1 MiB, event JSON
-<=64 KiB, checkpoint JSON <=4 MiB, metadata <=16 KiB, depth <=32. Binder limits
-may reduce these. Oversized content uses artifacts instead of event payloads.
+Child scopes require explicit creation authority, and child output must be
+exported into a parent-readable scope or explicitly granted. Parent linkage
+does not make child data readable. New grants on resume are issued by
+Connections; cached authority is never restored from a checkpoint.
 
-This is interface enforcement for trusted local components. Python and CLI
-processes running as the same user are not isolated from that user's filesystem
-by this API. Store directory permissions and registered trusted commands are
-part of deployment; hostile executable sandboxing is a separate decision.
+This is an interface boundary for trusted registered components, not an
+OS sandbox against a hostile executable running as the same local user.
+Store directory ACLs and verified containment belong to deployment acceptance.
 
-## 3. Proposed public API and results
+## 2. Canonical identity, immutable requests and receipts
 
-All calls below are async and receive the shared trusted `ExecutionContext`.
-SQLite work is serialized through an owned worker; no synchronous disk operation
-blocks the model loop. SQLite connections remain on their owning thread.
-Signatures are documentation, not runtime source or final package names.
-
-Every operation returns `Result[T]`: exactly one of `Ok(value: T)` or
-`Err(error: StorageError)`. Expected persistence failures are typed results.
-Cancellation before admission returns `CANCELLED/not_committed`. For an admitted
-write, a known abort requires a durably saved ABORTED disposition before returning
-`not_committed`; recovery never promotes that disposition. Once sealed/final
-publication is admitted, finish the owned commit if possible or return
-pending/unknown, rather than assert rollback. Cancellation/deadline arriving
-after commit cannot convert a durable write into a rolled-back result. A lost
-reply or interruption during commit has `commit_state=unknown`; query/retry the
-same ID to resolve it. No Storage method retries an external model/tool call.
-
-| Signature | Successful result and semantics |
+| Identity | Allocation and invariant |
 | --- | --- |
-| `StateStore.get(context, scope: ScopeRef, key: str) -> Result[StateLookup]` | `Present(value, version, last_commit_ref)` or `Missing(version=0 or tombstone_version)`. Missing is a typed ordinary lookup result. |
-| `StateStore.get_version(context, scope: ScopeRef, key: str, version: Version) -> Result[StateLookup]` | Read an immutable permitted revision/tombstone for exact context restoration. Absent authorized revision is `NOT_FOUND`; latest value is never substituted. |
-| `StateStore.commit(context, operation_id: OperationId, mutations: tuple[StateMutation, ...], activity: ActivityAnnotation) -> Result[StateCommitReceipt]` | One SQLite transaction changes all keys, records generated `state.committed`, and stores the operation receipt; returns mutation versions, event receipt and operation ID. |
-| `ArtifactStore.put(context, operation_id: OperationId, scope: ScopeRef, content: ArtifactContent, metadata: ArtifactMetadata) -> Result[ArtifactReceipt]` | `ArtifactContent` supplies expected byte length/SHA-256 and an async byte source. Stream within granted limits, verify declared content, acknowledge only READY bytes plus committed event. Receipt includes ref, size, SHA-256, media type and event receipt. |
-| `ArtifactStore.open(context, artifact_ref: ArtifactRef, byte_range: ByteRange, max_bytes: int) -> Result[ArtifactRead]` | Bounded async read handle with actual half-open byte range, size/digest/media metadata. Handle enforces its total allowance and must be closed. No raw path. |
-| `SnapshotStore.commit(context, operation_id: OperationId, scope: ScopeRef, proposal: SnapshotProposal) -> Result[SnapshotReceipt]` | Stage raw/text/index/manifest as immutable objects, then atomically publish snapshot metadata and `snapshot.committed` in SQLite. Return ready snapshot/associated artifact refs and event receipt. |
-| `SnapshotStore.read(context, snapshot_ref: SnapshotRef, range: DocumentRange, max_text_bytes: int, continuation: str or null = null) -> Result[DocumentSlice]` | Read immutable saved extraction; no network/refetch. Continuation resumes within the same snapshot/range. Return exact locators/ranges, bounded UTF-8 text and continuation information. |
-| `CheckpointStore.save(context, operation_id: OperationId, scope: ScopeRef, checkpoint: CheckpointEnvelope) -> Result[CheckpointReceipt]` | Publish immutable versioned checkpoint and its event. No mutable current-checkpoint pointer unless caller explicitly CAS-writes one through StateStore. |
-| `CheckpointStore.load(context, checkpoint_ref: CheckpointRef, accepted_formats: tuple[FormatVersion, ...]) -> Result[CheckpointEnvelope]` | Enforce permission/readiness/digest and compatibility; return original envelope without executing or interpreting it. |
-| `ActivityRecorder.append(context, event: ExecutionEvent) -> Result[EventReceipt]` | Validate producer, identity, references, event version and deduplication; acknowledge after SQLite commit. |
-| `ActivityReader.query(context, filters: ActivityFilters, cursor: str or null, limit: int) -> Result[ActivityPage]` | Stable sequence pagination of permitted records, with high-water mark and next cursor. |
-| `OperationStore.status(context, operation_id: OperationId) -> Result[OperationStatus]` | Reauthorize original scope/operation/origin; return pending phase, committed original receipt, interrupted disposition or unknown availability. No external action status is inferred. |
-| `StorageSession.close(deadline: UTCInstant) -> Result[CloseReceipt]` | Stop new calls, finish admitted commits within deadline, close owned readers/writer and report incomplete operations. Closing a borrowed binding does not close the shared store. |
+| `run_id`, `root_run_id`, `correlation_id` | Connections' trusted identity service, preserving lineage. |
+| `action_id` | Action owner, one logical model generation/tool call/parent invocation. Changed input or a new model turn is a new action. |
+| `attempt_id` | Action owner before every dispatch reservation, including the first. Actual authorized retry keeps action and changes attempt. |
+| `event_id` | Producer before append; frozen event delivery retries keep it. |
+| `operation_id` | Trusted caller before a Storage mutation; identical delivery/status reconciliation keeps it. |
+| Provider native IDs | Provider-owned request/call IDs, retained separately for conversation pairing. |
 
-Shutdown order: Connections stops new executions, owners cancel/drain operations
-and finish terminal recording grace, then request Storage close. Storage close
-rejects later new admissions; it must not run ahead of required terminal hooks.
-Lock/queue/admission budgets are bounded, but OS disk synchronization can outlast
-a deadline. If a writer is still inside an uninterruptible commit, return a typed
-pending-close failure and retain owner/lock/resources until it resolves; do not
-detach the write and release the root to another owner. No hard real-time disk
-latency guarantee is made.
+Storage publication events retain causal run/action/attempt and parent IDs.
+They have their own operation/event identities; no competing commit action is
+allocated. Compound child operation IDs derive from parent operation plus role,
+so retries cannot duplicate constituent artifacts. Storage allocates publication
+event IDs before the commit and persists them with the reservation.
 
-`StateMutation` is `{scope, key, kind: put|delete, expected_version, value?}`.
-`expected_version` is required; zero only creates a never-seen key. Duplicate
-keys within a batch are invalid. Delete of a never-seen/already deleted key is
-`INVALID_DATA`; recreation must expect the retained tombstone version. A batch
-is bounded to 100 mutations/4 MiB. A conflict rolls back the whole batch and
-returns current versions only for keys the caller may read. No force-write
-escape hatch is exposed to agents.
+Default external retries are disabled. A fresh execution attempt needs an
+explicit owner decision and fresh attempt/intent within inherited limits.
+A delivery retry is neither a new attempt nor permission to repeat a fetch,
+model call or child invocation.
 
-`ActivityAnnotation` contains safe cause/reference/optional application metadata;
-the caller cannot choose another producer or omit the commit event. Storage
-generates authoritative versions/digests/reference fields. Referenced objects
-must belong to this store, be ready and be permitted. A state batch can span
-granted scopes in this database; its event visibility requires event access
-to every involved scope. Cross-database/file/state atomic batches are excluded.
-
-`EventReceipt = {event_id, recorded_seq, recorded_at, duplicate}`.
-`StateCommitReceipt = {operation_id, mutation_versions, event_receipt, duplicate}`.
-Artifact/snapshot/checkpoint receipts also include their operation ID and
-publication receipt. `recorded_seq` is a store-wide monotonic integer with
-possible gaps, not a count or timestamp. `recorded_at` is Storage's UTC time;
-producer `occurred_at` remains descriptive.
-
-Remaining result schemas are proposed as follows:
-
-| Value | Required fields |
-| --- | --- |
-| `ArtifactReceipt` | `operation_id, artifact_ref, scope, byte_length, sha256, media_type, event_receipt, duplicate`. Safe metadata remains queryable through the authorized read handle. |
-| `SnapshotReceipt` | `operation_id, snapshot_ref, manifest_ref, raw_ref, text_ref, index_ref, component_digests, extraction_format_version, line_count, page_count_or_null, event_receipt, duplicate`. |
-| `CheckpointReceipt` | `operation_id, checkpoint_ref, payload_ref, sha256, byte_length, envelope_format_version, event_receipt, duplicate`. |
-| `OperationStatus` | `operation_id, state: pending|committed|aborted|interrupted, phase, commit_state, original_receipt_or_null, safe_disposition_or_null`. Unavailable status returns an error with unknown commitment. |
-| `ByteRange` | Zero-based `{start, end_exclusive}` within stored byte length; empty range allowed, never silently clamp invalid offsets. |
-| `ArtifactMetadata` | Required registered/syntactically valid `media_type`; optional display filename and bounded strict-JSON application metadata. Content descriptor supplies required SHA-256/length. |
-| `CloseReceipt` | `closed:true, completed_operation_ids, interrupted_operation_ids`; pending uninterruptible close returns typed error with owner still held. |
-
-`ArtifactRead.read(max_bytes: int) -> Result[ByteChunk]` and
-`ArtifactRead.close() -> Result[Unit]` are async; close is idempotent.
-`ByteChunk={bytes,eof,next_absolute_offset}` with positive requested read size
-and aggregate allowance <=the originally opened byte range/budget. Each read
-checks deadline/cancellation and current authorization; denied/expired/error
-handles stop and must be closed. Verify stored length/digest before releasing
-content and detect mid-stream I/O/truncation faults; already delivered prefixes
-cannot be recalled. Such failure is a partial failed read, never a successfully
-verified complete artifact. Consumers require successful EOF for completion.
-Handle ownership does not keep a database transaction open while streaming.
-
-Trusted administrative API, unavailable to agent/worker bindings:
-`StorageSession.open(settings: ResolvedStorageSettings, issuer: TrustedIssuer)
--> Result[StorageSession]` obtains the root lock, validates schema/runtime and
-recovers before admission. `StorageAdmin.provision_run(admin_context,
-descriptor: RunDescriptor) -> Result[ScopeRef]` registers the run/parent facts
-and run scope with stable identity; it does not grant callers access by itself.
-Shared scopes are explicitly provisioned/registered through that administrative
-boundary. Connections installs bounded grants independently.
-
-## 4. Error and retry contract
-
-`StorageError = {code, safe_message, operation_id?, event_id?, action_id?,
-attempt_id?, retryable_delivery: bool, commit_state: not_committed|committed|
-unknown|not_applicable, details}`. Details are bounded/sanitized and never
-contain credentials, authentication headers, unfiltered stderr or internal
-absolute paths. Transport errors preserve causal IDs without raw exception text.
-
-| Code | Meaning / caller response |
-| --- | --- |
-| `ACCESS_DENIED` | Grant absent, expired, wrong scope/object/op or forged context. No existence disclosure or automatic escalation. |
-| `NOT_FOUND` | Authorized artifact/snapshot/checkpoint absent. `get` instead returns `Missing`. |
-| `INVALID_DATA` / `LIMIT_EXCEEDED` / `UNSUPPORTED_RANGE` | Bad JSON, schema/reference/range or resource limit; page mapping absent uses `UNSUPPORTED_RANGE`. No partial public mutation. |
-| `VERSION_CONFLICT` | CAS mismatch; caller rereads and decides a new operation, never blind overwrite. |
-| `IDEMPOTENCY_CONFLICT` | Existing event/operation ID with different canonical content, origin or target; no overwrite. |
-| `INCOMPLETE_ARTIFACT` | Reserved/staged/sealed object is not published. No partial bytes. |
-| `INTEGRITY_ERROR` | Ready object's size/digest/path verification failed; stop read and flag repair. |
-| `INCOMPATIBLE_SCHEMA` / `INCOMPATIBLE_CHECKPOINT` | Unsupported storage/wire/event/checkpoint format; no silent conversion. |
-| `STORAGE_BUSY` / `OPERATION_PENDING` | Bounded lock/queue wait exhausted, or the same admitted write is pending; query status or retry delivery with the same stable ID. |
-| `STORAGE_UNAVAILABLE` | Disk-full, permissions, disconnected volume or I/O failure; preserve commit uncertainty. |
-| `DEADLINE_EXCEEDED` / `CANCELLED` | No new work after limit; admitted commit may still finish. |
-| `INVALID_CURSOR` / `SESSION_CLOSED` | Invalid/expired cursor or closed owner. |
-
-Writes deduplicate by `(store_id, operation_id)` and submitted events by
-`event_id`. Compare canonical validated request content, principal, scopes and
-execution identities; Storage computes the fingerprint. JSON canonicalization
-has a versioned deterministic UTF-8 serializer (sorted keys, no nonfinite
-numbers, no duplicate keys); hashing alone does not define semantic equality.
-Content descriptors (expected digest/length) are part of the request fingerprint.
-Committed delivery retries do not consume a supplied stream; caller must repeat
-the same descriptor. New supplied bytes with a false unchanged descriptor are
-not a new upload. For unknown-length streams use an internal staged upload and
-finish with declared digest/length; seal verification precedes publication.
-Operation lookup precedes re-reading/re-uploading committed content and CAS.
-
-An identical committed submission returns the original refs/versions/sequence,
-with `duplicate=true`. A pending write returns `OPERATION_PENDING` with its
-phase/operation ID; `OperationStore.status` returns the complete typed status.
-The original owner must finish, cancel or be recovered before another producer
-can supply bytes. A reused ID cannot become a fresh fetch/model dispatch.
-Idempotency records persist for the retained lifetime of their committed data.
-Automatic pruning/GC is outside the first handoff.
-
-Reads are safely repeatable against immutable content. `append` and committed
-writes are safe delivery retries with the same ID; changing data after conflict
-requires a new ID. Timeout alone never proves a write failed. Error `retryable`
-means safe Storage delivery, not permission to replay the external action.
-
-## 5. SQLite schema, versions and concurrency
-
-One database contains these logical tables; column names/layout remain draft.
-
-| Table | Keys and essential columns / invariant |
-| --- | --- |
-| `store_metadata`, `schema_migrations` | Store UUID, schema integer, canonicalization version; migration version/checksum/applied time. |
-| `scopes`, `run_links` | Tagged scope identity; trusted run/agent/parent/correlation registration. Facts come from Connections, not Storage run-status decisions. |
-| `state_entries` | PK `(scope_id, key)`, JSON or tombstone, current version, last commit event. |
-| `state_revisions` | Immutable `(scope_id, key, version)` revisions/tombstones and commit event; permits precise historical state inspection. |
-| `operations` | Unique operation ID, origin/request digest, reservation owner, phase, sealed content metadata, result/receipt. |
-| `artifacts` | Unique opaque ID, scope, generated relative object key, phase, SHA-256, size, media type, safe metadata, commit event. |
-| `snapshots` | Unique snapshot ID, scope, ready manifest/raw/text/index refs, extraction format/version, publication event. |
-| `checkpoints` | Unique checkpoint ID, scope, payload artifact ref, runtime/adapter/format versions, publication event. |
-| `events`, `event_scopes` | `recorded_seq INTEGER PRIMARY KEY AUTOINCREMENT`; unique event ID, canonical envelope/hash, trusted producer, action/attempt IDs, visibility scopes. Public API exposes insert/query only. |
-| `action_attempts` | Derived intent/outcome sequence links; uniqueness for one canonical intent and one terminal outcome per action/attempt. Absence of outcome is incomplete. |
-
-Indexes support `(run_id, recorded_seq)`, `(action_id, attempt_id,
-recorded_seq)`, `(correlation_id, recorded_seq)`, `(scope_id, recorded_seq)` and
-pending operation phase. Foreign keys prevent dangling committed refs. Tables
-for goals, missions, scheduling and evidence judgments are deliberately absent.
-Application metadata is caller-owned JSON.
-
-Three independent version axes: database schema integer; shared wire/event
-schema major version; per-checkpoint/extraction format version. Bootstrap is
-schema 1. Run migrations under exclusive administrative admission after a
-verified backup; use explicit transaction-controlled statements and record
-checksum/version together. Reject newer unknown schemas and altered migration
-checksums. No opportunistic schema change during an agent action. Checkpoint
-migrations belong to Runtime, producing a new checkpoint/event, not mutation
-of the old bytes. Additive shared fields require agreement; unknown major
-versions fail explicitly.
-
-Proposed baseline settings: local disk, foreign keys on every connection,
-rollback journal `DELETE` plus `synchronous=EXTRA`; optional WAL plus
-`synchronous=FULL` only on a verified patched linked SQLite version;
-bounded writer queue and short `BEGIN IMMEDIATE` write transactions. Use one
-process-lifetime storage-root owner with an exclusive local lock. It owns
-migrations/recovery, writer and checkpoints; a second owner of this root returns
-`STORAGE_BUSY`. Multiple bound runs/workers share that owner. Standalone launchers
-use sequential root ownership, or an explicitly separate configured store; no
-automatic second owner or independent snapshot directory. Multi-owner fencing
-and authenticated attachment to an existing owner are deferred. Readers take
-short snapshots, never remain open during model/tool waits. Busy waiting has
-one total cap: min(5 seconds, remaining caller deadline), including queue wait;
-internal retries never reset that budget.
-
-Implementation must explicitly roll back the whole batch on any statement
-failure; statement-level ABORT does not undo earlier successful statements.
-Handle a busy COMMIT while retaining its active transaction within the same
-budget, then resolve rollback/commit state. Never use `INSERT OR REPLACE` for
-audit/deduplication rows or blanket IGNORE for validation. Lifecycle uniqueness
-keys use non-null attempt IDs for dispatch families. [SQLite transaction rules](https://sqlite.org/lang_transaction.html),
-[SQLite conflict handling](https://sqlite.org/lang_conflict.html)
-
-For the Python 3.11 target, propose `isolation_level=None` with explicit
-transaction statements, parameter-bound SQL values, and mapping
-`sqlite_errorcode`/`sqlite_errorname`. Do not use `executescript` inside a pending
-transaction because it can implicitly commit it. Report linked
-`sqlite3.sqlite_version_info` at startup. [Python 3.11 sqlite3](https://docs.python.org/3.11/library/sqlite3.html)
-
-SQLite documents one WAL writer, same-host shared-memory requirements,
-checkpoint starvation by long readers, and a WAL-reset race fixed in 3.51.3
-(2026-03-13), with backports 3.44.6 and 3.50.7. Verify the linked library rather
-than infer it from Python's version. If not patched, fail explicitly requested WAL startup with an
-actionable error; do not silently switch profiles. WAL FULL synchronizes commits;
-NORMAL can lose acknowledged commits
-after power loss. These are documented behavior, not measured local guarantees.
-[SQLite WAL documentation](https://sqlite.org/wal.html)
-
-The baseline recommendation avoids a required runtime upgrade while keeping
-concurrent WAL disabled. PM recorded the existing uv interpreter's linked SQLite
-as 3.50.4 in `docs/teams/decisions.md`; Storage did not run that metadata check.
-SQLite documents EXTRA's additional rollback-journal directory synchronization;
-actual device/OS durability and returned settings still require implementation
-verification. Baseline readers can block writes, so keep queries/transactions
-short and retain the bounded busy policy. [SQLite synchronous profiles](https://sqlite.org/pragma.html#pragma_synchronous)
-
-Backup/restore must cover database state and referenced immutable objects under
-a quiescent publication barrier or consistent backup protocol; never copy only
-the main live database and discard WAL. Initial administration can stop writers,
-finish recovery, back up via the SQLite backup API, then copy referenced objects
-and verify a manifest. `close` need not force a blocking truncation checkpoint
-to claim a committed event persisted. Health checks report queue/busy/disk/format
-errors without overwriting history.
-
-## 6. Event envelope, ownership and automatic hooks
-
-Submitted `ExecutionEvent` fields:
+Canonical successful event receipt has exactly these shared fields:
 
 ```text
-schema_version: 1
-event_id, kind, occurred_at (UTC RFC3339), run_id, correlation_id, action_id
-agent_id: nullable only for explicit standalone/system contexts
-attempt_id: required for model/tool/invocation intent and outcome; otherwise nullable
-parent_action_id, parent_run_id: nullable for roots; populated for child linkage
-producer: runtime | connections | storage | standalone_driver
-status: intent | succeeded | failed | timed_out | cancelled | rejected | observed
-input_refs, output_refs: ordered typed references
-payload: bounded kind-specific JSON
-application_metadata: optional caller-owned JSON
+EventReceipt = {
+  schema_version: 1,
+  store_id,
+  event_id,
+  recorded_seq,
+  recorded_at,
+  duplicate
+}
 ```
 
-Storage adds sequence/recording time; caller cannot supply them. Producer is
-bound trusted authority, not a worker-selected string. A logical `action_id`
-survives retries; each actual dispatch gets a fresh `attempt_id`. `event_id`
-identifies a record, not an action. The root run action owns run start/finish;
-`agent.started` is its accepted/start intent boundary and `agent.finished` is
-its terminal outcome.
-Storage commit events reuse causal action/attempt identities, while `operation_id`
-distinguishes the storage write. Event time never determines order.
+`Ok(EventReceipt)` means committed under the verified active durability
+profile. There is no separate RecordAck, caller durability flag or redundant
+record ID. Sequence is store-wide, ascending with possible gaps; timestamps
+describe time and never determine order. An event cannot contain its own
+eventual receipt.
 
-| Canonical proposed event kind | Producer / payload |
+Digests serialize as sha256:<64 lowercase hex digits>; sizes and byte positions
+are nonnegative integers. IDs remain the shared opaque identity types, not paths.
+
+A write receipt contains `schema_version, store_id, operation_id,`
+`event_receipt, duplicate` plus its operation-specific result. The original
+refs/versions/sequence/time remain unchanged on delivery replay;
+`duplicate` is delivery metadata. Success implies committed publication,
+not external-effect atomicity or hardware immunity.
+
+Request fingerprint version 1 uses deterministic compact UTF-8 JSON with
+sorted keys, strict finite values and unique keys. Numeric type/representation
+is frozen by the shared serializer. It includes method, trusted origin
+(principal/producer, scope and run/action/attempt), input metadata and expected
+content digests/lengths. It excludes delivery timestamps, live handles,
+server-assigned sequence and returned duplicate flags. Streams are identified
+by a required declared length/SHA-256 descriptor, then verified against bytes.
+Different base64 spellings are not different content after validated decoding.
+All producers use the one PM-owned canonicalizer.
+
+Deduplication is by store/event ID or store/operation ID. Reauthorize current
+identity/visibility first, compare frozen canonical content/origin, then return
+an existing committed receipt before fresh write quota/reservation, queue-admission
+or expected-version checks. Identical pending delivery returns OPERATION_PENDING
+with the original ID/phase (or that status through the status API), not a new
+reservation. Only a new ID proceeds to fresh admission; the root owner's atomic
+ID claim prevents concurrent identical submissions reserving twice. Different
+content/origin is IDEMPOTENCY_CONFLICT. Never overwrite/REPLACE a history or
+receipt row. Reconciliation consumes no source stream or additional write quota;
+independent finite delivery/status/read limits and current authority still apply.
+
+## 3. Async context-first APIs and exact results
+
+All execution operations below are async, scoped and context-first, using
+`Result[T] = Ok(value) | Err(error)`. Expected errors use results. Unexpected
+defects retain exception semantics after bounded cleanup. Python task
+cancellation cleans up and re-raises; explicit engine cancellation returns
+an error result. Disk work stays on the owned worker, not the model event loop.
+
+The session factory and terminal close are lifecycle operations: close keeps
+the exact v1 `close(deadline)` signature rather than inventing a context argument.
+
+| Signature | Result |
 | --- | --- |
-| `agent.started`, `agent.finished` | Runtime: definition/version, bindings, input/output refs; final runtime status and known/unknown usage. |
-| `context.assembled` | Runtime: ordered source refs/state versions, selected input artifacts, size/count estimation method. |
-| `model.intent`, `model.outcome` | Runtime: model config/adapter/request refs and effective limits; response/continuation refs, elapsed monotonic duration, usage/error and outcome. |
-| `tool.intent`, `tool.outcome` | Runtime around ToolExecutor: tool/schema/version, permitted input, limits; structured exit/status/diagnostic/output refs. |
-| `validation.outcome`, `repair.intent`, `repair.outcome` | Runtime: output schema/rule and bounded sanitized error/repair references. Any model repair also records its distinct model attempt. |
-| `execution.limit_reached`, `execution.cancel_requested` | Runtime: decision/reason and affected action; cancellation request alone is not a terminal outcome. |
-| `binding.resolved`, `binding.rejected` | Connections: non-secret binding identity/version and effective permission references or safe failure. |
-| `invocation.intent`, `invocation.outcome` | Connections: parent action/attempt, preallocated child run ID, destination definition, permitted input/result refs and outcome. |
-| `state.committed` | Storage in state transaction: operation ID, keys, old/new versions, revision references. |
-| `artifact.committed`, `snapshot.committed`, `checkpoint.saved` | Storage at publication transaction: immutable refs/digests/format/size; no content copy into event JSON. |
-| `storage.recovery_observed`, `artifact.unavailable` | Storage: recovered/interrupted/integrity disposition; never invent external action termination. |
-| `event.correction` | Original authorized owner: target event and correction reason/data; prior event stays immutable. |
+| `StateStore.get(context, scope, key)` | `Result[StateLookup]` |
+| `StateStore.get_version(context, scope, key, version)` | `Result[StateLookup]` |
+| `StateStore.commit(context, operation_id, mutations, activity)` | `Result[StateCommitReceipt]` |
+| `ArtifactStore.put(context, operation_id, scope, content, metadata)` | `Result[ArtifactReceipt]` |
+| `ArtifactStore.open(context, artifact_ref, byte_range, max_bytes)` | `Result[ArtifactRead]` |
+| `SnapshotStore.commit(context, operation_id, scope, proposal)` | `Result[SnapshotReceipt]` |
+| `SnapshotStore.read(context, snapshot_ref, range, max_text_bytes, continuation)` | `Result[DocumentSlice]`; continuation is explicit null on first call |
+| `CheckpointStore.save(context, operation_id, scope, checkpoint)` | `Result[CheckpointReceipt]` |
+| `CheckpointStore.load(context, checkpoint_ref, accepted_formats)` | `Result[CheckpointEnvelope]` |
+| `ActivityRecorder.append(context, event)` | `Result[EventReceipt]` |
+| `ActivityRecorder.status(context, event_id, expected_event_digest)` | `Result[EventStatus]` |
+| `ActivityReader.query(context, filters, cursor, limit)` | `Result[ActivityPage]` |
+| `OperationStore.status(context, operation_id)` | `Result[OperationStatus]` |
+| `StorageSession.close(deadline)` | `Result[CloseReceipt]` |
 
-Connections' invocation intent is the parent dispatch boundary; the child's
-`agent.started` is a separate child execution fact. Runtime owns child terminal
-status; Connections records the parent call's observation. These are distinct
-records, with no competing producer for either. A child result must be published
-into a scope the parent can read or explicitly granted; linkage alone is not
-enough. Standalone trusted launcher records `tool.intent/outcome` as
-`standalone_driver`, with a real new run ID and null agent ID, when no Container
-owns the call. Worker and ToolExecutor do not independently duplicate records.
+Trusted bootstrap factory `StorageSession.open(resolved_settings, authority)`
+returns `Result[StorageSession]` after obtaining the root lock, verifying
+schema/runtime/settings and completing recovery. Connections supplies the
+administrative authority and grants; Storage never issues them. Administrative
+`provision_run(admin_context, run_descriptor)` returns a registered scope,
+not permission to use it. Shared scope registration is similarly explicit.
+These factory/provisioning paths are not worker/agent capabilities.
 
-Intent/outcome references and payload rules are validated by kind. Intent and
-terminal outcome uniqueness is `(run_id, action_id, attempt_id, family, phase)`.
-This lifecycle uniqueness applies to model/tool/invocation/repair families;
-agent start/finish have their own run-action boundary uniqueness. A
-`validation.outcome` has a unique validation ID and requires no missing
-`validation.intent`; observations/binding/storage events have kind-specific keys.
-Storage publication uniqueness instead includes operation ID and event kind,
-so several artifacts within one tool attempt remain distinct.
-Dispatch/repair outcome requires its committed intent; agent finish requires
-agent start. Corrections do not replace a terminal
-row or silently change a run-status projection. Outcome payload has duration,
-structured error/status and usage fields when known; missing usage is null plus
-availability metadata, never zero by assumption.
-
-Before external dispatch, the owner must receive a committed intent receipt.
-If that fails, do not dispatch. After return, publish permitted outputs, then
-append the outcome. If publication/outcome fails, owner returns a structured
-`RecordingFailure` carrying action/attempt, known execution outcome if any,
-available refs, failed storage operation and commit uncertainty. This failure
-cannot become fully recorded success. Owner may retry *recording* with the same
-event ID; it must not replay the tool/model merely to reconstruct an outcome.
-After an unrecorded outcome, stop further external dispatch until recording is
-resolved or the run terminates with the recording failure.
-
-Cancellation/deadline does not itself suppress the terminal recording hook.
-Connections supplies a preauthorized cleanup grant for one run/action/attempt;
-the owner activates it against a committed intent receipt. The trusted cleanup
-context retains causal IDs and sets `persistence_mode=record_cleanup` plus its
-separate grant/deadline. Proposed deadline is min(activation UTC time + 5 seconds,
-original action deadline + 5 seconds, session shutdown deadline). Grant expiry
-is independently set for that cleanup window; explicit revocation still denies
-access. Workers cannot create/activate/extend it. Normal execution cancellation
-is ignored only for those cleanup Storage operations; the cleanup token has its
-own cancellation/shutdown signal.
-
-Allowed cleanup writes are output/diagnostic artifact publication within the
-original attempt's byte/count caps (including an output produced just before
-cancellation but not yet admitted to `put`), same-ID terminal event append and
-operation status resolution. They cannot change arbitrary state, create a new
-attempt, checkpoint/resume, commit a newly dispatched fetch or call models/tools.
-Storage validates the bound token/intent/scope/IDs/effective persistence deadline;
-it does not secretly clear ordinary cancelled contexts. Lifecycle-only run
-termination cleanup uses its committed agent start receipt. This shared-context
-extension needs joint approval. Exhaustion returns recording failure/incomplete
-history and leaves admitted write commitment explicitly pending/unknown.
-
-An intent without outcome is `incomplete` as a history projection: it can mean
-no dispatch, running, or returned with failed/lost recording. Recovery does not
-label it failed or automatically resume/retry. A pending event cannot log its
-own logging error if persistence is unavailable; return it to the caller and
-record a later authorized diagnostic/correction once storage is available.
-
-## 7. Artifact publication and interrupted-write recovery
-
-Artifact IDs/object names are generated by Storage. Display filenames remain
-metadata. Configured root is resolved once by trusted configuration and checked
-on every open/create against traversal, symlinks and Windows reparse/junction
-escapes. Reject alternate streams/device/path syntax in any accepted path
-component; workers never supply components. Stage and object directories must
-be on the same local volume. Root is owned/private to trusted deployment;
-ordinary path resolution alone is not proof against hostile same-user path races.
-The implementation must verify opened handles/real paths or use platform support,
-and fail closed if that containment check cannot be guaranteed.
-
-Publication phases are internal and not readable:
-
-1. Reserve `operation_id` and opaque object ID in a short SQLite transaction:
-   `RESERVED`, owner token, scope and request fingerprint. No public commit event.
-2. Stream to an exclusive generated staging file with bounded size/deadline,
-   SHA-256 and byte count. Flush userspace buffers, then `fsync` the file.
-3. Commit `SEALED` with the final expected digest/length in SQLite. An unsealed
-   file's hash is insufficient to establish completeness: partial bytes hash too.
-4. Move the sealed closed file to its generated final name on the same volume.
-   Verify destination/size/digest. Flush directory metadata when a supported,
-   tested platform primitive exists. No overwrite of another artifact.
-5. One SQLite transaction sets READY, inserts the canonical `artifact.committed`
-   event and saves its receipt. Deterministic event ID derives from the storage
-   operation/phase. Acknowledge only after this transaction commits.
-
-Python documents buffer flush before file `fsync`; `os.replace` can fail across
-filesystems. The protocol uses same-volume rename for visibility and a separate
-SQLite publication transaction. Windows directory-entry survival after abrupt
-power loss is unverified here; do not claim that file plus database is one
-atomic/durable unit. Reads recheck publication and integrity, and surface missing
-or damaged acknowledged files. [Python filesystem documentation](https://docs.python.org/3.11/library/os.html)
-
-Recovery runs at startup after obtaining the exclusive process-lifetime root
-owner lock and before serving writes. No other owner can still finalize a stage.
-Do not use age, PID or elapsed lease alone to declare a live writer dead. Active
-uploads in the current owner are not reclaimed by maintenance. Staging files
-hold no database transaction while streaming. A Windows nonblocking file lock
-is a possible adapter and must be verified on the actual filesystem; multi-owner
-epochs/fencing are deferred. [Python Windows locking](https://docs.python.org/3.11/library/msvcrt.html#msvcrt.locking)
-
-| Interrupted state | Recovery |
+| Result/value | Required shape and behavior |
 | --- | --- |
-| RESERVED / unsealed stage | Mark interrupted/quarantine; never infer complete content or publish. Re-delivery can report the operation; a new upload needs explicit caller decision/new operation. |
-| SEALED + complete stage | Verify against persisted seal, finalize rename then READY/event transaction. |
-| SEALED + complete final file | Verify against seal; finish READY/event transaction once. Lost acknowledgment retry returns original receipt. |
-| SEALED + missing/mismatched bytes | Mark interrupted/integrity failure; no public readable artifact. |
-| READY + valid final file | Preserve ready object; no extra commit event. |
-| READY + missing/mismatched file | Mark availability fault and append `artifact.unavailable`; return `INTEGRITY_ERROR`, preserve original history. |
-| Unindexed generated file | Quarantine for inspection; bounded administrative cleanup only under recovery lock. |
+| `StateLookup` | `Present(value, version, commit_event_id)` or `Missing(version)`. Latest missing version is 0 or retained tombstone version. Historical tombstone is Missing at that exact revision; absent revision is NOT_FOUND. |
+| `StateMutation` | `{scope,key,kind:put|delete,expected_version,value?}`. Duplicate keys in a batch invalid. |
+| `StateCommitReceipt` | Common write fields plus ordered `mutation_versions[{scope,key,old_version,new_version}]`. Revisions remain readable under grants. |
+| `ArtifactContent` | Immutable expected byte length/SHA-256 and an async byte source. Unknown descriptors are rejected; no unreviewed streaming RPC is added. |
+| `ArtifactMetadata` | Valid media type plus optional display filename/bounded JSON. Filename is data, not a path. |
+| `ArtifactReceipt` | Common write fields plus `artifact_ref,scope,byte_length,sha256,media_type`. |
+| `SnapshotReceipt` | Common write fields plus `snapshot_ref,manifest_ref,original_ref,text_ref,index_ref,component_digests,extraction_version,line_count,physical_page_count_or_null`. |
+| `CheckpointReceipt` | Common write fields plus `checkpoint_ref,payload_ref,byte_length,sha256,envelope_format_version`. |
+| `ByteRange` | `{start,end_exclusive}`, zero-based, `0 <= start <= end <= byte_length`; no clamping. |
+| `CloseReceipt` | `{schema_version:1,store_id,closed:true,completed_operation_ids,interrupted_operation_ids}`. An unresolved writer returns an error instead of closed=true. |
 
-Snapshot commit first persists its parent reservation, complete validated
-proposal descriptor/component digests and preallocated snapshot/manifest IDs.
-Child artifact operation IDs derive deterministically from parent operation ID
-plus component role (`raw`, `text`, `index`, `manifest`); existing ready children
-are reused on delivery/recovery, never duplicated. Checkpoint save uses the same
-parent/child scheme with role `payload`. Unknown streams cannot seal the parent
-descriptor until expected component lengths/digests are fixed and validated.
+`ArtifactRead.read(context, max_bytes)` returns `Result[ByteChunk]`,
+`ByteChunk={bytes,eof,next_absolute_offset}`; `aclose(context)` returns
+`Result[Unit]` and is idempotent. The handle is bound to the original authority,
+range and cumulative allowance. Every chunk checks current context/grants,
+deadline/cancellation and total remaining budget. Verify size/digest before
+releasing content. Midstream fault/denial stops further bytes; consumers need
+successful EOF to regard the selected read as complete. Already delivered
+prefixes cannot be recalled. Streaming holds no SQLite transaction.
 
-Snapshot commit uploads raw response bytes, canonical text and location index
-through this protocol, then publishes an immutable manifest and snapshot row.
-The final snapshot row plus `snapshot.committed` plus operation receipt commit
-together. Individual constituent artifact events can exist without a published
-snapshot; they do not make it readable as a document. No snapshot is successful
-until every referenced object is READY and verified. Artifacts left by a failed
-snapshot are retained as orphans for explicit administrative retention review.
-No silent rollback claim is made for already durable constituent files.
-Root recovery finishes a composite only if its persisted parent descriptor is
-sealed, all exact child refs are ready/verified and it was not durably ABORTED.
-It commits the preallocated snapshot/checkpoint row, canonical publication event
-and original operation receipt once. Otherwise mark parent interrupted and keep
-children as recorded orphans; the operation cannot remain pending indefinitely.
-No missing component is reconstructed through external retrieval. A lost reply
-after parent commit resolves through `OperationStore.status`/same-ID retry.
+CAS uses expected version 0 only for never-created keys. Put/delete advances
+the version, with delete retaining a tombstone. Deleting a never-seen/already
+deleted key is INVALID_DATA. Recreate expects the tombstone's actual version,
+preventing ABA. Version exhaustion is LIMIT_EXCEEDED, never wraparound.
+Conflict rolls back the entire batch, with current versions disclosed only
+where permitted. There is no unconditional overwrite available to agents.
 
-## 8. Snapshot provenance and bounded document reads
+State value cap is 1 MiB; batch is <=100 mutations and <=4 MiB. Keys are
+<=256 UTF-8 bytes. Event JSON is <=64 KiB; checkpoint JSON <=4 MiB;
+ordinary metadata <=16 KiB. Bindings may reduce these module-local defaults.
+Activity annotations supply safe cause/references/application metadata;
+Storage controls producer, mutation identities/versions and mandatory event.
+One-database multi-scope batch requires all write grants; its event visibility
+requires access to all affected scopes. Cross-database/file/state atomic
+batches are outside v1.
 
-`SnapshotProposal` includes exactly one retrieval's raw bytes and derived
-normalized UTF-8 text, extraction identity/version/config reference, location
-index and sanitized provenance. Toolset owns extraction and semantic detection
-of login/challenge/empty/unsupported pages; Storage validates structure, hashes,
-limits and references, not article correctness. Refreshed retrievals get new
-snapshot IDs even if bytes match; no refetch on reads and no URL-key overwrite.
+## 4. Exact event/operation status and error semantics
 
-Manifest format `document_snapshot/1` includes:
-
-- Snapshot ID/scope, raw/text/index artifact refs and digests/sizes.
-- Requested/final URL (credential-bearing URLs rejected or sanitized before
-  persistence), retrieval UTC time, status/media/encoding, selected safe response
-  headers. Never cookies, authorization or unrestricted header dumps.
-- Search provenance reference if applicable; snippets remain discovery metadata.
-- Extractor name/version/options reference, normalization version, detected
-  content limitations, line count and optional PDF page map.
-- Raw content meaning: bytes delivered after HTTP content decoding by the selected
-  client, plus available `Content-Encoding` metadata; not a fabricated exact
-  TLS/wire capture. Raw and extraction must come from that same retrieval.
-
-Canonical text is UTF-8 without BOM; line endings are LF. Define logical lines
-by splitting canonical text on LF; a final LF does not create a phantom last
-line. Empty text has zero lines. No implicit Unicode normalization is added.
-Index stores UTF-8 byte offsets and ends for each line, with LF delimiters
-outside line bodies. Toolset freezes normalization/extraction before publication;
-Storage verifies monotonic offsets, UTF-8 boundaries, counts and coverage.
-For PDF, page numbering is one-based physical page order; preserve empty pages
-and page labels separately. Missing page mapping yields `UNSUPPORTED_RANGE`,
-never invented page references.
-
-`DocumentRange` is tagged `lines{start, end_exclusive}` or
-`pages{start, end_exclusive}`. Starts are one-based and end-exclusive; valid
-nonempty ranges stay inside the snapshot's available counts plus one. Empty
-documents permit `{start:1,end_exclusive:1}` only. No mixing line/page units.
-Initial read budget is positive and <=64 KiB text, further reduced by grants.
-Requests exceeding 200 lines or 10 pages are `LIMIT_EXCEEDED`; callers request
-the next bounded range or use continuation within an oversized bounded range.
-Byte counts always count UTF-8, not Python characters.
-
-`DocumentSlice` contains snapshot/extraction versions, requested and actually
-returned ranges, ordered spans with absolute line/page and zero-based byte
-offsets, text, `has_more_in_requested_range`, `has_more_in_document`,
-`truncated`, and `next_position`. Prefer complete lines. If one line/page is
-larger than the budget, return a UTF-8-boundary partial span and an opaque next
-position for its byte offset; never loop forever on an oversized first line.
-Byte budget constrains text plus a separate bounded response-envelope overhead.
-Continuation position is snapshot/range/grant/format-bound, not authority;
-submit it through the next read's `continuation` parameter with the same range.
-The new output budget may be reduced within the grant without changing position.
-Default line citations remain stable; partial spans carry byte ranges explicitly.
-
-Reliable human locators are descriptive `snapshot-ref + line N` or physical
-`page N + line/byte span`. Programmatic locators always carry the immutable
-snapshot ID/extraction version and range units. Optional `document.find` and
-chunks require a later contract; they do not change saved line/page references.
-
-## 9. CLI access: transport-independent scoped contract
-
-Storage/Toolset/Connections must agree one adapter. The worker never receives a
-database filename, artifact root, model credential, unrestricted grant, or a
-second durable snapshot store. This design separates operations from transport.
-
-Allowed worker operations for the initial tools are `snapshot.commit` for fetch
-and `snapshot.read` for document.read. `web.search` needs no storage capability
-unless its bounded output is persisted by the trusted action owner. The trusted
-launcher binds store/scope/run/action/attempt and granted object selectors.
-Worker-visible capability cannot select another run/scope or append events.
-
-Request/response logical envelope (both pipes and broker use strict UTF-8 JSON;
-batch handoff maps the same fields to a trusted call):
+`ActivityRecorder.status` is exact-ID/digest lookup, not history search.
+Expected digest is the shared canonical producer-event digest, excluding
+Storage sequence/time/receipt. It is not authority. Check the requesting
+producer/run/action/attempt and its restricted status grant before lookup.
+If a visible committed or pending ID has another canonical digest/origin,
+return IDEMPOTENCY_CONFLICT with no foreign payload.
 
 ```text
-request = {schema_version:1, request_id, operation, operation_id?, body}
-response = {schema_version:1, request_id, ok,
-            result?: SnapshotReceipt|DocumentSlice|OperationStatus,
-            error?: StorageError}
+EventStatus = {
+  schema_version: 1, store_id, event_id,
+  state: committed | pending | absent | unknown,
+  observed_seq,
+  receipt: EventReceipt | null,
+  pending_phase: queued | appending | null
+}
+OperationStatus = {
+  schema_version: 1, store_id, operation_id,
+  state: committed | pending | aborted | interrupted | absent | unknown,
+  commit_state: committed | not_committed | unknown,
+  observed_seq,
+  receipt: StateCommitReceipt | ArtifactReceipt | SnapshotReceipt
+           | CheckpointReceipt | null,
+  phase, safe_disposition
+}
 ```
 
-Transport/session binding supplies authority and causal context; worker values
-cannot replace them. Unknown versions/fields/operations fail validation. Write
-`operation_id` is derived/assigned by the trusted launcher for that action; a
-worker's delivery retry uses the same assigned ID. `request_id` only correlates
-messages and does not replace persistent idempotency.
+Status invariants: committed requires a receipt and no pending phase. Event
+pending requires queued/appending and no receipt; absent/unknown have neither.
+Operation phase is queued|reserved|writing|sealed|publishing|ready|aborted|
+interrupted or null. Committed has ready/committed/receipt; pending uses one of
+the first five phases with unknown/no receipt; aborted/interrupted uses its
+matching phase and not_committed/no receipt; absent/unknown uses null phase
+and unknown/no receipt. safe_disposition is null or a bounded failure code/message,
+not arbitrary exception text. observed_seq is a nonnegative integer or null.
 
-For an interactive proxy, `snapshot.commit` is a bounded upload protocol:
-`snapshot.begin` -> `upload.append{upload_id,offset,base64_bytes}` ->
-`snapshot.finish{upload_id,provenance,extraction,index,component_seals}`. An
-upload ID selects only its granted reservation; exact offset/chunk hash verifies
-delivery repeats, rejects overlaps/gaps, and never grants arbitrary file access.
-The final receipt is the sole publication acknowledgment. `operation.status`
-resolves a lost acknowledgment but cannot infer external fetch success.
-Uploads are staged inside Storage, not as worker-chosen file paths. Proposed
-frame cap 1 MiB, decoded chunk cap 256 KiB, total raw/text caps 16 MiB/4 MiB,
-index <=4 MiB, one active upload per tool attempt; all policy configurable
-downward. Disconnect/cancellation revokes new requests and leaves admitted
-commit resolution/recovery to Storage.
+Committed includes the original receipt. Pending includes phase and no receipt;
+it is unknown commitment until settled. Aborted/interrupted with a confirmed
+nonpublication disposition is not_committed. Absent means not visible at the
+observation, with unknown commitment: it does not prove no queued request exists.
+Unknown has no receipt and unknown commitment. observed_seq is the permitted
+store observation watermark, not a count of another run's history. If that
+watermark is outside the caller's visibility, return null. Unavailable database
+returns Err with unknown commitment rather than invent a successful lookup.
 
-The three candidate transports and Storage recommendation are below for joint
-review. Public CLI stdout remains exactly one final JSON tool result;
-diagnostics remain stderr. Storage traffic may never share stdout as unframed
-extra JSON messages. The platform-owned standalone launcher is part of every
-option: it constructs an authorized standalone run/context, records intent,
-uses the same ToolExecutor and Storage, records outcome, then prints one result.
-If the configured root has another owner, return `STORAGE_BUSY` before dispatch;
-do not create a new hidden store to make the command appear successful.
-The public launcher requires valid bindings. An internal worker rejects ordinary
-public requests without its explicit worker envelope; that envelope alone is
-not Storage authority and cannot grant persistence or additional reads.
-Default standalone access is a fresh run scope; reading a saved snapshot needs
-an explicit authorized configured scope, never inferred from a supplied ref.
+The root owner maintains an admitted-ID map, including queued writes. Admission
+registers ID/content/origin before enqueue; status serializes against the worker
+and combines committed rows with those reservations. A duplicate pending request
+returns OPERATION_PENDING instead of starting another writer. After process
+death volatile queue entries may disappear; recovered absence still does not
+establish an external outcome. Idempotent same-ID delivery resolves persistence
+without dispatching external work.
 
-### Transport comparison and Storage recommendation
+`StorageError` follows the common envelope:
+`{code,message,details,effect_state,commit_state,retryable_delivery,`
+`operation_id?,event_id?,action_id?,attempt_id?}`.
+Details are bounded and sanitized: no secrets, authentication headers,
+credential URLs, unfiltered stderr or internal absolute paths. effect_state
+reports the observed Storage effect; it is separate from a model/tool's effect.
 
-Recommend launcher-mediated batch handoff for the initial three tools, subject
-to PM/CLI/Connections agreement. The worker returns a bounded fetch proposal;
-ToolExecutor commits it through the bound Storage interface before returning
-public success. For reads, the parent supplies only a bounded authorized slice.
-This solves the process boundary through explicit serialization/mediation,
-rather than pretending a Python object exists in the subprocess. It supports
-the currently fixed operations; an interactive worker needing additional reads
-would require the scoped proxy alternative. No transport is selected here.
-
-| Dimension | Launcher batch handoff | Dedicated private pipes | Ephemeral loopback broker |
-| --- | --- | --- | --- |
-| Windows portability | Standard redirected stdin/stdout/stderr; no extra handle adapter. | Anonymous extra pipes need Windows handle inheritance; named pipes need a separate endpoint/security adapter. | Literal loopback TCP works across target platforms; choose framed JSON or separately reviewed HTTP. |
-| Standalone | Trusted launcher owns the same root/session and ToolExecutor; no separate store. | Same launcher creates per-attempt channels and owns proxy lifetime. | Same launcher starts/binds broker and revokes it on shutdown. |
-| Lifecycle/cancellation | One worker result; launcher owns postprocess commit resolution and cleanup. | Pump request/response plus stdout/stderr concurrently; close endpoints/abort pending frame on cancellation. | Bound listener/connections/request queues/timeouts; revoke token and close listener. |
-| Transfer bounds | Larger final worker JSON and base64 copies; explicit per-stream and decoded caps. | Chunk frames and backpressure; never multiplex extra messages onto public stdout. | Same chunk protocol; additional socket/backpressure handling. |
-| Authority | Parent-held bound grant, tool operation slot and requested ref/range; no bearer token. | Channel possession plus parent-bound grant; worker cannot select another scope. | Per-attempt token maps to parent-bound grant; authentication on every request. |
-| Failures/recovery | Exit zero means proposal only; durable receipt required for success; loss resolves by operation ID. | Broken/truncated/oversized frames close capability; incomplete upload remains staged. | Disconnect/auth/request failures are explicit; no automatic external retry. |
-| Setup complexity | Smallest initial integration; increased memory/wire overhead. | Native handle/ACL/lifecycle validation; supports interactive storage calls. | Listener/authentication/endpoint administration; supports non-Python clients. |
-
-Internal envelope is distinguished from the final shared ToolResult:
-`worker_request{schema_version:1,message_type,request_id,tool,input,context,
-handoff}` and `worker_result{schema_version:1,message_type,request_id,tool,
-status,snapshot_proposal?|read_observation?,observations,error?}`. Public input
-cannot supply reserved `context`/`handoff` fields. ToolExecutor builds a fresh
-request; it never merges agent JSON over trusted fields. Context contains safe
-identifiers/deadline only; authority remains in the parent. Registered worker
-stdout is internal protocol data, not a final user/model-visible ToolResult.
-
-For fetch, proposal components are `raw_base64`, `text_utf8_base64`,
-`index_utf8_base64`, declared component digests/lengths, extraction and safe
-provenance. The parent validates request/tool IDs, exit/status, encoded/decoded
-caps, strict UTF-8 and schema before `SnapshotStore.commit`. Storage computes
-actual hashes and validates locations. ToolExecutor returns final snapshot ref,
-digest/provenance/preview only after Storage's publication receipt. Storage
-failure is a failed tool result with commit state; it is never converted into
-fetch success because the network process exited zero. Intermediate raw stdout
-must not be sent to the model or appended verbatim to ordinary diagnostics.
-
-For read, ToolExecutor calls `SnapshotStore.read` with the public requested ref,
-range/budget/continuation, then injects only that canonical slice into the worker.
-It validates worker output against the supplied text/locators and preserves
-Storage's canonical references. The worker cannot ask for more data in batch
-mode. A forged internal envelope can transform only caller-supplied bytes; it
-does not obtain the parent's bound Storage client.
-
-Initial batch caps: raw 16 MiB, normalized UTF-8 4 MiB, index 4 MiB, other
-metadata 256 KiB, internal stdout 64 MiB, internal stdin 1 MiB, stderr 64 KiB,
-final ToolResult 512 KiB, read/preview text 64 KiB. Base64 of each binary component
-uses `4*ceil(n/3)` bytes (combined component maxima about 32 MiB); encoded caps
-are checked before decoding. The 64 MiB wire cap is not a peak-RAM guarantee:
-buffers/parsed strings/extractors and copies add memory. Later acceptance must
-measure memory/concurrency before raising these defaults. ToolExecutor pumps
-all streams with byte counters and terminates on overflow; collecting everything
-before checking a cap is insufficient. Python documents memory buffering in
-`communicate` and the extra Windows handle-inheritance requirements for private
-channels. [Python subprocess documentation](https://docs.python.org/3.11/library/subprocess.html)
-
-If PM selects private pipes, use separate length-prefixed UTF-8 JSON channels,
-one in-flight request initially, 1 MiB max frame and 256 KiB decoded upload
-chunks. Truncated/oversized frames invalidate the channel. POSIX `pass_fds` does
-not provide a Windows adapter; Windows requires an explicit inherited
-`handle_list`, careful inheritable-handle closure and controlled process creation.
-Alternatively Python's `AF_PIPE` listener can use authenticated byte messages;
-use `send_bytes/recv_bytes(maxlength)`, never `recv`/pickle on worker input.
-[Python multiprocessing connections](https://docs.python.org/3.11/library/multiprocessing.html)
-
-A named-pipe design must supply a restricted user/logon ACL and reject remote
-clients. Default named-pipe ACLs are insufficient for the proposed privacy;
-Python's documented Listener interface does not expose every native setting.
-[Microsoft named-pipe access controls](https://learn.microsoft.com/en-us/windows/win32/ipc/named-pipe-security-and-access-rights),
-[Microsoft CreateNamedPipe](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-createnamedpipea)
-
-If PM selects loopback, bind literal `127.0.0.1` on an OS-assigned port, with a
-fresh 256-bit token per attempt mapping to one attenuated grant/context. Deliver
-endpoint/token only in trusted worker stdin, never argv/URLs/environment or
-recorded tool inputs. Reject remote/non-authenticated/unknown-version requests;
-bound connections, body/frame size, decoded bytes, upload count and lifetime.
-Token expires at attempt completion/cancellation/deadline with cleanup only for
-admitted commits. No worker delegation/refresh or persistent general service.
-
-For every option, ToolExecutor passes an allowlisted environment with required
-runtime variables (including Windows SystemRoot), not unrelated model secrets.
-Storage retains publication/recovery/event ownership; ToolExecutor retains
-process launching and transport pumping; Connections supplies grants/lifetime;
-Container retains engine intent/outcome. Standalone ownership is the explicit
-driver mode in section 6, or a shared Runtime-owned wrapper if PM chooses that
-alternative. Exactly one owner emits the lifecycle, never both.
-
-## 10. History pagination and checkpoint resumption
-
-`ActivityFilters` accepts run IDs, action/attempt, correlation, kinds/status,
-scope selector and optional descriptive time filters. Each selector is checked
-against `events.read` grants. Return only records whose entire visibility set
-is permitted. Event references do not permit underlying artifact reads. No
-global total count or unrelated records leak through unauthorized filters.
-
-First page captures `high_water_seq=max(committed sequence)` under one short
-read transaction. Query ascending `last_seq < seq <= high_water_seq` with keyset
-pagination; no OFFSET. Opaque integrity-protected cursor binds store/version,
-filter digest, principal/grant fingerprint, last sequence, high-water sequence
-and expiry (proposed 24 hours). Permission checks happen on every page;
-permission/grant changes invalidate the cursor. Page max 500 events/1 MiB; no
-live read transaction is held between pages. New events require a fresh query;
-tailing explicitly starts after the last sequence. Cursor is not an access token.
-
-`CheckpointEnvelope` contains format name/major/minor, runtime version,
-definition/binding version refs, run identity, last fully recorded position,
-ordered transcript and permitted input/output/state-version refs, opaque
-provider continuation with provider/model/adapter format binding, and portable
-deadline/limit/accounting state. No credentials, live resource handles, locks,
-monotonic clock readings or cancellation objects. Large payload lives in an
-artifact. Storage verifies JSON/envelope/reference integrity and size; Runtime
-checks definition/adapter semantics and whether resumption is safe.
-
-Storage load revalidates current grants, source refs and envelope format against
-`accepted_formats`; those versions do not claim adapter compatibility. Runtime
-checks adapter/provider/model continuation binding and semantic compatibility,
-then rebinds credentials/resources and rebuilds local
-timers from the remaining portable deadline. Expired deadline or unknown
-external outcome stops automatic resume. Opaque provider data is retained only
-if actually supplied/needed by that adapter, under the same confidential scope;
-it is not a request for hidden reasoning. A checkpoint is never evidence that
-an external side effect can safely be replayed. Runtime must claim exclusive
-resumption of a run if resume is promised in the first handoff; a CAS state
-record can support the claim, but Storage does not schedule or decide resume.
-
-## 11. Proposed implementation stages and acceptance evidence
-
-After user design approval and PM implementation assignment:
-
-1. Shared approved schemas/errors/grants and bound client enforcement; store
-   initialization/version gate and migration/inspection administration.
-2. SQLite state CAS/revisions/operation receipts and append/query history.
-3. Sealed filesystem artifacts, interruption recovery and snapshot publication.
-4. Checkpoint persistence and selected CLI adapter/standalone launcher integration.
-5. Container/Connections hooks, readable inspection, setup/uv commands and real
-   integration/failure verification. PM owns dependencies and ignore policy.
-
-| Meaningful acceptance case | Required evidence |
+| Code | Exact persistence consequence |
 | --- | --- |
-| Durable reopen | Real state/artifact/snapshot/checkpoint/event persists across close/reopen; saved bytes/digests and versions match. |
-| Scope enforcement | A separate run cannot read guessed refs/keys/history; explicit grant permits only selected scope/operations. Child linkage grants nothing. |
-| CAS + atomic audit | Concurrent expected-version writers yield one winner; event insertion failure rolls back state/revisions/receipt; tombstone prevents ABA. |
-| Delivery retry | Same event/operation returns original receipt; different payload/origin under same ID is rejected. Lost ack does not duplicate bytes/events. |
-| Dispatch gate | Failed real intent persistence prevents model/tool dispatch; failed outcome recording exposes incomplete action without replay. |
-| Artifact interruption | Kill writer at reserve/write/seal/rename/publish boundaries; no unsealed/partial readable content; sealed complete writes recover with one event. |
-| Integrity/path | Missing/altered READY bytes fail read; traversal/junction/reparse escape rejected; live upload not reclaimed by another session. |
-| CLI/standalone | Real fetch preserves one-response raw+text, durable ref precedes success; another process performs bounded saved reads, including long line/page continuation. |
-| Pagination | New appends cannot duplicate/skip fixed-high-water pages; unauthorized events/changed grants/cursor tampering fail. |
-| Checkpoint compatibility | Unsupported adapter/format/expired grants/deadline fail; continuation round-trips without credentials or live handles. |
-| Recording ownership | One canonical intent/outcome per actual attempt; storage commit events are distinct; inspection/appends generate no recursive records. |
-| Contention/shutdown | Busy/full-disk/cancellation/lost reply return bounded typed failures; admitted commit is resolved rather than asserted rolled back. |
+| ACCESS_DENIED | Invalid/expired/revoked authority or scope/operation denial; no write admission. |
+| NOT_FOUND | No visible authorized object/revision; ordinary latest-state absence uses Missing. |
+| INVALID_DATA / INCOMPATIBLE_SCHEMA | Invalid strict JSON/type/reference/version; no silent conversion. |
+| LIMIT_EXCEEDED | Byte/depth/key/unit/version cap; minimum next UTF-8 codepoint size may be included. |
+| VERSION_CONFLICT | Batch rollback confirmed; caller rereads and chooses a new logical mutation/new operation ID. |
+| IDEMPOTENCY_CONFLICT | Same ID with changed content/origin; no overwrite or duplicate publication. |
+| OPERATION_PENDING | Existing owned admitted write; status/same-ID reconciliation only. |
+| INCOMPLETE_ARTIFACT | Non-READY artifact/snapshot/checkpoint; no partial content. |
+| INTEGRITY_ERROR | Missing/altered READY bytes or invalid containment; fail read and preserve history. |
+| UNSUPPORTED_RANGE / INVALID_CURSOR | Missing page map or invalid/bound-to-other-content continuation; never synthesize/clamp. |
+| INCOMPATIBLE_CHECKPOINT | Envelope outside accepted formats; Runtime handles semantic adapter incompatibility. |
+| STORAGE_BUSY / STORAGE_UNAVAILABLE | Bounded queue/lock, disk/full/permissions/I/O failure; commitment truthfully classified. |
+| CANCELLED / DEADLINE_EXCEEDED | No new admission; admitted writes may still be pending or committed. |
+| SESSION_CLOSED | Owner stopped admissions; borrowed lease close does not close a shared store. |
 
-These checks are a plan, not executed tests. Final handoff must supply real
-`uv run --locked ...` entry points after package names/commands are approved.
-Do not substitute mock tool/model/persistence outputs. Configured API provider
-checks belong to the later authorized Container integration; local vLLM/Qwen
-live verification remains pending deployment on another accessible host.
+Known not_committed requires confirmed nonadmission, rollback, or durable ABORTED
+state preventing later publication. Once admitted/sealed, cancellation does
+not establish rollback. A committed write remains committed despite cancellation.
+A lost reply is unknown until same-ID status/receipt reconciliation. Storage
+never refetches/reinvokes or automatically retries execution. A successful
+receipt can coexist with failed tool outcome recording.
 
-## 12. Decisions requested from PM
+## 5. Schema, migrations, worker and durability profile
 
-1. Approve one shared context/grant/reference/event version and type owner;
-   nullable agent identity only for explicit standalone/system contexts.
-2. Reconcile one CLI transport and wire/resource limits with CLI/Connections;
-   preserve the trusted standalone launcher and Storage commit ownership.
-3. Confirm proposed event names, distinct parent invocation vs child lifecycle,
-   strict intent acknowledgment and `RecordingFailure` shape with Container.
-4. Confirm SQLite linked-version/WAL gate, local-root protection/durability
-   profile, scope provisioning/recovery ownership and administration policy.
-5. Confirm snapshot normalization/range/page mapping and the cap/unsupported
-   behavior with Toolset; no claimed extraction semantics until agreed.
-6. Choose retention/backup/cursor-key handling and package/dependency layout
-   before implementation. Obtain the user's completed-design approval.
+Logical schema 1 uses these tables. SQLite columns have explicit NOT NULL,
+CHECK and foreign-key constraints; values use bound parameters.
 
-No proposal here has been represented as a jointly agreed shared contract.
-
-## 13. Concrete contract examples and evidence
-
-The following are illustrative design traces, not execution evidence. IDs are
-placeholders and no external service identifiers or credentials are assumed.
-
-1. A new run-scope `notes` key returns `Missing(version=0)`. Commit operation A
-   with expected version 0 creates revision 1 plus one `state.committed` event.
-   A concurrent expected-0 writer gets `VERSION_CONFLICT`. Re-delivering A returns
-   its original version/event receipt, even if operation B later made revision 2.
-   Delete expecting 2 creates tombstone 3; recreate expecting 0 conflicts,
-   while recreate expecting 3 creates revision 4. `get_version(...,1)` still
-   returns the original permitted content.
-2. A fetch tool attempt has a committed `tool.intent` before its real subprocess
-   starts. Worker returns original response bytes and extracted text as an
-   intermediate proposal. Storage seals raw/text/index/manifest children and
-   publishes the snapshot with its event/receipt. ToolExecutor returns that
-   immutable ref; Container appends `tool.outcome`. If outcome append is lost,
-   the history remains incomplete despite a committed snapshot. Inspecting its
-   operation receipt does not authorize another fetch.
-3. `read(snapshot_ref, lines{start:41,end_exclusive:61}, 65536)` asks for 20 lines
-   from one saved extraction. A partial long line returns `next_position`;
-   the next call passes the same range and that continuation. Unauthorized run
-   receives `ACCESS_DENIED` without learning whether the ref exists. An updated
-   URL produces another snapshot and leaves these locators unchanged.
-4. An upload interrupted before SEALED is not published. If interrupted after
-   durable seal and rename, startup verifies the persisted expected size/hash
-   and commits READY once. If cancellation already durably marked ABORTED,
-   recovery never publishes it. A lost acknowledgment is resolved by operation
-   status; no remote side effect is reconstructed from a checkpoint.
-
-Evidence checked on 2026-09-30:
-
-| Primary evidence | What it establishes / limit |
+| Table | Keys/required contents and constraints |
 | --- | --- |
-| [SQLite WAL](https://sqlite.org/wal.html#walresetbug) | Current documented WAL race/version fixes and concurrency constraints; no local reproduction. Page reports update 2026-08-25. |
-| [SQLite transactions](https://sqlite.org/lang_transaction.html), [conflicts](https://sqlite.org/lang_conflict.html), [pragmas](https://sqlite.org/pragma.html) | Transaction/error and synchronization semantics; proposed application behavior still unimplemented. |
-| [Python 3.11 sqlite3](https://docs.python.org/3.11/library/sqlite3.html) | Target API/thread/explicit transaction behavior; no Storage runtime check. |
-| [Python filesystem](https://docs.python.org/3.11/library/os.html), [Windows locks](https://docs.python.org/3.11/library/msvcrt.html) | Available sync/rename/locking primitives; Windows power-loss/containment/lock behavior untested here. |
-| [Python subprocess](https://docs.python.org/3.11/library/subprocess.html), [connections](https://docs.python.org/3.11/library/multiprocessing.html) | Standard pipe/handle/message facilities; no transport implementation or trial. |
-| [Microsoft pipe security](https://learn.microsoft.com/en-us/windows/win32/ipc/named-pipe-security-and-access-rights), [CreateNamedPipe](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-createnamedpipea) | Native private/remote-client controls a pipe design must address; no Windows adapter verified. |
-| Repository entry/shared/coordination/all sibling specs and CONTRIBUTING.md | Authorized design scope, ownership, shared environment and PM-only Git writer. |
+| store_metadata | One store UUID, database schema/canonicalizer version and explicitly configured durability profile. |
+| schema_migrations | Unique version, checksum and application time; checksum/version agrees with user_version. |
+| scopes / run_links | Registered tagged scope; run/root/agent/definition/correlation and parent run/action/attempt facts supplied by Connections. |
+| state_heads | PK(scope,key), latest version/revision, tombstone and commit event link. |
+| state_revisions | Unique(scope,key,version), immutable JSON/tombstone and commit event; retain values for exact historical reads. |
+| operations | Unique operation ID, method/origin/fingerprint, causal context, preallocated child/object/event IDs, reservation phase, sealed descriptor, completed receipt or abort disposition. |
+| artifacts | Opaque ID, scope, operation, generated relative key, RESERVED/SEALED/READY/ABORTED/INTERRUPTED phase, digest/length/media metadata, availability and event link. |
+| snapshots | Immutable ID/scope/format and original/text/index/manifest refs; public only when full bundle READY and publication event/receipt committed. |
+| checkpoints | Immutable ID/scope/envelope/runtime codec refs and READY payload ref/publication event. |
+| events / event_scopes | AUTOINCREMENT recorded_seq, unique event_id, schema/producer/event digest and envelope, causal IDs/kind/status, visibility scopes. Append/query only through API. |
+| action_attempts | Derived lifecycle intent/outcome links; canonical attempt/boundary uniqueness, no independent run-status decision. |
 
-Three independent read-only reviews covered durability/recovery, CLI transport,
-and events/grants/API consistency. Their actionable findings are incorporated:
-sealed completeness, composite parent/child recovery, cancellation commitment,
-historical reads, continuation input, operation status, lifecycle uniqueness,
-cleanup-only authority and shutdown order. Verification is source/spec review
-and document consistency inspection only. No production code, dependency,
-installation, database, credential or model/provider changes/trials were made.
+Indexes include run+sequence, action/attempt+sequence, correlation+sequence,
+scope+sequence and pending phase. Dispatch uniqueness requires non-null attempt
+IDs: one model/tool/invocation intent and outcome per actual attempt. Agent
+start/finish are unique on their run-root action. Publication uniqueness is
+operation+event kind, so multiple artifact children share causal attempt safely.
+Corrections are new events referencing old records, never REPLACE.
+
+One exclusive process-lifetime root lock precedes schema access/recovery.
+Second owner receives STORAGE_BUSY; no hidden second store or attachment.
+All SQLite writes/checkpoints are executed serially on the owning worker/
+connection. Short reads are scheduled there initially; no connection crosses
+thread ownership. Root/worker/leases remain owned until admitted operations
+settle. This topology is deliberately simple, rather than relying on contention
+or lease age to prove another producer died.
+
+For atomic state/event/receipt writes: validate current identity/authority and
+receipt visibility; reconcile the same ID/content/origin before any fresh quota
+reservation or new-write queue admission. For NEW admission, atomically claim ID,
+check/reserve remaining write quota/fresh-use/queue allowance; BEGIN IMMEDIATE;
+recheck receipt before CAS; verify all expected versions; insert event/revisions/
+heads/receipt; COMMIT; then acknowledge. Any statement failure rolls back the
+whole transaction. Statement-level ABORT alone is insufficient. Busy COMMIT
+retains its active transaction within the same total budget, then resolve
+commit/rollback rather than detach it. No external wait or file streaming occurs
+inside a SQLite transaction. Default queue+busy budget is min(5 seconds,
+remaining context deadline); internal retries do not reset it.
+[SQLite transaction rules](https://sqlite.org/lang_transaction.html),
+[conflict handling](https://sqlite.org/lang_conflict.html)
+
+Database schema, wire major and payload codec revisions are independent.
+Reject unknown newer database schemas/altered migration checksums. Administrative
+migration stops admissions, settles writers, verifies a database+object backup,
+applies explicit transaction-controlled statements and records version/checksum.
+No migration during an action. JSON/schema validation has no provider network
+effects. Retention/GC is deferred; preserve receipts/revisions for retained data.
+
+Baseline is explicit DELETE journal, synchronous EXTRA and foreign_keys ON on
+the shared uv/Python3.11.15 environment. Open queries returned journal mode,
+synchronous=3, foreign_keys=1, linked SQLite version and root/schema identity.
+Failure to establish a requested setting is a typed startup failure. PM recorded
+linked SQLite3.50.4; that is metadata evidence, not Storage behavior verification.
+EXTRA adds rollback-journal directory synchronization. Device/VFS truthfulness
+still matters. [SQLite synchronous settings](https://sqlite.org/pragma.html#pragma_synchronous)
+
+Optional explicit WAL uses FULL (2), foreign_keys ON, local same-host storage
+and a patched linked-library gate: >=3.51.3, or documented patched 3.50.x>=3.50.7
+or 3.44.x>=3.44.6. Do not accept arbitrary intermediate older releases merely
+because they exceed 3.44.6. Verify returned settings and trusted runtime evidence.
+Unsuitable requested WAL is rejected, never silently downgraded. Profile
+conversion is an explicit quiescent administrative operation with backup.
+No interpreter upgrade, package install or database profile change occurs now.
+[SQLite WAL safety notice](https://sqlite.org/wal.html#walresetbug)
+
+Python3.11 uses isolation_level=None and explicit transaction statements.
+Map sqlite_errorcode/sqlite_errorname, keep connections on their worker and
+avoid executescript inside a pending transaction because it can commit it.
+[Python3.11 SQLite](https://docs.python.org/3.11/library/sqlite3.html)
+
+Backup uses a quiescent publication barrier, SQLite backup API and manifest of
+referenced immutable files, verified on restore. Never copy only a live main
+database and discard WAL. A normal close need not force a truncation checkpoint
+to make a prior committed receipt true.
+
+## 6. Filesystem publication, composite recovery and containment
+
+Storage generates all staging/final names beneath the resolved configured root.
+Agent filenames are metadata. Reject traversal, alternate stream/device syntax,
+symlink/junction/reparse escape and invalid opened-file containment. Stage and
+objects are on the same local volume. An unexpected final destination is a
+conflict, not permission to overwrite. Deployment acceptance must verify
+Windows opened-handle containment/ACL and lock behavior; normalization alone
+does not prove protection against hostile path replacement.
+
+| Phase | Persisted fact / public visibility |
+| --- | --- |
+| RESERVED | Operation/origin/fingerprint, object/event IDs, expected descriptor and owner reserved in SQLite; unreadable. |
+| Writing | Exclusive generated stage; bounded chunks, hash/length, file flush+fsync; no open database transaction. |
+| SEALED | SQLite stores verified completed digest/length after complete file sync/close; unreadable. An unsealed file hash does not prove a complete stream. |
+| Final file | Same-volume rename to generated final key; verify size/digest/containment and supported metadata sync. File alone is not publication. |
+| READY | One SQLite transaction publishes READY metadata, authoritative publication event and original operation receipt. Acknowledge afterward. |
+| ABORTED | Durable nonpublication disposition; recovery never promotes it. |
+| INTERRUPTED | Missing/unsealed/invalid incomplete operation; no readable partial content or reconstructed external fetch. |
+
+Python documents flushing buffers before fsync and same-filesystem rename
+requirements. These primitives do not establish verified Windows directory
+power-loss survival or a joint file/database atomic transaction.
+[Python filesystem APIs](https://docs.python.org/3.11/library/os.html)
+
+Snapshot/checkpoint reservation persists the complete validated immutable parent
+descriptor, preallocated publication ID/event and child operation IDs BEFORE
+staging. Children derive from parent ID+component role. Snapshot roles are
+original/text/index/manifest; checkpoint role is payload. Retry/status uses
+the same reservation; ready children are reused rather than duplicated.
+Children have their own artifact publication events. Parent visibility requires
+all exact children READY/verified, then one transaction commits parent row,
+its publication event and receipt. Children orphaned by an interrupted/aborted
+parent remain recorded and are not silently claimed rolled back.
+
+Recovery acquires the root lock before serving requests. It is exact admitted
+Storage completion under trusted recovery authority supplied by the host,
+not reconstitution of saved user grants. It preserves causal metadata and
+uses the preallocated IDs. Never reclaim an active owner's file based on age,
+PID or expired lease alone. No second owner can race publication.
+
+| Recovered condition | Result |
+| --- | --- |
+| Unsealed/missing incomplete stage | INTERRUPTED, quarantine; do not hash partial bytes and publish. |
+| SEALED + valid stage | Verify stored seal, rename, then READY/event/receipt once. |
+| SEALED + valid final | Verify seal, finish READY/event/receipt once. |
+| Complete sealed parent + all READY children | Publish original snapshot/checkpoint identity once, unless durably ABORTED or administratively prohibited. |
+| Incomplete parent | Mark INTERRUPTED, preserve recorded children; no indefinite pending reservation. |
+| ABORTED | Keep nonpublication; cleanup/quarantine only. |
+| READY + healthy bytes | Preserve receipt; no second publication event. |
+| READY + missing/mismatched bytes | Availability fault, fail reads with INTEGRITY_ERROR and append an origin-linked storage diagnostic; never rewrite committed history. |
+| Unindexed generated file | Quarantine as an administrative health diagnostic; do not invent an agent run/context to record it. |
+
+Recovery never creates a model/tool outcome or changes an incomplete external
+action to failed. Already admitted publication can settle after a caller loses
+its response; same-ID status returns the original result. Any current policy
+prohibiting unfinished publication yields a durable abort rather than revived
+business authority.
+
+## 7. Snapshots, exact ranges and smaller bounded mediation
+
+The v1 path is launcher-mediated access. ToolExecutor holds Connections'
+ToolStoragePlan bound to tool/revision, run/action/attempt, exact operation,
+scope/object/range and quotas. Worker has no Storage client, root, authority,
+finalized ref or publication receipt. Read is authorized and prepared through
+SnapshotStore before worker dispatch; fetch worker emits prepared payload.
+The executor validates and commits that payload. Container's one shared
+RecordedToolAction owns intent/outcome for both agent and standalone use.
+No broker/private-pipe implementation or independent snapshot database is added.
+
+Private WorkerResponse uses phase prepared|failed. Exit 0 means prepared.
+Search prepares discoveries; read serializes the exact injected DocumentSlice;
+fetch prepares a complete proposal with the assigned operation ID. A public
+fetch success requires READY snapshot receipt AND complete tool lifecycle
+recording. Failed post-worker Storage commit stays a failed tool observation;
+lost commit reply reconciles the same operation, never refetches.
+
+SnapshotProposal format document_snapshot/1 has immutable component descriptors/
+bytes (original, canonical text, index), extraction name/version/options/
+normalization, physical page count/map where available, content classification
+and safe provenance. Original is the HTTP client's content-decoded retained
+body, with content-encoding/representation metadata, not a claimed wire capture.
+Extraction and original come from the same response. Toolset owns classification
+of blocked/login/unsupported/empty extraction; Storage verifies structure/hash/
+limits/locations. Empty-data range semantics do not turn unusable fetch into
+public success.
+
+Stored manifest links original/text/index digests, size and typed refs; requested/
+final sanitized URL, redirects/time/status/media/encoding, safe headers/search
+provenance and extraction versions. Never cookies/authentication or arbitrary
+header dumps. Refresh creates another immutable snapshot; read never refetches
+or re-extracts with a different library.
+
+Index format document_index/1 contains line spans (content byte start/end),
+physical-page spans and optional printed labels. Spans identify exact stored
+UTF-8 boundaries; LF delimiters and any declared inter-page separators have
+explicit normalization ownership. Page entries are one-based in physical order,
+including zero-length empty-page spans. Storage validates counts, monotonic
+bounds, delimiter/coverage rules and manifest/index digest agreement. It does
+not parse the PDF again or claim semantic extraction fidelity.
+
+Canonical text is UTF-8 without BOM, LF line endings, no implicit Unicode
+normalization. Empty text has zero logical lines. Final LF adds no phantom
+line: ""=>0, "a"=>1, "a\n"=>1, "\n"=>1, "a\n\n"=>2. PDF unit count is physical
+page count including empty pages, independent of the logical line count.
+Unavailable page map returns UNSUPPORTED_RANGE.
+
+DocumentRange is exactly one tagged object:
+`{kind:lines|pages,start,end_exclusive}`. For selected unit count N,
+`1 <= start <= end_exclusive <= N+1`. Empty ranges are allowed at any valid
+boundary; N=0 permits only [1,1). No clamping/mixing units. Counts exceeding
+200 lines/10 pages are LIMIT_EXCEEDED; callers choose the next bounded range.
+
+DocumentSlice required fields:
+`schema_version, snapshot_ref, extraction_version, normalization_version,`
+`requested_range, returned_range, spans, text, truncated,`
+`has_more_in_requested_range, has_more_in_document, next_position`.
+Each span has physical page/line where applicable and zero-based absolute
+UTF-8 byte start/end; no invented line on a textless page.
+
+| Case | Exact result |
+| --- | --- |
+| Empty range [k,k) | Equal requested/returned range, text "", spans [], truncated=false, next_position=null, within-range=false; more-document=(k<=N). |
+| Zero lines | Only lines[1,1) valid; no phantom unit. |
+| Empty physical PDF page p | pages[p,p+1) consumes a real page; text "", zero-length page span, complete range and no fictitious line. |
+| Nonempty slice fits | Complete requested range, next_position=null, truncated=false; more-document=(end_exclusive<=N). |
+| Budget truncates line/page | Return UTF-8-boundary spans with an advancing next_position; remaining requested units/bytes are explicit. |
+| Next codepoint does not fit | LIMIT_EXCEEDED with minimum_next_codepoint_bytes (1..4); no zero-progress cursor. |
+| Missing page map/invalid bounds | UNSUPPORTED_RANGE/INVALID_DATA; no synthesized map or silently changed range. |
+
+Continuation is integrity-protected and binds store/snapshot/extraction/
+normalization, original requested range, byte/unit position and authority
+selector. On the next call supply the same range and continuation; reauthorize.
+A smaller still-positive budget is allowed if the next codepoint fits.
+Process empty units by advancing unit position even if text byte length is zero.
+Keep page/unit and byte progress distinguishable. Cursor is not a grant.
+
+| v1 resource target | Maximum |
+| --- | ---: |
+| Decoded original | 8 MiB |
+| Canonical UTF-8 text | 4 MiB |
+| Index | 1 MiB |
+| Serialized provenance | 64 KiB |
+| Worker stdin / fetch stdout | 1 MiB / 20 MiB |
+| Final public JSON / stderr | 512 KiB / 64 KiB |
+| JSON depth | 32 |
+| Read text / units | 64 KiB / 200 lines or 10 physical pages |
+
+Storage enforces decoded component/index/provenance caps and aggregate scoped
+storage quotas. Toolset additionally enforces actual serialized whole envelopes
+and pipe drains. Base64 components require 4*ceil(n/3) bytes, about 17.34 MiB
+at the combined original/text/index maxima before metadata/framing; JSON
+escaping must also be checked. An oversized whole proposal is rejected even
+when each component fits. No cap is permission to increase a narrower grant.
+Generic artifact maximum is 8 MiB unless an explicitly approved owner profile
+narrows it; generated manifest fits <=256 KiB. No worker-selected profile override.
+
+Byte caps do not bound peak RAM, PDF decompression/parser allocations, objects,
+copies or latency. Measure one fetch first, then at most two concurrent fetches;
+these are future enforcement/measurement gates, not observed performance.
+Larger/interactive streaming requires a measured scope decision by PM/user.
+
+## 8. Automatic hooks, dispatch gate and cancellation
+
+ExecutionEvent uses schema_version 1, event ID/kind, trusted producer, causal
+context, occurred_at, status and bounded safe payload/references with optional
+duration/usage/error. Dispatch context contains attempt; nondispatch preflight
+may omit it. Unknown usage remains unknown, never fabricated zero. Stored
+sequence/time are server fields. Producer authority restricts kinds.
+
+| Action/event | Canonical producer / required fact |
+| --- | --- |
+| agent.started / agent.finished | Runtime; definition/binding/input, run start and terminal result/recording facts. No duplicate run.accepted. |
+| model.intent / model.outcome | Runtime; frozen request/limits/profile and observed response/error/continuation/usage. |
+| tool.intent / tool.outcome | Runtime's RecordedToolAction; validated args/limits and executor/process/commit observation. |
+| tool.rejected | Runtime; no execution attempt/process, known nondispatch. |
+| context/validation/limit/cancel observations | Runtime; safe source/version/count/decision metadata, not new agent terminal statuses. |
+| binding.resolved / binding.failed | Connections; safe binding identity or local validation failure. |
+| invocation.intent / invocation.outcome | Connections; parent call/attempt and child linkage/result; child Runtime still owns its lifecycle. |
+| state.committed | Storage; mutation old/new revisions and operation, in the state transaction. |
+| artifact.committed / snapshot.committed / checkpoint.saved | Storage; complete refs/digests/size/format and operation, within publication metadata transaction. |
+| Origin-linked recovery/availability diagnostics | Storage; exact already-admitted operation disposition, never invented model/tool outcome. |
+
+Context kinds are agent/standalone_tool. Standalone producer is runtime through
+the same Container-owned RecordedToolAction; no standalone_driver alternative.
+Connections bootstraps grants and scope; CLI parsing/executor/worker never adds
+a lifecycle logger or opens a model. Storage appends/reads/metadata maintenance
+do not recursively create records; business publication emits its one explicit
+commit event. History/UI polling is not execution activity.
+
+Before dispatch: freeze intent, append, obtain committed EventReceipt, then
+recheck cancellation/deadline/grants. No receipt means no model/tool/child
+dispatch. Known nondispatch after a committed intent records an outcome with
+dispatched=false. After dispatch preserve observed effect separately from
+recording and commit states; outcome acknowledgment precedes public success.
+Failure stops further dispatch and reports incomplete/unavailable recording.
+
+record_cleanup is a separate trusted bounded context for owner-event append,
+exact status reconciliation and lease/handle cleanup. It authorizes NO new
+business writes, output artifact/snapshot/checkpoint/state admission or
+model/tool calls. A completed output not yet admitted when cancellation occurs
+cannot be published by cleanup; preserve known refs and bounded safe observation
+or mark missing output/recording incomplete. Already admitted Storage tasks
+settle under their original reservations; this is not new cleanup admission.
+
+Connections issues cleanup authority/window and Runtime owns activation and
+terminal hooks, preserving causal IDs. Explicit revocation of that cleanup
+authority still denies use. Storage does not clear cancellation on ordinary
+contexts or invent a grant extension. Cleanup expiry can leave terminal history
+incomplete; a pending writer still retains root/resources. No Storage method
+replays an external effect to reconstruct missing output.
+
+## 9. Pagination, checkpoints and ordered close
+
+ActivityFilters supports authorized run/action/attempt/correlation IDs,
+kind/status, scope and descriptive time filters. Initial page captures a
+committed high-water sequence under a short read snapshot. Query ascending
+last_seq < seq <= high_water_seq with keyset pagination, not OFFSET.
+Page <=500 events/1 MiB; no read transaction survives between pages.
+Cursor integrity binds store/schema/filter/principal/grant selector, last/high
+sequence and a 24-hour expiry. Reauthorize each page; changed grants invalidate
+it. Return only complete permitted visibility sets; no foreign total count or
+payload. New events require a new query. Cursor keys are generated by the owner,
+stored privately in nonserializable resources; restart invalidates old cursors,
+avoiding a new checked-in secret/config loader.
+
+CheckpointEnvelope is immutable strict JSON with envelope/payload schema,
+runtime/definition/binding refs, run identity and last fully recorded position,
+transcript/artifact/state-version refs, provider/model/adapter codec continuation,
+portable deadline and remaining/shared budget descriptors. Large content lives
+in its READY payload artifact. No credentials, connections, locks, live
+cancellation/grants/leases or monotonic readings.
+
+Storage checks accepted envelope formats, sizes/digests/references and grants;
+Runtime checks adapter/provider/model semantics, safe position and exclusive
+resume claim. Fresh Connections binding/grants and rebuilt timers are required.
+Unknown external attempt outcomes cannot be replayed from a checkpoint.
+Runtime may use a scoped CAS state claim but Storage does not schedule resumption.
+Migration emits a new checkpoint/ref/event rather than changing old bytes.
+
+Shutdown order:
+1. Connections stops new execution admission and cancels/drains borrowers.
+2. Runtime/Connections terminal hooks use their bounded recorder cleanup.
+3. Storage settles admitted operations; callers reconcile same-ID uncertainty.
+4. Release borrowed leases and close Storage/recorder last.
+
+StorageSession.close stops its own new admissions. If all writes/readers settle,
+close owned worker/resources and release root lock. Borrowed binding close only
+releases that lease. If an OS sync/commit outlasts the deadline, return an error
+with pending IDs/unknown commitment and retain draining session/worker/root.
+Never report closed=true or let another owner enter while a write remains active.
+A hard real-time filesystem guarantee is not claimed.
+
+## 10. Acceptance plan, conformance and actual evidence
+
+After explicit implementation authorization, real Storage/source tests belong
+to src/ebd/storage/ and matching tests. Use shared uv/Python3.11.15/locked
+dependencies; PM alone changes manifests/shared types/Git. No runnable module,
+database, installation or model calls have been produced in this phase.
+
+| Meaningful future case | Evidence required |
+| --- | --- |
+| Open/profile/migration | Report actual linked version and returned DELETE/EXTRA/FK/schema settings; reject unsuitable explicit WAL and unknown schema without silent switch. |
+| Close/reopen | Real state/revisions/artifacts/snapshots/checkpoints/events/receipts retain bytes/digests/identity/order. |
+| CAS/tombstone | Concurrent expected-version writes have one winner; injected event/receipt failure rolls back entire batch; recreation cannot reuse version 0. |
+| Scope isolation | Other run/child/standalone cannot read/write guessed refs without explicit grant; status/query cannot expose foreign payload/metadata. |
+| Delivery dedup/conflict | Concurrent same ID/content/origin returns original receipt; changed data/origin conflicts, including replay after later state revision. |
+| Exhausted-quota lost reply | A real state write with expected_version=0 commits and consumes the final write quota; lose its reply. Identical same-ID/content/origin retry with current receipt visibility returns the original receipt/version/sequence despite the now-nonzero head, without another write reservation, quota charge or CAS. Changed content conflicts; revoked authority denies reconciliation. |
+| Exact status/uncertainty | Lose append/write reply at known boundaries; lookup/retry same ID only, distinguish pending/absent/unknown and never redispatch external work. |
+| Artifact interruption | Kill at reservation, stream, seal, rename, READY and receipt boundaries; unsealed remains unreadable, sealed recovers once, ABORTED never promotes. |
+| Composite recovery | Parent+child IDs stable; complete sealed parent publishes once, incomplete becomes interrupted with recorded orphans. |
+| Integrity/containment | Missing/changed READY bytes and traversal/junction/reparse invalid containment fail closed. Verify Windows lock and root exclusivity. |
+| Range vectors | Zero lines, trailing LF, empty physical pages, EOF empty ranges, long codepoint/line/page continuation, wrong/expired cursor and missing page map. |
+| Pagination/checkpoint | Concurrent appends do not shift a fixed-watermark query; grant revocation denies next page; incompatible/unsafe checkpoint rejected. |
+| Cancel/close | Before admission known nondispatch; after admission commitment retained/unknown until settled. Cleanup cannot admit new business writes; unresolved writer retains root. |
+| Real integration/resources | Actual CLI snapshot/read and runtime lifecycle; one canonical producer/no recursion; max-fit escaped envelopes, oversized PDF expansion and measured parent/worker RAM. |
+
+Compact v1 conformance checklist:
+- [x] Common async context-first Result operations and lifecycle close exception.
+- [x] Logical action/fresh dispatch attempt and stable event/operation delivery IDs.
+- [x] Exact six-field EventReceipt; successful return means committed.
+- [x] ActivityRecorder.status exact-ID/digest and OperationStore.status.
+- [x] Same-content/origin receipt reconciliation precedes fresh quota/reservation/CAS; tombstones, rollback and pending/unknown remain explicit.
+- [x] Single-root/owned-worker DELETE/EXTRA, settings checks and opt-in patched WAL.
+- [x] Sealed READY publication, deterministic composite recovery and owned close.
+- [x] V1 mediated Worker phase, Container-only standalone recording and smaller caps.
+- [x] Unit-specific empty line/page ranges and advancing UTF-8 continuation.
+- [x] Cleanup limited to owner events/status/lease cleanup; no new business writes.
+- [x] Future real fault/integration/measurement checks distinguished from evidence.
+
+These checkboxes assert document alignment, not implementation/test success.
+Current irreducible interface blockers: none for this design revision. Remaining
+phase prerequisites are PM's shared executable types/composition/dependencies
+and explicit authorized transition. New consumer/schema discrepancies must be
+reported to PM rather than fixed in another team's module.
+
+The [baseline acceptance design](../baseline-acceptance.md) requires saved full
+report bytes, citation manifest with immutable slice locations, rendered-request
+audit, terminal checkpoint and trace, followed by close/reopen without refetch.
+Storage's planned audit covers these plus CAS/scopes, exact-ID uncertainty,
+interruption and root ownership; the flat baseline does not replace those gates.
+
+Actual evidence: entry/mission/v1/contribution/baseline acceptance and owned/sibling design reads;
+prior official SQLite/Python/Microsoft source research and PM's r1 saved-file
+UTF-8/fence/five-JSON QA confirmation at commit 4210b8c. PM's pre-correction r2
+saved-byte QA passed; its historical hashes and resolved ordering finding are
+recorded in storage-status.md. Revised r3 bytes/hashes require fresh QA. No runtime profile setting,
+fault/recovery, performance, provider or power-loss behavior is claimed tested.
+Local vLLM/Qwen live verification remains pending deployment. The private
+repository and contributions are coordinated by PM; this revision is frozen
+when handed off until PM confirms a commit or new coordinated revision.

@@ -333,6 +333,13 @@ are store-qualified opaque identifiers, never file paths or authority.
 
 Same ID plus identical canonical request/origin returns the original receipt;
 different content/origin is an idempotency conflict. Reauthorize before lookup.
+Validate current identity/scope/operation, revocation, expiry/deadline, lease
+and receipt visibility before returning a receipt. Compare frozen origin/content
+and resolve existing committed/pending identity before checking fresh-write
+reservations, remaining business-write quota, queue admission or CAS. Identical
+committed delivery returns the original receipt without another write allowance
+or consuming the source stream. Exhausted write quota alone cannot deny currently
+authorized receipt reconciliation; finite delivery/status bounds still apply.
 After an uncertain acknowledgment, query/retry only the same append/write.
 Absence at one observation does not prove no queued write exists. Known
 not-committed requires confirmed nonadmission/rollback or durable abort;

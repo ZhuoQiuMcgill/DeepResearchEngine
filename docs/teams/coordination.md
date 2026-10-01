@@ -66,7 +66,7 @@ below; teams must not concurrently edit it.
 | --- | --- | --- |
 | Agent Container | `01a0f545-10ae-7b51-a754-3dc13e95a857` (`local`) | `Agent Container Team`; draft delivered for reconciliation |
 | CLI Toolset | `01a0f545-ea04-71e3-965e-2c53d2d241d3` (`local`) | `CLI Toolset Team`; research/design delivered, PM selection revision coordinated |
-| Storage | `01a0f546-8fc3-76f0-84fe-ffde8c2c89e5` (`local`) | `Storage Team`; draft delivered for reconciliation |
+| Storage | `01a0f546-8fc3-76f0-84fe-ffde8c2c89e5` (`local`) | `Storage Team`; aligned r3 accepted after saved-file QA; implementation phase pending |
 | Connections | `01a0f546-f888-7353-b103-72f3f930fc79` (`local`) | `Connection Team`; draft delivered for reconciliation |
 
 ## Owned files and reports
