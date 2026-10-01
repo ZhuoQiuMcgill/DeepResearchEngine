@@ -162,7 +162,7 @@ export default function App() {
   const [showReport, setShowReport] = useState(false);
   const telemetry = usePerformanceSnapshot();
   const [profiles, setProfiles] = useState<
-    { profile_ref: string; model_ref: string }[]
+    { profile_ref: string; model_ref: string; provider: string }[]
   >([]);
   const [profileRef, setProfileRef] = useState("");
   const [showEngineHistory, setShowEngineHistory] = useState(false);
@@ -281,7 +281,8 @@ export default function App() {
       .then((info) => {
         if (info.error) throw new Error(info.error);
         setProfiles(info.profiles || []);
-        setProfileRef(info.profiles?.find((p: { profile_ref: string }) => p.profile_ref === "ninfer")?.profile_ref || info.profiles?.[0]?.profile_ref || "");
+        const savedProfile = localStorage.getItem("inse-engine-model-profile");
+        setProfileRef(info.profiles?.find((p: { profile_ref: string }) => p.profile_ref === savedProfile)?.profile_ref || info.profiles?.find((p: { profile_ref: string }) => p.profile_ref === "ninfer")?.profile_ref || info.profiles?.[0]?.profile_ref || "");
         setPlanStatus(
           info.configured
             ? "Connected to DeepResearch Engine. Select a model profile."
@@ -640,11 +641,14 @@ export default function App() {
           </div>
           <div className="header-actions">
             <select
-              aria-label="Engine model profile"
+              aria-label="Workflow model"
+              title="Choose a local or API model. API models need credentials configured in the Engine."
               disabled={locked}
               value={profileRef}
               onChange={(e) => {
                 setProfileRef(e.target.value);
+                localStorage.setItem("inse-engine-model-profile", e.target.value);
+                const previousModel = profiles.find((p) => p.profile_ref === profileRef)?.model_ref;
                 const model = profiles.find(
                   (p) => p.profile_ref === e.target.value,
                 )?.model_ref;
@@ -653,18 +657,22 @@ export default function App() {
                     ...w,
                     nodes: w.nodes.map((n) => ({
                       ...n,
-                      data: { ...n.data, model },
+                      data: { ...n.data, model: n.data.model === "local-model" || n.data.model === previousModel ? model : n.data.model },
                     })),
                   }));
               }}
             >
               <option value="" disabled>
-                Select Engine profile
+                Select model
               </option>
-              {profiles.map((p) => (
-                <option key={p.profile_ref} value={p.profile_ref}>
-                  {p.profile_ref} · {p.model_ref}
-                </option>
+              {[true, false].map((local) => (
+                <optgroup key={String(local)} label={local ? "Local models" : "API models"}>
+                  {profiles.filter((p) => ["ninfer", "vllm"].includes(p.provider) === local).map((p) => (
+                    <option key={p.profile_ref} value={p.profile_ref}>
+                      {local ? "Local" : "API"} · {p.model_ref} ({p.provider})
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </select>
             <span
@@ -1010,12 +1018,28 @@ export default function App() {
                       />
                     </label>
                     <label>
-                      Model identifier
-                      <input
+                      Model
+                      <select
+                        aria-label="Node model"
                         disabled={locked}
                         value={node.data.model}
                         onChange={(e) => update({ model: e.target.value })}
-                      />
+                      >
+                        <option value="local-model">Use workflow model</option>
+                        {!profiles.some((p) => p.model_ref === node.data.model) && node.data.model !== "local-model" && (
+                          <option value={node.data.model} disabled>Unavailable · {node.data.model}</option>
+                        )}
+                        {[true, false].map((local) => (
+                          <optgroup key={String(local)} label={local ? "Local models" : "API models"}>
+                            {profiles.filter((p) => ["ninfer", "vllm"].includes(p.provider) === local).map((p) => (
+                              <option key={p.profile_ref} value={p.model_ref}>
+                                {p.model_ref} ({p.provider})
+                              </option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </select>
+                      <small>API models require credentials configured in the Engine.</small>
                     </label>
                     <label>
                       Tool call limit
