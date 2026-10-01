@@ -14,7 +14,9 @@ pull, switch branches, or change Git configuration in the shared checkout.
 1. `docs/teams/README.md`
 2. `docs/teams/shared-platform.md`
 3. `docs/teams/coordination.md`
-4. Your team's spec below.
+4. `docs/teams/platform-contract-v1.md`
+5. `docs/teams/missions.md`
+6. Your team's spec below.
 
 | Team name / aliases | Team spec |
 | --- | --- |

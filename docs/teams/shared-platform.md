@@ -7,7 +7,8 @@ implementation.
 Research update: PM selected DDGS 9.16.0 (replaceable best-effort search),
 HTTPX 0.28.1, Trafilatura 2.2.0, and pypdf 6.19.0 for the initial tool design.
 See `decisions.md`; research-task search coverage remains unverified.
-Common contracts and implementation authorization remain outstanding.
+The common interfaces are consolidated in `platform-contract-v1.md` for
+review. Runtime implementation authorization remains outstanding.
 
 ## User requirements
 

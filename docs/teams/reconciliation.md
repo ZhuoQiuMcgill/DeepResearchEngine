@@ -1,6 +1,8 @@
 # Joint design reconciliation queue
 
-Status: DRAFT integration review. All four team proposals are delivered.
+Status: consolidated design for review. All four team proposals and narrow
+reconciliation replies are delivered. `platform-contract-v1.md` records PM's
+common interface choices and supersedes conflicting details below.
 The private Git repository and shared contribution rules are established;
 runtime implementation remains unauthorized. PM owns this document and
 reconciles changes with the affected owners before a shared contract revision.

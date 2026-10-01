@@ -11,7 +11,7 @@ or by a later direct user instruction.
 | Provider targets | User decided | Real DeepSeek API, GPT-6-Luna API, local vLLM Qwen; local live testing pending deployment. |
 | Current phase | User decided | Finish design; no runtime implementation yet. |
 | First module priorities | User directed | Agent Container and CLI Toolset first; other module interfaces can be designed in parallel. |
-| Shared contracts | Draft | Reconcile four team proposals before implementation. |
+| Shared contracts | Consolidated for review | `platform-contract-v1.md` resolves the four narrow reconciliation replies; runtime checks/phase authorization remain pending. |
 | Search/fetch backends | PM selected for initial design | DDGS 9.16.0 best-effort search; HTTPX 0.28.1; Trafilatura 2.2.0; pypdf 6.19.0. Research-task search availability/URL fidelity remains a handoff gate. |
 | Team chats | User opens | Leaders read specs, register, and report to this PM chat. |
 
@@ -173,3 +173,29 @@ Evidence: `docs/research/free-search-fetch.md`,
 [pypdf](https://pypi.org/project/pypdf/6.19.0/) metadata.
 This is a design selection. No production dependencies or source changed;
 Storage transport, shared types/limits, and provider profiles remain drafts.
+
+## 2026-09-30: Common interfaces and sustained team missions
+
+All four leaders delivered narrow reconciliation replies. PM consolidated
+their choices in `platform-contract-v1.md`: integer schema version, logical
+actions/dispatch attempts/event/write identities, one Container-owned recorded
+tool helper, distinct prepared/public results, launcher-mediated scoped snapshot
+commit/read, async Storage receipts/status reconciliation, single-use admission,
+bounded authority/leases and explicit DELETE/EXTRA baseline. An independent
+boundary review clarified domain versus infrastructure outcomes, admission
+lookup, root-action causality and the worker trust boundary.
+
+The smaller initial mediation profile is a target pending actual encoded-byte,
+parser-expansion, process-cleanup and peak-memory measurement. It does not claim
+RAM enforcement or reliable search. Named backend fallbacks are bounded
+observations inside one worker attempt; worker relaunch requires a new attempt.
+
+The user directed PM to give teams sustained missions and explicit expectations.
+`missions.md` assigns complete owned-design alignment now and whole-module
+implementation/verification after authorization. PM owns shared contracts,
+dependency integration, baseline acceptance and Git. All four leaders received
+these missions through their verified chats, with exclusive paths and handoff
+rules. The phase remains design: automatic approval review rejected starting
+runtime/changing the phase due to the earlier design-first instruction. PM
+has requested explicit phase-transition authorization against this concrete
+design rather than retrying the rejected implementation.

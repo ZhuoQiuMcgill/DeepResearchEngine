@@ -15,7 +15,8 @@ are later consumers of this platform.
 | Connections | [connections.md](connections.md) | Propose bindings, context propagation, configuration, and agent invocation contracts. |
 
 All leaders first read [shared-platform.md](shared-platform.md) and
-[coordination.md](coordination.md). Agent Container and CLI Toolset are the
+[coordination.md](coordination.md), then the consolidated
+[platform-contract-v1.md](platform-contract-v1.md). Agent Container and CLI Toolset are the
 first implementation priorities after design approval. Storage and
 Connections can resolve their design boundaries in parallel now.
 
@@ -33,6 +34,10 @@ owned report, and notifies PM. PM reconciles interface proposals and selects
 the web tool combination after the CLI research arrives. PM selected DDGS,
 HTTPX, Trafilatura, and pypdf for the initial design; see [decisions.md](decisions.md).
 DDGS is best-effort and replaceable; research-task availability remains unverified.
+
+Use [missions.md](missions.md) for each team's sustained module mission,
+expected evidence and PM responsibilities. The current assignment is full
+owned-design alignment; runtime implementation still awaits authorization.
 
 Background sources:
 
