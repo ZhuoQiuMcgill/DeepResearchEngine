@@ -96,3 +96,88 @@ further narrow the local limits. Search availability remains best effort.
 
 These module capabilities constrain normal platform paths. Arbitrary Python
 or same-user executables are not an operating-system sandbox.
+
+## Shared evidence for child agents
+
+An invocation edge opts into read-only evidence delegation with
+`InvocationRule(..., allow_evidence=True)`. A Python strategy selects exact
+objects and keys at each invocation. The Engine verifies the object's actual
+scope and attenuates the caller's live authority before child admission.
+
+```python
+from ebd.connections import EvidenceBinding, InvocationOptions, SnapshotReadRequest
+
+outcome = await session.binding.invoker.invoke(
+    session.context, reader_ref, task,
+    InvocationOptions(timeout_seconds=90, evidence=EvidenceBinding(
+        read_objects=(SnapshotReadRequest(
+            snapshot_ref, {"kind": "lines", "start": 1, "end_exclusive": 20},
+            max_text_bytes=8192,
+        ),),
+    )),
+)
+```
+
+The Reader can use its registered `document.read` tool against that saved
+range. A snapshot/artifact/checkpoint reference in task data alone grants
+no access. `ArtifactReadRequest` pins a byte range and cumulative allowance;
+`CheckpointReadRequest` pins accepted formats and a byte allowance.
+`StateReadRequest(scope, key, max_bytes)` grants read access to one selected
+key, including retained historical versions. It grants no state writes or
+key enumeration. Copy a value into an immutable artifact if a child must
+receive a fixed version only. No parent continuation token is transferred.
+
+At most 64 selectors fit in a bounded 64 KiB binding. Object read bounds
+must narrow the caller's grants. Child deadlines and shared lineage budgets
+still apply; parent grant revocation also revokes the delegated binding.
+Onward delegation requires both `allow_onward` and another explicit evidence
+edge. The parent invocation intent records the selected evidence manifest.
+
+To send a Reader's retained source to a later Writer, the trusted orchestrator
+first binds selected source authority to its live parent session:
+
+```python
+evidence = EvidenceBinding(read_objects=(source_selector,))
+receipt = (await engine.bind_evidence(
+    parent_session, reader_outcome.child_run, evidence,
+)).unwrap()
+writer_outcome = await parent_session.binding.invoker.invoke(
+    parent_session.context, writer_ref, writing_task,
+    InvocationOptions(evidence=evidence),
+)
+```
+
+`bind_evidence` verifies the selected same-owner source run, the actual object's
+scope and the exact live target binding. It records `binding.evidence` before
+installing only selected read rights. Failed or unknown recording grants no
+access. The source session may have finished; the host issues fresh authority
+under the parent deadline. This also permits explicit source import from an
+owned standalone fetch run. It grants no source writes, history or execution
+budget. Browser requests cannot manufacture these bindings.
+
+## Host discovery and incremental progress
+
+The public host APIs are `list_agents()`, `list_profiles()`,
+`list_runs(filters, cursor, limit)`, `describe_run(RunRef)`,
+`list_run_objects(RunRef, cursor, limit)`, `read_run_state(RunRef, key, version)`,
+and `query_run_events(RunRef, after_seq, limit, include_descendants)`.
+The asynchronous methods return the common `Ok`/`Err` envelope. Every request
+uses fresh bounded host authority and validates the run's owner. Model
+credentials and endpoints are absent from the profile catalog. Registration
+is a live Engine catalog; applications register definitions at startup or
+through the service, including after reopening.
+
+Run and object catalog cursors preserve an immutable watermark; start a
+fresh query to discover later entries. Event polling instead returns
+`next_after_seq`, `has_more` and `high_water_seq`. Reuse `next_after_seq` on
+the next request to read later committed events. Sequence numbers belong to
+the Store clock and need not be consecutive for a selected run. Root lineage
+polling captures a watermark before enumerating authorized child scopes, so
+a child created concurrently cannot be skipped. A child cannot request its
+siblings through the root selector. Terminal reconstruction requires the
+saved `agent.finished` event; absent terminal recording remains incomplete.
+
+For browser applications use the [run service](service.md). It owns real
+execution tasks and exposes versioned HTTP DTOs; a browser receives no
+ExecutionContext, GrantSet or database handle. Checkpoint storage does not
+implement execution pause/resume or automatic restart.

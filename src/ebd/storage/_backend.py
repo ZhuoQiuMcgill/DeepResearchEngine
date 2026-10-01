@@ -502,6 +502,73 @@ class Backend:
             value["descriptor"] = json.loads(value["descriptor"])
         return value
 
+    def describe_scope(self, scope: str) -> dict | None:
+        row = self.db.execute("SELECT descriptor FROM scopes WHERE scope=?", (scope,)).fetchone()
+        return json.loads(row[0]) if row else None
+
+    def history_watermark(self) -> int:
+        return self.db.execute("SELECT COALESCE(MAX(seq),0) FROM events").fetchone()[0]
+
+    def list_runs(self, principal: str, filters: dict, last: int, high: int | None,
+                  limit: int) -> tuple[list[dict], int, bool]:
+        # Registration rows are immutable. Capture their insertion watermark,
+        # rather than sorting opaque IDs that future registrations can precede.
+        if high is None:
+            high = self.db.execute("SELECT COALESCE(MAX(rowid),0) FROM runs").fetchone()[0]
+        clauses = ["rowid>?", "rowid<=?", "json_extract(descriptor,'$.owner_principal')=?",
+                   "json_extract(descriptor,'$.owner_principal')!='platform-internal'"]
+        args: list[Any] = [last, high, principal]
+        for key, value in filters.items():
+            # Field names come from the facade's closed validated filter set.
+            clauses.append(f"json_extract(descriptor,'$.{key}') IS ?")
+            args.append(value)
+        args.append(limit + 1)
+        rows = self.db.execute("SELECT rowid AS position,descriptor FROM runs WHERE " +
+                               " AND ".join(clauses) + " ORDER BY rowid LIMIT ?", args)
+        values = [{"position": row["position"], "descriptor": json.loads(row["descriptor"])}
+                  for row in rows]
+        return values[:limit], high, len(values) > limit
+
+    def list_objects(self, scope: str, last: int, high: int | None,
+                     limit: int) -> tuple[list[dict], int, bool]:
+        # READY publication sequence, not reserved object rowid, fixes page
+        # membership even when an earlier-reserved artifact publishes later.
+        if high is None:
+            high = self.db.execute("SELECT COALESCE(MAX(seq),0) FROM events").fetchone()[0]
+        arms = []
+        args: list[Any] = []
+        for kind, table in (("artifact", "artifacts"), ("snapshot", "snapshots"),
+                            ("checkpoint", "checkpoints")):
+            arms.append(f"SELECT '{kind}' AS kind,x.object_id,e.seq AS position FROM {table} x "
+                        "JOIN operations o ON o.operation_id=x.operation_id "
+                        "JOIN events e ON e.event_id=json_extract(o.receipt,'$.event_receipt.event_id') "
+                        "WHERE x.scope=? AND o.phase='ready' AND e.seq>? AND e.seq<=?")
+            args.extend((scope, last, high))
+        args.append(limit + 1)
+        rows = list(self.db.execute(" UNION ALL ".join(arms) +
+                                    " ORDER BY position,kind,object_id LIMIT ?", args))
+        values = [{"position": row["position"], "kind": row["kind"],
+                   "row": self.object_row(row["kind"], row["object_id"])} for row in rows[:limit]]
+        return values, high, len(rows) > limit
+
+    def latest_event(self, selectors: list[dict], run_id: str, kind: str) -> dict | None:
+        for row in self.db.execute("SELECT * FROM events WHERE run_id=? AND kind=? ORDER BY seq DESC",
+                                   (run_id, kind)):
+            event = dict(row)
+            if self.event_visible(event, selectors):
+                return {"event": json.loads(event["envelope"]), "receipt": self.receipt(event)}
+        return None
+
+    def event_visible(self, event: dict, selectors: list[dict]) -> bool:
+        scopes = [r[0] for r in self.db.execute("SELECT scope FROM event_scopes WHERE event_id=?",
+                                              (event["event_id"],))]
+        return bool(scopes) and all(any(
+            selector["scope"] == scope and
+            (selector["object_ids"] is None or event["event_id"] in selector["object_ids"]) and
+            (selector["event_kinds"] is None or event["kind"] in selector["event_kinds"]) and
+            (selector["producer"] is None or event["producer"] == selector["producer"])
+            for selector in selectors) for scope in scopes)
+
     def artifact_bytes(self, object_id: str) -> bytes:
         row = self.object_row("artifact", object_id)
         if not row:
@@ -582,21 +649,64 @@ class Backend:
                 quarantined.append(target.name)
         return {"completed_operation_ids": completed, "interrupted_operation_ids": interrupted, "unindexed_quarantined": quarantined}
 
-    def query_events(self, selectors: list[dict], filters: dict, last: int, high: int | None, limit: int) -> tuple[list[dict], int, bool]:
-        rows = []
-        visible_high = 0
-        for row in self.db.execute("SELECT * FROM events ORDER BY seq"):
-            event = dict(row)
-            visible = [s[0] for s in self.db.execute("SELECT scope FROM event_scopes WHERE event_id=?", (event["event_id"],))]
-            if not visible or not all(any(selector["scope"] == scope and (selector["object_ids"] is None or event["event_id"] in selector["object_ids"]) and (selector["event_kinds"] is None or event["kind"] in selector["event_kinds"]) and (selector["producer"] is None or event["producer"] == selector["producer"]) for selector in selectors) for scope in visible):
+    def _event_where(self, selectors: list[dict], filters: dict) -> tuple[str, list[Any]]:
+        """Parameterized, closed selectors; every event scope must be readable."""
+        permission, args = [], []
+        broad = sorted({s["scope"] for s in selectors if s["object_ids"] is None
+                        and s["event_kinds"] is None and s["producer"] is None})
+        if broad:
+            permission.append("es.scope IN (" + ",".join("?" for _ in broad) + ")")
+            args.extend(broad)
+        for selector in selectors:
+            if selector["scope"] in broad:
                 continue
-            envelope = json.loads(event["envelope"])
-            ctx = envelope["context"]
-            if any(value is not None and (envelope.get(key, ctx.get(key, envelope.get("payload", {}).get(key))) != value) for key, value in filters.items()):
-                continue
-            visible_high = max(visible_high, event["seq"])
-            if event["seq"] > last and (high is None or event["seq"] <= high) and len(rows) <= limit:
-                rows.append({"event": envelope, "receipt": self.receipt(event)})
+            terms = ["es.scope=?"]
+            args.append(selector["scope"])
+            for key, column in (("object_ids", "e.event_id"), ("event_kinds", "e.kind")):
+                if selector[key] is not None:
+                    terms.append(column + " IN (" + ",".join("?" for _ in selector[key]) + ")")
+                    args.extend(selector[key])
+            if selector["producer"] is not None:
+                terms.append("e.producer=?")
+                args.append(selector["producer"])
+            permission.append("(" + " AND ".join(terms) + ")")
+        clauses = ["EXISTS(SELECT 1 FROM event_scopes present WHERE present.event_id=e.event_id)",
+            "NOT EXISTS(SELECT 1 FROM event_scopes es WHERE es.event_id=e.event_id AND NOT (" +
+            " OR ".join(permission) + "))"]
+        fields = {"run_id": "e.run_id", "action_id": "e.action_id", "attempt_id": "e.attempt_id",
+                  "kind": "e.kind", "correlation_id": "json_extract(e.envelope,'$.context.correlation_id')",
+                  "root_run_id": "json_extract(e.envelope,'$.context.root_run_id')",
+                  "status": "CASE WHEN json_type(e.envelope,'$.status') IS NOT NULL THEN json_extract(e.envelope,'$.status') "
+                    "WHEN json_type(e.envelope,'$.context.status') IS NOT NULL THEN json_extract(e.envelope,'$.context.status') "
+                    "ELSE json_extract(e.envelope,'$.payload.status') END"}
+        for key, value in filters.items():
+            if value is not None:
+                clauses.append(fields[key] + "=?")
+                args.append(value)
+        return " AND ".join(clauses), args
+
+    def _event_page(self, selectors: list[dict], filters: dict, last: int, high: int,
+                    limit: int) -> tuple[list[dict], int, bool]:
+        where, args = self._event_where(selectors, filters)
+        # The primary-key range precedes all scoped/filter checks. Old records
+        # and future records are neither fetched nor decoded for each poll.
+        rows = list(self.db.execute("SELECT e.* FROM events e WHERE e.seq>? AND e.seq<=? AND " +
+                    where + " ORDER BY e.seq LIMIT ?", [last, high, *args, limit + 1]))
+        events = [{"event": json.loads(row["envelope"]), "receipt": self.receipt(dict(row))}
+                  for row in rows[:limit]]
+        return events, high, len(rows) > limit
+
+    def query_events(self, selectors: list[dict], filters: dict, last: int, high: int | None,
+                     limit: int) -> tuple[list[dict], int, bool]:
         if high is None:
-            high = visible_high
-        return rows[:limit], high, len(rows) > limit
+            where, args = self._event_where(selectors, filters)
+            row = self.db.execute("SELECT e.seq FROM events e WHERE " + where +
+                                  " ORDER BY e.seq DESC LIMIT 1", args).fetchone()
+            high = row[0] if row else 0
+        return self._event_page(selectors, filters, last, high, limit)
+
+    def poll_events(self, selectors: list[dict], filters: dict, last: int, high: int | None,
+                    limit: int) -> tuple[list[dict], int, bool]:
+        clock = self.history_watermark()
+        high = clock if high is None else min(high, clock)
+        return self._event_page(selectors, filters, last, high, limit)

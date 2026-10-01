@@ -101,6 +101,9 @@ async def test_complete_native_tool_batch_is_preflighted_before_first_dispatch(t
     events = (await storage.activity.query(context)).unwrap().events
     kinds = [e.get("event", e)["kind"] for e in events]
     assert "tool.intent" not in kinds and "tool.rejected" in kinds
+    from ebd.agent import status_for
+    rejected = next(e.get("event", e) for e in events if e.get("event", e)["kind"] == "tool.rejected")
+    assert rejected["payload"]["status"] == status_for(result.error) == result.status
     await storage.close()
 
 
@@ -170,6 +173,104 @@ async def test_engine_cancellation_interrupts_remote_request_and_records_termina
     result = await asyncio.wait_for(task, 3)
     assert result.status == "cancelled" and result.recording_status == "complete"
     assert result.terminal_event_receipt is not None
+    await storage.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("trigger", ["cancel", "expire", "expire_pruned"])
+async def test_reserved_admission_prestart_terminal_is_durable_without_dispatch(tmp_path, trigger):
+    import dataclasses
+    import time
+
+    calls = 0
+    def handler(request):
+        nonlocal calls
+        calls += 1
+        pytest.fail("An unstarted terminal cannot dispatch a provider")
+
+    storage, binding, context, definition = await setup(tmp_path, handler)
+    runtime = Runtime()
+    lease = (await runtime.admit(definition, "task", binding, context)).unwrap()
+    if trigger == "cancel":
+        context.cancellation.set()
+    else:
+        lease.context._monotonic_deadline = time.monotonic() - 1
+        if trigger == "expire_pruned":
+            before = (await runtime.admission_status(context, lease.admission_id)).unwrap()
+            assert before["state"] == "expired" and before["reservation_state"] == "released"
+    result = await runtime.execute(lease)
+    assert result.status == ("cancelled" if trigger == "cancel" else "timed_out")
+    assert result.start_state == "not_started" and result.start_event_receipt is None
+    assert result.recording_status == "complete" and result.terminal_event_receipt is not None
+    assert lease.state == "terminal" and lease.terminal_receipt == result.terminal_event_receipt
+    assert calls == 0 and context.ledger.remaining("model_calls") == 32
+    assert result.counters == {"model_calls": 0, "tool_calls": 0, "tool_attempts": 0, "repairs": 0, "elapsed_seconds": 0}
+    assert result.usage["completeness"] == "unknown" and result.usage["unknown_attempt_ids"] == []
+    assert result.usage["per_attempt_usage_refs"] == []
+    assert all(value is None for value in result.usage["known_subtotals"].values())
+    observer = dataclasses.replace(context, cancellation=asyncio.Event(), deadline=deadline_after(30),
+                                   _monotonic_deadline=time.monotonic() + 30)
+    status = (await runtime.admission_status(observer, lease.admission_id)).unwrap()
+    assert status["state"] == "terminal" and status["reservation_state"] == "released"
+    events = [row.get("event", row) for row in (await storage.activity.query(observer)).unwrap().events]
+    assert [event["kind"] for event in events] == ["agent.finished"]
+    event = events[0]
+    assert event["context"]["action_id"] == context.root_action_id and event["context"]["attempt_id"] is None
+    assert event["payload"]["start_state"] == "not_started" and event["payload"]["usage"] == result.usage
+    await storage.close()
+    reopened = (await StorageSession.open(tmp_path / "store")).unwrap()
+    restored = [row.get("event", row) for row in (await reopened.activity.query(observer)).unwrap().events]
+    assert restored == events and calls == 0
+    await reopened.close()
+    assert (await runtime.execute(lease)).error.code == "admission.consumed"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("denial", ["revoked", "binding_closed"])
+async def test_prestart_cleanup_does_not_restore_denied_recording_authority(tmp_path, denial):
+    import dataclasses
+
+    storage, binding, context, definition = await setup(tmp_path, lambda request: pytest.fail("Denied prestart cannot dispatch"))
+    observer = dataclasses.replace(context, grants=GrantSet(list(context.grants.grants), context.principal))
+    runtime = Runtime()
+    lease = (await runtime.admit(definition, "task", binding, context)).unwrap()
+    context.cancellation.set()
+    observer.cancellation = asyncio.Event()
+    if denial == "revoked":
+        context.grants.revoked = True
+    else:
+        await binding.lease.release()
+    result = await runtime.execute(lease)
+    assert result.status == "cancelled" and result.start_state == "not_started"
+    assert result.recording_status == "unavailable" and result.terminal_event_receipt is None
+    assert result.recording_error is not None and result.output_ref is None
+    assert context.ledger.remaining("model_calls") == 32 and lease.state == "terminal"
+    assert (await storage.activity.query(observer)).unwrap().events == []
+    await storage.close()
+
+
+@pytest.mark.asyncio
+async def test_prestart_terminal_lost_ack_reconciles_one_identity(tmp_path):
+    storage, binding, context, definition = await setup(tmp_path, lambda request: pytest.fail("No prestart dispatch"))
+    actual = storage.recorder
+    appended = []
+    class LoseReply:
+        async def append(self, ctx, event):
+            appended.append(event.event_id)
+            receipt = await actual.append(ctx, event)
+            assert receipt.is_ok
+            return Err(EngineError("STORAGE_IO", "Controlled committed terminal reply loss", commit_state="unknown"))
+
+        async def status(self, *args):
+            return await actual.status(*args)
+
+    binding.recorder = LoseReply()
+    runtime = Runtime()
+    lease = (await runtime.admit(definition, "task", binding, context)).unwrap()
+    context.cancellation.set()
+    result = await runtime.execute(lease)
+    assert result.recording_status == "complete" and result.terminal_event_receipt.event_id == appended[0]
+    assert len(appended) == 1 and context.ledger.remaining("model_calls") == 32
     await storage.close()
 
 

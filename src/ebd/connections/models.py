@@ -27,6 +27,7 @@ class InvocationRule(Record):
     max_depth: int = 4
     timeout_seconds: float = 180
     limits: JsonObject = dataclasses.field(default_factory=dict)
+    allow_evidence: bool = False
 
 
 @dataclasses.dataclass(frozen=True)
@@ -95,6 +96,26 @@ class CheckpointReadRequest(Record):
     accepted_formats: tuple[str, ...] = ("engine_checkpoint/1",)
     max_bytes: int = 8388608
     kind: str = "checkpoint"
+
+
+@dataclasses.dataclass(frozen=True)
+class StateReadRequest(Record):
+    """Read one selected key, including its retained historical versions."""
+    scope: ScopeRef
+    key: str
+    max_bytes: int = 1049600
+
+
+@dataclasses.dataclass(frozen=True)
+class EvidenceBinding(Record):
+    """Authority selectors; source references alone are not permission."""
+    read_objects: tuple[ArtifactReadRequest | SnapshotReadRequest | CheckpointReadRequest, ...] = ()
+    state_reads: tuple[StateReadRequest, ...] = ()
+
+
+@dataclasses.dataclass
+class InvocationOptions(RunOptions):
+    evidence: EvidenceBinding | None = None
 
 
 @dataclasses.dataclass(frozen=True)
@@ -175,10 +196,13 @@ class BoundSession:
     context: ExecutionContext
     binding: Any
     definition: AgentDefinition | None
+    _on_close: Any = dataclasses.field(default=None, repr=False)
 
     async def close(self):
         await self.binding.lease.release()
         await self.context.lease.release()
+        if self._on_close:
+            self._on_close(self)
         return CleanupReport()
 
     async def __aenter__(self):

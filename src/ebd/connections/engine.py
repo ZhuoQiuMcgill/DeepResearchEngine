@@ -24,7 +24,7 @@ from .config import ProfileRegistry
 from .models import *
 
 
-CONNECTION_EVENTS = frozenset({"binding.resolved", "binding.failed", "invocation.intent", "invocation.outcome", "invocation.rejected"})
+CONNECTION_EVENTS = frozenset({"binding.resolved", "binding.failed", "binding.evidence", "invocation.intent", "invocation.outcome", "invocation.rejected"})
 
 
 def finite_seconds(value, cap):
@@ -175,6 +175,8 @@ class Engine:
             for tool in definition.allowed_tools:
                 self.catalog.resolve(tool.name, tool.revision).unwrap()
             for rule in rules:
+                if any(type(getattr(rule, name)) is not bool for name in ("allow_model", "allow_export", "allow_onward", "allow_evidence")):
+                    raise EngineError("INVALID_DATA", "Invocation permissions must be booleans")
                 if not isinstance(rule.destination, AgentRef) or type(rule.max_depth) is not int or rule.max_depth < 1:
                     raise EngineError("INVALID_DATA", "Invalid exact invocation destination or depth")
                 finite_seconds(rule.timeout_seconds, self.settings.max_run_seconds)
@@ -238,6 +240,7 @@ class Engine:
 
     async def _new_context(self, options, definition=None, *, parent=None, invocation=None, rules=(), tools=()):
         self._active()
+        self._contexts = {key: value for key, value in self._contexts.items() if value.lease.active}
         options = options or RunOptions()
         if isinstance(options, dict):
             options = RunOptions(**options)
@@ -333,7 +336,11 @@ class Engine:
                 "tools": [t.to_dict() for t in definition.allowed_tools] if definition else [],
             })
             recorded.unwrap()
-            session = BoundSession(ctx, binding, definition)
+            def release_owner(session):
+                if session in self._sessions:
+                    self._sessions.remove(session)
+                self._contexts.pop(id(ctx), None)
+            session = BoundSession(ctx, binding, definition, release_owner)
             self._sessions.append(session)
             return Ok(session)
         except EngineError as error:
@@ -388,6 +395,51 @@ class Engine:
         from .access import open_access
         return await open_access(self, run_ref, request or RunAccessRequest(), options or RunAccessOptions())
 
+    async def bind_evidence(self, session, source_run_ref, evidence):
+        """Host-selected owned source evidence for a live orchestrator binding.
+
+        This imports read authority, not data or execution budgets. It enables
+        a Reader's saved sources to feed a later Writer through a parent.
+        """
+        from .evidence import bind_host_evidence
+        return await bind_host_evidence(self, session, source_run_ref, evidence)
+
+    def list_agents(self):
+        """Detached public catalog; registration never gives execution authority."""
+        self._active()
+        return [{"ref": ref.to_dict(), "definition_ref": definition.definition_ref,
+                 "definition": definition.to_dict(), "invocation_rules": [r.to_dict() for r in rules]}
+                for ref, (definition, rules, _) in sorted(self._registered.items(), key=lambda item: (item[0].agent_id, item[0].revision))]
+
+    def list_profiles(self):
+        """Safe catalog without credential resolution or endpoint disclosure."""
+        self._active()
+        profiles = {"deepseek": {"profile_ref": "deepseek", "model_ref": "deepseek-flash", "provider": "deepseek"},
+                    "openai": {"profile_ref": "openai", "model_ref": "gpt-6-luna", "provider": "openai"}}
+        for name, config in self.settings.profiles.items():
+            profiles[name] = {"profile_ref": name, "model_ref": config.model_id, "provider": config.provider}
+        return [profiles[name] for name in sorted(profiles)]
+
+    async def list_runs(self, filters=None, cursor=None, limit=100):
+        from .inspection import list_runs
+        return await list_runs(self, filters, cursor, limit)
+
+    async def describe_run(self, run_ref):
+        from .inspection import describe_run
+        return await describe_run(self, run_ref)
+
+    async def list_run_objects(self, run_ref, cursor=None, limit=100):
+        from .inspection import list_objects
+        return await list_objects(self, run_ref, cursor, limit)
+
+    async def read_run_state(self, run_ref, key, version=None):
+        from .inspection import read_state
+        return await read_state(self, run_ref, key, version)
+
+    async def query_run_events(self, run_ref, after_seq=0, limit=100, include_descendants=False):
+        from .inspection import query_events
+        return await query_events(self, run_ref, after_seq, limit, include_descendants)
+
     async def close(self, deadline=None):
         if self._closed:
             return CleanupReport()
@@ -405,7 +457,7 @@ class Engine:
                 await asyncio.wait_for(asyncio.gather(*tasks, return_exceptions=True), seconds)
             except asyncio.TimeoutError:
                 errors.append("active execution cleanup exceeded deadline")
-        for session in self._sessions:
+        for session in tuple(self._sessions):
             await session.close()
         cleanup = await self.executor.close(deadline)
         if not cleanup.complete:

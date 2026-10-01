@@ -206,12 +206,16 @@ async def test_lost_invocation_intent_ack_is_reconciled_before_one_child(tmp_pat
 
 @pytest.mark.asyncio
 async def test_parent_revocation_after_child_success_prevents_result_export(tmp_path, monkeypatch):
-    holder = {}
     def handler(request):
-        holder["parent"].context.grants.revoked = True
         return httpx.Response(200, json={"choices": [{"finish_reason": "stop", "message": {"role": "assistant", "content": "child complete"}}]})
     engine, parent, child, calls = await bound_parent(tmp_path, monkeypatch, artifact=True, handler=handler)
-    holder["parent"] = parent
+    original = engine.runtime.execute
+    async def revoke_after_terminal(admission):
+        result = await original(admission)
+        assert result.status == "succeeded" and result.terminal_event_receipt
+        parent.context.grants.revoked = True
+        return result
+    monkeypatch.setattr(engine.runtime, "execute", revoke_after_terminal)
     try:
         outcome = await parent.binding.invoker.invoke(parent.context, child.ref, "task")
         assert outcome.child_result.status == "succeeded"

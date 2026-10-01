@@ -34,6 +34,69 @@ requires all affected scope grants.
 | `activity` | `query(context, filters=None, cursor=None, limit=100)` |
 | `operations` | `status(context, operation_id)` |
 
+The owner also exposes discovery and metadata inspection for the Connections
+run service:
+
+| Operation | Authority and result |
+| --- | --- |
+| `list_runs(context, filters=None, cursor=None, limit=100)` | `runs.list` selecting `context.principal`; returns `{runs, cursor, schema_version}` |
+| `list_objects(context, scope, cursor=None, limit=100)` | `objects.list` on the exact scope, whose persisted `owner_principal` must match the context; returns `{objects, cursor, schema_version}` |
+| `describe_object(context, ref)` | Matching `artifact.read`, `snapshot.read` or `checkpoint.read` for the actual stored scope/ref; returns public metadata without reading content |
+| `latest_run_event(context, run_id, kind="agent.finished")` | Target-scope `events.read`; returns the latest visible `{event, receipt}` or `None` |
+| `history_watermark(context)` | Context-scope `events.read`; returns the committed store-wide sequence clock without event contents |
+| `activity.poll(context, filters=None, after_seq=0, limit=100, through_seq=None)` | Explicit scoped `events.read`; returns `{events, next_after_seq, has_more, high_water_seq, schema_version}` |
+
+Run discovery filters are closed: `root_run_id`, `parent_run_id`, `agent_id`
+and `context_kind`. IDs must be bounded strings; `parent_run_id` and `agent_id`
+also accept null to select records without those fields. Only runs owned by
+the caller's current principal are returned; the platform's internal quota
+run is excluded. Saved arbitrary caller metadata is omitted. Run registration
+order and a fixed registration watermark keep cursor page membership stable.
+
+Object discovery includes ordinary artifacts, READY snapshot/checkpoint
+components and their parent objects. Descriptors carry `kind`, typed `ref`,
+tagged `scope`, `byte_length`, `sha256`, `media_type` and `schema_version`.
+Snapshot descriptors additionally carry extraction/normalization versions,
+line count and nullable physical page count; their byte/hash/media fields
+describe the saved derived text. Checkpoint descriptors carry format and run
+identity; their byte/hash/media fields describe the saved envelope. Internal
+paths, raw publication descriptors, origins and arbitrary metadata are omitted.
+Discovery grants confer no content read right. Description still requires an
+object read grant, including exact scope/selector and media/format constraints.
+Listing a shared scope requires its provisioning descriptor to name the
+owning principal explicitly. No owner is inferred from scope references.
+
+Catalog limits are 1..500 records and at most 1 MiB encoded JSON. Opaque
+cursors bind store, principal, selected grant, filters/scope and watermark;
+new publications cannot enter an existing page sequence, including artifacts
+reserved before the initial page but committed later. Cursors expire and do
+not survive owner close/reopen. Start a fresh authorized catalog query after
+reopen. Metadata reads consume normal shared read/count quotas.
+
+Progress polling accepts the existing history filters plus `root_run_id`;
+lineage matching does not grant access to child scopes. Every affected event
+scope must be authorized, including multi-scope state publication events.
+`after_seq` is a nonnegative recorded sequence, and `next_after_seq` advances
+only through returned events. Poll again after that position to receive future
+committed events. `high_water_seq` is the current committed store sequence
+clock, capped by `through_seq` when supplied. Unlike a history cursor, the numeric position can be retained
+across reopen, but a fresh live history grant is still required. Pages are
+bounded to 1 MiB and 500 events; oversized records fail without advancing past
+them. No polling/terminal lookup operation restores execution authority or
+replays a model/tool call. Connections captures `history_watermark` before
+discovering owned descendants, issues their exact scope grants, then polls
+with `through_seq` set to that watermark. Runs producing events below that
+clock were already registered when the clock was captured; later registrations
+and records are deferred to the next poll. This prevents a newly registered
+child from being omitted while a later parent event advances the position.
+The sequence is a store-wide ordering clock, not an indication of other
+principals' event contents or execution status.
+Incremental polls use the SQLite sequence index over the requested interval,
+apply exact scoped selectors and closed filters in SQL, and fetch at most one
+extra record to establish `has_more`. Old, ungranted and filtered records are
+not decoded into Python events on every request. Fixed-watermark history
+queries retain their visible-record watermark behavior.
+
 Use `ArtifactContent` for immutable byte length/SHA-256 declaration,
 `ArtifactMetadata` for media type/display data, and `StateMutation` for CAS.
 `ArtifactContent(data=bytes)` or

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import copy
 import dataclasses
 
 from ebd.contracts import *
@@ -40,6 +41,13 @@ async def invoke(invoker, caller, destination, task_input, options):
         options = options or RunOptions(timeout_seconds=rule.timeout_seconds)
         if isinstance(options, dict):
             options = RunOptions(**options)
+        from .evidence import freeze_evidence
+        evidence = freeze_evidence(getattr(options, "evidence", None))
+        task_input = copy.deepcopy(task_input)
+        if evidence is not None and not rule.allow_evidence:
+            raise EngineError("ACCESS_DENIED", "This edge does not permit evidence delegation")
+        from .evidence import evidence_grants
+        delegated = await evidence_grants(engine, caller, evidence)
         from .engine import narrowed_limits
         edge_limits = narrowed_limits(engine.settings.limits, rule.limits)
         child_limits = narrowed_limits(edge_limits, options.limits)
@@ -53,6 +61,8 @@ async def invoke(invoker, caller, destination, task_input, options):
         child = await engine._new_context(child_options, definition, parent=caller, invocation=invocation,
                                          rules=child_rules if rule.allow_onward else ())
         child.grants = engine._grants(child, definition, child_rules if rule.allow_onward else ())
+        child.grants.grants.extend(delegated)
+        child.grants._parents = (caller.grants,)
         session = (await engine._bind(child, definition, child_rules if rule.allow_onward else ())).unwrap()
         admitted = await engine.runtime.admit(definition, task_input, session.binding, child)
         admitted.unwrap()
@@ -61,6 +71,7 @@ async def invoke(invoker, caller, destination, task_input, options):
         intent = await engine._record(invocation, "invocation.intent", {
             "destination": ref.to_dict(), "candidate_child_run": outcome.child_run.to_dict(),
             "admission": admission.descriptor(), "input_digest": digest_json(task_input),
+            "evidence": evidence.to_dict() if evidence else None,
         })
         intent.unwrap()
         outcome.intent_receipt = intent.value

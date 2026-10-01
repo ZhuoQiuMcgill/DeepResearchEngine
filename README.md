@@ -44,6 +44,7 @@ uv run --locked pytest -q
 uv run --locked ebd tools
 uv run --locked ebd tool scholar.crossref.search --arguments '{"query":"Environment Based Design","max_results":3}'
 uv run --locked ebd --store local/ebd-baseline-store baseline
+uv run --locked ebd --store local/console-store serve --port 8000 --origin http://localhost:5173
 ```
 
 PowerShell can pipe a single-quoted JSON string to `ebd tool NAME` when command
@@ -63,10 +64,19 @@ See [Connections](docs/usage/connections.md),
 Start a custom application with [examples/research.py](examples/research.py).
 Bounded provider checks are in
 [examples/live_provider_check.py](examples/live_provider_check.py).
+The [console run service](docs/usage/service.md) serves real runs and saved
+results at `http://127.0.0.1:8000/api/v1`; its OpenAPI is at `/openapi.json`
+and interactive API documentation at `/docs`. It owns one Engine and Store.
+Python strategies can [delegate selected evidence](docs/usage/connections.md)
+to child agents without sharing unrestricted Storage authority.
+See [consumer acceptance](docs/consumer-acceptance.md) for the actual HTTP,
+model/tool, evidence-sharing and restart checks.
 
 ```mermaid
 flowchart TD
     Application[Research or strategy application] --> Connections[Connections Engine]
+    Console[Frontend console] --> Service[Local RunService]
+    Service --> Connections
     Connections --> Runtime[Agent Runtime]
     Connections --> Toolset[CLI Toolset]
     Connections --> Storage[Storage and activity recording]

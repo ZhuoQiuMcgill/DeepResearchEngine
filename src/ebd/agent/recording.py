@@ -53,7 +53,7 @@ class RecordedToolAction:
         rejected = await append_event(binding, context.for_action(action_id, None), "tool.rejected", {
             "tool": request.tool, "provider_call_id": request.provider_call_id,
             "model_action_id": request.model_action_id, "model_attempt_id": request.model_attempt_id,
-            "error": error, "dispatched": False,
+            "error": error, "status": status_for(error), "dispatched": False,
         }, cleanup=True)
         return ToolResult(request.tool, {"action_id": action_id, "attempt_id": None, "dispatched": False}, status_for(error), error=error,
                           recording={"status": "complete" if isinstance(rejected, Ok) else "incomplete", "error": rejected.error if isinstance(rejected, Err) else None},

@@ -52,8 +52,20 @@ def main():
     tool.add_argument("--source-run", help="Explicit owned run containing a snapshot selected for document.read")
     baseline = commands.add_parser("baseline", help="Generate and verify the complete EBD research report")
     baseline.add_argument("--verify-run", help="Verify an existing saved model report without model dispatch or refetch")
+    serve = commands.add_parser("serve", help="Serve the local console API with one owning Engine")
+    serve.add_argument("--port", type=int, default=8000)
+    serve.add_argument("--origin", action="append", default=[], help="Explicit trusted frontend origin (repeatable)")
     args = parser.parse_args()
     try:
+        if args.command == "serve":
+            import uvicorn
+            from ebd.connections import EngineSettings
+            from ebd.service import create_app
+            app = create_app(EngineSettings(workspace=args.workspace, storage_root=args.store,
+                openalex_admission=args.admit_openalex), trusted_origins=tuple(args.origin))
+            uvicorn.run(app, host="127.0.0.1", port=args.port, workers=1,
+                        timeout_graceful_shutdown=30, access_log=False)
+            return
         raise SystemExit(asyncio.run(run(args)))
     except (ValueError, RuntimeError) as error:
         print(str(error), file=sys.stderr)

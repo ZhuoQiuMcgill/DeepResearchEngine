@@ -156,6 +156,12 @@ usage and response metadata in the cancelled outcome. Its tools and final output
 are not dispatched or published. Recording cleanup does no business publication
 or external dispatch.
 
+An owned reserved admission cancelled or expired before execution records
+`agent.finished` with `start_state="not_started"`, zero dispatch counters and
+unknown nullable token usage. It emits no `agent.started` and releases its
+reservation. A closed lease or revoked recording grant remains unavailable;
+cleanup does not restore that authority.
+
 The default `recoverable_tool_errors=return_to_model` permits a different source
 URL or discovery query after a fully recorded read-only source failure, including
 a per-worker stream/memory cap, provider quota or source outage. Cleanup must be

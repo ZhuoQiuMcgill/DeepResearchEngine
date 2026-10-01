@@ -80,6 +80,8 @@ class RunAccessSession:
 
     async def close(self, deadline=None):
         await self.lease.release()
+        if self in self._engine._sessions:
+            self._engine._sessions.remove(self)
         return CleanupReport()
 
     async def __aenter__(self):

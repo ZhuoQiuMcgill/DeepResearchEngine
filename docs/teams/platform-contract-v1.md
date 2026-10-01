@@ -1,16 +1,19 @@
 # Shared platform contract v1
 
-Status: consolidated design for review, 2026-09-30. PM resolved the interface
-differences below from all four leaders' narrow reconciliation replies.
-This is documentation, not runtime code or authorization to implement.
-It supersedes conflicting interface proposals in the team drafts. Required
-runtime and live-service checks remain unperformed.
+Status: implemented four-module platform with real baseline acceptance.
+The reviewed design below records the reconciled module boundaries; executable
+types and public usage guides specify current names and supported behavior.
+See [platform acceptance](../platform-acceptance.md) for actual verification and
+[consumer contract v1](consumer-contract-v1.md) for the orchestrator/console
+extension. Earlier team review requests are historical, not active assignments.
 
 ## Dependency direction and ownership
 
 ```mermaid
 flowchart TD
     App[Strategy or baseline workflow] --> Engine[Connections: host composition]
+    Console[Frontend console] --> Service[Application RunService: HTTP and run handles]
+    Service --> Engine
     Engine --> Runtime[Agent Container: runtime and recording helper]
     Engine --> Store[Storage: scoped data and recorder]
     Engine --> Tools[CLI Toolset: catalog and executor]

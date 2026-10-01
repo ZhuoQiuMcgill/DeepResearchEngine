@@ -69,6 +69,7 @@ class AdmissionLease:
     start_receipt: Any = None
     terminal_receipt: Any = None
     terminal_status: str | None = None
+    reservation_state: str = "reserved"
 
     def descriptor(self):
         return {"schema_version": 1, "admission_id": self.admission_id,
@@ -86,6 +87,7 @@ class AdmissionLease:
                 return Err(EngineError("admission.consumed", "Consumed or uncertain admission cannot be released"))
             self.state = "expired" if self.context.remaining_seconds() <= 0 else "released"
             self.context.ledger.release_reserved(self.reservation_id)
+            self.reservation_state = "released"
             return Ok({"schema_version": 1, "admission_id": self.admission_id, "state": self.state, "reservation_id": self.reservation_id, "duplicate": False})
 
 
@@ -119,6 +121,7 @@ class Runtime:
             if lease.state == "reserved" and lease.context.remaining_seconds() <= 0:
                 lease.state = "expired"
                 lease.context.ledger.release_reserved(lease.reservation_id)
+                lease.reservation_state = "released"
         removable = [key for key, lease in self._admissions.items() if lease.state in {"terminal", "released", "expired"}]
         for key in removable[:max(0, len(self._admissions) - self._max_admission_records)]:
             del self._admissions[key]
@@ -282,7 +285,7 @@ class Runtime:
             if lease.context.run_id != context.run_id:
                 raise EngineError("ACCESS_DENIED", "Admission belongs to another run")
             state = "expired" if lease.state == "reserved" and lease.context.remaining_seconds() <= 0 else lease.state
-            return Ok({"schema_version": 1, "admission_id": admission_id, "state": state, "reservation_state": "consumed" if state == "terminal" else state, "start_event_receipt": lease.start_receipt, "terminal_event_receipt": lease.terminal_receipt, "terminal_status": lease.terminal_status, "error": None})
+            return Ok({"schema_version": 1, "admission_id": admission_id, "state": state, "reservation_state": lease.reservation_state, "start_event_receipt": lease.start_receipt, "terminal_event_receipt": lease.terminal_receipt, "terminal_status": lease.terminal_status, "error": None})
         except EngineError as error:
             return Err(error)
 
@@ -291,17 +294,77 @@ class Runtime:
         if not isinstance(lease, AdmissionLease) or lease.owner is not self or self._admissions.get(lease.admission_id) is not lease:
             raise EngineError("ACCESS_DENIED", "Admission is not owned by this live runtime")
         async with lease.lock:
+            if lease.state == "expired":
+                # Status lookup or another admission may have pruned this
+                # reservation first. Its retained owned identity still permits
+                # one cleanup-only terminal, never renewed execution.
+                lease.state = "consumed"
+                return await self._finish_unstarted(lease, EngineError("DEADLINE_EXCEEDED", "Admission deadline elapsed"))
             if lease.state != "reserved":
                 return AgentResult(lease.context.descriptor(), "failed", definition_ref=lease.definition.definition_ref, admission_id=lease.admission_id, error=EngineError("admission.consumed", "Admission is single-use"))
             try:
                 lease.context.assert_active()
                 lease.binding.lease.assert_active()
             except EngineError as error:
+                if error.code in {"CANCELLED", "DEADLINE_EXCEEDED"}:
+                    # This owned admission was accepted, but no execution or
+                    # provider session started. Preserve a terminal fact that
+                    # service consumers can reconstruct after restart.
+                    lease.state = "consumed"
+                    return await self._finish_unstarted(lease, error)
                 lease.state = "expired" if error.code == "DEADLINE_EXCEEDED" else "released"
                 lease.context.ledger.release_reserved(lease.reservation_id)
+                lease.reservation_state = "released"
                 return AgentResult(lease.context.descriptor(), status_for(error), definition_ref=lease.definition.definition_ref, admission_id=lease.admission_id, error=error)
             lease.state = "consumed"
         return await self._execute_consumed(lease)
+
+    async def _finish_unstarted(self, lease, error):
+        definition, binding, context = lease.definition, lease.binding, lease.context
+        root_context = context.for_action(context.root_action_id, None)
+        result = AgentResult(root_context.descriptor(), status_for(error),
+            definition_ref=definition.definition_ref, admission_id=lease.admission_id,
+            start_state="not_started", error=error,
+            validation={"state": "not_run", "schema_digest": digest_json(definition.output_schema), "errors": []},
+            counters={"model_calls": 0, "tool_calls": 0, "tool_attempts": 0, "repairs": 0, "elapsed_seconds": 0},
+            usage={"known_subtotals": dict.fromkeys(TOKEN_COUNTS), "completeness": "unknown",
+                   "unknown_attempt_ids": [], "per_attempt_usage_refs": []})
+        result.terminal_state = {"schema_version": 1, "state": "terminal", "start_state": "not_started",
+            "run_id": context.run_id, "root_run_id": context.root_run_id,
+            "correlation_id": context.correlation_id, "root_action_id": context.root_action_id,
+            "definition_ref": definition.definition_ref, "model_ref": definition.model_ref,
+            "profile_ref": definition.profile_ref, "source_refs": [],
+            "model_outcome_event_ids": [], "tool_outcome_event_ids": [], "limits_snapshot": lease.limits,
+            "counters": result.counters, "usage": result.usage, "output_ref": None, "raw_output_ref": None,
+            "persistence_state": result.persistence_state, "unfinished_actions": []}
+        try:
+            # Cleanup extends time only. It cannot revive a closed binding,
+            # closed run lease, or revoked event-recording grant.
+            binding.lease.assert_active()
+            context.lease.assert_active()
+            result.recording_status = "complete"
+            terminal = await asyncio.shield(append_event(binding, root_context, "agent.finished", {
+                "status": result.status, "start_state": "not_started", "recording_status": "complete",
+                "error": result.error, "cleanup": result.cleanup,
+                "output_ref": None, "raw_output_ref": None, "persistence_state": result.persistence_state,
+                "output_publications": [], "validation": result.validation, "counters": result.counters,
+                "usage": result.usage, "terminal_state": result.terminal_state,
+            }, cleanup=True, cleanup_seconds=lease.limits["max_record_cleanup_seconds"]))
+            if isinstance(terminal, Ok):
+                result.terminal_event_receipt = lease.terminal_receipt = terminal.value
+            else:
+                result.recording_status = "unavailable" if terminal.error.code in {"ACCESS_DENIED", "SESSION_CLOSED"} else "incomplete"
+                result.recording_error = terminal.error
+        except EngineError as recording_error:
+            result.recording_status = "unavailable"
+            result.recording_error = recording_error
+        finally:
+            lease.context.ledger.release_reserved(lease.reservation_id)
+            lease.reservation_state = "released"
+            lease.state = "terminal"
+            lease.terminal_status = result.status
+            self._prune_admissions()
+        return result
 
     async def _execute_consumed(self, lease):
         definition, binding, context, limits = lease.definition, lease.binding, lease.context, lease.limits
@@ -348,6 +411,7 @@ class Runtime:
                 model_context.authorize("model.generate", object_id=_provider_config(binding.provider_config).model_id)
                 if result.counters["model_calls"] == 0:
                     model_context.ledger.consume_reserved(lease.reservation_id)
+                    lease.reservation_state = "consumed"
                 else:
                     model_context.ledger.consume("model_calls")
                 result.counters["model_calls"] += 1
@@ -546,6 +610,8 @@ class Runtime:
             lease.terminal_status = result.status
             if lease.state != "unknown":
                 context.ledger.release_reserved(lease.reservation_id)
+                if lease.reservation_state == "reserved":
+                    lease.reservation_state = "released"
             self._prune_admissions()
         if len(canonical_json(result)) > limits["max_public_result_bytes"]:
             result.output = None

@@ -14,7 +14,7 @@ from typing import Any, Callable
 import uuid
 
 from ebd.contracts import (ArtifactContent, ArtifactReceipt, ArtifactRef, CheckpointRef,
-    DocumentSlice, EngineError, Err, EventReceipt, ExecutionContext, ExecutionEvent,
+    DocumentSlice, EngineError, Err, EventReceipt, ExecutionContext, ExecutionEvent, GrantSet,
     Ok, ScopeRef, SnapshotProposal, SnapshotReceipt, SnapshotRef, to_json_value as shared_json_value)
 from ._backend import Backend, StorageFailure, digest, encode, utc_now
 from ._ranges import CursorCodec, canonical_json, strict_json, validate_index, slice_document
@@ -105,6 +105,73 @@ def receipt_value(method: str, value: dict):
         value["payload_ref"] = ArtifactRef(**value["payload_ref"])
         return CheckpointReceipt(**value)
     return value
+
+
+def _page_limit(limit):
+    if type(limit) is not int or not 1 <= limit <= 500:
+        raise StorageFailure("LIMIT_EXCEEDED", "Page limit must be 1..500")
+
+
+def _catalog_filters(filters):
+    filters = to_json_value({} if filters is None else filters)
+    if not isinstance(filters, dict) or set(filters) - {"root_run_id", "parent_run_id", "agent_id", "context_kind"}:
+        raise StorageFailure("INVALID_DATA", "Unsupported run discovery filters")
+    for key, value in filters.items():
+        if value is None and key in {"parent_run_id", "agent_id"}:
+            continue
+        opaque(value)
+        if key == "context_kind" and value not in {"agent", "standalone_tool"}:
+            raise StorageFailure("INVALID_DATA", "Run context kind must be agent or standalone_tool")
+    canonical_json(filters, 4096)
+    return filters
+
+
+def _grant_identity(grant):
+    value = to_json_value(grant)
+    for key in ("object_ids", "event_kinds"):
+        if value[key] is not None:
+            value[key] = sorted(value[key])
+    return value
+
+
+def _history_selectors(session, context):
+    selectors, selected = [], []
+    session._live(context)
+    if context.grants is None or context.grants.principal != context.principal or context.grants.is_revoked():
+        raise EngineError("ACCESS_DENIED", "History authority is revoked or belongs to another principal")
+    for grant in context.grants.grants if context.grants else []:
+        if grant.operation not in ("events.read", "*") or grant.mode != "originator":
+            continue
+        if grant.object_ids == frozenset() or grant.event_kinds == frozenset():
+            continue
+        scope = grant.scope or context.scope
+        if scope is None:
+            continue
+        # Validate this grant itself. A different narrower grant must not
+        # authenticate the first selector of an expired broader grant.
+        selected_context = dataclasses.replace(context, grants=GrantSet([grant], context.principal,
+                                                _parents=(context.grants,)))
+        try:
+            session.authorize(selected_context, "events.read", scope,
+                              next(iter(grant.object_ids)) if grant.object_ids else None,
+                              grant.producer, next(iter(grant.event_kinds)) if grant.event_kinds else None)
+        except EngineError as exc:
+            if exc.code == "ACCESS_DENIED":
+                continue
+            raise
+        selectors.append({"scope": scope_key(scope), "object_ids": sorted(grant.object_ids) if grant.object_ids is not None else None,
+                          "event_kinds": sorted(grant.event_kinds) if grant.event_kinds is not None else None,
+                          "producer": grant.producer})
+        selected.append(_grant_identity(grant))
+    if not selectors:
+        raise EngineError("ACCESS_DENIED", "No scoped history read authority")
+    return selectors, selected
+
+
+def _recheck_history(session, context, selectors):
+    current, _ = _history_selectors(session, context)
+    if any(selector not in current for selector in selectors):
+        raise EngineError("ACCESS_DENIED", "History authority changed during the read")
 
 
 class StorageSession:
@@ -244,6 +311,161 @@ class StorageSession:
             return Ok(descriptor)
         except (StorageFailure, EngineError, OSError) as exc:
             return error_result(exc)
+
+    async def list_runs(self, context, filters=None, cursor=None, limit=100):
+        """Discover only runs registered to the current host principal."""
+        try:
+            _page_limit(limit)
+            filters = _catalog_filters(filters)
+            grant = self.authorize(context, "runs.list", object_id=context.principal)
+            context.ledger.consume("storage_reads")
+            binding = {"kind": "runs", "store_id": self.store_id,
+                       "principal": context.principal, "grant": _grant_identity(grant), "filters": filters}
+            last, high = self._catalog_position(cursor, binding)
+            rows, high, more = await self._call(self._backend.list_runs, context.principal,
+                                               filters, last, high, limit)
+            self.authorize(context, "runs.list", object_id=context.principal)
+            # Context identity and definition descriptors are public; arbitrary
+            # caller metadata is not needed to discover or control runs.
+            public_fields = {"schema_version", "run_id", "root_run_id", "correlation_id", "action_id",
+                "principal", "context_kind", "agent_id", "definition_ref", "attempt_id",
+                "parent_run_id", "parent_action_id", "parent_attempt_id", "root_action_id", "deadline",
+                "depth", "ancestry", "binding_ref", "policy_ref", "purpose", "store_id", "scope",
+                "owner_principal"}
+            descriptors = [{key: value for key, value in row["descriptor"].items() if key in public_fields}
+                           for row in rows]
+            return self._catalog_page(context, "runs", descriptors, rows, high, more, binding)
+        except (StorageFailure, EngineError, OSError) as exc:
+            return error_result(exc)
+
+    async def list_objects(self, context, scope, cursor=None, limit=100):
+        """List committed immutable objects in one explicitly owned scope."""
+        try:
+            _page_limit(limit)
+            scope = scope_key(scope)
+            grant = self.authorize(context, "objects.list", scope)
+            context.ledger.consume("storage_reads")
+            await self._owned_scope(context, scope)
+            binding = {"kind": "objects", "store_id": self.store_id, "principal": context.principal,
+                       "scope": scope, "grant": _grant_identity(grant)}
+            last, high = self._catalog_position(cursor, binding)
+            rows, high, more = await self._call(self._backend.list_objects, scope, last, high, limit)
+            descriptors = [await self._object_descriptor(row["kind"], row["row"]) for row in rows]
+            self.authorize(context, "objects.list", scope)
+            await self._owned_scope(context, scope)
+            return self._catalog_page(context, "objects", descriptors, rows, high, more, binding)
+        except (StorageFailure, EngineError, OSError) as exc:
+            return error_result(exc)
+
+    async def describe_object(self, context, object_ref):
+        """Inspect public metadata under its actual scoped object read grant."""
+        try:
+            kind = next((name for name, cls in (("artifact", ArtifactRef), ("snapshot", SnapshotRef),
+                        ("checkpoint", CheckpointRef)) if isinstance(object_ref, cls) or
+                        isinstance(object_ref, dict) and name + "_id" in object_ref), None)
+            if kind is None:
+                raise StorageFailure("INVALID_DATA", "Object description requires a typed immutable reference")
+            ref = typed_ref(object_ref, kind, self.store_id)
+            self._visibility_probe(context, kind + ".read", ref.id)
+            row = await self._call(self._backend.object_row, kind, ref.id)
+            if row is None:
+                raise StorageFailure("NOT_FOUND", "Authorized object was not found")
+            try:
+                grant = self.authorize(context, kind + ".read", row["scope"], ref.id)
+            except EngineError:
+                raise StorageFailure("NOT_FOUND", "Authorized object was not found") from None
+            context.ledger.consume("storage_reads")
+            descriptor = await self._object_descriptor(kind, row)
+            if grant.allowed_media_types is not None and descriptor["media_type"] not in grant.allowed_media_types:
+                raise EngineError("ACCESS_DENIED", "Object media type is outside the bound read selector")
+            if grant.allowed_formats is not None and descriptor.get("format") not in grant.allowed_formats:
+                raise EngineError("ACCESS_DENIED", "Object format is outside the bound read selector")
+            self.authorize(context, kind + ".read", row["scope"], ref.id)
+            context.ledger.consume("storage_read_bytes", len(canonical_json(descriptor, 64 << 10)))
+            return Ok(descriptor)
+        except (StorageFailure, EngineError, OSError) as exc:
+            return error_result(exc)
+
+    async def latest_run_event(self, context, run_id, kind="agent.finished"):
+        """Return the latest visible matching recorded event, without replay."""
+        try:
+            run_id, kind = opaque(run_id), opaque(kind)
+            selectors, _ = _history_selectors(self, context)
+            if scope_key(ScopeRef("run", run_id)) not in {entry["scope"] for entry in selectors}:
+                raise EngineError("ACCESS_DENIED", "Run event lookup requires target scope history authority")
+            context.ledger.consume("storage_reads")
+            event = await self._call(self._backend.latest_event, selectors, run_id, kind)
+            _recheck_history(self, context, selectors)
+            context.ledger.consume("storage_read_bytes", len(canonical_json(event, 1 << 20)))
+            return Ok(event)
+        except (StorageFailure, EngineError, OSError) as exc:
+            return error_result(exc)
+
+    async def history_watermark(self, context):
+        """Capture the committed store-wide sequence clock, without event data.
+
+        Connections captures this before discovering a lineage and issuing
+        exact-scope history grants, then caps that poll to the captured clock.
+        """
+        try:
+            if context.scope is None:
+                raise EngineError("ACCESS_DENIED", "History clock requires a scoped read context")
+            self.authorize(context, "events.read", context.scope)
+            context.ledger.consume("storage_reads")
+            high = await self._call(self._backend.history_watermark)
+            self.authorize(context, "events.read", context.scope)
+            context.ledger.consume("storage_read_bytes", len(canonical_json(high, 32)))
+            return Ok(high)
+        except (StorageFailure, EngineError, OSError) as exc:
+            return error_result(exc)
+
+    async def _owned_scope(self, context, scope):
+        descriptor = await self._call(self._backend.describe_scope, scope)
+        if descriptor is None or descriptor.get("owner_principal") != context.principal or context.principal == "platform-internal":
+            raise EngineError("ACCESS_DENIED", "Scope discovery requires ownership by the current principal")
+
+    def _catalog_position(self, cursor, binding):
+        if cursor is None:
+            return 0, None
+        saved = self._cursors.open(cursor)
+        if any(saved.get(key) != value for key, value in binding.items()):
+            raise StorageFailure("INVALID_CURSOR", "Catalog cursor changed owner, scope, filters or authority")
+        return saved["last"], saved["high"]
+
+    def _catalog_page(self, context, name, descriptors, rows, high, more, binding):
+        bounded, used = [], 2
+        for descriptor in descriptors:
+            size = len(canonical_json(descriptor, 64 << 10)) + 1
+            if used + size > (1 << 20) - (32 << 10):
+                more = True
+                break
+            bounded.append(descriptor)
+            used += size
+        if more and not bounded:
+            raise StorageFailure("LIMIT_EXCEEDED", "One catalog descriptor exceeds the page byte limit")
+        cursor = self._cursors.seal({**binding, "last": rows[len(bounded) - 1]["position"],
+                                   "high": high, "expires": time.time() + 86400}) if more and bounded else None
+        page = {name: bounded, "cursor": cursor, "schema_version": 1}
+        context.ledger.consume("storage_read_bytes", len(canonical_json(page, 1 << 20)))
+        return Ok(page)
+
+    async def _object_descriptor(self, kind, row):
+        descriptor = {"schema_version": 1, "kind": kind, "ref": self._ref(kind, row["object_id"]),
+                      "scope": scope_ref(row["scope"]).to_dict()}
+        if kind == "artifact":
+            if row["phase"] != "ready":
+                raise StorageFailure("INCOMPLETE_ARTIFACT", "Object metadata is not READY")
+            descriptor.update({key: row[key] for key in ("byte_length", "sha256", "media_type")})
+        else:
+            value = row["descriptor"]
+            role = "text" if kind == "snapshot" else "payload"
+            component = await self._call(self._backend.object_row, "artifact", value["refs"][role]["artifact_id"])
+            if component is None or component["phase"] != "ready":
+                raise StorageFailure("INCOMPLETE_ARTIFACT", "Object component metadata is not READY")
+            descriptor.update({key: component[key] for key in ("byte_length", "sha256", "media_type")})
+            fields = ("extraction_version", "normalization_version", "line_count", "physical_page_count") if kind == "snapshot" else ("format", "run_id")
+            descriptor.update({key: value[key] for key in fields})
+        return descriptor
 
     async def provision_scope(self, admin_context, scope, descriptor=None):
         try:
@@ -892,6 +1114,47 @@ class ActivityReader:
     def __init__(self, session):
         self.session = session
 
+    async def poll(self, context, filters=None, after_seq=0, limit=100, through_seq=None):
+        """Read currently committed progress after a sequence, including future polls.
+
+        Unlike query's fixed-watermark cursor, next_after_seq is a durable
+        position. References/positions confer no history authority on reopen.
+        """
+        try:
+            _page_limit(limit)
+            if type(after_seq) is not int or not 0 <= after_seq <= 2**63 - 1:
+                raise StorageFailure("INVALID_DATA", "Progress sequence must be a nonnegative signed 64-bit integer")
+            if through_seq is not None and (type(through_seq) is not int or not 0 <= through_seq <= 2**63 - 1):
+                raise StorageFailure("INVALID_DATA", "Progress watermark must be a nonnegative signed 64-bit integer")
+            filters = to_json_value({} if filters is None else filters)
+            if not isinstance(filters, dict) or set(filters) - {"run_id", "root_run_id", "action_id", "attempt_id", "correlation_id", "kind", "status"}:
+                raise StorageFailure("INVALID_DATA", "Unsupported progress filters")
+            for value in filters.values():
+                if value is not None:
+                    opaque(value)
+            canonical_json(filters, 8192)
+            selectors, _ = _history_selectors(self.session, context)
+            context.ledger.consume("storage_reads")
+            events, high, more = await self.session._call(self.session._backend.poll_events,
+                                                         selectors, filters, after_seq, through_seq, limit)
+            _recheck_history(self.session, context, selectors)
+            bounded, used = [], 2
+            for event in events:
+                size = len(canonical_json(event, 128 << 10)) + 1
+                if used + size > (1 << 20) - (32 << 10):
+                    more = True
+                    break
+                bounded.append(event)
+                used += size
+            if more and not bounded:
+                raise StorageFailure("LIMIT_EXCEEDED", "One progress event exceeds the page byte limit")
+            page = {"events": bounded, "next_after_seq": bounded[-1]["receipt"]["recorded_seq"] if bounded else after_seq,
+                    "has_more": more, "high_water_seq": high, "schema_version": 1}
+            context.ledger.consume("storage_read_bytes", len(canonical_json(page, 1 << 20)))
+            return Ok(page)
+        except (StorageFailure, EngineError, OSError) as exc:
+            return error_result(exc)
+
     async def query(self, context, filters=None, cursor=None, limit=100):
         try:
             if type(limit) is not int or not 1 <= limit <= 500:
@@ -900,21 +1163,11 @@ class ActivityReader:
             allowed = {"run_id", "action_id", "attempt_id", "correlation_id", "kind", "status"}
             if not isinstance(filters, dict) or set(filters) - allowed:
                 raise StorageFailure("INVALID_DATA", "Unsupported history filters")
-            scopes = []
-            selected_grants = []
-            query_selectors = []
-            for grant in context.grants.grants if context.grants else []:
-                if grant.operation in ("events.read", "*") and grant.mode == "originator":
-                    if grant.object_ids == frozenset() or grant.event_kinds == frozenset():
-                        continue
-                    self.session.authorize(context, "events.read", grant.scope, next(iter(grant.object_ids)) if grant.object_ids else None, grant.producer, next(iter(grant.event_kinds)) if grant.event_kinds else None)
-                    scope = grant.scope or context.scope
-                    if scope is not None:
-                        scopes.append(scope_key(scope))
-                        selected_grants.append(to_json_value(grant))
-                        query_selectors.append({"scope": scope_key(scope), "object_ids": sorted(grant.object_ids) if grant.object_ids is not None else None, "event_kinds": sorted(grant.event_kinds) if grant.event_kinds is not None else None, "producer": grant.producer})
-            if not scopes:
-                raise EngineError("ACCESS_DENIED", "No scoped history read authority")
+            for value in filters.values():
+                if value is not None:
+                    opaque(value)
+            query_selectors, selected_grants = _history_selectors(self.session, context)
+            scopes = [selector["scope"] for selector in query_selectors]
             context.ledger.consume("storage_reads")
             binding = {"store_id": self.session.store_id, "principal": context.principal, "grants": selected_grants, "scopes": sorted(set(scopes)), "filters": filters}
             last, high = 0, None
@@ -924,8 +1177,7 @@ class ActivityReader:
                     raise StorageFailure("INVALID_CURSOR", "History cursor changed filters or authority")
                 last, high = saved["last"], saved["high"]
             events, high, more = await self.session._call(self.session._backend.query_events, query_selectors, filters, last, high, limit)
-            for selector in query_selectors:
-                self.session.authorize(context, "events.read", selector["scope"], selector["object_ids"][0] if selector["object_ids"] else None, selector["producer"], selector["event_kinds"][0] if selector["event_kinds"] else None)
+            _recheck_history(self.session, context, query_selectors)
             bounded = []
             used = 2
             for event in events:
