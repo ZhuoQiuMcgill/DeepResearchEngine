@@ -228,8 +228,13 @@ class ProviderSession:
         if config.provider == "vllm":
             server_ceiling = config.deployment_manifest["max_model_len"] - body["max_tokens"]
             context_ceiling = min(context_ceiling, server_ceiling) if context_ceiling is not None else server_ceiling
-        if context_ceiling is not None and (type(context_ceiling) is not int or context_ceiling <= 0 or context_estimate > context_ceiling):
-            raise ValueError("Rendered context exceeds its advisory byte-estimated token allowance")
+        if context_ceiling is not None and (type(context_ceiling) is not int or context_ceiling <= 0):
+            raise ValueError("Context allowance must be a positive integer")
+        if context_ceiling is not None and context_estimate > context_ceiling:
+            raise EngineError("CONTEXT_LIMIT_EXCEEDED",
+                "Accumulated input exceeds the node context allowance. Reduce source content or raise the node limit.",
+                {"estimated_context_bytes": context_estimate, "context_allowance": context_ceiling,
+                 "measurement": "utf8_byte_estimate"})
         audit = {
             "schema_version": 1, "provider_kind": config.provider,
             "protocol": "responses" if config.provider == "openai" else "chat_completions",

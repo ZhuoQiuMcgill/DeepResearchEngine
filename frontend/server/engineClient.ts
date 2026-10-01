@@ -97,6 +97,11 @@ export class EngineClient {
           max_run_seconds: 600,
           max_model_calls: 16,
           max_tool_calls: toolBudget,
+          max_tool_attempts: toolBudget,
+          ...(profile.provider === "ninfer" ? {
+            max_context_tokens: 262144 - 4096,
+            max_model_seconds: 180,
+          } : {}),
         },
       },
       signal,

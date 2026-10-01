@@ -15,6 +15,9 @@ it("registers pinned tools, drains committed events and reads saved UTF-8 report
         const b = JSON.parse(options.body);
         expect(b.profile_ref).toBe("test");
         expect(b.allowed_tools).toEqual([{ name: "web.fetch", revision: 1 }]);
+        expect(b.limits.max_context_tokens).toBe(258048);
+        expect(b.limits.max_model_seconds).toBe(180);
+        expect(b.limits.max_tool_attempts).toBe(32);
       } else if (url.endsWith("/runs")) data = { run_id: "r1" };
       else if (url.includes("/events?")) {
         eventPage++;
@@ -64,7 +67,7 @@ it("registers pinned tools, drains committed events and reads saved UTF-8 report
   );
   const events: any[] = [];
   const result = await new EngineClient("http://127.0.0.1:8765/api/v1").run(
-    { profile_ref: "test", model_ref: "m", provider: "deepseek" },
+    { profile_ref: "test", model_ref: "m", provider: "ninfer" },
     "Task",
     "Input",
     [{ name: "web.fetch", revision: 1 }],

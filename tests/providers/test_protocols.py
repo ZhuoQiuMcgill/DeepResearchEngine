@@ -4,7 +4,7 @@ import json
 import httpx
 import pytest
 
-from ebd.contracts import Err, Ok
+from ebd.contracts import Err, Ok, EngineError
 from ebd.providers import ModelRequest, ModelTool, ProviderConfig, ProviderFactory
 
 
@@ -169,8 +169,10 @@ def test_configured_qwen_native_pairing_omits_deepseek_reasoning_and_caps_output
         assert first.usage["cached_input_tokens"] == 1 and first.usage["reasoning_output_tokens"] == 0
         second = await session.generate(request(continuation=first.continuation, step_index=1, tool_results=({"provider_call_id": "qwen-original", "status": "succeeded", "result": []},)))
         assert second.raw_visible_text == "Qwen final\r\n" and len(bodies) == 2
-        with pytest.raises(ValueError, match="advisory"):
+        with pytest.raises(EngineError) as caught:
             session.prepare(request(max_context_tokens=1))
+        assert caught.value.code == "CONTEXT_LIMIT_EXCEEDED"
+        assert caught.value.details["measurement"] == "utf8_byte_estimate"
         await session.aclose()
     run(exercise())
 

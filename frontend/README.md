@@ -32,6 +32,8 @@ NINFER_MODEL=qwen38-ninfer-256k
 
 The service registers a distinct loopback-only `ninfer` Chat Completions profile. The UI selects it by default when present. Thinking is disabled, temperature is 0.2 and output is bounded to 4096 tokens per model call. Start the model server separately; the Engine does not change its context/cache/MTP settings. The live local endpoint reported 262144 context tokens. No secrets are committed.
 
+UI NInfer agents explicitly use a 258048 context allowance (262144 minus 4096 output tokens) and a 180-second per-call timeout, rather than the Runtime's 32768 / 45-second defaults. This allowance still uses the Engine's conservative UTF-8 byte estimate, not a tokenizer measurement. Tool attempts match the selected tool-call budget. Accumulated input that exceeds an allowance returns `CONTEXT_LIMIT_EXCEEDED` with safe numeric details.
+
 ## Features and mapping
 - Existing canvas, draggable node library, node/edge editing, resize handles, dark mode, import/export, timeline and final Markdown report.
 - Inspector tabs: Configuration, Performance, Output. Node metrics stay with the workflow history. The formal API reports token usage; context size, tokens/s and first-token timing stay unknown because this API does not expose them.
