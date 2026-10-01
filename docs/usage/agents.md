@@ -10,6 +10,12 @@ and correlated not-executed results are returned to the model. Final mode uses
 requests tools, Runtime fails without dispatch. This does not bypass model,
 tool, time, recording or authority limits, and a saved answer can be partial.
 
+With this opt-in policy, replay of an already failed recoverable read-only
+source also enters final mode. The repeated request is recorded as rejected;
+its entire batch remains unexecuted. Other calls in that batch still undergo
+preflight, so unauthorized or malformed calls are not hidden. Missing rejection
+recording prevents further model dispatch. Default strict behavior is unchanged.
+
 Local NInfer is also supported through an explicit `ninfer` provider. For
 `ebd serve`, set `NINFER_BASE_URL` and `NINFER_MODEL` in ignored `local/.env`
 or the process environment. The endpoint must be loopback. It uses Chat

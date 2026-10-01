@@ -216,7 +216,7 @@ class ProviderSession:
             raise ValueError("Tool results require native continuation")
         body = self._render(request, config)
         if request.finalize:
-            note = "Research allowance is ending. Do not call any more tools. Produce the best supported final answer from material already received. Explicitly describe missing information and failed sources. Never invent current facts, URLs or statistics."
+            note = "Research is being finalized. Do not call any more tools. Produce the best supported final answer from material already received. Explicitly describe missing information and failed sources. Never invent current facts, URLs or statistics."
             if config.provider == "openai":
                 body["input"].append({"role": "user", "content": note})
             else:

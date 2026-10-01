@@ -485,7 +485,7 @@ async def test_recorded_readonly_source_limit_can_choose_new_url_then_report(tmp
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("fault", ["lineage_limit", "unknown_commit", "cleanup_incomplete", "model_quota", "missing_outcome", "repeat_request", "terminate_policy"])
+@pytest.mark.parametrize("fault", ["lineage_limit", "unknown_commit", "cleanup_incomplete", "model_quota", "missing_outcome", "repeat_request", "terminate_policy", "repeat_finalize", "repeat_finalize_missing_rejection"])
 async def test_source_recovery_never_bypasses_fatal_boundaries_or_replays(tmp_path, fault):
     import json
     from ebd.connections.engine import ToolPlanFactory
@@ -497,12 +497,20 @@ async def test_source_recovery_never_bypasses_fatal_boundaries_or_replays(tmp_pa
         turns += 1
         body = json.loads(req.content)
         name = body["tools"][0]["function"]["name"]
+        if fault.startswith("repeat_finalize") and turns == 3:
+            assert body["tool_choice"] == "none"
+            last_tool = [m for m in body["messages"] if m["role"] == "tool"][-1]
+            assert last_tool["tool_call_id"] == "fault2"
+            assert json.loads(last_tool["content"])["status"] == "not_executed"
+            return final_response("Source unavailable; no current figures can be established.")
         return httpx.Response(200, json={"choices": [{"finish_reason": "tool_calls", "message": {"role": "assistant", "content": None,
             "tool_calls": [{"id": "fault" + str(turns), "type": "function", "function": {"name": name, "arguments": '{"url":"https://example.org/failed.pdf"}'}}]}}]})
     storage, binding, context, definition = await setup(tmp_path, handler)
     definition.allowed_tools = [ToolRef("web.fetch")]
     if fault == "terminate_policy":
         definition.error_policy = {"recoverable_tool_errors": "terminate"}
+    if fault.startswith("repeat_finalize"):
+        definition.error_policy = {"finalize_on_limit": True}
     if fault == "model_quota":
         context.ledger.limits["model_calls"] = 1
     context.grants.grants += [Grant("tool.execute", object_ids=frozenset({"web.fetch"})), Grant("snapshot.commit", context.scope)]
@@ -520,11 +528,11 @@ async def test_source_recovery_never_bypasses_fatal_boundaries_or_replays(tmp_pa
                 process={"dispatched": True, "termination_reason": "stream_limit", "cleanup": {"complete": fault != "cleanup_incomplete", "unconfirmed_resources": ["worker"] if fault == "cleanup_incomplete" else []}},
                 persistence={"required": True, "operation_id": plan.operation_id, "commit_state": "unknown" if fault == "unknown_commit" else "not_committed"})
     binding.executor = SourceFault()
-    if fault == "missing_outcome":
+    if fault in {"missing_outcome", "repeat_finalize_missing_rejection"}:
         real = binding.recorder
         class FailOutcome:
             async def append(self, ctx, event):
-                if event.kind == "tool.outcome":
+                if event.kind == ("tool.rejected" if fault == "repeat_finalize_missing_rejection" else "tool.outcome"):
                     return Err(EngineError("RECORD_FAILURE", "Controlled tool outcome failure", commit_state="not_committed"))
                 return await real.append(ctx, event)
             async def status(self, *args):
@@ -532,14 +540,23 @@ async def test_source_recovery_never_bypasses_fatal_boundaries_or_replays(tmp_pa
         binding.recorder = FailOutcome()
     runtime = Runtime()
     result = await runtime.execute((await runtime.admit(definition, "task", binding, context)).unwrap())
+    if fault == "repeat_finalize":
+        assert result.status == "succeeded" and result.recording_status == "complete"
+        assert attempts == 1 and turns == 3 and result.counters["tool_calls"] == 1
+        assert result.output_ref is not None
+        events = [e.get("event", e) for e in (await storage.activity.query(context)).unwrap().events]
+        assert sum(e["kind"] == "tool.intent" for e in events) == 1
+        assert any(e["kind"] == "agent.finalizing" and e["payload"]["reason"] == "failed_source_replay" for e in events)
+        await storage.close()
+        return
     assert result.status != "succeeded" and attempts == 1, result.error
-    assert turns == (2 if fault == "repeat_request" else 1)
+    assert turns == (2 if fault in {"repeat_request", "repeat_finalize_missing_rejection"} else 1)
     if fault == "repeat_request":
         assert result.error.code == "tool.failed_request_replay"
         events = [(item.get("event", item)) for item in (await storage.activity.query(context)).unwrap().events]
         assert sum(event["kind"] == "tool.intent" for event in events) == 1
         assert any(event["kind"] == "tool.rejected" for event in events)
-    assert result.recording_status == ("incomplete" if fault == "missing_outcome" else "complete")
+    assert result.recording_status == ("incomplete" if fault in {"missing_outcome", "repeat_finalize_missing_rejection"} else "complete")
     assert result.output_ref is None and result.terminal_event_receipt is not None
     if fault == "cleanup_incomplete":
         assert result.cleanup.complete is False and "worker" in result.cleanup.unconfirmed_resources

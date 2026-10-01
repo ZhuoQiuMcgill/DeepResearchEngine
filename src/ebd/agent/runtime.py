@@ -513,6 +513,7 @@ class Runtime:
                             continue
                         raise EngineError("LIMIT_EXCEEDED", "Whole tool batch exceeds the remaining allowance")
                     requests = []
+                    repeated_source = False
                     for call in response.tool_calls:
                         ref = next((t for t in definition.allowed_tools if t.name == call.name and str(t.revision) == str(call.revision)), None)
                         request_tool = ToolRequest(ref or ToolRef(call.name or call.provider_name, 1), call.arguments or {}, call.provider_call_id, model_action_id=action, model_attempt_id=attempt)
@@ -530,8 +531,25 @@ class Runtime:
                             if rejected.recording.get("status") != "complete":
                                 result.recording_status = "incomplete"
                                 result.recording_error = rejected.recording.get("error")
+                                raise result.recording_error or error
+                            if error.code == "tool.failed_request_replay" and definition.error_policy.get("finalize_on_limit") and result.counters["model_calls"] < limits["max_model_calls"]:
+                                repeated_source = True
+                                continue
                             raise
                         requests.append(request_tool)
+                    if repeated_source:
+                        # The whole batch was preflighted but none of it is dispatched.
+                        finalizing = True
+                        tool_results = tuple({"provider_call_id": c.provider_call_id,
+                            "status": "not_executed", "result": None,
+                            "error": {"code": "tool.failed_request_replay", "message": "Batch not executed because it repeats a failed source. Return a final answer from existing material and state what is unavailable."}} for c in response.tool_calls)
+                        boundary = await append_event(binding, model_context, "agent.finalizing", {"reason": "failed_source_replay", "declined_call_ids": [c.provider_call_id for c in response.tool_calls]})
+                        if isinstance(boundary, Err):
+                            result.recording_status = "incomplete"
+                            result.recording_error = boundary.error
+                            raise boundary.error
+                        step += 1
+                        continue
                     new_results = []
                     for request_tool in requests:
                         context.assert_active()
