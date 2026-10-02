@@ -1,6 +1,6 @@
-"""Real registered CLI tools and parent-mediated executor."""
-from .catalog import ToolCatalog
-from .common import ToolFault, validate_arguments
-from .executor import ToolExecutor
-
-__all__ = ["ToolCatalog", "ToolExecutor", "ToolFault", "validate_arguments"]
+"""Compatibility import; implementation: ebd.engine.toolset."""
+from importlib import import_module as _import_module
+_impl = _import_module("ebd.engine.toolset")
+__all__ = getattr(_impl, "__all__", [n for n in dir(_impl) if not n.startswith("_")])
+def __getattr__(name):
+    return getattr(_impl, name)

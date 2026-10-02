@@ -1,5 +1,13 @@
 # Orchestrator and console consumer contract v1
 
+Stage 1/2 now adds whole-method execution through
+[ResearchRun](../usage/research-service.md) alongside the individual-Agent API.
+Methods use [WorkflowContext](../usage/workflows.md), FetchManifest,
+SourceManifest and ContextPlan. Canonical implementations live under ebd.engine.*;
+old imports remain compatible. Frontend lifecycle uses `/api/v1/research-runs`,
+SSE/replay and bounded saved-source/context/artifact/report reads. The
+[OpenAPI](../api/openapi.json) snapshot includes these additive v1 routes.
+
 The four-module execution platform is the foundation. Python EBD strategies
 own phase transitions, agent selection and domain-specific checkpoint formats.
 The application RunService owns execution task handles and the console's HTTP

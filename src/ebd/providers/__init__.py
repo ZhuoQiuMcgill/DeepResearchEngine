@@ -1,14 +1,6 @@
-"""Real HTTP provider connectors with explicit native continuation."""
-from .models import (
-    ModelCall, ModelRequest, ModelResponse, ModelTool, NativeContinuation,
-    PLATFORM_SEARCH_POLICY, PreparedRequest, ProviderConfig,
-)
-
-__all__ = ["ProviderConfig", "ModelRequest", "ModelResponse", "ModelTool", "ModelCall", "NativeContinuation", "PreparedRequest", "PLATFORM_SEARCH_POLICY", "ProviderFactory"]
-
-
+"""Compatibility import; implementation: ebd.engine.providers."""
+from importlib import import_module as _import_module
+_impl = _import_module("ebd.engine.providers")
+__all__ = getattr(_impl, "__all__", [n for n in dir(_impl) if not n.startswith("_")])
 def __getattr__(name):
-    if name == "ProviderFactory":
-        from .factory import ProviderFactory
-        return ProviderFactory
-    raise AttributeError(name)
+    return getattr(_impl, name)

@@ -5,11 +5,12 @@ in the current root chat and its in-chat subagents. Do not contact or dispatch
 work to the former module-team chats. Their reviewed documents remain design
 references, not active work assignments.
 
-The runnable platform and real EBD baseline are delivered. Current handoff
-work makes the platform usable by teammates through clear documented public
-interfaces, runnable examples and verified integration. Strategy and console
-development consume those interfaces; their completion is not a prerequisite
-for platform handoff.
+The platform and Stage 1/2 Workflow baseline are delivered. Methods, Agent
+specifications, optional Hooks, application ownership and HTTP/CLI are separate
+modules. Current source, docs/team-start.md and
+docs/architecture/project-structure.md define the development boundaries;
+docs/research-acceptance.md records actual checks. EBD strategy and console work
+consume those interfaces and are outside this baseline delivery.
 
 Read `CONTRIBUTING.md`, `docs/team-start.md`,
 `docs/teams/consumer-contract-v1.md`, `docs/teams/platform-contract-v1.md`
@@ -22,10 +23,15 @@ contracts, integration, dependencies and Git.
 
 | Owner | Paths |
 | --- | --- |
-| Agent/runtime subagent | `src/ebd/agent/`, `src/ebd/providers/`, `tests/agent/`, `tests/providers/`, `docs/usage/agents.md` |
-| Toolset subagent | `src/ebd/toolset/`, `tests/toolset/`, `docs/usage/tools.md` |
-| Storage subagent | `src/ebd/storage/`, `tests/storage/`, `docs/usage/storage.md` |
-| Root | Shared contracts, Connections, RunService/HTTP API, package/CLI composition, examples, baseline, integration tests, environment, project docs and Git |
+| Agent/runtime subagent | `src/ebd/engine/agent/`, `src/ebd/engine/providers/`, `tests/agent/`, `tests/providers/`, `docs/usage/agents.md` |
+| Toolset subagent | `src/ebd/engine/toolset/`, `tests/toolset/`, `docs/usage/tools.md` |
+| Storage subagent | `src/ebd/engine/storage/`, `tests/storage/`, `docs/usage/storage.md` |
+| Root | Engine contracts/Connections, research contracts, application/interfaces/bootstrap, examples, integration, environment, docs and Git; explicitly assign methods/catalog/extensions before parallel edits |
+
+Flat Python paths are compatibility imports only. New implementations use
+canonical ebd.engine.* imports. Methods use WorkflowContext and its port; only
+bootstrap registers concrete methods. Architecture tests enforce these boundaries.
+Pytest uses committed importlib mode; shared helpers use tests.<module> imports.
 
 Use uv and Python 3.11+. Only root edits the manifest/lockfile and performs Git
 writes. Subagents must not stage, commit, push, change branches or overwrite

@@ -1,5 +1,11 @@
 # Console integration walkthrough
 
+For whole research methods, start with the [ResearchRun API](research-service.md).
+`GET /api/v1/methods` and `POST /api/v1/research-runs` launch Baseline or
+model-free example.echo. Sources, selected context, report, usage, events/SSE
+and replay have separate routes. The walkthrough below remains the supported
+individual-Agent interface.
+
 Start with [team setup](../team-start.md). This walkthrough exercises the actual
 local HTTP API from PowerShell. It creates a bounded bibliographic lookup agent,
 runs one task, polls activity and saves the exact report bytes. It demonstrates

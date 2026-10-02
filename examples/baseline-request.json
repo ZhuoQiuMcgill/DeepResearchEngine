@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "client_request_id": "baseline-example-1",
+  "method_id": "baseline",
+  "method_revision": 1,
+  "input": {
+    "question": "What is Environment-Based Design (EBD), and what are its core principles and process?"
+  },
+  "parameters": {
+    "queries": ["Environment Based Design Yong Zeng process principles"],
+    "max_sources": 3,
+    "context_tokens": 6000,
+    "source_urls": [
+      "https://users.encs.concordia.ca/~design/reference/JIDPS-EBD-QMS.pdf",
+      "https://www.cambridge.org/core/services/aop-cambridge-core/content/view/D8E51379968F4823E0BC19E017F7C075/S2732527X23001682a.pdf/div-class-title-environment-based-design-ebd-using-only-necessary-knowledge-for-designer-creativity-div.pdf"
+    ]
+  },
+  "profile_ref": "deepseek",
+  "model_ref": "deepseek-flash",
+  "timeout_seconds": 600
+}

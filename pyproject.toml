@@ -24,11 +24,12 @@ build-backend = "hatchling.build"
 packages = ["src/ebd"]
 
 [project.scripts]
-ebd = "ebd.cli:main"
+ebd = "ebd.interfaces.cli.main:main"
 
 [dependency-groups]
 dev = ["pytest>=8,<10", "pytest-asyncio>=0.24,<2"]
 
 [tool.pytest.ini_options]
+addopts = "--import-mode=importlib"
 testpaths = ["tests"]
 asyncio_mode = "auto"

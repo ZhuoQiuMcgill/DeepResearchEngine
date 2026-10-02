@@ -1,153 +1,105 @@
-# Start building on the EBD platform
+# Start building with the team
 
-The handoff target is a platform teammates can use independently. The four
-modules, Python composition API and local HTTP run API are implemented and
-verified. You can start strategy and console work against these interfaces.
-The team's EBD strategy and UI are consumers of this platform.
+Research methods are runnable Workflows over a shared execution engine. The
+baseline discovers candidates, submits a URL manifest to model-free acquisition,
+retains immutable sources, selects saved evidence and invokes a tool-free Writer.
+Frontend clients launch the whole method through ResearchRun.
 
-## Choose your entry point
+## Choose your interface
 
-| Your work | Start here | Interface you own/use | First integration milestone |
-| --- | --- | --- | --- |
-| EBD orchestrator / strategy | [Connections guide](usage/connections.md), [research example](../examples/research.py) | Use public `Engine`, sessions, invocation rules, evidence bindings and scoped Storage. Own research phases and decisions. | Register and run an agent, inspect its result, then compose explicit child calls. |
-| Frontend console | [HTTP walkthrough](usage/console-quickstart.md), [service reference](usage/service.md) | Use `/api/v1` and the [OpenAPI snapshot](api/openapi.json). Own UI and client state. | Register/start a run; show events, terminal status, report and token usage. |
-| Agent / prompt author | [Agent guide](usage/agents.md) | `AgentDefinition`, named model profiles, pinned tools, schemas and limits. | Produce one validated output through `Engine.run_agent`. |
-| Platform maintainer | [CONTRIBUTING](../CONTRIBUTING.md), [AGENTS](../AGENTS.md) | Maintain assigned modules, contracts and focused tests. | Reproduce the relevant acceptance checks before changing a consumer contract. |
+| Contributor | Owns | Public interface and first check |
+| --- | --- | --- |
+| Method / EBD author | `src/ebd/methods/<method>/` | [Workflow guide](usage/workflows.md), `MethodDefinition`, `WorkflowContext`, shared components; run [method example](../examples/workflow_method.py). |
+| Agent role author | `src/ebd/agent_catalog/resources/<role>/<revision>/` | [Catalog guide](usage/agent-catalog.md); definition, instructions, task template and input/output schemas. Pin revisions in your method. |
+| Frontend author | Your UI and client state | [Research API](usage/research-service.md), [OpenAPI](api/openapi.json); start, subscribe/replay, read sources/context/report/usage. |
+| Extension author | Your extension package | [Hook guide](usage/extensions.md), [Hook example](../examples/workflow_hooks.py); register observers or selection decisions. |
+| Platform maintainer | `src/ebd/engine/` | [Connections](usage/connections.md), [Storage](usage/storage.md), [Tools](usage/tools.md), [Runtime](usage/agents.md). |
 
-Orchestrator authors also need [Storage](usage/storage.md) for state/CAS and
-checkpoints, and [Tools](usage/tools.md) for discovery, fetch and saved reads.
-The joint boundary is [consumer contract v1](teams/consumer-contract-v1.md).
+[Architecture](architecture/project-structure.md) defines actual directory and
+dependency boundaries. [Stage 1/2 acceptance](research-acceptance.md) records
+tests and real execution evidence. Old team designs are historical rationale;
+current source, usage guides and OpenAPI define executable signatures.
 
-## Set up your checkout
+## Set up and run without credentials
 
-Run from the repository root. Install uv, then use its locked project environment:
+From the repository root:
 
-```powershell
+```shell
 uv sync --locked
-uv run --locked python --version
 uv run --locked pytest -q
-uv run --locked ebd --store local/my-tool-store tools
+uv run --locked ebd methods
+uv run --locked python examples/workflow_method.py
+uv run --locked python examples/workflow_hooks.py
+uv run --locked python examples/live_research_check.py
 ```
 
-Python 3.11+ is required; the recorded acceptance environment is Windows with
-Python 3.11.15. The test suite and catalog command require no model credentials
-or paid model calls. Run the suite on another OS before claiming that deployment
-is verified. The existing workspace's offline cache commands are in
-[CONTRIBUTING](../CONTRIBUTING.md#environment); a fresh checkout uses normal sync.
+The examples run real Workflows with SQLite/artifacts and no model calls.
+Python 3.11+ is required. Each developer uses a separate ignored Storage
+directory; only one Engine process owns a store. HTTP and application services
+share that Engine. Do not open another Engine over a running backend's directory.
 
-For real model runs, create your own ignored credential file without replacing
-an existing one:
+## Run the new baseline
+
+Copy `.env.example` to ignored `local/.env` only if that file does not already
+exist. Fill the selected profile's credential; the default is
+`deepseek` / `deepseek-flash`. Environment values override the file.
+The browser selects a profile and never receives credentials or endpoints.
+
+```shell
+uv run --locked ebd --store local/my-baseline research < examples/baseline-request.json
+uv run --locked ebd --store local/my-baseline research --show RUN_ID
+uv run --locked ebd --store local/my-baseline research --sources RUN_ID
+uv run --locked ebd --store local/my-baseline research --report RUN_ID --output local/report.md
+```
+
+In PowerShell:
 
 ```powershell
-New-Item -ItemType Directory -Force local | Out-Null
-if (-not (Test-Path -LiteralPath local/.env)) {
-    Copy-Item -LiteralPath .env.example -Destination local/.env
-}
+Get-Content -Raw examples/baseline-request.json | uv run --locked ebd --store local/my-baseline research
 ```
 
-Fill `DEEPSEEK_API_KEY` for the default `deepseek` / `deepseek-flash` profile,
-or `OPENAI_API_KEY` for `openai` / `gpt-6-luna`. Process environment values
-override the file. The backend reads credentials; the browser never needs
-them. A profile listed by the API is configured metadata, not proof that its
-credential or account quota works. Starting a model run uses that account.
+Use a new `client_request_id` for each new intent. The same identity and body
+returns the original run across restart; a changed body is a conflict.
+Source URLs are optional. The example also performs real web discovery.
+Failed sources remain explicit; a report needs at least one usable saved source.
 
-Each developer uses a separate Storage directory. Only one Engine process may
-own a directory at a time. In one application, a strategy and RunService share
-the same live Engine; do not open a second Engine over its database.
+The old `ebd baseline` command preserves legacy single-Agent acceptance.
+New method work uses `ebd research` and `methods/baseline`.
 
-## First Python run
+## Start frontend work
 
-```powershell
-uv run --locked python examples/research.py
+```shell
+uv run --locked ebd --store local/my-console serve --port 8000 --origin http://localhost:5173
 ```
 
-This example makes real model and tool calls. It is a small consumer of the
-public API, not an implementation dependency for your strategy. Copy its
-registration/run pattern into your application and choose a dedicated
-`EngineSettings(storage_root="local/my-strategy-store")` for it. Check
-`status`, `recording_status`, `persistence_state` and `output_ref` separately.
-Use fresh `Engine.open_run_access` grants to read saved output after completion.
+Open `http://127.0.0.1:8000/docs`. Start with `GET /api/v1/methods`, then
+`POST /api/v1/research-runs` using
+`{"client_request_id":"first-ui-run","method_id":"example.echo","input":{"message":"Hello team"}}`.
+This first integration needs no model key. ResearchRun executes whole methods;
+the existing `/agents` and `/runs` execute individual Agents, including explicit
+output formats and schemas.
 
-For multiple roles, register all child definitions before the parent, explicitly
-register `InvocationRule` edges, open a parent session and invoke children through
-its bound invoker. Invocation is controlled by your Python strategy; registering
-a child does not add a delegation tool to the model. The
-[Connections guide](usage/connections.md#shared-evidence-for-child-agents)
-shows how to bind a completed Reader's saved evidence and delegate it to a Writer.
-References alone do not transfer read permission. A strategy-only parent session
-has no fabricated model execution or agent terminal; record your mission state
-through the application Storage contract.
+Wait for `active=false`, then check `status`, `recording_status` and report
+reference. SSE reads committed events and resumes from `Last-Event-ID`; it does
+not stream model tokens. HTTP disconnection leaves owned execution running.
+Cancel is a request; continue reading until execution settles.
 
-## First console integration
+## Shared development rules
 
-```powershell
-uv run --locked ebd --store local/my-console-store serve --port 8000 --origin http://localhost:5173
-```
+- Agree exclusive source/test paths before parallel edits. Root owns shared
+  contracts, integration, environment and Git. See [CONTRIBUTING](../CONTRIBUTING.md).
+- Change method or Agent assets using a new revision. Runs retain exact asset
+  hashes, model/profile, tools and method definition.
+- Methods use `WorkflowContext` and its abstract host port. Bootstrap registers
+  concrete methods. Engine code never imports research strategies or HTTP.
+- Search snippets/fetch previews do not enter Writer context. SourceManifest
+  carries references and measurements; ContextPlan records chosen saved bytes.
+- Default token measurements are estimates. Strict budgeting requires a
+  registered tokenizer for the target model. Provider usage is separate.
+- Reopened results remain readable. Interrupted runs do not automatically resume.
+  Checkpoints preserve facts, not permission to repeat external effects.
+- Regenerate HTTP schemas with `uv run --locked python examples/export_openapi.py`.
 
-Leave this process running. Open `http://127.0.0.1:8000/docs` for interactive
-requests; follow the [complete HTTP walkthrough](usage/console-quickstart.md)
-in a second terminal. Catalogs, health, agent registration and OpenAPI work
-without a model key. Model execution needs the selected key.
-
-The backend permits the exact supplied browser origin. If your frontend uses
-`http://127.0.0.1:5173`, pass that origin instead, or add a second `--origin`.
-Use one Uvicorn worker. The v1 service accepts local clients only.
-
-The checked-in [OpenAPI JSON](api/openapi.json) is available before a backend
-or credential is configured. It is generated from the actual FastAPI routes
-and DTOs, so frontend developers can import it into their client tooling.
-Regenerate after an API change:
-
-```powershell
-uv run --locked python examples/export_openapi.py
-```
-
-This command opens no Engine, reads no credentials and makes no network calls.
-The running service's `/openapi.json` is the authority for that server version.
-
-## Integration rules to agree before parallel work
-
-| Boundary | Existing contract |
-| --- | --- |
-| Python imports | Public exports from `ebd.connections`, `ebd.contracts`, `ebd.service`; scoped Storage through bindings. Avoid private backend/worker implementation imports. |
-| HTTP compatibility | `/api/v1`, `schema_version: 1`, strict request fields, additive response fields. Use named OpenAPI types. |
-| Definition changes | Keep an agent revision immutable; use a new revision for changed instructions, schemas or tools. Register definitions again after service restart. |
-| Execution completion | Wait for `active=false`; separately inspect execution, recording, publication and cleanup. An accepted handle or a cancellation request is not a terminal result. |
-| Progress | Poll committed events with `next_after_seq`; drain `has_more`. This is activity polling, not token streaming. |
-| Tokens | Display `null` as unknown and retain completeness. Cache/reasoning counts are subsets, not extra totals. |
-| Recovery | Reopened results are readable. An old run with no durable terminal is interrupted; checkpoints are data, not automatic execution resume. |
-| Shared evidence | Host-issued bounded read selectors plus explicit child edges; sending a snapshot ID as task text is insufficient. |
-
-The existing HTTP API launches individual registered agent runs. If the console
-will launch a whole EBD mission, the application team must define its mission
-request/status/state contract with the frontend team. There is no existing
-`/missions` or workflow-launch route to assume. This does not block building
-agent execution, report, usage and event views against today's API. Keep mission
-strategy in the application layer; request shared contract changes through root.
-
-## What is authoritative
-
-1. Current public source/DTOs and generated OpenAPI define exact executable
-   field names and signatures. The usage guides explain how to call them.
-2. [Consumer contract](teams/consumer-contract-v1.md) and
-   [platform contract](teams/platform-contract-v1.md) explain boundaries and invariants.
-3. [Platform acceptance](platform-acceptance.md) and
-   [consumer acceptance](consumer-acceptance.md) identify actual live evidence.
-4. Documents marked **Historical design record** preserve earlier reasoning.
-   Their old phase holds, chat assignments and pseudocode are not current setup
-   instructions or authority to contact former team chats.
-
-Report source/document discrepancies to root with the exact symbol/route, a
-minimal reproduction and affected consumers. Root coordinates shared contracts,
-dependencies and Git; contributors edit their assigned paths. Use
-[CONTRIBUTING](../CONTRIBUTING.md) for handoffs.
-
-## Verification available to teammates
-
-The current suite has 228 passing tests. The original EBD baseline, both API
-providers, scoped evidence sharing and real loopback HTTP runs have retained
-live acceptance evidence. Generated reports, stores and keys are ignored local
-data and do not arrive with a Git clone. Reproduce live evidence using the
-commands in the acceptance documents when needed; they make real API calls.
-Qwen live acceptance awaits deployment. Static HTML/text/text-PDF retrieval is
-supported; Google discovery remains gated, and search availability is external.
+Static HTML/text and text-PDF acquisition are supported. Search and public source
+access can fail externally; failures stay recorded. Google discovery and live
+local Qwen verification retain their previous gates.

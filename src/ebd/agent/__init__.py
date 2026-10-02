@@ -1,6 +1,6 @@
-"""Agent definitions, admission, execution and shared recorded tool actions."""
-from ebd.contracts import AgentDefinition, AgentResult
-from .recording import RecordedToolAction, status_for
-from .runtime import AdmissionLease, DEFAULT_LIMITS, Runtime
-
-__all__ = ["AgentDefinition", "AgentResult", "AdmissionLease", "DEFAULT_LIMITS", "Runtime", "RecordedToolAction", "status_for"]
+"""Compatibility import; implementation: ebd.engine.agent."""
+from importlib import import_module as _import_module
+_impl = _import_module("ebd.engine.agent")
+__all__ = getattr(_impl, "__all__", [n for n in dir(_impl) if not n.startswith("_")])
+def __getattr__(name):
+    return getattr(_impl, name)

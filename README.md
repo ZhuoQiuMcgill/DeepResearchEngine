@@ -1,17 +1,19 @@
 # EBD DeepResearch Engine
 
 A group-project execution platform for Environment-Based Design deep research.
-The runnable platform provides independent Agent Runtime, CLI Toolset,
-Storage and Connections modules. Strategy is application code built on their
-public interfaces. Development now runs in one chat with in-chat subagents;
+The engine provides Agent Runtime, Toolset, Storage and Connections. Reusable
+Workflows compose those capabilities into methods. The new Baseline separates
+discovery, URL-manifest acquisition, saved evidence selection and a tool-free
+Writer. Development runs in one chat with in-chat subagents;
 the earlier cross-session team design is retained as historical context.
 
 ## Start working with the team
 
 Read [Team start](docs/team-start.md) for environment setup, role-specific
 entry points, interface ownership and the first integration milestone.
-Orchestrator authors use the [Python Engine guide](docs/usage/connections.md).
-Console authors use the [HTTP walkthrough](docs/usage/console-quickstart.md)
+Method authors use the [Workflow guide](docs/usage/workflows.md) and
+[implemented structure](docs/architecture/project-structure.md).
+Console authors use the [ResearchRun API](docs/usage/research-service.md)
 and the generated [OpenAPI contract](docs/api/openapi.json). These are the
 current onboarding documents; old team briefs are historical design records.
 
@@ -50,9 +52,13 @@ serializable configuration.
 ```shell
 uv sync --locked
 uv run --locked pytest -q
+uv run --locked ebd methods
+uv run --locked python examples/workflow_method.py
+uv run --locked python examples/workflow_hooks.py
+uv run --locked python examples/live_research_check.py
 uv run --locked ebd tools
 uv run --locked ebd tool scholar.crossref.search --arguments '{"query":"Environment Based Design","max_results":3}'
-uv run --locked ebd --store local/ebd-baseline-store baseline
+uv run --locked ebd --store local/my-research research < examples/baseline-request.json
 uv run --locked ebd --store local/console-store serve --port 8000 --origin http://localhost:5173
 ```
 
@@ -61,11 +67,20 @@ argument quoting is inconvenient. All registered commands use fixed argv,
 strict JSON and real subprocesses; the host records committed intent before
 dispatch and outcome after cleanup. A tool run does not open a model.
 
-The baseline generates a real DeepSeek report for the exact question
-`What is EBD (Environment Based Design)`, with platform function tools as its
-only research mechanism. It exports report, citations, request audit, trace,
-terminal checkpoint and byte-identical reopen verification under
-`local/runs/<run_id>/`. Failed runs retain their actual diagnostics.
+The new baseline runs real search/fetch/read tools before invoking DeepSeek.
+It archives raw discovery results, FetchManifest, SourceManifest, ContextPlan,
+selected evidence, report, usage and checkpoints. No search snippet or fetch
+preview enters an Agent automatically. Model-labelled estimates remain distinct
+from verified tokenizer counts. Failed sources retain their actual diagnostics.
+For PowerShell, pipe `Get-Content -Raw examples/baseline-request.json` to the
+`ebd ... research` command instead of using `<` redirection.
+
+The model-free examples run real Storage and need no credentials. A live full
+method check is `uv run --locked python examples/live_research_check.py
+--request examples/baseline-request.json --store local/my-http-baseline`.
+It makes real model/tool calls and verifies HTTP/SSE, idempotency and identical
+report bytes after restart. See [Stage 1/2 acceptance](docs/research-acceptance.md).
+The old `ebd baseline` command preserves legacy single-Agent report verification.
 
 See [Connections](docs/usage/connections.md),
 [Agent Runtime and providers](docs/usage/agents.md),
@@ -83,9 +98,14 @@ model/tool, evidence-sharing and restart checks.
 
 ```mermaid
 flowchart TD
-    Application[Research or strategy application] --> Connections[Connections Engine]
-    Console[Frontend console] --> Service[Local RunService]
-    Service --> Connections
+    Console[Frontend / CLI] --> Service[ResearchRun application service]
+    Service --> Runner[Workflow runner and node Hooks]
+    Runner --> Method[Baseline or another registered method]
+    Method --> Components[Discovery / Acquisition / Context selection]
+    Method --> Catalog[Versioned Agent role assets]
+    Components --> Port[Abstract host port]
+    Catalog --> Port
+    Port --> Connections[Connections Engine]
     Connections --> Runtime[Agent Runtime]
     Connections --> Toolset[CLI Toolset]
     Connections --> Storage[Storage and activity recording]
@@ -134,7 +154,9 @@ through normal Storage state.
 
 ## CLI tool contract
 
-Executable shared values live in `src/ebd/contracts/`.
+Platform values live in `src/ebd/engine/contracts/`; research manifests and
+frontend run DTOs live in `src/ebd/workflows/contracts.py`. Runtime modules live
+under `engine/`, with thin old-import compatibility entry points.
 
 - Register each tool's name, description, input/output schemas, command arguments, and execution limits.
 - Accept one UTF-8 JSON request on standard input.
