@@ -3,7 +3,7 @@
 Stage 1/2 now adds whole-method execution through
 [ResearchRun](../usage/research-service.md) alongside the individual-Agent API.
 Methods use [WorkflowContext](../usage/workflows.md), FetchManifest,
-SourceManifest and ContextPlan. Canonical implementations live under ebd.engine.*;
+SourceManifest and ContextPlan. Canonical implementations live under deepresearch.engine.*;
 old imports remain compatible. Frontend lifecycle uses `/api/v1/research-runs`,
 SSE/replay and bounded saved-source/context/artifact/report reads. The
 [OpenAPI](../api/openapi.json) snapshot includes these additive v1 routes.

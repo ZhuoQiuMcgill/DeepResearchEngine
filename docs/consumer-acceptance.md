@@ -1,5 +1,10 @@
 # Orchestrator and console interface acceptance
 
+This records acceptance before the namespace migration. Original `ebd`
+commands remain historical evidence; new code uses `deepresearch`. See the
+[structure and migration map](architecture/project-structure.md) and
+[post-migration verification](research-acceptance.md).
+
 Verified on 2026-10-01 with uv, Python 3.11.15, the committed lockfile and
 the actual Windows platform. Development used this root chat and its in-chat
 subagents. The interfaces are described in

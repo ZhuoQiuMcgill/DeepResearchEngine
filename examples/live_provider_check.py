@@ -5,9 +5,9 @@ import asyncio
 import argparse
 from pathlib import Path
 
-from ebd.connections import Engine, EngineSettings, RunOptions, RunAccessRequest, RunAccessOptions, HistoryReadRequest
-from ebd.contracts import AgentDefinition, RunRef, ToolRef, canonical_json
-from ebd.baseline import history
+from deepresearch.engine.connections import Engine, EngineSettings, RunOptions, RunAccessRequest, RunAccessOptions, HistoryReadRequest
+from deepresearch.engine.contracts import AgentDefinition, RunRef, ToolRef, canonical_json
+from deepresearch.interfaces.cli.legacy_baseline import history
 
 
 TOKEN_COUNTERS = (

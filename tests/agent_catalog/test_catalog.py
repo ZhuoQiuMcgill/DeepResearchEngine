@@ -6,14 +6,14 @@ from importlib import resources
 
 import pytest
 
-from ebd.agent_catalog import AgentCatalog, CatalogError
-from ebd.contracts import ToolRef, digest_bytes
+from deepresearch.agent_catalog import AgentCatalog, CatalogError
+from deepresearch.engine.contracts import ToolRef, digest_bytes
 
 
 @pytest.fixture
 def bundle_root(tmp_path):
     root = tmp_path / "roles"
-    shutil.copytree(resources.files("ebd.agent_catalog").joinpath("resources"), root)
+    shutil.copytree(resources.files("deepresearch.agent_catalog").joinpath("resources"), root)
     return root
 
 

@@ -1,8 +1,8 @@
 """Cleanup state has exact host-issued keys and the original lineage ledger."""
 import pytest
 
-from ebd.engine import Engine, EngineSettings
-from ebd.engine.contracts import Err, StateMutation, Grant
+from deepresearch.engine import Engine, EngineSettings
+from deepresearch.engine.contracts import Err, StateMutation, Grant
 
 
 @pytest.mark.asyncio

@@ -8,15 +8,15 @@ import json
 import httpx
 import pytest
 
-from ebd.agent_catalog import AgentCatalog
-from ebd.application import ResearchRunService
-from ebd.bootstrap.application import create_research_service
-from ebd.connections import Engine, EngineSettings
-from ebd.contracts import EngineError
-from ebd.engine.providers.tokenization import TokenMeter
-from ebd.interfaces.http.research import install_research_routes, replay_position, stream_events, SourceReadView, MethodPage
-from ebd.service import create_app
-from ebd.workflows import MethodDefinition, MethodRegistry, ResearchRunRequest, ResearchRunView
+from deepresearch.agent_catalog import AgentCatalog
+from deepresearch.application import ResearchRunService
+from deepresearch.bootstrap.application import create_research_service
+from deepresearch.engine.connections import Engine, EngineSettings
+from deepresearch.engine.contracts import EngineError
+from deepresearch.engine.providers.tokenization import TokenMeter
+from deepresearch.interfaces.http.research import install_research_routes, replay_position, stream_events, SourceReadView, MethodPage
+from deepresearch.interfaces.http import create_app
+from deepresearch.workflows import MethodDefinition, MethodRegistry, ResearchRunRequest, ResearchRunView
 
 
 def settings(tmp_path):
@@ -203,8 +203,8 @@ def test_sse_sequence_selector_is_strict(value):
 
 @pytest.mark.asyncio
 async def test_source_continuation_over_http_and_reopened_storage(tmp_path):
-    from ebd.contracts import SnapshotProposal, canonical_json, digest_bytes, new_id
-    from ebd.workflows import SourceRange
+    from deepresearch.engine.contracts import SnapshotProposal, canonical_json, digest_bytes, new_id
+    from deepresearch.workflows import SourceRange
 
     engine = (await Engine.open(settings(tmp_path))).unwrap()
     method = WaitingMethod()

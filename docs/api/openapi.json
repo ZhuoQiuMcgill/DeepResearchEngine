@@ -3231,7 +3231,7 @@
   },
   "info": {
     "description": "Local run control and durable research records; schema_version=1.",
-    "title": "EBD execution service",
+    "title": "DeepResearch execution service",
     "version": "1.0.0"
   },
   "openapi": "3.1.0",

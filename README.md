@@ -1,11 +1,18 @@
-# EBD DeepResearch Engine
+# DeepResearch Engine
 
-A group-project execution platform for Environment-Based Design deep research.
+A modular execution platform for reusable deep research methods.
 The engine provides Agent Runtime, Toolset, Storage and Connections. Reusable
 Workflows compose those capabilities into methods. The new Baseline separates
 discovery, URL-manifest acquisition, saved evidence selection and a tool-free
 Writer. Development runs in one chat with in-chat subagents;
 the earlier cross-session team design is retained as historical context.
+
+The Python package is `deepresearch`, the installed distribution is
+`deepresearch-engine`, and the CLI command is `deepresearch`. The eight platform
+blocks live in `src/deepresearch/`. Environment-Based Design (EBD) is a future
+research method under `methods/ebd`, not the name or owner of the platform.
+`src/ebd/__init__.py` is the only deprecated import bridge; the old `ebd` CLI
+is also an alias. See the [directory and migration map](docs/architecture/project-structure.md).
 
 ## Start working with the team
 
@@ -52,17 +59,17 @@ serializable configuration.
 ```shell
 uv sync --locked
 uv run --locked pytest -q
-uv run --locked ebd methods
+uv run --locked deepresearch methods
 uv run --locked python examples/workflow_method.py
 uv run --locked python examples/workflow_hooks.py
 uv run --locked python examples/live_research_check.py
-uv run --locked ebd tools
-uv run --locked ebd tool scholar.crossref.search --arguments '{"query":"Environment Based Design","max_results":3}'
-uv run --locked ebd --store local/my-research research < examples/baseline-request.json
-uv run --locked ebd --store local/console-store serve --port 8000 --origin http://localhost:5173
+uv run --locked deepresearch tools
+uv run --locked deepresearch tool scholar.crossref.search --arguments '{"query":"Environment Based Design","max_results":3}'
+uv run --locked deepresearch --store local/my-research research < examples/baseline-request.json
+uv run --locked deepresearch --store local/console-store serve --port 8000 --origin http://localhost:5173
 ```
 
-PowerShell can pipe a single-quoted JSON string to `ebd tool NAME` when command
+PowerShell can pipe a single-quoted JSON string to `deepresearch tool NAME` when command
 argument quoting is inconvenient. All registered commands use fixed argv,
 strict JSON and real subprocesses; the host records committed intent before
 dispatch and outcome after cleanup. A tool run does not open a model.
@@ -73,14 +80,14 @@ selected evidence, report, usage and checkpoints. No search snippet or fetch
 preview enters an Agent automatically. Model-labelled estimates remain distinct
 from verified tokenizer counts. Failed sources retain their actual diagnostics.
 For PowerShell, pipe `Get-Content -Raw examples/baseline-request.json` to the
-`ebd ... research` command instead of using `<` redirection.
+`deepresearch ... research` command instead of using `<` redirection.
 
 The model-free examples run real Storage and need no credentials. A live full
 method check is `uv run --locked python examples/live_research_check.py
 --request examples/baseline-request.json --store local/my-http-baseline`.
 It makes real model/tool calls and verifies HTTP/SSE, idempotency and identical
 report bytes after restart. See [Stage 1/2 acceptance](docs/research-acceptance.md).
-The old `ebd baseline` command preserves legacy single-Agent report verification.
+The old `deepresearch baseline` command preserves legacy single-Agent report verification.
 
 See [Connections](docs/usage/connections.md),
 [Agent Runtime and providers](docs/usage/agents.md),
@@ -154,9 +161,9 @@ through normal Storage state.
 
 ## CLI tool contract
 
-Platform values live in `src/ebd/engine/contracts/`; research manifests and
-frontend run DTOs live in `src/ebd/workflows/contracts.py`. Runtime modules live
-under `engine/`, with thin old-import compatibility entry points.
+Platform values live in `src/deepresearch/engine/contracts/`; research manifests and
+frontend run DTOs live in `src/deepresearch/workflows/contracts.py`. Runtime modules live
+under `engine/`; the single deprecated import bridge is `src/ebd/__init__.py`.
 
 - Register each tool's name, description, input/output schemas, command arguments, and execution limits.
 - Accept one UTF-8 JSON request on standard input.

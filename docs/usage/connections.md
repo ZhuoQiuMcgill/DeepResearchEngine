@@ -9,8 +9,8 @@ binds the independent Runtime. Strategy belongs in an application.
 
 ```python
 import asyncio
-from ebd.connections import Engine, EngineSettings, RunOptions
-from ebd.contracts import AgentDefinition, ToolRef
+from deepresearch.engine.connections import Engine, EngineSettings, RunOptions
+from deepresearch.engine.contracts import AgentDefinition, ToolRef
 
 async def main():
     engine = (await Engine.open(EngineSettings())).unwrap()
@@ -30,7 +30,7 @@ asyncio.run(main())
 Named defaults are `deepseek`/`deepseek-flash` and
 `openai`/`gpt-6-luna`. Key variable names are case insensitive in
 `local/.env`; values stay in live provider bindings. vLLM needs an explicitly
-registered `ebd.providers.ProviderConfig` with its deployment manifest; see
+registered `deepresearch.engine.providers.ProviderConfig` with its deployment manifest; see
 [agents.md](agents.md). Profiles pin model IDs and endpoints. Public run
 options cannot substitute a provider or create authority.
 
@@ -63,8 +63,8 @@ real modules and grants as `run_agent`; close the session when finished.
 Completed Runtime bindings expire. Open a fresh data session:
 
 ```python
-from ebd.connections import RunAccessRequest, ArtifactReadRequest
-from ebd.contracts import RunRef
+from deepresearch.engine.connections import RunAccessRequest, ArtifactReadRequest
+from deepresearch.engine.contracts import RunRef
 
 access = (await engine.open_run_access(
     RunRef(engine.storage.store_id, result.execution["run_id"]),
@@ -108,7 +108,7 @@ objects and keys at each invocation. The Engine verifies the object's actual
 scope and attenuates the caller's live authority before child admission.
 
 ```python
-from ebd.connections import EvidenceBinding, InvocationOptions, SnapshotReadRequest
+from deepresearch.engine.connections import EvidenceBinding, InvocationOptions, SnapshotReadRequest
 
 outcome = await session.binding.invoker.invoke(
     session.context, reader_ref, task,

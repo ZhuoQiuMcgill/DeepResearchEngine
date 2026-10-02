@@ -4,8 +4,8 @@ from types import MappingProxyType
 
 import pytest
 
-from ebd.contracts import EngineError
-from ebd.extensions import ExtensionRegistry, ExtensionSpec, HookDecision, HookEvent
+from deepresearch.engine.contracts import EngineError
+from deepresearch.extensions import ExtensionRegistry, ExtensionSpec, HookDecision, HookEvent
 
 
 async def observer(event):

@@ -4,8 +4,8 @@ import json
 import httpx
 import pytest
 
-from ebd.contracts import Err, Ok
-from ebd.providers import ModelRequest, ModelTool, ProviderConfig, ProviderFactory
+from deepresearch.engine.contracts import Err, Ok
+from deepresearch.engine.providers import ModelRequest, ModelTool, ProviderConfig, ProviderFactory
 
 
 def run(awaitable):

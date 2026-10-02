@@ -7,18 +7,18 @@ import base64
 import httpx
 import pytest
 
-from ebd.agent_catalog import AgentCatalog
-from ebd.application import ResearchRunService
-from ebd.application.platform import RESEARCH_STATE_KEY
-from ebd.connections import Engine, EngineSettings
-from ebd.contracts import (
+from deepresearch.agent_catalog import AgentCatalog
+from deepresearch.application import ResearchRunService
+from deepresearch.application.platform import RESEARCH_STATE_KEY
+from deepresearch.engine.connections import Engine, EngineSettings
+from deepresearch.engine.contracts import (
     EngineError, Err, RunRef, SnapshotProposal, ToolExecutionResult,
     canonical_json, digest_bytes, new_id,
 )
-from ebd.engine.providers.tokenization import TokenMeter
-from ebd.methods.baseline import BaselineMethod, definition as baseline_definition
-from ebd.providers import ProviderConfig, ProviderFactory
-from ebd.workflows import MethodDefinition, MethodRegistry, ResearchRunRequest, SourceRange
+from deepresearch.engine.providers.tokenization import TokenMeter
+from deepresearch.methods.baseline import BaselineMethod, definition as baseline_definition
+from deepresearch.engine.providers import ProviderConfig, ProviderFactory
+from deepresearch.workflows import MethodDefinition, MethodRegistry, ResearchRunRequest, SourceRange
 
 
 class ReportMethod:
@@ -344,7 +344,7 @@ async def test_cleanup_failure_never_reopens_success(tmp_path, monkeypatch):
             await close()
             raise RuntimeError("private cleanup detail")
         monkeypatch.setattr(session, "close", failed_close)
-        from ebd.contracts import Ok
+        from deepresearch.engine.contracts import Ok
         return Ok(session)
     monkeypatch.setattr(engine, "open_workflow_session", bad_session)
     try:
@@ -367,7 +367,7 @@ async def test_cleanup_failure_never_reopens_success(tmp_path, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_swallowed_recording_error_still_prevents_success_and_preserves_unknown_commit(tmp_path, monkeypatch):
-    from ebd.contracts import ToolResult, ToolRef
+    from deepresearch.engine.contracts import ToolResult, ToolRef
     class SwallowingMethod(ReportMethod):
         async def run(self, context, task_input, parameters):
             try:
@@ -421,8 +421,8 @@ async def test_serialized_projection_updates_preserve_independent_fields(tmp_pat
 
 @pytest.mark.asyncio
 async def test_hook_cleanup_is_retained_and_not_overwritten_by_session_close(tmp_path, monkeypatch):
-    from ebd.contracts import CleanupReport
-    from ebd.extensions import HookDispatcher
+    from deepresearch.engine.contracts import CleanupReport
+    from deepresearch.extensions import HookDispatcher
 
     async def unconfirmed(self, timeout_seconds=5):
         assert timeout_seconds == 5

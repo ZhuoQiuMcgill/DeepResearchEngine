@@ -2,7 +2,7 @@ import asyncio
 
 import pytest
 
-from ebd.extensions import ExtensionRegistry, ExtensionSpec, HookDispatcher, HookEvent
+from deepresearch.extensions import ExtensionRegistry, ExtensionSpec, HookDispatcher, HookEvent
 
 
 @pytest.mark.asyncio

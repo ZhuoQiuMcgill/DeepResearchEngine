@@ -4,8 +4,8 @@ import copy
 
 import pytest
 
-from ebd.contracts import EngineError, Err
-from ebd.extensions import ExtensionRegistry, ExtensionSpec, HookDecision, HookDispatcher, HookEvent
+from deepresearch.engine.contracts import EngineError, Err
+from deepresearch.extensions import ExtensionRegistry, ExtensionSpec, HookDecision, HookDispatcher, HookEvent
 
 
 class Recorder:

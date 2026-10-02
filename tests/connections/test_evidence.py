@@ -4,17 +4,17 @@ import dataclasses
 import httpx
 import pytest
 
-from ebd.connections import (
+from deepresearch.engine.connections import (
     AgentRef, Engine, EngineSettings, InvocationRule, InvocationOptions,
     EvidenceBinding, SnapshotReadRequest, ArtifactReadRequest, StateReadRequest,
     RunOptions,
 )
-from ebd.contracts import (
+from deepresearch.engine.contracts import (
     AgentDefinition, ArtifactMetadata, ByteRange, Err, Grant, GrantSet,
     ScopeRef, SnapshotProposal, StateMutation, canonical_json, digest_bytes,
     RunRef,
 )
-from ebd.providers import ProviderConfig, ProviderFactory
+from deepresearch.engine.providers import ProviderConfig, ProviderFactory
 
 
 async def fixture(tmp_path, monkeypatch, allow=True):

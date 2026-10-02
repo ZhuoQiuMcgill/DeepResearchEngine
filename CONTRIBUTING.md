@@ -57,14 +57,15 @@ integrates sequentially. Do not switch branches underneath another writer.
 
 | Owner | Editable paths in the current phase |
 | --- | --- |
-| Agent/runtime subagent | `src/ebd/engine/agent/`, `src/ebd/engine/providers/`, `tests/agent/`, `tests/providers/`, `docs/usage/agents.md` |
-| Toolset subagent | `src/ebd/engine/toolset/`, `tests/toolset/`, `docs/usage/tools.md` |
-| Storage subagent | `src/ebd/engine/storage/`, `tests/storage/`, `docs/usage/storage.md` |
+| Agent/runtime subagent | `src/deepresearch/engine/agent/`, `src/deepresearch/engine/providers/`, `tests/agent/`, `tests/providers/`, `docs/usage/agents.md` |
+| Toolset subagent | `src/deepresearch/engine/toolset/`, `tests/toolset/`, `docs/usage/tools.md` |
+| Storage subagent | `src/deepresearch/engine/storage/`, `tests/storage/`, `docs/usage/storage.md` |
 | Root | Shared contracts, Connections, RunService/HTTP API, package/CLI composition, examples, baseline, integration tests, environment, project docs and Git |
 
 New method/catalog/extension/application paths are assigned explicitly before
 parallel work. Follow [implemented architecture](docs/architecture/project-structure.md).
-Flat imports remain compatibility entry points, not implementation locations.
+Use deepresearch.* imports and the deepresearch CLI. The sole deprecated
+Python bridge is src/ebd/__init__.py; do not recreate old module directories.
 Keep methods over WorkflowContext/components and concrete composition in bootstrap.
 
 Cross-module interface changes go to root with the affected consumers and a

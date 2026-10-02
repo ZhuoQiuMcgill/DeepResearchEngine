@@ -1,4 +1,4 @@
-# EBD DeepResearch implementation entry point
+# DeepResearch Engine implementation entry point
 
 The user ended cross-session development coordination. Development now happens
 in the current root chat and its in-chat subagents. Do not contact or dispatch
@@ -23,13 +23,13 @@ contracts, integration, dependencies and Git.
 
 | Owner | Paths |
 | --- | --- |
-| Agent/runtime subagent | `src/ebd/engine/agent/`, `src/ebd/engine/providers/`, `tests/agent/`, `tests/providers/`, `docs/usage/agents.md` |
-| Toolset subagent | `src/ebd/engine/toolset/`, `tests/toolset/`, `docs/usage/tools.md` |
-| Storage subagent | `src/ebd/engine/storage/`, `tests/storage/`, `docs/usage/storage.md` |
+| Agent/runtime subagent | `src/deepresearch/engine/agent/`, `src/deepresearch/engine/providers/`, `tests/agent/`, `tests/providers/`, `docs/usage/agents.md` |
+| Toolset subagent | `src/deepresearch/engine/toolset/`, `tests/toolset/`, `docs/usage/tools.md` |
+| Storage subagent | `src/deepresearch/engine/storage/`, `tests/storage/`, `docs/usage/storage.md` |
 | Root | Engine contracts/Connections, research contracts, application/interfaces/bootstrap, examples, integration, environment, docs and Git; explicitly assign methods/catalog/extensions before parallel edits |
 
-Flat Python paths are compatibility imports only. New implementations use
-canonical ebd.engine.* imports. Methods use WorkflowContext and its port; only
+The deprecated ebd namespace is isolated in src/ebd/__init__.py. New code uses
+canonical deepresearch.* imports. Methods use WorkflowContext and its port; only
 bootstrap registers concrete methods. Architecture tests enforce these boundaries.
 Pytest uses committed importlib mode; shared helpers use tests.<module> imports.
 

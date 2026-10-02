@@ -1,7 +1,7 @@
 [project]
-name = "ebd-deepresearch"
+name = "deepresearch-engine"
 version = "0.1.0"
-description = "An execution platform for Environment-Based Design deep research agents."
+description = "A modular execution platform for composable deep research workflows."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -21,10 +21,11 @@ requires = ["hatchling>=1.27,<2"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/ebd"]
+packages = ["src/deepresearch", "src/ebd"]
 
 [project.scripts]
-ebd = "ebd.interfaces.cli.main:main"
+deepresearch = "deepresearch.interfaces.cli.main:main"
+ebd = "deepresearch.interfaces.cli.main:main"
 
 [dependency-groups]
 dev = ["pytest>=8,<10", "pytest-asyncio>=0.24,<2"]

@@ -9,11 +9,11 @@ Frontend clients launch the whole method through ResearchRun.
 
 | Contributor | Owns | Public interface and first check |
 | --- | --- | --- |
-| Method / EBD author | `src/ebd/methods/<method>/` | [Workflow guide](usage/workflows.md), `MethodDefinition`, `WorkflowContext`, shared components; run [method example](../examples/workflow_method.py). |
-| Agent role author | `src/ebd/agent_catalog/resources/<role>/<revision>/` | [Catalog guide](usage/agent-catalog.md); definition, instructions, task template and input/output schemas. Pin revisions in your method. |
+| Method / EBD author | `src/deepresearch/methods/<method>/` | [Workflow guide](usage/workflows.md), `MethodDefinition`, `WorkflowContext`, shared components; run [method example](../examples/workflow_method.py). |
+| Agent role author | `src/deepresearch/agent_catalog/resources/<role>/<revision>/` | [Catalog guide](usage/agent-catalog.md); definition, instructions, task template and input/output schemas. Pin revisions in your method. |
 | Frontend author | Your UI and client state | [Research API](usage/research-service.md), [OpenAPI](api/openapi.json); start, subscribe/replay, read sources/context/report/usage. |
 | Extension author | Your extension package | [Hook guide](usage/extensions.md), [Hook example](../examples/workflow_hooks.py); register observers or selection decisions. |
-| Platform maintainer | `src/ebd/engine/` | [Connections](usage/connections.md), [Storage](usage/storage.md), [Tools](usage/tools.md), [Runtime](usage/agents.md). |
+| Platform maintainer | `src/deepresearch/engine/` | [Connections](usage/connections.md), [Storage](usage/storage.md), [Tools](usage/tools.md), [Runtime](usage/agents.md). |
 
 [Architecture](architecture/project-structure.md) defines actual directory and
 dependency boundaries. [Stage 1/2 acceptance](research-acceptance.md) records
@@ -27,7 +27,7 @@ From the repository root:
 ```shell
 uv sync --locked
 uv run --locked pytest -q
-uv run --locked ebd methods
+uv run --locked deepresearch methods
 uv run --locked python examples/workflow_method.py
 uv run --locked python examples/workflow_hooks.py
 uv run --locked python examples/live_research_check.py
@@ -46,16 +46,16 @@ exist. Fill the selected profile's credential; the default is
 The browser selects a profile and never receives credentials or endpoints.
 
 ```shell
-uv run --locked ebd --store local/my-baseline research < examples/baseline-request.json
-uv run --locked ebd --store local/my-baseline research --show RUN_ID
-uv run --locked ebd --store local/my-baseline research --sources RUN_ID
-uv run --locked ebd --store local/my-baseline research --report RUN_ID --output local/report.md
+uv run --locked deepresearch --store local/my-baseline research < examples/baseline-request.json
+uv run --locked deepresearch --store local/my-baseline research --show RUN_ID
+uv run --locked deepresearch --store local/my-baseline research --sources RUN_ID
+uv run --locked deepresearch --store local/my-baseline research --report RUN_ID --output local/report.md
 ```
 
 In PowerShell:
 
 ```powershell
-Get-Content -Raw examples/baseline-request.json | uv run --locked ebd --store local/my-baseline research
+Get-Content -Raw examples/baseline-request.json | uv run --locked deepresearch --store local/my-baseline research
 ```
 
 Use a new `client_request_id` for each new intent. The same identity and body
@@ -63,13 +63,13 @@ returns the original run across restart; a changed body is a conflict.
 Source URLs are optional. The example also performs real web discovery.
 Failed sources remain explicit; a report needs at least one usable saved source.
 
-The old `ebd baseline` command preserves legacy single-Agent acceptance.
-New method work uses `ebd research` and `methods/baseline`.
+The old `deepresearch baseline` command preserves legacy single-Agent acceptance.
+New method work uses `deepresearch research` and `methods/baseline`.
 
 ## Start frontend work
 
 ```shell
-uv run --locked ebd --store local/my-console serve --port 8000 --origin http://localhost:5173
+uv run --locked deepresearch --store local/my-console serve --port 8000 --origin http://localhost:5173
 ```
 
 Open `http://127.0.0.1:8000/docs`. Start with `GET /api/v1/methods`, then

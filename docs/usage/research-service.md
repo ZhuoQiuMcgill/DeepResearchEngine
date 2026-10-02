@@ -2,7 +2,7 @@
 
 `ResearchRunService` owns complete method execution over one caller-owned Engine.
 `MethodRegistry` pins the method revision and its agent roles; the shared request
-and view models are `ebd.workflows.ResearchRunRequest` and `ResearchRunView`.
+and view models are `deepresearch.workflows.ResearchRunRequest` and `ResearchRunView`.
 Bootstrap supplies the shipped `baseline/1` and model-free `example.echo/1` methods.
 A workflow root has no agent identity, provider, model grant or credentials.
 The baseline invokes its writer only after acquiring and selecting saved evidence.
@@ -11,9 +11,9 @@ The baseline invokes its writer only after acquiring and selecting saved evidenc
 
 ```python
 import asyncio
-from ebd.bootstrap.application import create_research_service
-from ebd.engine import Engine, EngineSettings
-from ebd.workflows import ResearchRunRequest
+from deepresearch.bootstrap.application import create_research_service
+from deepresearch.engine import Engine, EngineSettings
+from deepresearch.workflows import ResearchRunRequest
 
 async def main():
     engine = (await Engine.open(EngineSettings(storage_root="local/research-store"))).unwrap()

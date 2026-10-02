@@ -6,10 +6,10 @@ from datetime import datetime, timezone
 
 import pytest
 
-from ebd.toolset.common import ToolFault, digest, encode, strict_json, validate_arguments
-from ebd.toolset.retrieval import build_index, decode_text, extract, pack_component, unpack_component
-from ebd.toolset.scholarly import capture_limits, parse_limits, project, request_url
-from ebd.toolset.search import CorrectedGoogle, PreservedYahoo, google_destination, yahoo_destination
+from deepresearch.engine.toolset.common import ToolFault, digest, encode, strict_json, validate_arguments
+from deepresearch.engine.toolset.retrieval import build_index, decode_text, extract, pack_component, unpack_component
+from deepresearch.engine.toolset.scholarly import capture_limits, parse_limits, project, request_url
+from deepresearch.engine.toolset.search import CorrectedGoogle, PreservedYahoo, google_destination, yahoo_destination
 
 
 @pytest.mark.parametrize("raw", [b'{"a":1,"a":2}', b'{"a":NaN}', b'{"a":1e999}', b'\xef\xbb\xbf{}', b'{}{}', br'"\ud800"'])

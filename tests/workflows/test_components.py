@@ -3,12 +3,12 @@ import copy
 
 import pytest
 
-from ebd.contracts import EngineError, digest_bytes
-from ebd.engine.providers.tokenization import TokenMeter
-from ebd.extensions import ExtensionRegistry, HookDispatcher
-from ebd.workflows import SourceManifest, SourceRecord, WorkflowContext
-from ebd.workflows.components.context_selection import assemble_context
-from ebd.workflows.components.discovery import candidates, discover
+from deepresearch.engine.contracts import EngineError, digest_bytes
+from deepresearch.engine.providers.tokenization import TokenMeter
+from deepresearch.extensions import ExtensionRegistry, HookDispatcher
+from deepresearch.workflows import SourceManifest, SourceRecord, WorkflowContext
+from deepresearch.workflows.components.context_selection import assemble_context
+from deepresearch.workflows.components.discovery import candidates, discover
 
 
 class Port:

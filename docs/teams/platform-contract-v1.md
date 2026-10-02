@@ -39,10 +39,10 @@ Current package ownership (root may refine exclusive paths in-chat):
 
 | Owner | Exclusive paths |
 | --- | --- |
-| Agent Container | `src/ebd/agent/`, `src/ebd/providers/`, `tests/agent/`, `tests/providers/` |
-| CLI Toolset | `src/ebd/toolset/`, `tests/toolset/` |
-| Storage | `src/ebd/storage/`, `tests/storage/` |
-| Root: Connections and service | `src/ebd/connections/`, `tests/connections/`, `src/ebd/service/`, `tests/service/` |
+| Agent Container | `src/deepresearch/agent/`, `src/deepresearch/providers/`, `tests/agent/`, `tests/providers/` |
+| CLI Toolset | `src/deepresearch/toolset/`, `tests/toolset/` |
+| Storage | `src/deepresearch/storage/`, `tests/storage/` |
+| Root: Connections and service | `src/deepresearch/connections/`, `tests/connections/`, `src/deepresearch/service/`, `tests/service/` |
 | Root: integration | Shared contracts, package/CLI composition, examples, baseline, `tests/integration/`, manifests/lockfile and Git |
 
 These assignments agree with `AGENTS.md` and `CONTRIBUTING.md`. Root alone

@@ -269,7 +269,7 @@ wheels = [
 ]
 
 [[package]]
-name = "ebd-deepresearch"
+name = "deepresearch-engine"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

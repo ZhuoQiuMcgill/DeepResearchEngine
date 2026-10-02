@@ -4,8 +4,15 @@ This is the implemented Stage 1/2 structure. A Workflow is a research method,
 with Python control flow for branching/loops and shared components for discovery,
 acquisition and context selection. It is not a disposable CLI script.
 
+The platform is named **DeepResearch Engine**. `src` is the Python source root;
+`deepresearch` is the import package, not a particular research method. Open
+`D:\Projects\DeepResearchEngine\src\deepresearch` to see the eight blocks below.
+The distribution is `deepresearch-engine` and the CLI is `deepresearch`.
+Environment-Based Design belongs in a future `methods/ebd` package alongside
+Baseline. No EBD implementation is claimed by this layout.
+
 ```text
-src/ebd/
+src/deepresearch/
   engine/
     contracts/             execution values, grants, receipts, budgets
     connections/           Engine, Workflow sessions, invocation and access
@@ -44,16 +51,36 @@ src/ebd/
     http/                  FastAPI composition, ResearchRun routes and SSE
     cli/                   commands and legacy baseline compatibility
   bootstrap/               method/catalog/service composition
+src/ebd/
+  __init__.py              deprecated import bridge only; no implementation tree
 tests/                     modules, application, HTTP, architecture boundaries
 examples/                  runnable consumers, never implementation dependencies
 docs/                      setup, interfaces, decisions and acceptance
 ```
 
-Old Python paths (`ebd.connections`, `ebd.agent`, `ebd.providers`, etc.) are
-thin compatibility imports. Canonical implementations live under `engine`;
-there are no copied runtimes. Old submodules resolve to the same implementation
-module objects. New code uses canonical paths. The old single-Agent baseline
-lives under the CLI compatibility boundary.
+The former top-level `agent`, `providers`, `toolset`, `storage`, `connections`,
+`contracts` and `service` directories, plus `cli.py` and `baseline.py`, have
+been removed. Compatibility is concentrated in the single file above. Both
+former flat imports and the intermediate layered `ebd.*` imports resolve lazily
+to canonical module objects. Repository code, tests and usage guides use
+`deepresearch.*`; only dedicated compatibility checks exercise old imports.
+The `ebd` executable remains an alias of `deepresearch`. The legacy single-Agent
+EBD acceptance command lives under `interfaces/cli/legacy_baseline.py`.
+
+| Former import | Canonical import |
+| --- | --- |
+| `ebd.engine.*` and flat `ebd.connections/agent/providers/toolset/storage/contracts` | `deepresearch.engine.*` |
+| `ebd.agent_catalog`, `ebd.workflows`, `ebd.methods`, `ebd.extensions` | Corresponding `deepresearch.*` package |
+| `ebd.application`, `ebd.interfaces`, `ebd.bootstrap` | Corresponding `deepresearch.*` package |
+| `ebd.service.runs` / `ebd.service.models` | `deepresearch.application.agent_runs` / `agent_contracts` |
+| `ebd.service.api` | `deepresearch.interfaces.http.api` |
+| `ebd.cli` / `ebd.baseline` | `deepresearch.interfaces.cli.main` / `legacy_baseline` |
+
+For the old mixed facade `from ebd.service import RunService, create_app`, import
+`RunService` from `deepresearch.application.agent_runs` and `create_app` from
+`deepresearch.interfaces.http`. HTTP v1 routes and payloads and saved Store
+formats are unchanged. Historical team records retain the names used at their
+original acceptance; use current guides for new work.
 
 ## Dependency direction
 

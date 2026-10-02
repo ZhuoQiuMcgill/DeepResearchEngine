@@ -13,13 +13,13 @@ import time
 import httpx
 import pytest
 
-from ebd.connections import (
+from deepresearch.engine.connections import (
     Engine, EngineSettings, EvidenceBinding, InvocationOptions, InvocationRule,
     RunOptions, SnapshotReadRequest,
 )
-from ebd.contracts import AgentDefinition, SnapshotProposal, ToolRef, canonical_json, digest_bytes
-from ebd.providers import ProviderConfig, ProviderFactory
-from ebd.storage._ranges import line_spans
+from deepresearch.engine.contracts import AgentDefinition, SnapshotProposal, ToolRef, canonical_json, digest_bytes
+from deepresearch.engine.providers import ProviderConfig, ProviderFactory
+from deepresearch.engine.storage._ranges import line_spans
 
 
 TEXT = b"Service acceptance evidence.\nThis text is retained in a real READY snapshot."
@@ -158,7 +158,7 @@ async def http_artifact(client, run_id, ref, *, chunk_size=17):
 
 @pytest.mark.asyncio
 async def test_http_run_real_document_worker_durable_result_usage_and_reopen(tmp_path, monkeypatch):
-    from ebd.service import create_app
+    from deepresearch.interfaces.http import create_app
 
     settings, engine, _, observed = await controlled_engine(tmp_path, monkeypatch)
     app = create_app(engine=engine)
@@ -228,7 +228,7 @@ async def test_http_run_real_document_worker_durable_result_usage_and_reopen(tmp
 
 @pytest.mark.asyncio
 async def test_http_start_rejects_invalid_input_before_acceptance_or_api_dispatch(tmp_path, monkeypatch):
-    from ebd.service import create_app
+    from deepresearch.interfaces.http import create_app
 
     _, engine, _, observed = await controlled_engine(tmp_path, monkeypatch)
     app = create_app(engine=engine)
@@ -247,7 +247,7 @@ async def test_http_start_rejects_invalid_input_before_acceptance_or_api_dispatc
 @pytest.mark.asyncio
 @pytest.mark.parametrize("shutdown", [False, True])
 async def test_http_cancel_or_shutdown_settles_unknown_remote_usage_before_storage_close(tmp_path, monkeypatch, shutdown):
-    from ebd.service import create_app
+    from deepresearch.interfaces.http import create_app
 
     settings, engine, _, observed = await controlled_engine(tmp_path, monkeypatch, block=True)
     app = create_app(engine=engine)
@@ -295,7 +295,7 @@ async def test_http_cancel_or_shutdown_settles_unknown_remote_usage_before_stora
 
 @pytest.mark.asyncio
 async def test_delegated_parent_snapshot_child_cli_read_is_visible_through_http_lineage(tmp_path, monkeypatch):
-    from ebd.service import create_app
+    from deepresearch.interfaces.http import create_app
 
     config = ProviderConfig("deepseek", "deepseek-flash", "https://provider.invalid/v1", "fixture-credential", profile_name="deepseek")
     engine = (await Engine.open(EngineSettings(workspace=tmp_path, storage_root=tmp_path / "store",
@@ -377,7 +377,7 @@ async def test_delegated_parent_snapshot_child_cli_read_is_visible_through_http_
 
 @pytest.mark.asyncio
 async def test_http_boundary_rejects_remote_origin_credentials_and_duplicate_json_without_dispatch(tmp_path, monkeypatch):
-    from ebd.service import create_app
+    from deepresearch.interfaces.http import create_app
 
     _, engine, _, observed = await controlled_engine(tmp_path, monkeypatch)
     app = create_app(engine=engine)
@@ -406,7 +406,7 @@ async def test_http_boundary_rejects_remote_origin_credentials_and_duplicate_jso
 
 @pytest.mark.asyncio
 async def test_http_accepted_cancel_before_execution_keeps_not_started_terminal_after_restart(tmp_path, monkeypatch):
-    from ebd.service import create_app
+    from deepresearch.interfaces.http import create_app
 
     settings, engine, _, observed = await controlled_engine(tmp_path, monkeypatch)
     entered, proceed = asyncio.Event(), asyncio.Event()

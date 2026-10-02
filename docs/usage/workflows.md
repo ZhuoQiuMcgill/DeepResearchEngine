@@ -57,18 +57,18 @@ bounds it to 32 logical lines.
 New code uses the canonical execution-platform namespaces:
 
 ```python
-from ebd.engine import Engine, EngineSettings
-from ebd.engine.contracts import canonical_json, digest_bytes
-from ebd.workflows import (
+from deepresearch.engine import Engine, EngineSettings
+from deepresearch.engine.contracts import canonical_json, digest_bytes
+from deepresearch.workflows import (
     MethodDefinition, MethodRegistry, PlatformPort,
     ResearchRunRequest, WorkflowContext, WorkflowRunner,
 )
-from ebd.bootstrap import create_research_service
-from ebd.extensions import ExtensionRegistry, ExtensionSpec, HookDecision, HookEvent
-from ebd.agent_catalog import AgentCatalog
+from deepresearch.bootstrap import create_research_service
+from deepresearch.extensions import ExtensionRegistry, ExtensionSpec, HookDecision, HookEvent
+from deepresearch.agent_catalog import AgentCatalog
 ```
 
-The execution modules live under `ebd.engine.*`. Older import paths remain
+The execution modules live under `deepresearch.engine.*`. Older import paths remain
 compatibility entry points. Workflow/framework, Agent catalog, extensions,
 application and bootstrap remain distinct packages.
 
@@ -128,7 +128,7 @@ fields and validates published references. It cannot change run identity,
 terminal status or execution authority.
 
 For a full research method, compose the shared components in
-`ebd.workflows.components`:
+`deepresearch.workflows.components`:
 
 | Component | Work through the existing context/port |
 | --- | --- |

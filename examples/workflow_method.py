@@ -14,11 +14,11 @@ import tempfile
 from typing import Any
 from uuid import uuid4
 
-from ebd.agent_catalog import AgentCatalog
-from ebd.bootstrap import create_research_service
-from ebd.engine import Engine, EngineSettings
-from ebd.engine.contracts import canonical_json, digest_bytes
-from ebd.workflows import (
+from deepresearch.agent_catalog import AgentCatalog
+from deepresearch.bootstrap import create_research_service
+from deepresearch.engine import Engine, EngineSettings
+from deepresearch.engine.contracts import canonical_json, digest_bytes
+from deepresearch.workflows import (
     MethodDefinition, MethodRegistry, PlatformPort, ResearchRunRequest, WorkflowContext,
 )
 
@@ -207,7 +207,7 @@ def main() -> None:
     parser.add_argument("--message", default=DEFAULT_MESSAGE)
     args = parser.parse_args()
     if args.store is None:
-        with tempfile.TemporaryDirectory(prefix="ebd-workflow-method-") as directory:
+        with tempfile.TemporaryDirectory(prefix="deepresearch-workflow-method-") as directory:
             result = asyncio.run(run_example(Path(directory), args.message))
     else:
         result = asyncio.run(run_example(args.store, args.message))

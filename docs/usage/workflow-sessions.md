@@ -1,7 +1,8 @@
 # Model-free Workflow sessions
 
-Canonical imports are `ebd.engine.connections` and `ebd.engine.contracts`;
-older paths below remain compatibility imports. A trusted host may pass
+Canonical imports are `deepresearch.engine.connections` and `deepresearch.engine.contracts`.
+Deprecated `ebd.*` imports resolve through the single compatibility bridge.
+A trusted host may pass
 `cleanup_state_keys=("application.failure-state",)` to `open_workflow_session`.
 Only those exact same-run keys receive `state.cleanup`; default sessions have
 no cleanup state grant. This permits bounded failure-projection CAS with the
@@ -41,8 +42,8 @@ policy record alone grants no authority.
 ## Open, execute and finish
 
 ```python
-from ebd.connections import Engine, EngineSettings, RunOptions
-from ebd.contracts import ToolRef
+from deepresearch.engine.connections import Engine, EngineSettings, RunOptions
+from deepresearch.engine.contracts import ToolRef
 
 engine = (await Engine.open(EngineSettings(storage_root="local/workflow-store"))).unwrap()
 try:
@@ -89,7 +90,7 @@ tool capabilities grant only the needed search/fetch network operations.
 Register child AgentDefinitions, then select exact registered destinations:
 
 ```python
-from ebd.connections import InvocationRule
+from deepresearch.engine.connections import InvocationRule
 
 # writer is a RegisteredAgent returned by engine.register_agent(...).
 # Its requested tools must be contained in both the Workflow selection and edge.

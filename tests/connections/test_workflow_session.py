@@ -7,16 +7,16 @@ import time
 import httpx
 import pytest
 
-from ebd.connections import (
+from deepresearch.engine.connections import (
     AgentRef, BoundSession, Engine, EngineSettings, EvidenceBinding,
     InvocationOptions, InvocationRule, RunOptions, SnapshotReadRequest,
     WORKFLOW_EVENTS, WORKFLOW_EVENT_MAX_BYTES,
 )
-from ebd.contracts import (
+from deepresearch.engine.contracts import (
     AgentDefinition, ArtifactMetadata, EngineError, Err, Ok, RunRef, ScopeRef,
     SnapshotProposal, SnapshotRef, StateMutation, ToolRef, canonical_json, digest_bytes,
 )
-from ebd.providers import ProviderConfig, ProviderFactory
+from deepresearch.engine.providers import ProviderConfig, ProviderFactory
 
 
 READ = ToolRef("document.read")

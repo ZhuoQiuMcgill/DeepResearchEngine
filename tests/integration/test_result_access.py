@@ -4,12 +4,12 @@ from __future__ import annotations
 import dataclasses
 import time
 
-from ebd.connections import (Engine, EngineSettings, RunOptions, ArtifactReadRequest,
+from deepresearch.engine.connections import (Engine, EngineSettings, RunOptions, ArtifactReadRequest,
     SnapshotReadRequest, CheckpointReadRequest, EventStatusRequest, OperationStatusRequest,
     HistoryReadRequest, PublicationRequest, RunAccessRequest, RunAccessOptions)
-from ebd.contracts import (AgentDefinition, ArtifactContent, ArtifactMetadata, ByteRange, CheckpointEnvelope,
+from deepresearch.engine.contracts import (AgentDefinition, ArtifactContent, ArtifactMetadata, ByteRange, CheckpointEnvelope,
     Err, ExecutionEvent, Ok, RunRef, ScopeRef, SnapshotProposal, canonical_json, digest_bytes)
-from ebd.storage._ranges import line_spans
+from deepresearch.engine.storage._ranges import line_spans
 
 
 async def prepared_engine(path):

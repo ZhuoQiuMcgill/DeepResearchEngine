@@ -1,9 +1,9 @@
 import pytest
 from pydantic import ValidationError
 
-from ebd.contracts import EngineError
-from ebd.workflows import FetchManifest, ResearchRunRequest, SourceRecord, SourceRange, TokenMeasurement, MethodRegistry
-from ebd.methods.example_echo import EchoMethod, definition
+from deepresearch.engine.contracts import EngineError
+from deepresearch.workflows import FetchManifest, ResearchRunRequest, SourceRecord, SourceRange, TokenMeasurement, MethodRegistry
+from deepresearch.methods.example_echo import EchoMethod, definition
 
 
 @pytest.mark.parametrize("patch", [

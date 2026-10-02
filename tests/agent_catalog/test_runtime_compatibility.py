@@ -4,10 +4,10 @@ import json
 import httpx
 import pytest
 
-from ebd.agent_catalog import AgentCatalog
-from ebd.connections import ArtifactReadRequest, Engine, EngineSettings, RunAccessRequest, RunOptions
-from ebd.contracts import Err, RunRef, ToolRef
-from ebd.providers import ProviderConfig, ProviderFactory
+from deepresearch.agent_catalog import AgentCatalog
+from deepresearch.engine.connections import ArtifactReadRequest, Engine, EngineSettings, RunAccessRequest, RunOptions
+from deepresearch.engine.contracts import Err, RunRef, ToolRef
+from deepresearch.engine.providers import ProviderConfig, ProviderFactory
 
 
 @pytest.mark.asyncio

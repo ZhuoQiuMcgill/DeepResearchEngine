@@ -1,14 +1,14 @@
 # Agent Container and real model connectors
 
-Use the platform through `ebd.connections.Engine`. `AgentDefinition` is a
+Use the platform through `deepresearch.engine.connections.Engine`. `AgentDefinition` is a
 serializable reusable definition. Connections supplies live bindings, scopes,
 deadlines, grants and a shared lineage budget; definitions and saved references
 do not supply authority. Runtime has no research strategy or EBD-specific logic.
 
 ```python
 import asyncio
-from ebd.connections import Engine, EngineSettings, RunOptions
-from ebd.contracts import AgentDefinition, ToolRef
+from deepresearch.engine.connections import Engine, EngineSettings, RunOptions
+from deepresearch.engine.contracts import AgentDefinition, ToolRef
 
 async def main():
     engine = (await Engine.open(EngineSettings())).unwrap()
@@ -172,7 +172,7 @@ Storage commitments terminate the run. This policy leaves the worker caps intact
 
 ## Local vLLM Qwen
 
-Register a trusted `ebd.providers.ProviderConfig(provider="vllm", ...)` through
+Register a trusted `deepresearch.engine.providers.ProviderConfig(provider="vllm", ...)` through
 `EngineSettings.profiles` with its exact model alias, HTTP endpoint and explicit
 `deployment_manifest`. The manifest declares version, endpoint/model identity,
 model/tokenizer revisions, template hash, vLLM version/image, tool and reasoning

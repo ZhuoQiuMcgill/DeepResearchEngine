@@ -3,7 +3,7 @@ import argparse
 import json
 from pathlib import Path
 
-from ebd.service import create_app
+from deepresearch.interfaces.http import create_app
 
 
 def main():

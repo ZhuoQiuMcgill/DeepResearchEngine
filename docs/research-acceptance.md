@@ -10,6 +10,33 @@ checks below establish the usable development boundary.
 | 1 — shared foundation | Actual engine/framework/method/application/interface separation; immutable method registry, versioned Agent resources, shared manifests/context/run DTOs, optional Hooks, real minimal method, import boundary tests | [Architecture](architecture/project-structure.md), [team setup](team-start.md), [method guide](usage/workflows.md), [Agent catalog](usage/agent-catalog.md) |
 | 2 — complete baseline | Recorded search -> selected URL manifest -> model-free fetch and archive -> source measurements -> chosen saved bytes -> tool-free Writer -> report; ResearchRun HTTP/CLI, SSE/replay, cancel, durable identity and bounded saved reads | [Research API](usage/research-service.md), [request](../examples/baseline-request.json), [live check](../examples/live_research_check.py), [OpenAPI](api/openapi.json) |
 
+## Namespace migration verification — 2026-10-02
+
+The canonical package is now `deepresearch`, its distribution is
+`deepresearch-engine`, and its CLI is `deepresearch`. Eight implementation
+blocks moved to `src/deepresearch/`. Seven former flat directories and their
+two script entrypoints were removed; all old imports are concentrated in
+`src/ebd/__init__.py`. EBD is reserved for a future research method. See the
+[actual tree and import migration map](architecture/project-structure.md).
+
+Post-migration checks ran on the same uv-managed Windows Python 3.11.15:
+
+| Check | Actual result |
+| --- | --- |
+| Full test suite | **676 passed in 39.52 seconds**; includes exact visible directory constraints, canonical repository consumers, legacy module identity/resources/reload and CLI/worker entrypoints |
+| Team examples | Workflow, Hooks enabled and Hooks disabled all succeeded with real Storage and complete cleanup |
+| Built wheel | `deepresearch_engine-0.1.0-py3-none-any.whl`; role/method/tool resources, both CLI entrypoints and only one `ebd` compatibility source file verified |
+| Isolated wheel execution | Real model-free Workflow and recorded `document.read` worker succeeded using unpacked wheel code, with complete cleanup |
+| HTTP contract | Regenerated OpenAPI still has 30 paths; only the service title changed to `DeepResearch execution service` |
+| Real HTTP/SSE and restart | `run_367eae37a8d044739d7db575e32a7df7` succeeded/complete; 27 events; replay, idempotency and byte-identical report after server restart passed |
+| Previous real baseline | New CLI read `run_ef88fac329fa41e1953489c7a2e2af60` from its existing Store; report remains 8,962 bytes with the original SHA-256 below |
+
+The migration made no new model calls. The prior real DeepSeek baseline remains
+the model acceptance evidence; its retained report was compared byte-for-byte
+with the migrated CLI output. Wire v1 and saved Store formats remain unchanged.
+Historical acceptance sections below retain the commands and results from their
+original runs.
+
 ## Automated checks
 
 Environment: Windows, uv-managed Python 3.11.15, committed dependency lockfile.
@@ -18,7 +45,7 @@ Environment: Windows, uv-managed Python 3.11.15, committed dependency lockfile.
 uv --cache-dir .uv-cache run --locked --offline pytest -q
 ```
 
-Final result: **639 passed in 34.79 seconds**. Checks cover the existing
+Pre-migration result: **639 passed in 34.79 seconds**. Checks cover the existing
 platform, Workflow session/tool/child authority, strict shared contracts,
 Agent resource validation/compilation, model-labelled token measurement,
 extension error/timeout/cleanup, source continuation/UTF-8 byte selection,

@@ -6,9 +6,9 @@ import time
 import httpx
 import pytest
 
-from ebd.connections import AgentRef, Engine, EngineSettings, InvocationRule, RunOptions
-from ebd.contracts import AgentDefinition, Err, Grant, GrantSet, Ok, ToolRef
-from ebd.providers import ProviderConfig, ProviderFactory
+from deepresearch.engine.connections import AgentRef, Engine, EngineSettings, InvocationRule, RunOptions
+from deepresearch.engine.contracts import AgentDefinition, Err, Grant, GrantSet, Ok, ToolRef
+from deepresearch.engine.providers import ProviderConfig, ProviderFactory
 
 
 async def bound_parent(tmp_path, monkeypatch, *, rule=None, child_tools=(), artifact=False, handler=None):
@@ -179,7 +179,7 @@ async def test_cycle_rejection_precedes_child_admission(tmp_path, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_lost_invocation_intent_ack_is_reconciled_before_one_child(tmp_path, monkeypatch):
-    from ebd.contracts import EngineError
+    from deepresearch.engine.contracts import EngineError
     engine, parent, child, calls = await bound_parent(tmp_path, monkeypatch)
     actual = engine.storage.recorder
     intents = 0

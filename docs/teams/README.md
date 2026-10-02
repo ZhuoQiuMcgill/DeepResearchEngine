@@ -4,6 +4,12 @@ The platform is implemented and available for teammate integration.
 **Start with [Team start](../team-start.md)** for setup, role-specific paths,
 runnable commands and interface ownership.
 
+The current platform package and CLI are `deepresearch`; source blocks live
+under `src/deepresearch/`. EBD is a research method, not the platform namespace.
+The [structure and migration map](../architecture/project-structure.md) explains
+the one-file `ebd` compatibility bridge. Historical designs and acceptance
+records below retain their original paths and commands.
+
 ## Current handoff documents
 
 | Purpose | Document |

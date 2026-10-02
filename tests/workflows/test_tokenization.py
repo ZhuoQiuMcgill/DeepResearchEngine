@@ -8,9 +8,9 @@ from dataclasses import FrozenInstanceError
 
 import pytest
 
-from ebd.contracts import EngineError
-from ebd.engine.providers.tokenization import TokenCount, TokenMeter
-from ebd.workflows.contracts import TokenMeasurement
+from deepresearch.engine.contracts import EngineError
+from deepresearch.engine.providers.tokenization import TokenCount, TokenMeter
+from deepresearch.workflows.contracts import TokenMeasurement
 
 
 MODEL = "research-model"

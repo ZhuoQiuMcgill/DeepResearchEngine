@@ -12,9 +12,9 @@ from pathlib import Path
 import tempfile
 from typing import Any
 
-from ebd.bootstrap import create_research_service
-from ebd.engine import Engine, EngineSettings
-from ebd.extensions import ExtensionRegistry, ExtensionSpec, HookDecision, HookEvent
+from deepresearch.bootstrap import create_research_service
+from deepresearch.engine import Engine, EngineSettings
+from deepresearch.extensions import ExtensionRegistry, ExtensionSpec, HookDecision, HookEvent
 
 from workflow_method import build_registry, close_host, run_echo
 
@@ -119,7 +119,7 @@ def main() -> None:
     parser.add_argument("--no-hooks", action="store_true", help="Run the same complete method without optional extensions")
     args = parser.parse_args()
     if args.store is None:
-        with tempfile.TemporaryDirectory(prefix="ebd-workflow-hooks-") as directory:
+        with tempfile.TemporaryDirectory(prefix="deepresearch-workflow-hooks-") as directory:
             result = asyncio.run(run_example(Path(directory), args.message,
                 hooks_enabled=not args.no_hooks, keep=args.keep))
     else:

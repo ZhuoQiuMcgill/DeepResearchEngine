@@ -5,13 +5,13 @@ from types import SimpleNamespace
 import httpx
 import pytest
 
-from ebd.agent import Runtime
-from ebd.contracts import (
+from deepresearch.engine.agent import Runtime
+from deepresearch.engine.contracts import (
     AgentDefinition, BindingSet, BudgetLedger, EngineError, Err, ExecutionContext,
     Grant, GrantSet, Ok, ScopeRef, deadline_after,
 )
-from ebd.providers import ProviderConfig, ProviderFactory
-from ebd.storage import StorageSession
+from deepresearch.engine.providers import ProviderConfig, ProviderFactory
+from deepresearch.engine.storage import StorageSession
 
 
 class EmptyCatalog:
@@ -79,8 +79,8 @@ async def test_exact_output_is_published_before_terminal_and_survives_reopen(tmp
 @pytest.mark.asyncio
 async def test_complete_native_tool_batch_is_preflighted_before_first_dispatch(tmp_path):
     import json
-    from ebd.toolset import ToolCatalog
-    from ebd.contracts import ToolRef
+    from deepresearch.engine.toolset import ToolCatalog
+    from deepresearch.engine.contracts import ToolRef
     def handler(req):
         name = json.loads(req.content)["tools"][0]["function"]["name"]
         return httpx.Response(200, json={"choices": [{"finish_reason": "tool_calls", "message": {"role": "assistant", "content": None, "tool_calls": [
@@ -101,7 +101,7 @@ async def test_complete_native_tool_batch_is_preflighted_before_first_dispatch(t
     events = (await storage.activity.query(context)).unwrap().events
     kinds = [e.get("event", e)["kind"] for e in events]
     assert "tool.intent" not in kinds and "tool.rejected" in kinds
-    from ebd.agent import status_for
+    from deepresearch.engine.agent import status_for
     rejected = next(e.get("event", e) for e in events if e.get("event", e)["kind"] == "tool.rejected")
     assert rejected["payload"]["status"] == status_for(result.error) == result.status
     await storage.close()
@@ -383,10 +383,10 @@ async def test_python_task_cancellation_is_recorded_and_reraised(tmp_path):
 @pytest.mark.asyncio
 async def test_recorded_readonly_source_limit_can_choose_new_url_then_report(tmp_path):
     import json
-    from ebd.connections.engine import ToolPlanFactory
-    from ebd.contracts import SnapshotProposal, ToolExecutionResult, ToolRef, canonical_json, digest_bytes, to_json_value
-    from ebd.storage._ranges import line_spans
-    from ebd.toolset import ToolCatalog
+    from deepresearch.engine.connections.engine import ToolPlanFactory
+    from deepresearch.engine.contracts import SnapshotProposal, ToolExecutionResult, ToolRef, canonical_json, digest_bytes, to_json_value
+    from deepresearch.engine.storage._ranges import line_spans
+    from deepresearch.engine.toolset import ToolCatalog
     turns = 0
     def handler(req):
         nonlocal turns
@@ -435,9 +435,9 @@ async def test_recorded_readonly_source_limit_can_choose_new_url_then_report(tmp
 @pytest.mark.parametrize("fault", ["lineage_limit", "unknown_commit", "cleanup_incomplete", "model_quota", "missing_outcome", "repeat_request", "terminate_policy"])
 async def test_source_recovery_never_bypasses_fatal_boundaries_or_replays(tmp_path, fault):
     import json
-    from ebd.connections.engine import ToolPlanFactory
-    from ebd.contracts import ToolExecutionResult, ToolRef
-    from ebd.toolset import ToolCatalog
+    from deepresearch.engine.connections.engine import ToolPlanFactory
+    from deepresearch.engine.contracts import ToolExecutionResult, ToolRef
+    from deepresearch.engine.toolset import ToolCatalog
     turns = 0
     def handler(req):
         nonlocal turns
@@ -499,11 +499,11 @@ async def test_source_recovery_never_bypasses_fatal_boundaries_or_replays(tmp_pa
 
 @pytest.mark.asyncio
 async def test_large_real_document_read_keeps_citation_locator_and_text_digest(tmp_path):
-    from ebd.agent.recording import RecordedToolAction
-    from ebd.connections.engine import ToolPlanFactory
-    from ebd.contracts import SnapshotProposal, ToolRef, ToolRequest, canonical_json, digest_bytes, digest_json
-    from ebd.storage._ranges import line_spans
-    from ebd.toolset import ToolCatalog, ToolExecutor
+    from deepresearch.engine.agent.recording import RecordedToolAction
+    from deepresearch.engine.connections.engine import ToolPlanFactory
+    from deepresearch.engine.contracts import SnapshotProposal, ToolRef, ToolRequest, canonical_json, digest_bytes, digest_json
+    from deepresearch.engine.storage._ranges import line_spans
+    from deepresearch.engine.toolset import ToolCatalog, ToolExecutor
     storage, binding, context, _ = await setup(tmp_path, lambda req: pytest.fail("Document reading cannot call a model"))
     context.grants.grants += [Grant("snapshot.commit", context.scope), Grant("snapshot.read", context.scope),
                              Grant("tool.execute", object_ids=frozenset({"document.read"}))]
@@ -573,8 +573,8 @@ async def test_admission_capacity_expiry_and_retention_do_not_replenish_consumed
 @pytest.mark.asyncio
 async def test_received_usage_is_preserved_when_outcome_acknowledgement_fails(tmp_path):
     import json
-    from ebd.contracts import ToolRef
-    from ebd.toolset import ToolCatalog
+    from deepresearch.engine.contracts import ToolRef
+    from deepresearch.engine.toolset import ToolCatalog
     requests = 0
     def handler(req):
         nonlocal requests
@@ -619,8 +619,8 @@ async def test_received_usage_is_preserved_when_outcome_acknowledgement_fails(tm
 @pytest.mark.asyncio
 async def test_completed_response_cancellation_race_retains_usage_but_starts_no_tool(tmp_path):
     import json
-    from ebd.contracts import ToolRef
-    from ebd.toolset import ToolCatalog
+    from deepresearch.engine.contracts import ToolRef
+    from deepresearch.engine.toolset import ToolCatalog
     context = None
     requests = 0
     def handler(req):
@@ -653,8 +653,8 @@ async def test_completed_response_cancellation_race_retains_usage_but_starts_no_
 @pytest.mark.parametrize("completion", ["tool_calls", "final"])
 async def test_caller_cancellation_after_received_response_records_usage_and_reraises(tmp_path, cancel_phase, completion):
     import json
-    from ebd.contracts import ToolRef
-    from ebd.toolset import ToolCatalog
+    from deepresearch.engine.contracts import ToolRef
+    from deepresearch.engine.toolset import ToolCatalog
 
     caller = None
     received = None

@@ -5,10 +5,10 @@ import time
 
 import pytest
 
-from ebd.contracts import ExecutionContext, deadline_after
-from ebd.toolset.common import ToolFault
-from ebd.toolset.executor import ToolExecutor
-from ebd.toolset.scholarly import ProviderQuota, capture_limits, parse_limits
+from deepresearch.engine.contracts import ExecutionContext, deadline_after
+from deepresearch.engine.toolset.common import ToolFault
+from deepresearch.engine.toolset.executor import ToolExecutor
+from deepresearch.engine.toolset.scholarly import ProviderQuota, capture_limits, parse_limits
 
 
 def context():

@@ -16,9 +16,9 @@ import socket
 import httpx
 import uvicorn
 
-from ebd.engine import EngineSettings
-from ebd.engine.contracts import digest_bytes
-from ebd.interfaces.http import create_app
+from deepresearch.engine import EngineSettings
+from deepresearch.engine.contracts import digest_bytes
+from deepresearch.interfaces.http import create_app
 
 
 @asynccontextmanager

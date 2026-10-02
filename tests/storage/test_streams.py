@@ -4,8 +4,8 @@ import asyncio
 
 import pytest
 
-from ebd.contracts import ArtifactContent, ArtifactMetadata, Err, deadline_after, digest_bytes
-from ebd.storage import StorageSession
+from deepresearch.engine.contracts import ArtifactContent, ArtifactMetadata, Err, deadline_after, digest_bytes
+from deepresearch.engine.storage import StorageSession
 from tests.storage.test_storage import opened, context, read_all
 
 

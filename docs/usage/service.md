@@ -11,8 +11,8 @@ it does not open SQLite or another Engine for that same store. Research strategy
 remains a Python application built on public Engine interfaces.
 
 ```powershell
-uv --cache-dir .uv-cache run --locked --offline ebd serve --help
-uv --cache-dir .uv-cache run --locked --offline ebd --store local/store serve --port 8765 --origin http://localhost:5173
+uv --cache-dir .uv-cache run --locked --offline deepresearch serve --help
+uv --cache-dir .uv-cache run --locked --offline deepresearch --store local/store serve --port 8765 --origin http://localhost:5173
 ```
 
 The CLI starts one Uvicorn worker on loopback. See its help for store, port and
@@ -27,8 +27,8 @@ deployment support. Do not bind it to a public network or add wildcard origins.
 The application factory can also be embedded:
 
 ```python
-from ebd.connections import EngineSettings
-from ebd.service import create_app
+from deepresearch.engine.connections import EngineSettings
+from deepresearch.interfaces.http import create_app
 
 app = create_app(
     EngineSettings(storage_root="local/store"),
@@ -246,8 +246,8 @@ field locations/types, never echoed request bodies or credentials.
 ## Python interface
 
 ```python
-from ebd.connections import AgentRef, RunOptions
-from ebd.service import RunService
+from deepresearch.engine.connections import AgentRef, RunOptions
+from deepresearch.application.agent_runs import RunService
 
 service = RunService(engine)
 handle = await service.start_run(AgentRef("researcher", 1), question,

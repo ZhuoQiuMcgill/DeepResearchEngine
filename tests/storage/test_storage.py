@@ -10,11 +10,11 @@ import sys
 
 import pytest
 
-from ebd.contracts import (ArtifactContent, ArtifactMetadata, BudgetLedger, CheckpointEnvelope,
+from deepresearch.engine.contracts import (ArtifactContent, ArtifactMetadata, BudgetLedger, CheckpointEnvelope,
     EngineError, Err, ExecutionContext, ExecutionEvent, Grant, GrantSet, Ok,
     ScopeRef, SnapshotProposal, StateMutation, canonical_json, deadline_after, digest_bytes)
-from ebd.storage import StorageSession
-from ebd.storage._ranges import line_spans
+from deepresearch.engine.storage import StorageSession
+from deepresearch.engine.storage._ranges import line_spans
 
 
 def context(session, run="run-a", *, action="root-a", attempt=None, principal="agent-a", grants=None, ledger=None):
@@ -409,7 +409,7 @@ async def test_shared_scope_registration_multiscope_visibility_and_key_grants(tm
 
 async def test_root_lock_denies_real_second_process(tmp_path):
     session, ctx = await opened(tmp_path / "store")
-    script = "import asyncio,sys; from ebd.storage import StorageSession; r=asyncio.run(StorageSession.open(sys.argv[1])); print(r.error.code if not r.ok else 'UNEXPECTED_OWNER')"
+    script = "import asyncio,sys; from deepresearch.engine.storage import StorageSession; r=asyncio.run(StorageSession.open(sys.argv[1])); print(r.error.code if not r.ok else 'UNEXPECTED_OWNER')"
     result = await asyncio.to_thread(subprocess.run, [sys.executable, "-c", script, str(tmp_path / "store")], capture_output=True, text=True, timeout=10, check=True)
     assert result.stdout.strip() == "STORAGE_BUSY"
     await session.close()
@@ -433,8 +433,8 @@ async def test_actual_process_loss_recovery_preserves_admitted_identity(tmp_path
     await session.close()
     script = """
 import asyncio,os,sys
-from ebd.contracts import ExecutionContext,Grant,GrantSet,ScopeRef,deadline_after
-from ebd.storage import StorageSession
+from deepresearch.engine.contracts import ExecutionContext,Grant,GrantSet,ScopeRef,deadline_after
+from deepresearch.engine.storage import StorageSession
 def crash(boundary,operation_id):
     if boundary==sys.argv[2]: os._exit(61)
 async def run():

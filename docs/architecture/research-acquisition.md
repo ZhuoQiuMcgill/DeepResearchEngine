@@ -37,7 +37,7 @@ The [tool guide](../usage/tools.md), [Connections guide](../usage/connections.md
 | Evidence binding | Scoped source access; references are not permission | Bind selected sources/ranges for each consumer |
 
 The search field list below was audited against current
-`src/ebd/engine/toolset/search.py` and `catalog.py`, and exercised through real
+`src/deepresearch/engine/toolset/search.py` and `catalog.py`, and exercised through real
 Workflow discovery. Raw results are retained as JSON artifacts, available through
 bounded saved reads in the [Research API](../usage/research-service.md).
 

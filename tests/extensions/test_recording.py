@@ -1,12 +1,12 @@
 """Real scoped Storage proves hook audit persistence and recording denial."""
 import pytest
 
-from ebd.contracts import (
+from deepresearch.engine.contracts import (
     BudgetLedger, EngineError, ExecutionContext, ExecutionEvent, Grant, GrantSet,
     ScopeRef, deadline_after, digest_json, new_id,
 )
-from ebd.extensions import ExtensionRegistry, ExtensionSpec, HookDecision, HookDispatcher, HookEvent
-from ebd.storage import StorageSession
+from deepresearch.extensions import ExtensionRegistry, ExtensionSpec, HookDecision, HookDispatcher, HookEvent
+from deepresearch.engine.storage import StorageSession
 
 HOOK_KINDS = frozenset({"workflow.hook.observed", "workflow.hook.decision", "workflow.hook.failed"})
 

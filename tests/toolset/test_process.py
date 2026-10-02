@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from ebd.toolset.process import ProcessOutcome, ProcessRunner
+from deepresearch.engine.toolset.process import ProcessOutcome, ProcessRunner
 
 FIXTURE = str(Path(__file__).with_name("process_fixture.py"))
 
@@ -95,7 +95,7 @@ def test_actual_job_memory_limit_is_observed_and_tree_settles():
 
 @pytest.mark.skipif(os.name != "nt", reason="Windows pre-resume assignment gate")
 def test_failed_assignment_terminates_suspended_child_before_tool_code(monkeypatch, tmp_path):
-    from ebd.toolset import process as process_module
+    from deepresearch.engine.toolset import process as process_module
     marker = tmp_path / "must-not-exist.txt"
     monkeypatch.setattr(process_module.K, "AssignProcessToJobObject", lambda *_: 0)
     result = run("marker", extra=(str(marker),))

@@ -15,41 +15,41 @@ import pytest
 
 
 SRC = Path(__file__).resolve().parents[2] / "src"
-LEGACY_ROOTS = tuple(f"ebd.{name}" for name in (
+LEGACY_ROOTS = ("ebd",) + tuple(f"deepresearch.{name}" for name in (
     "agent", "providers", "toolset", "storage", "connections", "contracts",
     "service", "cli", "baseline",
 ))
-ENGINE_FORBIDDEN = tuple(f"ebd.{name}" for name in (
+ENGINE_FORBIDDEN = tuple(f"deepresearch.{name}" for name in (
     "workflows", "methods", "application", "interfaces", "bootstrap",
     "agent_catalog", "extensions",
 ))
-WORKFLOW_FORBIDDEN = tuple(f"ebd.{name}" for name in (
+WORKFLOW_FORBIDDEN = tuple(f"deepresearch.{name}" for name in (
     "methods", "application", "interfaces", "bootstrap",
 ))
-WORKFLOW_ENGINE_ALLOWED = ("ebd.engine.contracts", "ebd.engine.providers.tokenization")
+WORKFLOW_ENGINE_ALLOWED = ("deepresearch.engine.contracts", "deepresearch.engine.providers.tokenization")
 # Intra-layer imports remain valid, including a method package's .workflow.
-METHOD_ALLOWED = ("ebd.methods", "ebd.workflows", "ebd.engine.contracts")
+METHOD_ALLOWED = ("deepresearch.methods", "deepresearch.workflows", "deepresearch.engine.contracts")
 METHOD_HTTP = (
     "httpx", "requests", "aiohttp", "urllib3", "urllib.request", "http.client",
     "fastapi", "starlette", "uvicorn",
 )
-APPLICATION_FORBIDDEN = ("ebd.methods", "ebd.interfaces", "ebd.bootstrap")
+APPLICATION_FORBIDDEN = ("deepresearch.methods", "deepresearch.interfaces", "deepresearch.bootstrap")
 
 # Definitions, rather than mere files/re-exports, prove implementations moved.
 # Shared agent DTOs belong to application, and the legacy single-agent script
 # belongs to the CLI; neither is an implementation under methods or HTTP DTOs.
 MIGRATED_DEFINITIONS = (
-    ("ebd.engine.agent.runtime", "Runtime", ast.ClassDef),
-    ("ebd.engine.providers.factory", "ProviderFactory", ast.ClassDef),
-    ("ebd.engine.toolset.catalog", "ToolCatalog", ast.ClassDef),
-    ("ebd.engine.storage.session", "StorageSession", ast.ClassDef),
-    ("ebd.engine.connections.engine", "Engine", ast.ClassDef),
-    ("ebd.engine.contracts.core", "EngineError", ast.ClassDef),
-    ("ebd.application.agent_runs", "RunService", ast.ClassDef),
-    ("ebd.application.agent_contracts", "RegisterAgentRequest", ast.ClassDef),
-    ("ebd.interfaces.http.api", "create_app", ast.FunctionDef),
-    ("ebd.interfaces.cli.main", "main", ast.FunctionDef),
-    ("ebd.interfaces.cli.legacy_baseline", "run_baseline", ast.AsyncFunctionDef),
+    ("deepresearch.engine.agent.runtime", "Runtime", ast.ClassDef),
+    ("deepresearch.engine.providers.factory", "ProviderFactory", ast.ClassDef),
+    ("deepresearch.engine.toolset.catalog", "ToolCatalog", ast.ClassDef),
+    ("deepresearch.engine.storage.session", "StorageSession", ast.ClassDef),
+    ("deepresearch.engine.connections.engine", "Engine", ast.ClassDef),
+    ("deepresearch.engine.contracts.core", "EngineError", ast.ClassDef),
+    ("deepresearch.application.agent_runs", "RunService", ast.ClassDef),
+    ("deepresearch.application.agent_contracts", "RegisterAgentRequest", ast.ClassDef),
+    ("deepresearch.interfaces.http.api", "create_app", ast.FunctionDef),
+    ("deepresearch.interfaces.cli.main", "main", ast.FunctionDef),
+    ("deepresearch.interfaces.cli.legacy_baseline", "run_baseline", ast.AsyncFunctionDef),
 )
 
 
@@ -73,12 +73,12 @@ class ImportEdge:
 
 
 def within(module: str, root: str) -> bool:
-    # ebd.agent_catalog is not a child of the old ebd.agent package.
+    # deepresearch.agent_catalog is not a child of the old deepresearch.agent package.
     return module == root or module.startswith(root + ".")
 
 
 def compatibility(module: str) -> bool:
-    return module == "ebd" or any(within(module, root) for root in LEGACY_ROOTS)
+    return within(module, "ebd")
 
 
 def from_base(source: Source, node: ast.ImportFrom) -> str:
@@ -165,9 +165,9 @@ def import_edges(source: Source) -> tuple[ImportEdge, ...]:
             edges.extend(ImportEdge(node.lineno, name.name, ast.unparse(node)) for name in node.names)
         elif isinstance(node, ast.ImportFrom):
             base = from_base(source, node)
-            # Resolve imported members too: 'from ebd import storage' and
-            # 'from ebd.engine import contracts' identify different boundaries.
-            # Do not reject the parent ebd.engine for an allowed contracts import.
+            # Resolve imported members too: 'from deepresearch import storage' and
+            # 'from deepresearch.engine import contracts' identify different boundaries.
+            # Do not reject the parent deepresearch.engine for an allowed contracts import.
             edges.extend(ImportEdge(node.lineno, base if name.name == "*" else f"{base}.{name.name}",
                                     ast.unparse(node)) for name in node.names)
     edges.extend(literal_import_edges(source))
@@ -179,19 +179,19 @@ def violation(module: str, target: str) -> str | None:
         return None
     if any(within(target, root) for root in LEGACY_ROOTS):
         return "canonical implementation imports an old compatibility path"
-    if within(module, "ebd.engine") and any(within(target, root) for root in ENGINE_FORBIDDEN):
+    if within(module, "deepresearch.engine") and any(within(target, root) for root in ENGINE_FORBIDDEN):
         return "engine depends on a higher layer"
-    if within(module, "ebd.workflows"):
+    if within(module, "deepresearch.workflows"):
         if any(within(target, root) for root in WORKFLOW_FORBIDDEN):
             return "workflow framework depends on a concrete method or host layer"
-        if within(target, "ebd.engine") and not any(within(target, root) for root in WORKFLOW_ENGINE_ALLOWED):
+        if within(target, "deepresearch.engine") and not any(within(target, root) for root in WORKFLOW_ENGINE_ALLOWED):
             return "workflow bypasses its platform port; only engine contracts/tokenization are allowed"
-    if within(module, "ebd.methods"):
-        if within(target, "ebd") and not any(within(target, root) for root in METHOD_ALLOWED):
+    if within(module, "deepresearch.methods"):
+        if within(target, "deepresearch") and not any(within(target, root) for root in METHOD_ALLOWED):
             return "method depends outside workflows/shared contracts or its own layer"
         if any(within(target, root) for root in METHOD_HTTP):
             return "method imports HTTP transport/framework code"
-    if within(module, "ebd.application") and any(within(target, root) for root in APPLICATION_FORBIDDEN):
+    if within(module, "deepresearch.application") and any(within(target, root) for root in APPLICATION_FORBIDDEN):
         return "application imports concrete composition or an interface"
     # bootstrap is the composition root; canonical concrete imports are valid.
     return None
@@ -236,27 +236,27 @@ def test_canonical_imports_respect_layer_boundaries(sources):
 # These cases exercise the analyzer's important blind spots/false positives,
 # independently of the repository migration and without runtime EBD imports.
 @pytest.mark.parametrize("module,is_package,code,targets", [
-    ("ebd.workflows.context", False, "from .contracts import Contract", ("ebd.workflows.contracts.Contract",)),
-    ("ebd.workflows", True, "from . import contracts", ("ebd.workflows.contracts",)),
-    ("ebd.workflows.components.discovery", False, "from ..contracts import FetchItem", ("ebd.workflows.contracts.FetchItem",)),
-    ("ebd.workflows.components.discovery", False, "from ...contracts import EngineError", ("ebd.contracts.EngineError",)),
-    ("ebd.engine.connections.engine", False, "from ..contracts import EngineError", ("ebd.engine.contracts.EngineError",)),
-    ("ebd.engine.connections.engine", False, "from ... import extensions", ("ebd.extensions",)),
-    ("ebd.application.agent_runs", False, "from .agent_contracts import RunView", ("ebd.application.agent_contracts.RunView",)),
-    ("ebd.application.agent_runs", False, "from ..interfaces.http import create_app", ("ebd.interfaces.http.create_app",)),
-    ("ebd.workflows.context", False, "from ebd.engine import contracts", ("ebd.engine.contracts",)),
-    ("ebd.workflows.context", False, "from ebd.engine.providers import tokenization", ("ebd.engine.providers.tokenization",)),
-    ("ebd.engine.agent.runtime", False, "from ebd import methods as strategy", ("ebd.methods",)),
-    ("ebd.methods.baseline.workflow", False, "import ebd.engine.connections as platform, httpx as client", ("ebd.engine.connections", "httpx")),
-    ("ebd.workflows.context", False, "from ebd.engine.providers import *", ("ebd.engine.providers",)),
-    ("ebd.application.agent_runs", False, "if TYPE_CHECKING:\n    from ebd.interfaces.http import create_app", ("ebd.interfaces.http.create_app",)),
-    ("ebd.engine.agent.runtime", False, "async def run():\n    from ebd.application.agent_runs import RunService", ("ebd.application.agent_runs.RunService",)),
-    ("ebd.bootstrap.application", False, 'from importlib import import_module as load\nload("ebd.methods.baseline")', ("importlib.import_module", "ebd.methods.baseline")),
-    ("ebd.workflows.context", False, 'import importlib as loader\nloader.import_module("..storage", package=__package__)', ("importlib", "ebd.storage")),
-    ("ebd.application.agent_runs", False, '__import__("ebd.service.models")', ("ebd.service.models",)),
-    ("ebd.workflows.context", False, 'label = "from ebd.storage import StorageSession"\n# from ebd.methods import baseline', ()),
-    ("ebd.workflows.context", False, 'def load(name):\n    return name\nload("ebd.storage")', ()),
-    ("ebd.workflows.context", False, 'from importlib import import_module as load\ndef helper(load):\n    return load("ebd.storage")', ("importlib.import_module",)),
+    ("deepresearch.workflows.context", False, "from .contracts import Contract", ("deepresearch.workflows.contracts.Contract",)),
+    ("deepresearch.workflows", True, "from . import contracts", ("deepresearch.workflows.contracts",)),
+    ("deepresearch.workflows.components.discovery", False, "from ..contracts import FetchItem", ("deepresearch.workflows.contracts.FetchItem",)),
+    ("deepresearch.workflows.components.discovery", False, "from ...contracts import EngineError", ("deepresearch.contracts.EngineError",)),
+    ("deepresearch.engine.connections.engine", False, "from ..contracts import EngineError", ("deepresearch.engine.contracts.EngineError",)),
+    ("deepresearch.engine.connections.engine", False, "from ... import extensions", ("deepresearch.extensions",)),
+    ("deepresearch.application.agent_runs", False, "from .agent_contracts import RunView", ("deepresearch.application.agent_contracts.RunView",)),
+    ("deepresearch.application.agent_runs", False, "from ..interfaces.http import create_app", ("deepresearch.interfaces.http.create_app",)),
+    ("deepresearch.workflows.context", False, "from deepresearch.engine import contracts", ("deepresearch.engine.contracts",)),
+    ("deepresearch.workflows.context", False, "from deepresearch.engine.providers import tokenization", ("deepresearch.engine.providers.tokenization",)),
+    ("deepresearch.engine.agent.runtime", False, "from deepresearch import methods as strategy", ("deepresearch.methods",)),
+    ("deepresearch.methods.baseline.workflow", False, "import deepresearch.engine.connections as platform, httpx as client", ("deepresearch.engine.connections", "httpx")),
+    ("deepresearch.workflows.context", False, "from deepresearch.engine.providers import *", ("deepresearch.engine.providers",)),
+    ("deepresearch.application.agent_runs", False, "if TYPE_CHECKING:\n    from deepresearch.interfaces.http import create_app", ("deepresearch.interfaces.http.create_app",)),
+    ("deepresearch.engine.agent.runtime", False, "async def run():\n    from deepresearch.application.agent_runs import RunService", ("deepresearch.application.agent_runs.RunService",)),
+    ("deepresearch.bootstrap.application", False, 'from importlib import import_module as load\nload("deepresearch.methods.baseline")', ("importlib.import_module", "deepresearch.methods.baseline")),
+    ("deepresearch.workflows.context", False, 'import importlib as loader\nloader.import_module("..storage", package=__package__)', ("importlib", "deepresearch.storage")),
+    ("deepresearch.application.agent_runs", False, '__import__("ebd.service.models")', ("ebd.service.models",)),
+    ("deepresearch.workflows.context", False, 'label = "from deepresearch.storage import StorageSession"\n# from deepresearch.methods import baseline', ()),
+    ("deepresearch.workflows.context", False, 'def load(name):\n    return name\nload("deepresearch.storage")', ()),
+    ("deepresearch.workflows.context", False, 'from importlib import import_module as load\ndef helper(load):\n    return load("deepresearch.storage")', ("importlib.import_module",)),
 ])
 def test_analyzer_resolves_packages_and_actual_import_nodes(module, is_package, code, targets):
     source = Source(Path("synthetic.py"), module, is_package, ast.parse(code))
@@ -264,63 +264,66 @@ def test_analyzer_resolves_packages_and_actual_import_nodes(module, is_package, 
 
 
 @pytest.mark.parametrize("module,target,forbidden", [
-    ("ebd.engine.agent.runtime", "ebd.methods.baseline.BaselineMethod", True),
-    ("ebd.engine.storage.session", "ebd.workflows.contracts.ResearchRunView", True),
-    ("ebd.engine.providers.factory", "ebd.application.agent_contracts.RunView", True),
-    ("ebd.engine.contracts.core", "ebd.interfaces.http.create_app", True),
-    ("ebd.engine.connections.engine", "ebd.bootstrap.create_method_registry", True),
-    ("ebd.engine.agent.runtime", "ebd.agent_catalog.AgentCatalog", True),
-    ("ebd.engine.agent.runtime", "ebd.extensions.HookEvent", True),
-    ("ebd.workflows.context", "ebd.engine.Engine", True),
-    ("ebd.workflows.context", "ebd.engine.storage.StorageSession", True),
-    ("ebd.workflows.components.discovery", "ebd.engine.toolset.ToolCatalog", True),
-    ("ebd.workflows.context", "ebd.engine.agent.Runtime", True),
-    ("ebd.workflows.context", "ebd.engine.providers.ProviderFactory", True),
-    ("ebd.workflows.context", "ebd.engine.providers.tokenization_extra.TokenMeter", True),
-    ("ebd.workflows.context", "ebd.methods.baseline.BaselineMethod", True),
-    ("ebd.workflows.context", "ebd.application.platform.ResearchPlatformPort", True),
-    ("ebd.workflows.context", "ebd.interfaces.http.research", True),
-    ("ebd.workflows.context", "ebd.bootstrap.application", True),
-    ("ebd.methods.baseline.workflow", "ebd.engine.Engine", True),
-    ("ebd.methods.baseline.workflow", "ebd.engine.providers.tokenization.TokenMeter", True),
-    ("ebd.methods.baseline.workflow", "ebd.engine.storage.StorageSession", True),
-    ("ebd.methods.baseline.workflow", "ebd.engine.toolset.ToolCatalog", True),
-    ("ebd.methods.baseline.workflow", "ebd.application.platform.ResearchPlatformPort", True),
-    ("ebd.methods.baseline.workflow", "ebd.agent_catalog.AgentCatalog", True),
-    ("ebd.methods.baseline.workflow", "ebd.extensions.HookDispatcher", True),
-    ("ebd.methods.baseline.workflow", "httpx.AsyncClient", True),
-    ("ebd.methods.baseline.workflow", "fastapi.FastAPI", True),
-    ("ebd.methods.baseline.workflow", "urllib.request.urlopen", True),
-    ("ebd.application.agent_runs", "ebd.methods.baseline.BaselineMethod", True),
-    ("ebd.application.agent_runs", "ebd.interfaces.http.api.create_app", True),
-    ("ebd.application.agent_contracts", "ebd.interfaces.http.models.RunView", True),
-    ("ebd.application.agent_runs", "ebd.bootstrap.create_research_service", True),
-    ("ebd.extensions.types", "ebd.contracts.EngineError", True),
-    ("ebd.agent_catalog.catalog", "ebd.agent.runtime.DEFAULT_LIMITS", True),
-    ("ebd.bootstrap.application", "ebd.connections.Engine", True),
-    ("ebd.workflows.context", "ebd.engine.contracts.EngineError", False),
-    ("ebd.workflows.context", "ebd.engine.providers.tokenization.TokenMeter", False),
-    ("ebd.workflows.context", "ebd.extensions.HookEvent", False),
-    ("ebd.workflows.context", "ebd.workflows.contracts.Contract", False),
-    ("ebd.methods.baseline", "ebd.methods.baseline.workflow.BaselineMethod", False),
-    ("ebd.methods.baseline.workflow", "ebd.workflows.components.discovery.discover", False),
-    ("ebd.methods.baseline.workflow", "ebd.engine.contracts.EngineError", False),
-    ("ebd.methods.baseline.workflow", "urllib.parse.urlsplit", False),
-    ("ebd.application.agent_runs", "ebd.application.agent_contracts.RunView", False),
-    ("ebd.application.agent_runs", "ebd.engine.connections.Engine", False),
-    ("ebd.interfaces.http.api", "ebd.application.agent_contracts.RunView", False),
-    ("ebd.interfaces.cli.legacy_baseline", "ebd.engine.connections.Engine", False),
-    ("ebd.bootstrap.application", "ebd.methods.baseline.BaselineMethod", False),
-    ("ebd.bootstrap.application", "ebd.engine.Engine", False),
-    ("ebd.service.models", "ebd.application.agent_contracts.RunView", False),
-    ("ebd.service.api", "ebd.interfaces.http.api.create_app", False),
-    ("ebd.baseline", "ebd.interfaces.cli.legacy_baseline.run_baseline", False),
-    ("ebd.cli", "ebd.bootstrap.create_research_service", False),
-    ("ebd.agent.runtime", "ebd.contracts.EngineError", False),
-    ("ebd", "ebd.contracts.EngineError", False),
-    ("ebd.engine.agent.runtime", "ebd.engine.contracts.EngineError", False),
-    ("ebd.engine.agent.runtime", "ebd.engine.providers.ProviderFactory", False),
-    ("ebd.application.agent_runs", "ebd.agent_catalog.AgentCatalog", False),
+    ("deepresearch.engine.agent.runtime", "deepresearch.methods.baseline.BaselineMethod", True),
+    ("deepresearch.engine.storage.session", "deepresearch.workflows.contracts.ResearchRunView", True),
+    ("deepresearch.engine.providers.factory", "deepresearch.application.agent_contracts.RunView", True),
+    ("deepresearch.engine.contracts.core", "deepresearch.interfaces.http.create_app", True),
+    ("deepresearch.engine.connections.engine", "deepresearch.bootstrap.create_method_registry", True),
+    ("deepresearch.engine.agent.runtime", "deepresearch.agent_catalog.AgentCatalog", True),
+    ("deepresearch.engine.agent.runtime", "deepresearch.extensions.HookEvent", True),
+    ("deepresearch.workflows.context", "deepresearch.engine.Engine", True),
+    ("deepresearch.workflows.context", "deepresearch.engine.storage.StorageSession", True),
+    ("deepresearch.workflows.components.discovery", "deepresearch.engine.toolset.ToolCatalog", True),
+    ("deepresearch.workflows.context", "deepresearch.engine.agent.Runtime", True),
+    ("deepresearch.workflows.context", "deepresearch.engine.providers.ProviderFactory", True),
+    ("deepresearch.workflows.context", "deepresearch.engine.providers.tokenization_extra.TokenMeter", True),
+    ("deepresearch.workflows.context", "deepresearch.methods.baseline.BaselineMethod", True),
+    ("deepresearch.workflows.context", "deepresearch.application.platform.ResearchPlatformPort", True),
+    ("deepresearch.workflows.context", "deepresearch.interfaces.http.research", True),
+    ("deepresearch.workflows.context", "deepresearch.bootstrap.application", True),
+    ("deepresearch.methods.baseline.workflow", "deepresearch.engine.Engine", True),
+    ("deepresearch.methods.baseline.workflow", "deepresearch.engine.providers.tokenization.TokenMeter", True),
+    ("deepresearch.methods.baseline.workflow", "deepresearch.engine.storage.StorageSession", True),
+    ("deepresearch.methods.baseline.workflow", "deepresearch.engine.toolset.ToolCatalog", True),
+    ("deepresearch.methods.baseline.workflow", "deepresearch.application.platform.ResearchPlatformPort", True),
+    ("deepresearch.methods.baseline.workflow", "deepresearch.agent_catalog.AgentCatalog", True),
+    ("deepresearch.methods.baseline.workflow", "deepresearch.extensions.HookDispatcher", True),
+    ("deepresearch.methods.baseline.workflow", "httpx.AsyncClient", True),
+    ("deepresearch.methods.baseline.workflow", "fastapi.FastAPI", True),
+    ("deepresearch.methods.baseline.workflow", "urllib.request.urlopen", True),
+    ("deepresearch.application.agent_runs", "deepresearch.methods.baseline.BaselineMethod", True),
+    ("deepresearch.application.agent_runs", "deepresearch.interfaces.http.api.create_app", True),
+    ("deepresearch.application.agent_contracts", "deepresearch.interfaces.http.models.RunView", True),
+    ("deepresearch.application.agent_runs", "deepresearch.bootstrap.create_research_service", True),
+    ("deepresearch.extensions.types", "deepresearch.contracts.EngineError", True),
+    ("deepresearch.agent_catalog.catalog", "deepresearch.agent.runtime.DEFAULT_LIMITS", True),
+    ("deepresearch.bootstrap.application", "deepresearch.connections.Engine", True),
+    ("deepresearch.workflows.context", "deepresearch.engine.contracts.EngineError", False),
+    ("deepresearch.workflows.context", "deepresearch.engine.providers.tokenization.TokenMeter", False),
+    ("deepresearch.workflows.context", "deepresearch.extensions.HookEvent", False),
+    ("deepresearch.workflows.context", "deepresearch.workflows.contracts.Contract", False),
+    ("deepresearch.methods.baseline", "deepresearch.methods.baseline.workflow.BaselineMethod", False),
+    ("deepresearch.methods.baseline.workflow", "deepresearch.workflows.components.discovery.discover", False),
+    ("deepresearch.methods.baseline.workflow", "deepresearch.engine.contracts.EngineError", False),
+    ("deepresearch.methods.baseline.workflow", "urllib.parse.urlsplit", False),
+    ("deepresearch.application.agent_runs", "deepresearch.application.agent_contracts.RunView", False),
+    ("deepresearch.application.agent_runs", "deepresearch.engine.connections.Engine", False),
+    ("deepresearch.interfaces.http.api", "deepresearch.application.agent_contracts.RunView", False),
+    ("deepresearch.interfaces.cli.legacy_baseline", "deepresearch.engine.connections.Engine", False),
+    ("deepresearch.bootstrap.application", "deepresearch.methods.baseline.BaselineMethod", False),
+    ("deepresearch.bootstrap.application", "deepresearch.engine.Engine", False),
+    ("ebd.service.models", "deepresearch.application.agent_contracts.RunView", False),
+    ("ebd.service.api", "deepresearch.interfaces.http.api.create_app", False),
+    ("ebd.baseline", "deepresearch.interfaces.cli.legacy_baseline.run_baseline", False),
+    ("ebd.cli", "deepresearch.bootstrap.create_research_service", False),
+    ("ebd.agent.runtime", "deepresearch.contracts.EngineError", False),
+    ("ebd", "deepresearch.contracts.EngineError", False),
+    ("deepresearch.engine.agent.runtime", "deepresearch.engine.contracts.EngineError", False),
+    ("deepresearch.engine.agent.runtime", "deepresearch.engine.providers.ProviderFactory", False),
+    ("deepresearch.application.agent_runs", "deepresearch.agent_catalog.AgentCatalog", False),
+    ("deepresearch.engine.agent.runtime", "ebd.engine.contracts.EngineError", True),
+    ("deepresearch.workflows.context", "ebd.workflows.contracts.ContextPlan", True),
+    ("deepresearch.interfaces.http.api", "ebd.service.models.RunView", True),
 ])
 def test_policy_covers_forbidden_edges_and_intended_exceptions(module, target, forbidden):
     assert (violation(module, target) is not None) is forbidden

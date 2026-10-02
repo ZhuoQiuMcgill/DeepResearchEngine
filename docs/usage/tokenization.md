@@ -1,6 +1,6 @@
 # Retained research content token measurement
 
-`ebd.engine.providers.tokenization.TokenMeter` measures supplied text locally.
+`deepresearch.engine.providers.tokenization.TokenMeter` measures supplied text locally.
 It does not open a model conversation, make HTTP or container calls, discover a
 tokenizer, download tokenizer files or read retained Storage content. The host
 reads the authorized text and explicitly registers any locally available
@@ -11,8 +11,8 @@ shared workflow `TokenMeasurement` wire contract, including `schema_version: 1`.
 `to_dict()` returns a fresh dictionary. Workflow code converts at its boundary:
 
 ```python
-from ebd.engine.providers.tokenization import TokenMeter
-from ebd.workflows.contracts import TokenMeasurement
+from deepresearch.engine.providers.tokenization import TokenMeter
+from deepresearch.workflows.contracts import TokenMeasurement
 
 meter = TokenMeter()
 content = "Retained research evidence: 雪🙂"

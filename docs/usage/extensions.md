@@ -1,6 +1,6 @@
 # Optional Workflow hooks
 
-`ebd.extensions` supplies optional hooks independently of Workflow, method,
+`deepresearch.extensions` supplies optional hooks independently of Workflow, method,
 runner and application implementations. Its only platform dependency is the
 shared `EngineError`/`Err` contract. Registration is explicit: this package
 performs no method imports, plugin discovery, Storage access, network requests
@@ -13,7 +13,7 @@ retention, usage, publication and lifecycle recording.
 ## Public API
 
 ```python
-from ebd.extensions import (
+from deepresearch.extensions import (
     ExtensionRegistry, ExtensionSpec, HookDecision, HookDispatcher, HookEvent,
     ObserverHandler, ControlHandler, RecordCallback,
 )
@@ -189,7 +189,7 @@ existing execution and recording budgets.
 ## Example
 
 ```python
-from ebd.extensions import (
+from deepresearch.extensions import (
     ExtensionRegistry, ExtensionSpec, HookDecision, HookDispatcher, HookEvent,
 )
 

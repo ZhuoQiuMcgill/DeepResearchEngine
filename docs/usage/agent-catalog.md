@@ -1,7 +1,7 @@
 # Versioned Agent role catalog
 
-`ebd.agent_catalog` loads resource bundles and compiles ordinary
-`ebd.contracts.AgentDefinition` objects. Register and execute those definitions
+`deepresearch.agent_catalog` loads resource bundles and compiles ordinary
+`deepresearch.engine.contracts.AgentDefinition` objects. Register and execute those definitions
 through the existing `Engine`. Engine, Runtime, provider profiles, tool bindings
 and Storage retain execution authority, validation, recording and budgets.
 
@@ -11,7 +11,7 @@ edges or issue grants. Importing and loading roles needs no credentials.
 ## Public interfaces
 
 ```python
-from ebd.agent_catalog import AgentCatalog, AgentSpec, CatalogError
+from deepresearch.agent_catalog import AgentCatalog, AgentSpec, CatalogError
 
 catalog = AgentCatalog()  # Packaged resources; independent of the current directory.
 # AgentCatalog(root="path/to/trusted/roles") loads a host-owned resource directory.
@@ -67,7 +67,7 @@ actions and citations; citation correctness still needs host verification.
 before citation. To approve tools explicitly:
 
 ```python
-from ebd.contracts import ToolRef
+from deepresearch.engine.contracts import ToolRef
 
 researcher = catalog.load("baseline.researcher", 1)
 definition = researcher.compile_definition(
@@ -175,7 +175,7 @@ record. It creates no provider settings or execution permissions. A changed
 template or structured input schema therefore changes the definition digest
 even when rendered output has the same string shape.
 
-Resources ship under the existing Hatch wheel package target `src/ebd` and are
+Resources ship under the existing Hatch wheel package target `src/deepresearch` and are
 loaded through `importlib.resources`; no dependency/manifest change is required.
 
 ## Verification

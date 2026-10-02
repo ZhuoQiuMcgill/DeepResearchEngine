@@ -17,18 +17,18 @@ research evidence. See [service reference](service.md) for all routes and bounds
 From the repository root, in terminal A:
 
 ```powershell
-uv run --locked ebd --store local/my-console-store serve --port 8000 --origin http://localhost:5173
+uv run --locked deepresearch --store local/my-console-store serve --port 8000 --origin http://localhost:5173
 ```
 
 In terminal B, also at the repository root:
 
 ```powershell
 $ErrorActionPreference = 'Stop'
-$ebdApi = 'http://127.0.0.1:8000/api/v1'
-Invoke-RestMethod "$ebdApi/health"
-Invoke-RestMethod "$ebdApi/profiles"
-Invoke-RestMethod "$ebdApi/tools"
-Invoke-RestMethod "$ebdApi/agents"
+$researchApi = 'http://127.0.0.1:8000/api/v1'
+Invoke-RestMethod "$researchApi/health"
+Invoke-RestMethod "$researchApi/profiles"
+Invoke-RestMethod "$researchApi/tools"
+Invoke-RestMethod "$researchApi/agents"
 ```
 
 Health should report `ready=true`. A fresh service has no agent definitions.
@@ -39,7 +39,7 @@ These calls require no model key. OpenAPI is at
 ## 2. Register an agent
 
 ```powershell
-$ebdDefinition = @{
+$researchDefinition = @{
     schema_version = 1
     agent_id = 'console-quickstart'
     revision = 1
@@ -59,10 +59,10 @@ $ebdDefinition = @{
         max_output_tokens_per_call = 512
     }
 }
-$ebdRegistered = Invoke-RestMethod "$ebdApi/agents" -Method Post `
-    -ContentType 'application/json' -Body ($ebdDefinition | ConvertTo-Json -Depth 10)
-$ebdRegistered.agent_ref
-$ebdReportExtension = 'md'
+$researchRegistered = Invoke-RestMethod "$researchApi/agents" -Method Post `
+    -ContentType 'application/json' -Body ($researchDefinition | ConvertTo-Json -Depth 10)
+$researchRegistered.agent_ref
+$researchReportExtension = 'md'
 ```
 
 Registration returns HTTP 201 and the agent reference. Registration alone makes
@@ -81,15 +81,15 @@ definition through `GET /api/v1/agents`.
 
 After the registration block above, optionally run this alternative. It reuses
 the same profile, tools and execution limits under a different agent ID, and
-sets `$ebdRegistered` so the remaining walkthrough starts this JSON agent.
+sets `$researchRegistered` so the remaining walkthrough starts this JSON agent.
 
 ```powershell
-$ebdJsonDefinition = $ebdDefinition.Clone()
-$ebdJsonDefinition.agent_id = 'console-quickstart-json'
-$ebdJsonDefinition.instructions = 'Call scholar.crossref.search once with the supplied query and max_results=2. Return only a JSON object, without Markdown fences or commentary, with kind="bibliographic_metadata" and entries containing title (string) and doi (string or null) for each result. Include no other fields and use null for an unavailable DOI. Do not claim to have read full text.'
-$ebdJsonDefinition.output_mode = 'json'
-$ebdJsonDefinition.output_media_type = 'application/json'
-$ebdJsonDefinition.output_schema = @{
+$researchJsonDefinition = $researchDefinition.Clone()
+$researchJsonDefinition.agent_id = 'console-quickstart-json'
+$researchJsonDefinition.instructions = 'Call scholar.crossref.search once with the supplied query and max_results=2. Return only a JSON object, without Markdown fences or commentary, with kind="bibliographic_metadata" and entries containing title (string) and doi (string or null) for each result. Include no other fields and use null for an unavailable DOI. Do not claim to have read full text.'
+$researchJsonDefinition.output_mode = 'json'
+$researchJsonDefinition.output_media_type = 'application/json'
+$researchJsonDefinition.output_schema = @{
     type = 'object'
     properties = @{
         kind = @{ type = 'string'; const = 'bibliographic_metadata' }
@@ -110,10 +110,10 @@ $ebdJsonDefinition.output_schema = @{
     required = @('kind', 'entries')
     additionalProperties = $false
 }
-$ebdRegistered = Invoke-RestMethod "$ebdApi/agents" -Method Post `
-    -ContentType 'application/json' -Body ($ebdJsonDefinition | ConvertTo-Json -Depth 10)
-$ebdRegistered.agent_ref
-$ebdReportExtension = 'json'
+$researchRegistered = Invoke-RestMethod "$researchApi/agents" -Method Post `
+    -ContentType 'application/json' -Body ($researchJsonDefinition | ConvertTo-Json -Depth 10)
+$researchRegistered.agent_ref
+$researchReportExtension = 'json'
 ```
 
 JSON mode requires `application/json` and a JSON Schema for the parsed value.
@@ -132,37 +132,37 @@ This step needs `DEEPSEEK_API_KEY` in the backend's `local/.env` or environment.
 It makes real DeepSeek and Crossref requests.
 
 ```powershell
-$ebdRequest = @{
+$researchRequest = @{
     schema_version = 1
-    agent_id = $ebdRegistered.agent_ref.agent_id
-    revision = $ebdRegistered.agent_ref.revision
+    agent_id = $researchRegistered.agent_ref.agent_id
+    revision = $researchRegistered.agent_ref.revision
     input = 'Environment Based Design Yong Zeng'
     timeout_seconds = 180
     limits = @{ model_calls = 3; tool_calls = 2 }
 }
-$ebdHandle = Invoke-RestMethod "$ebdApi/runs" -Method Post `
-    -ContentType 'application/json' -Body ($ebdRequest | ConvertTo-Json -Depth 10)
-$ebdRunId = $ebdHandle.run_id
-$ebdAfter = 0
-$ebdPollUntil = [DateTime]::UtcNow.AddSeconds(210)
+$researchHandle = Invoke-RestMethod "$researchApi/runs" -Method Post `
+    -ContentType 'application/json' -Body ($researchRequest | ConvertTo-Json -Depth 10)
+$researchRunId = $researchHandle.run_id
+$researchAfter = 0
+$researchPollUntil = [DateTime]::UtcNow.AddSeconds(210)
 do {
-    $ebdView = Invoke-RestMethod "$ebdApi/runs/$ebdRunId/status"
+    $researchView = Invoke-RestMethod "$researchApi/runs/$researchRunId/status"
     do {
-        $ebdPage = Invoke-RestMethod "$ebdApi/runs/$ebdRunId/events?after_seq=$ebdAfter&limit=100"
-        $ebdPage.events | ForEach-Object { $_.event.kind }
-        $ebdAfter = $ebdPage.next_after_seq
-    } while ($ebdPage.has_more)
-    if ($ebdView.active) {
-        if ([DateTime]::UtcNow -gt $ebdPollUntil) {
-            throw "Polling stopped; inspect or cancel run $ebdRunId. Do not resubmit it automatically."
+        $researchPage = Invoke-RestMethod "$researchApi/runs/$researchRunId/events?after_seq=$researchAfter&limit=100"
+        $researchPage.events | ForEach-Object { $_.event.kind }
+        $researchAfter = $researchPage.next_after_seq
+    } while ($researchPage.has_more)
+    if ($researchView.active) {
+        if ([DateTime]::UtcNow -gt $researchPollUntil) {
+            throw "Polling stopped; inspect or cancel run $researchRunId. Do not resubmit it automatically."
         }
         Start-Sleep -Seconds 1
     }
-} while ($ebdView.active)
-$ebdView | Select-Object run_id,status,active,recording_status
-$ebdResult = Invoke-RestMethod "$ebdApi/runs/$ebdRunId/result"
-$ebdUsage = Invoke-RestMethod "$ebdApi/runs/$ebdRunId/usage"
-$ebdUsage.usage
+} while ($researchView.active)
+$researchView | Select-Object run_id,status,active,recording_status
+$researchResult = Invoke-RestMethod "$researchApi/runs/$researchRunId/result"
+$researchUsage = Invoke-RestMethod "$researchApi/runs/$researchRunId/usage"
+$researchUsage.usage
 ```
 
 The start response is HTTP 202 with an accepted handle. It is not the completed
@@ -177,28 +177,28 @@ During execution, token observations are in `model.outcome` events; terminal
 ## 4. Download the saved report
 
 ```powershell
-if (-not $ebdResult.available -or $ebdResult.status -ne 'succeeded' -or
-    $ebdResult.recording_status -ne 'complete' -or
-    $ebdResult.persistence_state -ne 'committed' -or -not $ebdResult.output_ref) {
-    $ebdResult | ConvertTo-Json -Depth 10
+if (-not $researchResult.available -or $researchResult.status -ne 'succeeded' -or
+    $researchResult.recording_status -ne 'complete' -or
+    $researchResult.persistence_state -ne 'committed' -or -not $researchResult.output_ref) {
+    $researchResult | ConvertTo-Json -Depth 10
     throw 'Run did not deliver a committed successful report'
 }
-$ebdArtifactId = $ebdResult.output_ref.artifact_id
-$ebdOffset = 0
-$ebdBytes = [System.IO.MemoryStream]::new()
+$researchArtifactId = $researchResult.output_ref.artifact_id
+$researchOffset = 0
+$researchBytes = [System.IO.MemoryStream]::new()
 try {
     do {
-        $ebdChunk = Invoke-RestMethod "$ebdApi/runs/$ebdRunId/artifacts/$ebdArtifactId`?start=$ebdOffset&max_bytes=65536"
-        $ebdDecoded = [Convert]::FromBase64String($ebdChunk.data)
-        $ebdBytes.Write($ebdDecoded, 0, $ebdDecoded.Length)
-        $ebdOffset = $ebdChunk.next_offset
-    } until ($ebdChunk.eof)
+        $researchChunk = Invoke-RestMethod "$researchApi/runs/$researchRunId/artifacts/$researchArtifactId`?start=$researchOffset&max_bytes=65536"
+        $researchDecoded = [Convert]::FromBase64String($researchChunk.data)
+        $researchBytes.Write($researchDecoded, 0, $researchDecoded.Length)
+        $researchOffset = $researchChunk.next_offset
+    } until ($researchChunk.eof)
     New-Item -ItemType Directory -Force local/client-reports | Out-Null
-    $ebdReportPath = Join-Path (Get-Location) "local/client-reports/$ebdRunId.$ebdReportExtension"
-    [System.IO.File]::WriteAllBytes($ebdReportPath, $ebdBytes.ToArray())
-    Get-Item -LiteralPath $ebdReportPath | Select-Object FullName,Length
+    $researchReportPath = Join-Path (Get-Location) "local/client-reports/$researchRunId.$researchReportExtension"
+    [System.IO.File]::WriteAllBytes($researchReportPath, $researchBytes.ToArray())
+    Get-Item -LiteralPath $researchReportPath | Select-Object FullName,Length
 } finally {
-    $ebdBytes.Dispose()
+    $researchBytes.Dispose()
 }
 ```
 
@@ -209,7 +209,7 @@ decoding so a multibyte character crossing a chunk boundary remains intact.
 To cancel an active run from a separate terminal or UI action:
 
 ```powershell
-Invoke-RestMethod "$ebdApi/runs/$ebdRunId/cancel" -Method Post
+Invoke-RestMethod "$researchApi/runs/$researchRunId/cancel" -Method Post
 ```
 
 Cancellation is cooperative; keep polling until `active=false`. After stopping
