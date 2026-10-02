@@ -1,5 +1,69 @@
 # Research acceptance — 2026-10-02
 
+## Expanded Baseline revision 3
+
+The expanded method retains revisions 1 and 2 and their role resource bundles.
+`baseline@3` pins Planner 2, Analyst 2, Writer 3 and Reviewer 2. Its whole-run
+source allowance is 20 attempted unique URLs, including failures; research is
+capped at two rounds. Default evidence capacity is 131,072 estimated tokens /
+524,288 UTF-8 bytes, with 262,144 context tokens declared by each Agent. Draft
+and review capacity is four pairs, independent of the research-round cap.
+See [expanded usage](usage/baseline-expanded.md).
+
+The first expanded run, `run_2845fc55999a4dde9804b424cd57432c`, completed two
+research rounds and attempted 18 URLs (six successful), supplying 28,749
+estimated evidence tokens. It did **not** publish a report: the first draft
+reproduced source-internal reference numbers as unknown report citations, and
+the second draft required material review changes. Its two drafts and failure
+remain retained. Writer 3 now explicitly distinguishes document reference
+numbers, duplicate copies, affiliations and case-specific claims; the bounded
+draft/review allowance was expanded to four pairs for the following run.
+
+The successful real retry is **`run_60bf6f4962cc44e28c22989fad4aba1e`**, using
+configured DeepSeek `deepseek-flash`, actual discovery/fetch and saved reads.
+
+| Observation | Recorded fact |
+| --- | --- |
+| Final full test suite | **830 passed in 92.22 seconds** |
+| Execution / recording | `succeeded` / `complete` |
+| Research | Two rounds; 14 attempted URLs, five successful and nine recorded failures |
+| Stop / analysis | `round_limit`; both analyses retain `sufficient=false` and explicit gaps |
+| Report review | First draft accepted; no structural or model review issues |
+| Evidence | 87,698 bytes / 21,925 estimated tokens; PDFs supply 30,010 and 38,941 bytes, rather than the earlier 7,488-byte prefixes |
+| Agent requests | Five model calls; all audited context limits are 262,144 and function tool lists are empty |
+| Largest full input estimate | 28,197 tokens; this run does not claim to have filled a 256k model window |
+| Actual provider usage | 86,976 input + 5,374 output = 92,350 tokens; 4,224 cached input tokens; reasoning count unknown |
+| Report | 12,710 bytes; `sha256:4cbd206532e285ccf4d243d1744bda69e397d836dc2b5be330f45362561b3ccc` |
+| Live interfaces | 470 replayed events; HTTP/SSE replay, reconnect, idempotency and byte-identical report after restart |
+| CLI report retrieval | 12,710 bytes, byte-identical to the HTTP-exported report |
+| Quota integration | Real Runtime/SQLite/read-worker test attempts exactly 20 distinct URLs across two rounds, counts one failed fetch, delivers 19 source IDs, and stops at the whole-run source cap |
+| Packaging | Isolated wheel loads 20 new role resource files, all three Baseline versions and the new schemas; model-free Workflow executes with real Storage and complete cleanup |
+
+Evidence counts and full-request preflight now use `ceil(UTF-8 bytes / 4)` and
+label the estimator, byte count and unverified status. They are separate from
+actual provider observations. Independent task/request byte limits and the
+root's shared call/storage/deadline bounds remain enforced. OpenAPI keeps 30
+paths and schema major 1; ContextPlan's accepted byte maximum expands to 1 MiB.
+
+The final report was read after publication. It substantially improves process
+coverage: ROM, environment decomposition, conflict identification and recursive
+solution generation are explained from retained primary text. It remains a
+limited synthesis centered on two primary publications. Irrelevant/acronym
+collision sources and inaccessible URLs persist; origin history, broad empirical
+comparison and some planned questions remain unresolved. Review acceptance is
+not an exhaustive research-quality or factual-truth guarantee.
+
+Local retained evidence (ignored):
+
+```text
+local/baseline-expanded-live-20261002/                  first failed retry store
+local/baseline-expanded-live-20261002-evidence/          failed view and drafts
+local/baseline-expanded-live-20261002-retry2/            successful retry store
+local/baseline-expanded-live-20261002-retry2-evidence/
+  acceptance.json, run.json, result.json, facts.json
+  report.md, analysis-1.json, analysis-2.json, review-1.json
+```
+
 ## Formal Baseline revision 2
 
 `baseline@2` is implemented as a reusable method: Planner -> bounded recorded

@@ -13,29 +13,33 @@ from .stages.roles import decision, retain, validate_findings
 from .stages.reporting import write_and_review
 
 
-def resource(name):
-    return strict_json_loads(files(__package__).joinpath("resources", "2", name).read_bytes())
+def resource(name, revision=2):
+    return strict_json_loads(files(__package__).joinpath("resources", str(revision), name).read_bytes())
 
 
-def definition():
-    spec = resource("method.json")
-    assets = {name: digest_bytes(files(__package__).joinpath("resources", "2", name).read_bytes())
+def definition(revision=2):
+    spec = resource("method.json", revision)
+    assets = {name: digest_bytes(files(__package__).joinpath("resources", str(revision), name).read_bytes())
               for name in ("method.json", "input.schema.json", "parameters.schema.json")}
     for name in ("workflow.py", "contracts.py", "stages/roles.py", "stages/reporting.py"):
         assets[name] = digest_bytes(files(__package__).joinpath(name).read_bytes())
     for name in ("discovery.py", "acquisition.py", "context_selection.py", "agents.py"):
         assets["component:" + name] = digest_bytes(files("deepresearch.workflows.components").joinpath(name).read_bytes())
-    return MethodDefinition("baseline", 2, spec["description"], resource("input.schema.json"),
-        resource("parameters.schema.json"), tuple((role["role_id"], role["revision"]) for role in spec["agent_roles"]), assets)
+    return MethodDefinition("baseline", revision, spec["description"], resource("input.schema.json", revision),
+        resource("parameters.schema.json", revision), tuple((role["role_id"], role["revision"]) for role in spec["agent_roles"]), assets)
 
 
 class BaselineMethod:
+    revision = 2
+    defaults = {"max_results": 5, "max_sources": 4, "max_rounds": 2, "max_queries": 2,
+        "context_tokens": 6000, "max_context_bytes": 32768, "max_scan_bytes": 131072,
+        "strict_tokens": False, "max_report_attempts": 2, "queries": [],
+        "search_tools": ["web.search", "scholar.crossref.search"], "source_urls": []}
+    max_source_text_bytes = 16384
+
     async def run(self, context, task_input, parameters):
         question = task_input["question"].strip()
-        options = {"max_results": 5, "max_sources": 4, "max_rounds": 2, "max_queries": 2,
-            "context_tokens": 6000, "max_context_bytes": 32768, "max_scan_bytes": 131072,
-            "strict_tokens": False, "max_report_attempts": 2, "queries": [],
-            "search_tools": ["web.search", "scholar.crossref.search"], "source_urls": [], **parameters}
+        options = {**self.defaults, **parameters}
         if not question:
             raise EngineError("INVALID_DATA", "Research question must be nonblank")
         if len(options["queries"]) > options["max_queries"]:
@@ -50,7 +54,7 @@ class BaselineMethod:
         if len(plan.queries) > options["max_queries"]:
             raise EngineError("INVALID_ROLE_OUTPUT", "Planner exceeded the selected query budget")
         plan_ref = planner["output_ref"]
-        await context.checkpoint({"kind": "baseline-plan/2", "plan_ref": plan_ref})
+        await context.checkpoint({"kind": f"baseline-plan/{self.revision}", "plan_ref": plan_ref})
         queries = options["queries"] or plan.queries
         sources, discovery_sets, rounds, fetched, searched = SourceManifest(), [], [], set(), set()
         analysis = evidence = context_plan = None
@@ -85,7 +89,8 @@ class BaselineMethod:
             evidence, context_plan = await assemble_context(context, sources, question + "\n" + "\n".join(plan.questions),
                 token_budget=options["context_tokens"], max_text_bytes=options["max_context_bytes"],
                 max_scan_bytes=options["max_scan_bytes"], strict_tokens=options["strict_tokens"],
-                recipient_role="baseline.analyst", node_prefix=prefix)
+                recipient_role="baseline.analyst", node_prefix=prefix,
+                max_source_text_bytes=self.max_source_text_bytes)
             selected_ids = [selection.item_id for selection in context_plan.selections]
             analysis, analyst = await decision(context, "baseline.analyst", {
                 "question": question, "plan": plan.to_dict(), "evidence": evidence,
@@ -97,7 +102,7 @@ class BaselineMethod:
                 "source_manifest_ref": source_ref, "analysis_ref": analyst["output_ref"],
                 "context_plan": context_plan.to_dict(), "sufficient": analysis.sufficient}
             rounds.append(round_record)
-            await context.checkpoint({"kind": "baseline-research/2", "plan_ref": plan_ref, "rounds": rounds})
+            await context.checkpoint({"kind": f"baseline-research/{self.revision}", "plan_ref": plan_ref, "rounds": rounds})
             if analysis.sufficient:
                 stop_reason = "evidence_sufficient"
                 break
@@ -113,14 +118,24 @@ class BaselineMethod:
             await retain(context, writer_plan.to_dict(), "writer-context-plan.json")
             await context.port.update(context_plan=writer_plan.to_dict())
         report_ref, drafts = await write_and_review(context, question, plan, analysis, evidence,
-            writer_plan, max_attempts=options["max_report_attempts"])
-        result = {"schema_version": 1, "method_id": "baseline", "method_revision": 2,
+            writer_plan, max_attempts=options["max_report_attempts"], revision=self.revision)
+        result = {"schema_version": 1, "method_id": "baseline", "method_revision": self.revision,
             "plan_ref": plan_ref, "rounds": rounds, "stop_reason": stop_reason,
             "discovery_sets": discovery_sets, "sources": sources.to_dict(),
             "context_plan": writer_plan.to_dict(), "drafts": drafts, "report_ref": report_ref}
         async with context.node("publish.result", "publication"):
             result_ref = await retain(context, result, "research-result.json")
-            await context.checkpoint({"kind": "baseline-result/2", "result_manifest_ref": result_ref, "report_ref": report_ref})
+            await context.checkpoint({"kind": f"baseline-result/{self.revision}", "result_manifest_ref": result_ref, "report_ref": report_ref})
             await context.port.update(report_ref=report_ref, result_manifest_ref=result_ref,
                                       context_plan=writer_plan.to_dict(), sources=sources.to_dict())
         return {**result, "result_manifest_ref": result_ref}
+
+
+class ExpandedBaselineMethod(BaselineMethod):
+    """Same research method with a 20-source allowance and 256k Agent roles."""
+
+    revision = 3
+    defaults = {**BaselineMethod.defaults, "max_sources": 20,
+        "context_tokens": 131072, "max_context_bytes": 524288, "max_scan_bytes": 262144,
+        "max_report_attempts": 4}
+    max_source_text_bytes = 65536

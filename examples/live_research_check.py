@@ -134,7 +134,7 @@ async def check(args):
                     assert {"plan.research", "r1.analyze.evidence", "report.1.review", "publish.result"} <= completed
                     result_manifest = json.loads(await saved_bytes(client,
                         f"/api/v1/research-runs/{run_id}/artifacts/{view['result_manifest_ref']['artifact_id']}"))
-                    assert result_manifest["method_revision"] == 2 and result_manifest["drafts"][-1]["accepted"]
+                    assert result_manifest["method_revision"] == request["method_revision"] and result_manifest["drafts"][-1]["accepted"]
                     assert len(view["usage"]["per_attempt_usage_refs"]) == kinds.count("model.intent")
                 assert sum(source["status"] == "succeeded" for source in view["sources"]["items"]) >= 1
                 model_intents = [row["event"]["payload"] for row in events if row["event"]["kind"] == "model.intent"]

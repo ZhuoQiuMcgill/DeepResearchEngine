@@ -456,7 +456,9 @@ async def test_full_evidence_and_review_input_fit_declared_role_capacity(role, r
             "sizing-test", "sizing-test", max_context_tokens=definition.limits["max_context_tokens"],
             output_contract=definition.output_contract))
         measurement = prepared.audit["context_measurement"]
-        assert 32768 < measurement["estimated_tokens"] <= definition.limits["max_context_tokens"]
+        assert measurement["text_bytes"] > 32768
+        assert measurement["estimated_tokens"] == (measurement["text_bytes"] + 3) // 4
+        assert measurement["estimated_tokens"] <= definition.limits["max_context_tokens"]
         assert measurement["verified_tokenizer"] is False
         assert not prepared.audit["function_tools"]
     finally:

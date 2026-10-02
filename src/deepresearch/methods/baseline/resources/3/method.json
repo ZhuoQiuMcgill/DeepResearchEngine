@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "method_id": "baseline",
+  "revision": 3,
+  "description": "Planned two-round research with up to 20 attempted sources, expanded evidence context and 256k Agent windows.",
+  "agent_roles": [
+    {
+      "role_id": "baseline.planner",
+      "revision": 2
+    },
+    {
+      "role_id": "baseline.analyst",
+      "revision": 2
+    },
+    {
+      "role_id": "baseline.writer",
+      "revision": 3
+    },
+    {
+      "role_id": "baseline.reviewer",
+      "revision": 2
+    }
+  ]
+}

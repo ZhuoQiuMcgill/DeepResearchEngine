@@ -1,4 +1,4 @@
-"""Formal baseline revision 2; the original pipeline is pinned under v1."""
-from .workflow import BaselineMethod, definition
+"""Formal baseline with preserved v1/v2 and expanded revision 3."""
+from .workflow import BaselineMethod, ExpandedBaselineMethod, definition
 
-__all__ = ["BaselineMethod", "definition"]
+__all__ = ["BaselineMethod", "ExpandedBaselineMethod", "definition"]

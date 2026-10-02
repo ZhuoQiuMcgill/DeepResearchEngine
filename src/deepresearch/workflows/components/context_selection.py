@@ -48,7 +48,8 @@ async def scan_source(context, source, question, max_scan_bytes, *, node_prefix=
 
 
 async def assemble_context(context, sources, question, *, token_budget, max_text_bytes, max_scan_bytes,
-                           strict_tokens=False, recipient_role="baseline.writer", node_prefix=""):
+                           strict_tokens=False, recipient_role="baseline.writer", node_prefix="",
+                           max_source_text_bytes=16384):
     usable = [source for source in sources.items if source.status == "succeeded"]
     async with context.node(node_prefix + "context.select", "context_selection"):
         ids = await context.select(node_prefix + "context.select", "context.select", [source.item_id for source in usable])
@@ -74,7 +75,7 @@ async def assemble_context(context, sources, question, *, token_budget, max_text
                 return header + selected
             allocation = max(1, token_budget // max(1, len(ids)) - 128)
             selected, measured, shortened = context.tokens.fit(value["text"], context.model_ref,
-                allocation, min(16384, max_text_bytes), require_verified=strict_tokens)
+                allocation, min(max_source_text_bytes, max_text_bytes), require_verified=strict_tokens)
             while selected:
                 trial = "\n\n".join(blocks + [render_block(selected, shortened)])
                 total = context.tokens.measure(trial, context.model_ref, scope="assembled",

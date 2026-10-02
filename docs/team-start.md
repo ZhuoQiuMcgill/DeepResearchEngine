@@ -1,12 +1,12 @@
 # Start building with the team
 
-Research methods are Workflows over one shared execution engine. The formal
-`baseline@2` uses Planner 1, bounded search/fetch/context rounds with Analyst 1,
-then Writer 2 and Reviewer 1 with deterministic citation-label checks. It answers
+Research methods are Workflows over one shared execution engine. The expanded
+`baseline@3` uses Planner 2, bounded search/fetch/context rounds with Analyst 2,
+then Writer 3 and Reviewer 2 with deterministic citation-label checks. It answers
 arbitrary topics; only a reviewed, accepted draft becomes the final report.
 All four roles are tool-free and use the common Runtime.
 
-Read [Baseline usage](usage/baseline.md), [Baseline architecture](architecture/baseline.md)
+Read [Expanded Baseline usage](usage/baseline-expanded.md), [Baseline architecture](architecture/baseline.md)
 and [project structure](architecture/project-structure.md). Root records actual
 checks in [research acceptance](research-acceptance.md); historical team designs
 do not override current source or contracts.
@@ -44,11 +44,11 @@ model credentials. The HTTP check exercises loopback HTTP/SSE and reopened saved
 results. Each developer uses a separate ignored store; one Engine process owns
 a store. Do not open a second Engine over an active backend's directory.
 
-## Select Baseline revision 2 explicitly
+## Select Baseline revision 3 explicitly
 
-Bootstrap registers `baseline@1`, `baseline@2` and `example.echo@1`.
+Bootstrap registers `baseline@1`, `baseline@2`, `baseline@3` and `example.echo@1`.
 `ResearchRunRequest.method_revision` still defaults to **1**. New consumers must
-send revision 2; wire `schema_version: 1` stays unchanged. V1's code and schemas
+send revision 3 for expanded budgets; wire `schema_version: 1` stays unchanged. V1's code and schemas
 remain under `methods/baseline/v1/`, with `baseline.writer@1` retained.
 `deepresearch baseline` is the older single-Agent CLI, separate from these methods.
 
@@ -57,7 +57,7 @@ not already exist, then configure the selected provider. The default named pair
 is `deepseek` / `deepseek-flash`; environment values override the file. The browser
 selects names and never receives credentials or endpoints.
 
-Use the explicit v2 request in the [usage guide](usage/baseline.md). To run a
+Use the explicit v3 request in the [expanded usage guide](usage/baseline-expanded.md). To run a
 request file in a POSIX shell:
 
 ```shell
@@ -133,7 +133,7 @@ artifacts through bounded API access; those reads do not rerun acquisition.
   referenced by the method manifest and `workflow.accepted`. Rejected drafts and
   raw Runtime validation failures are diagnostic facts, not accepted reports;
   validation failure leaves `output_ref` null and produces no valid export.
-- Default shared `storage_writes=1024` accommodates formal-flow recording.
+- Default shared `storage_writes=4096` accommodates formal-flow recording.
   Host budgets may be narrower. Nodes, rounds and children share the same tree
   budget; no method increases grants or resets allowances. All maximum method
   parameters are not guaranteed to fit simultaneously.

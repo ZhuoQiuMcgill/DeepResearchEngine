@@ -1,5 +1,10 @@
 # Baseline method revision 2
 
+Revision 3 reuses this method's stages with a whole-run allowance of 20 attempted
+URLs, at most two research rounds, 128k default evidence tokens and four 256k
+Agent roles. See [expanded usage](../usage/baseline-expanded.md). Revision 2 and
+its role resources remain available with their earlier limits.
+
 `baseline@2` is the formal, bounded research method for arbitrary questions.
 It plans research, acquires and archives sources, analyzes selected passages,
 then writes and reviews a report. Its four Agent roles run in the common Runtime
@@ -140,7 +145,7 @@ is the per-round query cap. All stages and child invocations share lineage
 budgets, deadline and cancellation. Starting another node, round or role does
 not replenish the root budget.
 
-The default shared `storage_writes=1024` provides recording capacity for the
+The default shared `storage_writes=4096` provides recording capacity for the
 formal flow's child invocations, nodes and projections. Deployments can explicitly
 narrow this allowance; other resource limits remain independent. It is still
 shared by the whole tree, and a method cannot increase its grant. Allowed input
@@ -198,7 +203,7 @@ Runtime applies its own full-request limits. These policies do not promise a
 hard exact provider token budget.
 Each formal role explicitly declares `max_context_tokens=131072` and
 `max_task_input_bytes=131072`. Current provider preflight estimates complete
-request size conservatively from UTF-8 bytes, including instructions, analysis
+request tokens as `ceil(UTF-8 bytes / 4)`, including instructions, analysis
 and a reviewed draft. It is separate from the evidence budget and is not a
 claim about the model's native capacity. Deployment/host limits can narrow it.
 

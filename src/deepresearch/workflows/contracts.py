@@ -156,7 +156,7 @@ class ContextPlan(Contract):
     recipient_role: str = Field(min_length=1, max_length=128)
     model_ref: str = Field(min_length=1, max_length=128)
     token_budget: int = Field(ge=1)
-    max_text_bytes: int = Field(ge=1, le=262144)
+    max_text_bytes: int = Field(ge=1, le=1048576)
     selections: list[ContextSelection] = Field(default_factory=list, max_length=32)
     measurement: TokenMeasurement | None = None
     context_ref: ArtifactReference | None = None

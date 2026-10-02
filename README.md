@@ -2,7 +2,7 @@
 
 A modular execution platform for reusable research methods. Agent Runtime,
 Toolset, Storage and Connections provide execution capabilities; Workflows
-compose them through an application port. The formal **`baseline@2`** plans
+compose them through an application port. The formal **`baseline@3`** plans
 research, searches and archives sources in bounded rounds, analyzes selected
 passages, then writes and reviews a cited report. Its four Agent roles are
 all tool-free and use the common Runtime.
@@ -16,7 +16,7 @@ bridges; new code uses `deepresearch.*`.
 ## Start here
 
 - [Team start](docs/team-start.md): setup, contributor interfaces and ownership.
-- [Baseline usage](docs/usage/baseline.md): explicit v2 requests, parameter schema,
+- [Expanded Baseline usage](docs/usage/baseline-expanded.md): explicit v3 requests, larger budgets,
   CLI/HTTP/SSE and saved source/report/artifact reads.
 - [Baseline architecture](docs/architecture/baseline.md): role pins, bounded
   rounds/revision, publication conditions, evidence gaps and recovery.
@@ -24,12 +24,12 @@ bridges; new code uses `deepresearch.*`.
   and dependency/migration rules.
 - [Workflow development](docs/usage/workflows.md): reusable methods and components.
 - [ResearchRun API](docs/usage/research-service.md) and [OpenAPI](docs/api/openapi.json):
-  generic frontend/application contracts. Baseline v2 details are in its own guide.
+  generic frontend/application contracts. Baseline version details are in their own guides.
 
-Bootstrap registers `baseline@1`, `baseline@2` and `example.echo@1`.
+Bootstrap registers `baseline@1`, `baseline@2`, `baseline@3` and `example.echo@1`.
 **`ResearchRunRequest.method_revision` still defaults to 1. New Baseline consumers
-must explicitly request revision 2.** HTTP `/api/v1` and wire `schema_version: 1`
-are independent of the method version. V1 and `baseline.writer@1` are retained.
+must explicitly request revision 3 for expanded budgets.** HTTP `/api/v1` and wire `schema_version: 1`
+are independent of the method version. Earlier methods and role bundles are retained.
 The historical `deepresearch baseline` command runs a separate single-Agent
 workflow; registered methods use `deepresearch research`.
 
@@ -60,30 +60,30 @@ in `local/.env`; [.env.example](.env.example) lists their names. Preserve an
 existing file. Configuration resolves API values lazily on the host; browser
 requests select named profiles and models rather than carrying credentials.
 
-## Run Baseline revision 2
+## Run Baseline revision 3
 
 A minimal PowerShell request can concern any research question:
 
 ```powershell
 $request = @{
     schema_version = 1
-    client_request_id = "baseline-v2-" + [guid]::NewGuid().ToString("N")
+    client_request_id = "baseline-v3-" + [guid]::NewGuid().ToString("N")
     method_id = "baseline"
-    method_revision = 2
+    method_revision = 3
     input = @{ question = "What evidence supports urban tree planting to reduce heat, and what are its limitations?" }
-    parameters = @{ max_rounds = 2; max_queries = 2; max_sources = 4; max_report_attempts = 2 }
+    parameters = @{ max_rounds = 2; max_queries = 2; max_sources = 20; max_report_attempts = 4 }
     profile_ref = "deepseek"
     model_ref = "deepseek-flash"
-    timeout_seconds = 600.0
+    timeout_seconds = 1800.0
 } | ConvertTo-Json -Depth 8
-$request | uv run --locked deepresearch --store local/my-baseline-v2 research
+$request | uv run --locked deepresearch --store local/my-baseline-v3 research
 ```
 
 This uses real search/fetch/read tools and the selected model profile. Provider
 credentials and access are required. For a POSIX shell, a request file can be
 passed with `research < examples/baseline-request.json`; PowerShell uses
 `Get-Content -Raw examples/baseline-request.json | uv run --locked deepresearch
---store local/my-baseline-v2 research`. Check its version and use a fresh
+--store local/my-baseline-v3 research`. Check its version and use a fresh
 `client_request_id` for new intent. Repeating the same identity and full request
 returns the original run; changing its body is a conflict.
 
@@ -110,9 +110,9 @@ Only an accepted report is exposed as the final report; successful execution
 also requires committed terminal recording and settled cleanup. Model review
 and deterministic label checks do not guarantee external factual truth.
 
-Bounds come from the v2 [parameter schema](src/deepresearch/methods/baseline/resources/2/parameters.schema.json)
+Bounds come from the v3 [parameter schema](src/deepresearch/methods/baseline/resources/3/parameters.schema.json)
 and the host's shared budgets. The default shared recording allowance is
-`storage_writes=1024` to accommodate the formal flow's nodes, projections and
+`storage_writes=4096` to accommodate the formal flow's nodes, projections and
 child records. Host deployments may narrow it; rounds and children do not reset
 it. This capacity does not guarantee all parameter maxima can be exhausted
 simultaneously. Evidence estimates and unknown counts remain distinct from
@@ -162,3 +162,8 @@ actually performed. Controlled fault tests do not replace external model/tool
 acceptance. Local vLLM Qwen needs its configured deployment and live verification.
 Discovery/source availability and provider access remain external constraints;
 OpenAlex quota state persists across restart.
+
+Expanded defaults are 20 attempted unique URLs across at most two rounds, 128k
+evidence tokens and 256k context per Agent. The method retains its existing
+selection/review policy. See the [expanded guide](docs/usage/baseline-expanded.md)
+for token estimates, byte limits and current research-quality limitations.

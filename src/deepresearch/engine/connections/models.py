@@ -61,10 +61,10 @@ class EngineSettings:
     fetch_concurrency: int = 1
     profiles: dict[str, Any] = dataclasses.field(default_factory=dict, repr=False)
     limits: JsonObject = dataclasses.field(default_factory=lambda: {
-        "model_calls": 32, "tool_calls": 64, "repairs": 2,
-        "source_bytes": 33554432, "storage_bytes": 67108864,
-        "storage_writes": 1024, "storage_reads": 1024, "status_reads": 1024,
-        "storage_read_bytes": 67108864,
+        "model_calls": 32, "tool_calls": 128, "repairs": 2,
+        "source_bytes": 67108864, "storage_bytes": 134217728,
+        "storage_writes": 4096, "storage_reads": 2048, "status_reads": 2048,
+        "storage_read_bytes": 134217728,
         "descendants": 16,
     })
 

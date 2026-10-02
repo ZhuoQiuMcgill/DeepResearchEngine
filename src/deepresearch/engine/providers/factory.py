@@ -220,7 +220,8 @@ class ProviderSession:
         # real byte bound remains independently enforced above.
         context_value = ({"instructions": body["instructions"], "input": body["input"], "tools": body.get("tools", [])}
                          if config.provider == "openai" else {"messages": body["messages"], "tools": body.get("tools", [])})
-        context_estimate = len(_bytes(context_value))
+        context_bytes = len(_bytes(context_value))
+        context_estimate = (context_bytes + 3) // 4
         context_ceiling = request.max_context_tokens
         if config.provider == "vllm":
             server_ceiling = config.deployment_manifest["max_model_len"] - body["max_tokens"]
@@ -239,6 +240,7 @@ class ProviderSession:
             "function_tools": [{"tool": {"name": t.name, "revision": t.revision}, "provider_name": t.provider_name, "input_schema_digest": digest_json(t.input_schema)} for t in request.tools],
             "safe_settings": dict(config.settings),
             "context_measurement": {"estimated_tokens": context_estimate, "quality": "utf8_byte_estimate", "verified_tokenizer": False,
+                                    "estimator": "utf8-byte-size/4", "text_bytes": context_bytes,
                                     "max_context_tokens": context_ceiling, "measurement_ref": None},
             "deployment_manifest_ref": config.deployment_manifest["manifest_ref"] if config.provider == "vllm" else None,
             "request_body_digest": digest_bytes(encoded),

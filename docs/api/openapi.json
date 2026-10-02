@@ -250,7 +250,7 @@
             ]
           },
           "max_text_bytes": {
-            "maximum": 262144.0,
+            "maximum": 1048576.0,
             "minimum": 1.0,
             "title": "Max Text Bytes",
             "type": "integer"

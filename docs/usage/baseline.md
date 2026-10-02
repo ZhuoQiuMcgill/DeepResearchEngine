@@ -1,5 +1,9 @@
 # Run Baseline revision 2
 
+For the expanded 20-source, two-round configuration with 256k Agent windows,
+use [Baseline revision 3](baseline-expanded.md). This guide retains revision 2's
+parameter and role limits; `examples/baseline-request.json` now selects revision 3.
+
 `baseline@2` answers an arbitrary research question through planning, bounded
 search/fetch rounds, selected-evidence analysis, writing and review. It uses real
 network tools, Storage and model calls. The four roles are tool-free; Workflow
@@ -15,7 +19,7 @@ uv sync --locked
 uv run --locked deepresearch methods
 ```
 
-Bootstrap exposes `baseline@1`, `baseline@2` and `example.echo@1`. The request
+Bootstrap exposes `baseline@1`, `baseline@2`, `baseline@3` and `example.echo@1`. The request
 still defaults to `method_revision: 1`; **send revision 2 explicitly** for the
 formal method. Wire `schema_version` stays 1. Revision 2 pins Planner 1, Analyst 1,
 Writer 2 and Reviewer 1. V1 remains available with its own parameter schema.
@@ -85,7 +89,7 @@ come from method execution. Planner still runs with supplied queries or URLs.
 Top-level `timeout_seconds` must be greater than 0 and at most 1,800 (default
 600). All rounds, tools and child roles share the root's deadline, cancellation
 and lineage budgets. These method parameters do not replenish those budgets.
-Default shared `storage_writes=1024` accommodates formal-flow recording, including
+Default shared `storage_writes=4096` accommodates formal-flow recording, including
 child records and node projections. Deployments may explicitly narrow the
 allowance; other limits remain unchanged. The entire tree shares it, so the host
 does not guarantee every maximum parameter can be consumed simultaneously.
@@ -97,8 +101,8 @@ registered tokenizer for the target model, and is not a promise of exact provide
 token accounting. Observed provider usage is a separate run aggregate.
 
 The four formal role resources explicitly set `max_context_tokens=131072` and
-`max_task_input_bytes=131072`. The current provider preflight conservatively
-counts each rendered UTF-8 byte as an estimated token; the complete request
+`max_task_input_bytes=131072`. Current provider preflight estimates
+`ceil(rendered UTF-8 bytes / 4)` tokens; the complete request
 includes instructions, plan, analysis and, for Reviewer, the draft. This is
 separate from the evidence estimator and accommodates their combined inputs.
 It does not describe the model's native context size. A vLLM deployment's

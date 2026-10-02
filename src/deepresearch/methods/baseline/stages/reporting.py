@@ -27,7 +27,7 @@ def citation_issues(report, source_ids):
     return issues
 
 
-async def write_and_review(context, question, plan, analysis, evidence, context_plan, *, max_attempts):
+async def write_and_review(context, question, plan, analysis, evidence, context_plan, *, max_attempts, revision=2):
     feedback, drafts = [], []
     source_ids = [selection.item_id for selection in context_plan.selections]
     for attempt in range(1, max_attempts + 1):
@@ -52,7 +52,7 @@ async def write_and_review(context, question, plan, analysis, evidence, context_
         drafts.append(record)
         async with context.node(prefix + ".validation", "report_validation", {"accepted": accepted}):
             await retain(context, record, prefix + ".validation.json")
-            await context.checkpoint({"kind": "baseline-review/2", "attempt": attempt, "drafts": drafts})
+            await context.checkpoint({"kind": f"baseline-review/{revision}", "attempt": attempt, "drafts": drafts})
         if accepted:
             return writer["output_ref"], drafts
     raise EngineError("REPORT_REVIEW_FAILED", "Report did not pass bounded review and citation checks",

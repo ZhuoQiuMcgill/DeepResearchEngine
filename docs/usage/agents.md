@@ -81,9 +81,9 @@ children share the same ledger. Token usage missing from a dispatched attempt
 remains unknown/partial. Strict token budgeting requires a verified tokenizer
 profile and is rejected by these connectors. Automatic model retries/repairs
 are disabled; nonzero requests are rejected rather than silently replayed.
-`max_context_tokens` applies an advisory UTF-8 byte estimate to rendered context,
+`max_context_tokens` applies the advisory `ceil(UTF-8 bytes / 4)` token estimate to rendered context,
 including schemas and native history. The request audit records this measurement
-as unverified. It can reject a request conservatively and does not prove the
+as unverified with the estimator and text byte count. It does not prove the
 provider's exact token count. The independent request byte cap remains enforced.
 
 Every `model.outcome` contains normalized per-attempt token usage in Storage,
