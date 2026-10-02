@@ -3,9 +3,12 @@
 `ResearchRunService` owns complete method execution over one caller-owned Engine.
 `MethodRegistry` pins the method revision and its agent roles; the shared request
 and view models are `deepresearch.workflows.ResearchRunRequest` and `ResearchRunView`.
-Bootstrap supplies the shipped `baseline/1` and model-free `example.echo/1` methods.
+Bootstrap supplies `baseline@1`, formal `baseline@2` and model-free `example.echo@1`.
 A workflow root has no agent identity, provider, model grant or credentials.
-The baseline invokes its writer only after acquiring and selecting saved evidence.
+The formal baseline plans, acquires and selects saved evidence, analyzes gaps,
+then writes and reviews a report. The Planner sees the question before acquisition;
+all evidence-consuming roles receive only explicitly selected saved text.
+See [Baseline usage](baseline.md) and [method design](../architecture/baseline.md).
 
 ## Python composition
 
@@ -88,7 +91,7 @@ The HTTP request body is the same `ResearchRunRequest` used by Python consumers.
 | `GET /research-runs/{run_id}/objects` | Saved object descriptors and cursor |
 | `GET /research-runs/{run_id}/artifacts/{artifact_id}` | Bounded saved discovery/manifests/context bytes |
 | `GET /research-runs/{run_id}/result` | Validated view with report/result/checkpoint references |
-| `GET /research-runs/{run_id}/usage` | Available observed writer usage or null |
+| `GET /research-runs/{run_id}/usage` | Cumulative observed usage across all roles or null |
 | `GET /research-runs/{run_id}/report?start=0&max_bytes=65536` | Explicit bounded report bytes |
 
 Start a complete baseline with a configured named profile:
@@ -98,7 +101,7 @@ Start a complete baseline with a configured named profile:
   "schema_version": 1,
   "client_request_id": "ebd-question-001",
   "method_id": "baseline",
-  "method_revision": 1,
+  "method_revision": 2,
   "input": {"question": "What is Environment Based Design?"},
   "parameters": {"max_sources": 3},
   "profile_ref": "deepseek",
@@ -112,6 +115,9 @@ For execution without model credentials or network, choose `example.echo` with
 real Storage. It is a separate integration method, not a simulated baseline.
 All methods validate the chosen profile/model against `engine.list_profiles()`;
 validating configured names does not resolve credentials.
+The request's method revision still defaults to 1 for compatibility. Select
+revision 2 explicitly for the formal Baseline; method revisions and wire v1 are
+independent.
 
 A saved source read has this body:
 
@@ -131,13 +137,15 @@ after reopen, begin a fresh selected-range read. Sources and reports remain
 readable after reopen.
 Sources, context and result metadata do not automatically return source/report
 text. Token measurements distinguish verified counts from named estimates;
-`usage` retains the writer's observed provider aggregate and its completeness.
+`usage` retains the cumulative observed provider aggregate and its completeness,
+including available consumption from failed roles. Unknown counts remain null.
 
 ## Admission, terminal recording and recovery
 
 The service persists `research.run/1` with CAS versions, a full canonical request
 fingerprint, selected profile/model and method/agent resource pins. It publishes
-a method manifest and preserves method-created manifests and checkpoints in the
+the full canonical request as `research-request.json`, links it from the
+`research-method.json` manifest and the accepted event, and preserves method-created manifests and checkpoints in the
 workflow scope. A provisioned descriptor also retains the bounded request
 identity, so even an uncertain first state acknowledgement cannot silently start
 a replacement execution.
@@ -158,7 +166,7 @@ A saved run without complete terminal evidence is `interrupted`. Checkpoints are
 data and `automatic_resume` is always false.
 
 Cancellation sets `cancellation_requested` and records a committed request;
-the response remains active until method/tool/writer execution settles.
+the response remains active until method/tool/Agent execution settles.
 Failure facts use bounded cleanup recording;
 `port.update(cleanup=True, **fields)` requests the same ledger/lease and a bounded
 cleanup context. The application requests the exact `research.run/1` cleanup
@@ -176,7 +184,7 @@ work reachable; callers should retain Engine ownership until it settles.
 
 Every SSE frame's `id` is its committed Storage `recorded_seq`; `event` is the
 recorded event kind, and `data` contains that event and its receipt. The stream
-includes child writer events and drains committed history when execution ends.
+includes every child role's events and drains committed history when execution ends.
 Use `after_seq` or the browser's `Last-Event-ID` to reconnect; when both are
 present, replay starts after their maximum. Positions must be nonnegative signed
 64-bit integers. Drain paginated polling using `has_more` and `next_after_seq`.

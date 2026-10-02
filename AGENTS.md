@@ -5,12 +5,15 @@ in the current root chat and its in-chat subagents. Do not contact or dispatch
 work to the former module-team chats. Their reviewed documents remain design
 references, not active work assignments.
 
-The platform and Stage 1/2 Workflow baseline are delivered. Methods, Agent
+The platform and formal `baseline@2` Workflow are delivered. Methods, Agent
 specifications, optional Hooks, application ownership and HTTP/CLI are separate
 modules. Current source, docs/team-start.md and
 docs/architecture/project-structure.md define the development boundaries;
 docs/research-acceptance.md records actual checks. EBD strategy and console work
 consume those interfaces and are outside this baseline delivery.
+The formal method composes planning, bounded acquisition/analysis rounds and
+draft/review stages. Pin method revision 2 explicitly; revision 1 is retained
+for existing consumers. See docs/architecture/baseline.md and docs/usage/baseline.md.
 
 Read `CONTRIBUTING.md`, `docs/team-start.md`,
 `docs/teams/consumer-contract-v1.md`, `docs/teams/platform-contract-v1.md`

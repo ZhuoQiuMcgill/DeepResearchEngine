@@ -196,15 +196,19 @@ class ResearchRunService:
             try:
                 # First save the identity before manifests/events or method dispatch.
                 await port.commit(view)
+                request_ref = await port.publish(canonical_json(request.to_dict()),
+                    "application/json", "research-request.json")
                 manifest = {"schema_version": 1, "method": definition.to_dict(),
                     "request_fingerprint": fingerprint,
+                    "request_ref": request_ref,
                     "profile_ref": request.profile_ref, "model_ref": request.model_ref,
                     "tools": [tool.to_dict() for tool in tools],
                     "roles": [spec.ref for spec, _ in roles.values()]}
                 live.method_manifest_ref = await port.publish(canonical_json(manifest),
                     "application/json", "research-method.json")
                 await port.commit(view)
-                await port.emit("workflow.accepted", {**intent, "method_manifest_ref": live.method_manifest_ref})
+                await port.emit("workflow.accepted", {**intent, "request_ref": request_ref,
+                    "method_manifest_ref": live.method_manifest_ref})
                 hooks = live.hooks = HookDispatcher(self.extension_registry, port.record_hook)
                 context = WorkflowContext(view.run_id, request.model_ref, port, hooks, self.token_meter)
                 if self._closing:
@@ -304,6 +308,11 @@ class ResearchRunService:
                 "result_manifest_ref": final.result_manifest_ref.to_dict() if final.result_manifest_ref else None,
                 "checkpoint_ref": final.checkpoint_ref,
             }
+            if len(canonical_json(terminal_payload)) > 16384:
+                # The authoritative projection retains all nodes. Long methods
+                # must still be able to acknowledge a bounded terminal event.
+                nodes = terminal_payload.pop("nodes")
+                terminal_payload.update(node_count=len(nodes), nodes_sha256=digest_json(nodes))
             if status != "succeeded":
                 with_sources = {**terminal_payload, "sources": final.sources.to_dict()}
                 if len(canonical_json(with_sources)) <= 16384:

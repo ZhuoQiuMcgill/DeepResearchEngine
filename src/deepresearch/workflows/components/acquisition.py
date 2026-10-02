@@ -6,13 +6,15 @@ from deepresearch.engine.contracts import EngineError
 from deepresearch.workflows.contracts import SourceManifest, SourceRecord, TokenMeasurement
 
 
-async def acquire(context, manifest):
-    records = [SourceRecord(item_id=item.item_id, url=item.url, discovery_ref=item.discovery_ref,
+async def acquire(context, manifest, *, previous=None):
+    records = [source.model_copy(deep=True) for source in (previous.items if previous else [])]
+    offset = len(records)
+    records += [SourceRecord(item_id=item.item_id, url=item.url, discovery_ref=item.discovery_ref,
         status="pending") for item in manifest.items]
     sources = SourceManifest(items=records)
     await context.port.update(sources=sources.to_dict())
-    seen = {}
-    for index, item in enumerate(manifest.items):
+    seen = {source.url: source for source in records[:offset] if source.status == "succeeded"}
+    for index, item in enumerate(manifest.items, start=offset):
         async with context.node(f"acquisition.{item.item_id}", "acquisition", {"item_id": item.item_id, "url": item.url}) as node:
             if item.url in seen:
                 record = seen[item.url].model_copy(deep=True, update={"item_id": item.item_id, "discovery_ref": item.discovery_ref})

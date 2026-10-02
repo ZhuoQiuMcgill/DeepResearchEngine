@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import json
 
 import httpx
 import pytest
@@ -13,10 +14,10 @@ from deepresearch.application.platform import RESEARCH_STATE_KEY
 from deepresearch.engine.connections import Engine, EngineSettings
 from deepresearch.engine.contracts import (
     EngineError, Err, RunRef, SnapshotProposal, ToolExecutionResult,
-    canonical_json, digest_bytes, new_id,
+    canonical_json, digest_bytes, digest_json, new_id,
 )
 from deepresearch.engine.providers.tokenization import TokenMeter
-from deepresearch.methods.baseline import BaselineMethod, definition as baseline_definition
+from deepresearch.methods.baseline.v1 import BaselineMethod, definition as baseline_definition
 from deepresearch.engine.providers import ProviderConfig, ProviderFactory
 from deepresearch.workflows import MethodDefinition, MethodRegistry, ResearchRunRequest, SourceRange
 
@@ -68,6 +69,73 @@ async def terminal(service, run_id):
             return view
         await asyncio.sleep(0.01)
     pytest.fail("Research execution did not settle")
+
+
+@pytest.mark.asyncio
+async def test_original_request_and_pins_remain_readable_after_restart(tmp_path):
+    engine = (await Engine.open(settings(tmp_path))).unwrap()
+    service = service_for(engine, ReportMethod())
+    submitted = request()
+    try:
+        view = await terminal(service, (await service.start_run(submitted)).run_id)
+        assert view.status == "succeeded", view.error
+        rows = (await service.events(view.run_id))["events"]
+        accepted = next(row["event"]["payload"] for row in rows if row["event"]["kind"] == "workflow.accepted")
+        request_id = accepted["request_ref"]["artifact_id"]
+        manifest_id = accepted["method_manifest_ref"]["artifact_id"]
+    finally:
+        assert (await service.close()).complete
+        assert (await engine.close()).complete
+    reopened = (await Engine.open(settings(tmp_path))).unwrap()
+    unused_method = ReportMethod()
+    restored = service_for(reopened, unused_method)
+    try:
+        saved = await restored.start_run(submitted)
+        chunk = await restored.read_artifact(saved.run_id, request_id)
+        content = base64.b64decode(chunk["data"])
+        assert chunk["eof"] and json.loads(content) == submitted.to_dict()
+        assert digest_json(json.loads(content)) == accepted["request_fingerprint"]
+        manifest_chunk = await restored.read_artifact(saved.run_id, manifest_id)
+        manifest = json.loads(base64.b64decode(manifest_chunk["data"]))
+        assert manifest["request_ref"] == accepted["request_ref"]
+        assert manifest["method"] == saved.pins["method"]
+        assert unused_method.calls == 0
+    finally:
+        assert (await restored.close()).complete
+        assert (await reopened.close()).complete
+
+
+@pytest.mark.asyncio
+async def test_long_method_has_bounded_terminal_without_losing_saved_nodes(tmp_path):
+    class LongMethod(ReportMethod):
+        async def run(self, context, task_input, parameters):
+            for index in range(4):
+                async with context.node(f"long.{index}", "discovery", {"query": "x" * 8000}):
+                    pass
+            return await super().run(context, task_input, parameters)
+    engine = (await Engine.open(settings(tmp_path))).unwrap()
+    service = service_for(engine, LongMethod())
+    try:
+        view = await terminal(service, (await service.start_run(request())).run_id)
+        assert view.status == "succeeded", view.error
+        rows = (await service.events(view.run_id))["events"]
+        payload = next(row["event"]["payload"] for row in rows if row["event"]["kind"] == "workflow.finished")
+        assert "nodes" not in payload
+        assert payload["node_count"] == len(view.nodes)
+        assert payload["nodes_sha256"] == digest_json([node.to_dict() for node in view.nodes])
+        assert len(canonical_json(payload)) <= 16384
+        assert all(node.status == "succeeded" for node in view.nodes)
+    finally:
+        assert (await service.close()).complete
+        assert (await engine.close()).complete
+    reopened = (await Engine.open(settings(tmp_path))).unwrap()
+    restored = service_for(reopened, LongMethod())
+    try:
+        saved = await restored.get_run(view.run_id)
+        assert saved.status == "succeeded" and saved.nodes == view.nodes
+    finally:
+        assert (await restored.close()).complete
+        assert (await reopened.close()).complete
 
 
 @pytest.mark.asyncio

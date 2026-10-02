@@ -1,181 +1,164 @@
 # DeepResearch Engine
 
-A modular execution platform for reusable deep research methods.
-The engine provides Agent Runtime, Toolset, Storage and Connections. Reusable
-Workflows compose those capabilities into methods. The new Baseline separates
-discovery, URL-manifest acquisition, saved evidence selection and a tool-free
-Writer. Development runs in one chat with in-chat subagents;
-the earlier cross-session team design is retained as historical context.
+A modular execution platform for reusable research methods. Agent Runtime,
+Toolset, Storage and Connections provide execution capabilities; Workflows
+compose them through an application port. The formal **`baseline@2`** plans
+research, searches and archives sources in bounded rounds, analyzes selected
+passages, then writes and reviews a cited report. Its four Agent roles are
+all tool-free and use the common Runtime.
 
-The Python package is `deepresearch`, the installed distribution is
-`deepresearch-engine`, and the CLI command is `deepresearch`. The eight platform
-blocks live in `src/deepresearch/`. Environment-Based Design (EBD) is a future
-research method under `methods/ebd`, not the name or owner of the platform.
-`src/ebd/__init__.py` is the only deprecated import bridge; the old `ebd` CLI
-is also an alias. See the [directory and migration map](docs/architecture/project-structure.md).
+Research questions can concern any topic. Environment-Based Design (EBD) is a
+future method under `methods/ebd`, not the platform's name or scope. The Python
+package is `deepresearch`, the distribution is `deepresearch-engine`, and the CLI
+is `deepresearch`. The deprecated `ebd` namespace and CLI remain compatibility
+bridges; new code uses `deepresearch.*`.
 
-## Start working with the team
+## Start here
 
-Read [Team start](docs/team-start.md) for environment setup, role-specific
-entry points, interface ownership and the first integration milestone.
-Method authors use the [Workflow guide](docs/usage/workflows.md) and
-[implemented structure](docs/architecture/project-structure.md).
-Console authors use the [ResearchRun API](docs/usage/research-service.md)
-and the generated [OpenAPI contract](docs/api/openapi.json). These are the
-current onboarding documents; old team briefs are historical design records.
+- [Team start](docs/team-start.md): setup, contributor interfaces and ownership.
+- [Baseline usage](docs/usage/baseline.md): explicit v2 requests, parameter schema,
+  CLI/HTTP/SSE and saved source/report/artifact reads.
+- [Baseline architecture](docs/architecture/baseline.md): role pins, bounded
+  rounds/revision, publication conditions, evidence gaps and recovery.
+- [Project structure](docs/architecture/project-structure.md): module responsibilities
+  and dependency/migration rules.
+- [Workflow development](docs/usage/workflows.md): reusable methods and components.
+- [ResearchRun API](docs/usage/research-service.md) and [OpenAPI](docs/api/openapi.json):
+  generic frontend/application contracts. Baseline v2 details are in its own guide.
 
-## Environment
+Bootstrap registers `baseline@1`, `baseline@2` and `example.echo@1`.
+**`ResearchRunRequest.method_revision` still defaults to 1. New Baseline consumers
+must explicitly request revision 2.** HTTP `/api/v1` and wire `schema_version: 1`
+are independent of the method version. V1 and `baseline.writer@1` are retained.
+The historical `deepresearch baseline` command runs a separate single-Agent
+workflow; registered methods use `deepresearch research`.
 
-- Use uv for Python, virtual environments, dependency resolution, and execution.
-- Support Python 3.11 and later, with Python 3.11 as the shared development version.
-- Declare dependencies in `pyproject.toml` and keep the generated `uv.lock` in version control.
-- Keep virtual environments, local Python installations, caches, and credentials out of version control.
+## Environment and model-free checks
 
-From the project root:
+Use Python 3.11+ and uv from the project root:
 
 ```shell
 uv sync --locked
 uv run --locked python --version
-```
-
-Add a runtime dependency with `uv add PACKAGE`, or a development dependency
-with `uv add --dev PACKAGE`. Commit the resulting changes to `pyproject.toml`
-and `uv.lock` together. Run Python programs through `uv run --locked`.
-
-Runtime dependencies and development checks are pinned in the lockfile.
-Credentials belong in ignored `local/.env`; `.env.example` lists the variable
-names. API values are loaded lazily and never included in worker requests or
-serializable configuration.
-
-## Platform scope
-
-1. Agent definition and runtime: define and execute agents against real models.
-2. CLI toolset: discover registered tool definitions and execute real commands.
-3. Storage and recording: persist state, artifacts, and automatic execution events.
-4. Connections: bind agents to models, tools, storage, and permitted agent invocations.
-
-## Runnable entry points
-
-```shell
-uv sync --locked
 uv run --locked pytest -q
 uv run --locked deepresearch methods
 uv run --locked python examples/workflow_method.py
 uv run --locked python examples/workflow_hooks.py
 uv run --locked python examples/live_research_check.py
+```
+
+The default examples use `example.echo` and real SQLite/artifact Storage, with
+no model calls or credentials. The HTTP check exercises loopback HTTP/SSE and
+saved report reads after restart. See [research acceptance](docs/research-acceptance.md)
+for actual checks and their scope; example commands are not an assertion that
+live Baseline acceptance passed.
+
+Runtime/development dependencies are locked in `pyproject.toml` and `uv.lock`.
+Only root changes the shared environment and Git in this checkout. Keep virtual
+environments, caches, runtime stores and credentials ignored. Credentials belong
+in `local/.env`; [.env.example](.env.example) lists their names. Preserve an
+existing file. Configuration resolves API values lazily on the host; browser
+requests select named profiles and models rather than carrying credentials.
+
+## Run Baseline revision 2
+
+A minimal PowerShell request can concern any research question:
+
+```powershell
+$request = @{
+    schema_version = 1
+    client_request_id = "baseline-v2-" + [guid]::NewGuid().ToString("N")
+    method_id = "baseline"
+    method_revision = 2
+    input = @{ question = "What evidence supports urban tree planting to reduce heat, and what are its limitations?" }
+    parameters = @{ max_rounds = 2; max_queries = 2; max_sources = 4; max_report_attempts = 2 }
+    profile_ref = "deepseek"
+    model_ref = "deepseek-flash"
+    timeout_seconds = 600.0
+} | ConvertTo-Json -Depth 8
+$request | uv run --locked deepresearch --store local/my-baseline-v2 research
+```
+
+This uses real search/fetch/read tools and the selected model profile. Provider
+credentials and access are required. For a POSIX shell, a request file can be
+passed with `research < examples/baseline-request.json`; PowerShell uses
+`Get-Content -Raw examples/baseline-request.json | uv run --locked deepresearch
+--store local/my-baseline-v2 research`. Check its version and use a fresh
+`client_request_id` for new intent. Repeating the same identity and full request
+returns the original run; changing its body is a conflict.
+
+```mermaid
+flowchart LR
+    Question[Question] --> Planner[Planner 1]
+    Planner --> Rounds[Bounded search / fetch / context rounds]
+    Rounds --> Analyst[Analyst 1: findings and gaps]
+    Analyst -->|new queries within limits| Rounds
+    Analyst --> Writer[Writer 2]
+    Writer --> Review[Reviewer 1 and citation-label checks]
+    Review -->|revise within draft cap| Writer
+    Review -->|accepted| Report[Final report and result checkpoint]
+```
+
+The method retains input, plan, raw discovery/referrals, source snapshots,
+selected evidence, analyses, drafts, reviews, result and checkpoints. The full
+canonical request is `research-request.json`, referenced by the method manifest
+and `workflow.accepted`. Raw Runtime validation failures are diagnostic artifacts
+with null `output_ref` and no valid export. Search
+snippets and fetch previews do not automatically enter an Agent's evidence.
+Citations must use exact `[source-id]` labels from the final selected context.
+Only an accepted report is exposed as the final report; successful execution
+also requires committed terminal recording and settled cleanup. Model review
+and deterministic label checks do not guarantee external factual truth.
+
+Bounds come from the v2 [parameter schema](src/deepresearch/methods/baseline/resources/2/parameters.schema.json)
+and the host's shared budgets. The default shared recording allowance is
+`storage_writes=1024` to accommodate the formal flow's nodes, projections and
+child records. Host deployments may narrow it; rounds and children do not reset
+it. This capacity does not guarantee all parameter maxima can be exhausted
+simultaneously. Evidence estimates and unknown counts remain distinct from
+verified tokenizer measurements and observed provider usage. Usage accumulates
+observed attempts across all roles, rounds and drafts.
+
+## CLI, HTTP and saved results
+
+```shell
 uv run --locked deepresearch tools
-uv run --locked deepresearch tool scholar.crossref.search --arguments '{"query":"Environment Based Design","max_results":3}'
-uv run --locked deepresearch --store local/my-research research < examples/baseline-request.json
+uv run --locked deepresearch tool scholar.crossref.search --arguments '{"query":"urban trees heat mitigation","max_results":3}'
 uv run --locked deepresearch --store local/console-store serve --port 8000 --origin http://localhost:5173
 ```
 
-PowerShell can pipe a single-quoted JSON string to `deepresearch tool NAME` when command
-argument quoting is inconvenient. All registered commands use fixed argv,
-strict JSON and real subprocesses; the host records committed intent before
-dispatch and outcome after cleanup. A tool run does not open a model.
+Registered tools use fixed argv, strict JSON and real subprocesses, with intent
+recorded before dispatch and outcome after cleanup. A standalone tool call does
+not open a model. The local HTTP host owns one Engine and Store. Use a separate
+store for a concurrent CLI process. Its API is at `http://127.0.0.1:8000/api/v1`,
+interactive documentation at `/docs` and current OpenAPI at `/openapi.json`.
 
-The new baseline runs real search/fetch/read tools before invoking DeepSeek.
-It archives raw discovery results, FetchManifest, SourceManifest, ContextPlan,
-selected evidence, report, usage and checkpoints. No search snippet or fetch
-preview enters an Agent automatically. Model-labelled estimates remain distinct
-from verified tokenizer counts. Failed sources retain their actual diagnostics.
-For PowerShell, pipe `Get-Content -Raw examples/baseline-request.json` to the
-`deepresearch ... research` command instead of using `<` redirection.
+Start with `GET /api/v1/methods`, then `POST /api/v1/research-runs`. Subscribe to
+committed SSE events, wait for `active=false`, and read retained sources,
+context, report, artifacts and cumulative usage. Large `workflow.finished`
+events may contain `node_count`/`nodes_sha256` instead of a full nodes array;
+complete nodes remain in the persisted run view and individual node events.
+SSE replays committed sequences, not model tokens. Disconnect does not cancel
+owned work. Reopen exposes saved facts and bytes; unknown effects, cancellation
+or missing completion evidence never authorize automatic resume.
 
-The model-free examples run real Storage and need no credentials. A live full
-method check is `uv run --locked python examples/live_research_check.py
---request examples/baseline-request.json --store local/my-http-baseline`.
-It makes real model/tool calls and verifies HTTP/SSE, idempotency and identical
-report bytes after restart. See [Stage 1/2 acceptance](docs/research-acceptance.md).
-The old `deepresearch baseline` command preserves legacy single-Agent report verification.
+See [Connections](docs/usage/connections.md), [Runtime/providers](docs/usage/agents.md),
+[Storage](docs/usage/storage.md), [tools](docs/usage/tools.md),
+[role bundles](docs/usage/agent-catalog.md) and [Hooks](docs/usage/extensions.md).
+Python consumers can start with [examples/research.py](examples/research.py).
+The complete Baseline runs with an empty extension registry.
 
-See [Connections](docs/usage/connections.md),
-[Agent Runtime and providers](docs/usage/agents.md),
-[Storage](docs/usage/storage.md), and [CLI tools](docs/usage/tools.md).
-Start a custom application with [examples/research.py](examples/research.py).
-Bounded provider checks are in
-[examples/live_provider_check.py](examples/live_provider_check.py).
-The [console run service](docs/usage/service.md) serves real runs and saved
-results at `http://127.0.0.1:8000/api/v1`; its OpenAPI is at `/openapi.json`
-and interactive API documentation at `/docs`. It owns one Engine and Store.
-Python strategies can [delegate selected evidence](docs/usage/connections.md)
-to child agents without sharing unrestricted Storage authority.
-See [consumer acceptance](docs/consumer-acceptance.md) for the actual HTTP,
-model/tool, evidence-sharing and restart checks.
+## Development and acceptance
 
-```mermaid
-flowchart TD
-    Console[Frontend / CLI] --> Service[ResearchRun application service]
-    Service --> Runner[Workflow runner and node Hooks]
-    Runner --> Method[Baseline or another registered method]
-    Method --> Components[Discovery / Acquisition / Context selection]
-    Method --> Catalog[Versioned Agent role assets]
-    Components --> Port[Abstract host port]
-    Catalog --> Port
-    Port --> Connections[Connections Engine]
-    Connections --> Runtime[Agent Runtime]
-    Connections --> Toolset[CLI Toolset]
-    Connections --> Storage[Storage and activity recording]
-    Runtime --> Providers[DeepSeek / GPT Responses / vLLM Qwen]
-    Runtime --> Toolset
-    Runtime --> Storage
-    Toolset --> Workers[Fixed argv JSON workers]
-    Toolset --> Storage
-    Connections --> Child[Permitted child Runtime invocation]
-```
+[CONTRIBUTING.md](CONTRIBUTING.md) and `AGENTS.md` define exclusive file ownership,
+the uv environment and root-owned integration/Git. Development happens in the
+current chat and its in-chat subagents. [Old team designs](docs/teams/README.md)
+remain historical rationale; current source and usage contracts govern new work.
 
-Storage owns state CAS, immutable artifacts/snapshots/checkpoints and event
-receipts. CLI workers receive bounded inputs and prepared evidence, with
-Storage publication mediated by their parent. Connections owns trusted
-configuration, grants, lineage budgets, leases and result export. The Runtime
-owns native model/tool pairing, admission and execution lifecycle.
-
-Each model response records provider-reported input/output/total tokens in
-its `model.outcome` Storage activity, including available cache and reasoning
-breakdowns. Run totals link those individual records. Missing counts remain
-unknown; valid usage is retained even when response content fails validation.
-See [token usage retrieval](docs/usage/storage.md) for the public history API.
-
-Local vLLM Qwen requires a configured deployment manifest and a deployed
-service; live verification remains pending on this machine. API checks depend
-on the configured account's model access and available credit.
-
-## Design references
-
-All teams follow [CONTRIBUTING.md](CONTRIBUTING.md): one uv/lockfile
-environment, assigned file ownership, GitHub account attribution through a
-noreply identity, and PM-only staging/commits/pushes in the shared checkout.
-
-The reviewed designs are indexed by
-[the team spec index](docs/teams/README.md), the shared platform draft, and
-their module spec. `AGENTS.md` defines current in-chat source ownership.
-See [platform acceptance](docs/platform-acceptance.md) for completed checks,
-the saved report and the pending local Qwen deployment check.
-
-The selected tools use DDGS Yahoo discovery, separate Crossref/OpenAlex
-scholarly discovery, HTTPX retrieval, Trafilatura HTML extraction and pypdf
-text-PDF extraction. Google remains disabled pending the URL-fidelity gate.
-Discovery availability is best effort; source access failures and quota limits
-remain explicit. OpenAlex reservations and settlement survive Engine restart
-through normal Storage state.
-
-## CLI tool contract
-
-Platform values live in `src/deepresearch/engine/contracts/`; research manifests and
-frontend run DTOs live in `src/deepresearch/workflows/contracts.py`. Runtime modules live
-under `engine/`; the single deprecated import bridge is `src/ebd/__init__.py`.
-
-- Register each tool's name, description, input/output schemas, command arguments, and execution limits.
-- Accept one UTF-8 JSON request on standard input.
-- Return one JSON response on standard output; write diagnostics to standard error.
-- Exit with code zero for success and a nonzero code for failure, returning structured error details.
-- Execute registered command arguments without a shell.
-- Record each invocation's start and outcome, including timeout and cancellation, through the engine.
-
-Tool processes form the external execution boundary. Agent, storage, and
-connection modules communicate through Python interfaces.
-
-## uv references
-
-- [Working on projects](https://docs.astral.sh/uv/guides/projects/)
-- [Locking and syncing](https://docs.astral.sh/uv/concepts/projects/sync/)
+[Platform acceptance](docs/platform-acceptance.md),
+[consumer acceptance](docs/consumer-acceptance.md) and
+[research acceptance](docs/research-acceptance.md) retain evidence of the checks
+actually performed. Controlled fault tests do not replace external model/tool
+acceptance. Local vLLM Qwen needs its configured deployment and live verification.
+Discovery/source availability and provider access remain external constraints;
+OpenAlex quota state persists across restart.

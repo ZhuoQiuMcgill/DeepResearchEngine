@@ -1,4 +1,81 @@
-# Workflow Stage 1/2 acceptance — 2026-10-02
+# Research acceptance — 2026-10-02
+
+## Formal Baseline revision 2
+
+`baseline@2` is implemented as a reusable method: Planner -> bounded recorded
+search/fetch/read rounds -> Analyst -> Writer -> Reviewer -> accepted report.
+It pins four versioned, tool-free role bundles, uses shared Workflow components,
+retains the original request and intermediate decisions, and exposes the existing
+ResearchRun HTTP/CLI interfaces. `baseline@1` remains registered; new consumers
+select method revision 2 explicitly. See [design](architecture/baseline.md) and
+[usage](usage/baseline.md).
+
+Current checks used the locked uv-managed Windows Python 3.11.15 environment.
+No dependency was added or lockfile changed.
+
+| Check | Actual result |
+| --- | --- |
+| Full test suite | **824 passed in 74.22 seconds** |
+| Formal method integration | Actual Runtime, recorder, SQLite and saved-read worker; controlled boundaries verify two research rounds, rejected draft/revision, seven recorded model calls, all stop reasons, missing evidence, invalid references, cancellation and restart |
+| Optional Hooks | Formal Baseline completes both with an empty registry and with lifecycle observation plus discovery/context subset controls; every completed node is observable |
+| Role request capacity | Actual provider preflight accepts bounded evidence plus plan/analysis/draft with declared role capacity; JSON schema and required-field failures remain strict |
+| Failure diagnosis | Complete final outputs failing schema/strict JSON retain only scoped raw bytes; no valid output/export; tests verify restart, write/acknowledgement/unknown-commit failures and shared budgets |
+| Durable request and terminal | Original request and execution pins readable after restart; long node histories retain full saved nodes and a bounded terminal summary |
+| Team examples | Method example, Hooks enabled and Hooks disabled succeeded with real Storage and complete cleanup |
+| Built wheel | `deepresearch_engine-0.1.0-py3-none-any.whl` contains 30 role resource files, both Baseline method schemas/implementations and shared stages |
+| Isolated wheel execution | All four formal role specs and all registered method definitions load; real model-free Workflow and recorded `document.read` worker succeed from wheel code, with complete cleanup |
+| HTTP contract | Regenerated OpenAPI remains unchanged at 30 paths; wire v1 is preserved |
+| Historical report compatibility | Current CLI still reads the earlier real `baseline@1` report, 8,962 bytes, byte-identical to its retained original |
+
+The final **real** Baseline v2 run is
+**`run_075321cf8b9347bd84958b3c7afe1588`**. It used configured DeepSeek
+`deepseek-flash`, actual web search, actual public-source fetching and retained
+document reads. It did not use scripted model responses.
+
+| Observation | Recorded fact |
+| --- | --- |
+| Execution / recording | `succeeded` / `complete`, committed terminal and settled completion attestation |
+| Roles | Four actual invocations: Planner, Analyst, Writer 2, Reviewer; native requests all have `function_tools=[]` |
+| Research | One round; four attempted unique URLs, three succeeded (two primary PDFs and a short secondary description), one explicitly failed |
+| Stopping / review | `source_limit`; evidence gaps retained; first draft accepted with no structural/review issues |
+| Supplied context | 16,711 UTF-8 bytes; 7,488 selected bytes from each PDF and 571 bytes from the secondary description; partial PDF selection is explicit |
+| Context measurement | 4,178 **estimated** tokens, `utf8-byte-size/4`, selected model `deepseek-flash`, budget 6,000 |
+| Actual provider usage | 20,898 input + 3,756 output = 24,654 tokens across four recorded attempts; 1,024 cached input tokens; reasoning count remains unknown |
+| Report | 8,976 bytes; `sha256:1e3b04dfff3ca67fd3a60dc419b3317bde650e95508ab2c2eb7c0e7ff66fd212` |
+| Live interfaces | 244 replayed events, 28 completed nodes; HTTP/SSE sequence replay, reconnect and identical-request idempotency passed |
+| Restart / CLI | Second HTTP host returns byte-identical report with no additional model dispatch; separate CLI export is byte-identical; original request and result remain readable |
+
+This actual run reached its source allowance with one research round and no draft
+revision. The multi-round and revision paths were separately verified by controlled
+integration tests over real Runtime/Storage. Acceptance establishes execution and
+publication behavior, not exhaustive evidence coverage or external factual truth.
+The report states its remaining evidence limitations.
+
+Retained local evidence is ignored:
+
+```text
+local/baseline-formal-live-20261002-verified/           SQLite and immutable objects
+local/baseline-formal-live-20261002-verified-evidence/
+  acceptance.json                                   live HTTP/replay/restart facts
+  run.json                                          validated final view and usage
+  result.json                                       rounds, stop reason and drafts
+  report.md                                         accepted report
+  report-from-cli.md                                byte-identical CLI export
+```
+
+Reproduce the formal method with a fresh store and your configured credentials:
+
+```shell
+uv run --locked python examples/live_research_check.py --request examples/baseline-request.json --store local/my-formal-baseline --output local/my-formal-baseline-evidence
+```
+
+Role resources explicitly declare full-request capacity rather than relying on
+the Runtime's smaller default. The shared recording allowance is 1,024 writes;
+all nodes/roles still share the existing lineage limits and cancellation. The
+method never resets those budgets or automatically resumes/refetches uncertain
+work. The built wheel was also verified offline with no model calls.
+
+## Earlier Stage 1/2 acceptance
 
 The selected delivery target is a team-ready modular foundation plus one complete
 research baseline. EBD strategy and frontend application implementation are not
@@ -83,7 +160,7 @@ Model-free HTTP run: `run_692c5db21a5a4d06861f670345e784f5`.
 Status/recording: succeeded/complete. Report: 38 bytes. HTTP/SSE, event replay,
 request idempotency and restart report identity passed.
 
-Final real Baseline run: **`run_ef88fac329fa41e1953489c7a2e2af60`**.
+Historical real `baseline@1` run: **`run_ef88fac329fa41e1953489c7a2e2af60`**.
 
 | Observation | Recorded fact |
 | --- | --- |
@@ -113,7 +190,8 @@ local/research-http-release-baseline-v2-evidence/
   report.md                                    saved report bytes
 ```
 
-Reproduce with your own credentials and dedicated store:
+The current example request selects formal revision 2. Reproduce the current
+method with your own credentials and dedicated store:
 
 ```shell
 uv run --locked python examples/live_research_check.py --request examples/baseline-request.json --store local/my-baseline-acceptance --output local/my-baseline-evidence

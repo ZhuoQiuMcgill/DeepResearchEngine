@@ -80,7 +80,7 @@ current candidate IDs. The examples never call Engine execution/session APIs,
 unscoped Storage operations or HTTP routes from method/Hook code.
 
 `create_research_service(engine)` selects the built-in registry containing
-`baseline@1` and `example.echo@1`. To run the tutorial, the examples pass the
+`baseline@1`, `baseline@2` and `example.echo@1`. To run the tutorial, the examples pass the
 registry returned by `build_registry()` in
 [workflow_method.py](../../examples/workflow_method.py). They submit
 `ResearchRunRequest(method_id="example.echo", method_revision=2, ...)` through
@@ -135,10 +135,15 @@ For a full research method, compose the shared components in
 | `discovery.discover` | Record explicit discovery-tool results and project URL candidates. |
 | `acquisition.acquire` | Execute a selected `FetchManifest` and retain READY source snapshots. |
 | `context_selection.assemble_context` | Read saved sources, select bounded text and record target-model token measurements. |
+| `agents.invoke_role` | Invoke a pinned role in a node, require a committed output, then explicitly read its saved artifact. |
 
 The shipped `baseline@1` composes those components, invokes its pinned Writer
 and publishes the result. The tutorial's deterministic echo components show the
 same composition boundary without discovery/network or model consumption.
+The [formal baseline](../architecture/baseline.md) adds planning, bounded research
+rounds and draft/review stages. Loops pass `node_prefix="rN."` to discovery and
+context selection; acquisition receives `previous=` to retain earlier source facts.
+`recipient_role=` names the intended evidence consumer in its ContextPlan.
 Return successful publications through `report_ref` and
 `result_manifest_ref`, and use `context.checkpoint(...)` for versioned application
 data. A checkpoint does not automatically resume execution. The application
@@ -190,6 +195,15 @@ publication and usage facts. Check successful status, complete recording and an
 acknowledged `output_ref` before publishing a research result. Change revisions
 when resource bytes or contracts change; do not silently substitute a role,
 profile or model. See [Agent catalog](agent-catalog.md).
+
+`invoke_agent` returns execution metadata and an exported `output_ref`; it does
+not inject the role's text into another Agent. Read it explicitly with
+`await context.port.read_artifact(output_ref, max_bytes=65536)` or compose
+`agents.invoke_role`. Artifact access is limited to the current Workflow scope,
+with a positive byte cap of at most 262,144. The shared helper uses 65,536 bytes
+and closes the stream on success or failure. The application accumulates role
+usage under the original shared budget; the method should not replace it with
+one child's usage.
 
 ## Register bounded observation and selection Hooks
 

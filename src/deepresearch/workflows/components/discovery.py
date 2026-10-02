@@ -36,11 +36,11 @@ def candidates(name, payload, discovery_ref):
     return projected
 
 
-async def discover(context, queries, search_tools, max_results):
+async def discover(context, queries, search_tools, max_results, *, node_prefix=""):
     found, retained = [], []
     for query_index, query in enumerate(queries):
         for tool_index, name in enumerate(search_tools):
-            node_id = f"discovery.{query_index}.{tool_index}"
+            node_id = f"{node_prefix}discovery.{query_index}.{tool_index}"
             async with context.node(node_id, "discovery", {"tool": name, "query": query}):
                 result = await context.port.run_tool(name, {"query": query, "max_results": max_results})
                 if result.get("recording", {}).get("status") != "complete":
@@ -60,5 +60,5 @@ async def discover(context, queries, search_tools, max_results):
     for candidate in found:
         if candidate["url"] not in seen:
             seen.add(candidate["url"])
-            items.append(FetchItem(item_id=f"source-{len(items) + 1:03d}", **candidate))
+            items.append(FetchItem(item_id=f"{node_prefix}source-{len(items) + 1:03d}", **candidate))
     return items, retained

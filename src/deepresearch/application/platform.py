@@ -9,6 +9,7 @@ from deepresearch.engine.contracts import (
     canonical_json, new_id, to_json_value,
 )
 from deepresearch.workflows.contracts import ResearchRunView
+from .usage import aggregate_usage
 
 RESEARCH_STATE_KEY = "research.run/1"
 
@@ -24,6 +25,7 @@ class ResearchPlatformPort:
         self.engine, self.live, self.roles = engine, live, roles
         self._lock = asyncio.Lock()
         self.failure: EngineError | None = None
+        self._role_usages = []
 
     @property
     def session(self):
@@ -197,6 +199,39 @@ class ResearchPlatformPort:
             self.fail(error)
             raise
 
+    async def read_artifact(self, ref, *, max_bytes=65536):
+        """Read a bounded saved Workflow artifact; never fetch or inject context."""
+        self.assert_active()
+        if type(max_bytes) is not int or not 1 <= max_bytes <= 262144:
+            raise EngineError("INVALID_DATA", "Artifact read requires a positive bounded byte limit")
+        from deepresearch.workflows.contracts import ArtifactReference
+        try:
+            parsed = ArtifactReference.model_validate(ref)
+        except ValueError:
+            raise EngineError("INVALID_DATA", "Artifact reference violates the shared contract") from None
+        if parsed.store_id != self.session.context.store_id:
+            raise EngineError("ACCESS_DENIED", "Artifact belongs to another Store")
+        artifact = ArtifactRef(parsed.store_id, parsed.artifact_id)
+        descriptor = (await self.session.binding.storage.describe_object(self.session.context, artifact)).unwrap()
+        if descriptor["scope"] != self.session.context.scope.to_dict():
+            raise EngineError("ACCESS_DENIED", "Only this Workflow's saved artifacts may be read")
+        handle = (await self.session.binding.storage.artifacts.open(
+            self.session.context, artifact, max_bytes=max_bytes)).unwrap()
+        chunks = []
+        try:
+            while True:
+                self.assert_active()
+                chunk = (await handle.read(self.session.context, min(max_bytes, 65536))).unwrap()
+                chunks.append(chunk.bytes)
+                if sum(len(part) for part in chunks) > max_bytes:
+                    raise EngineError("LIMIT_EXCEEDED", "Artifact read exceeded the selected byte limit")
+                if chunk.eof:
+                    return b"".join(chunks)
+                if not chunk.bytes:
+                    raise EngineError("INTEGRITY_ERROR", "Artifact read made no progress")
+        finally:
+            (await handle.aclose(self.session.context)).unwrap()
+
     async def invoke_agent(self, role_id: str, task_input: dict[str, Any]):
         self.assert_active()
         role = self.roles.get(role_id)
@@ -213,26 +248,33 @@ class ResearchPlatformPort:
         value = to_json_value(outcome)
         child = value.get("child_result") or {}
         original_error = value.get("error") or child.get("error")
-        if child.get("usage") is not None and not self.session.context.cancellation.is_set() and self.session.context.remaining_seconds() > 0:
-            await self.update(usage=child["usage"])
+        if child.get("usage") is not None:
+            self._role_usages.append(child["usage"])
+            total = aggregate_usage(self._role_usages)
+            if self.session.context.cancellation.is_set() or self.session.context.remaining_seconds() <= 0:
+                # Derived recorder facts are an internal terminal projection,
+                # not a method-controlled cleanup business write.
+                await self.commit(self.live.view.model_copy(update={"usage": total}), cleanup=True)
+            else:
+                await self.update(usage=total)
         if (value.get("recording_status") == "complete" and not child
                 and value.get("status") != "succeeded"):
             error = original_error or {}
             raise self.boundary_error(error.get("code", "WRITER_FAILED"),
-                "Writer invocation did not dispatch successfully", error)
+                f"Role {role_id} invocation did not dispatch successfully", error)
         if (value.get("recording_status") != "complete"
                 or child.get("recording_status") != "complete"
                 or not value.get("outcome_receipt") or not child.get("terminal_event_receipt")):
-            raise self.fail(self.boundary_error("RECORDING_INCOMPLETE", "Writer invocation has no complete durable outcome", original_error))
+            raise self.fail(self.boundary_error("RECORDING_INCOMPLETE", f"Role {role_id} invocation has no complete durable outcome", original_error))
         if not value.get("cleanup", {}).get("complete", False) or not child.get("cleanup", {}).get("complete", False):
-            raise self.fail(self.boundary_error("CLEANUP_INCOMPLETE", "Writer invocation cleanup is incomplete", original_error))
+            raise self.fail(self.boundary_error("CLEANUP_INCOMPLETE", f"Role {role_id} invocation cleanup is incomplete", original_error))
         if value.get("status") != "succeeded" or value.get("error"):
             error = value.get("error") or child.get("error") or {}
-            raise self.boundary_error(error.get("code", "WRITER_FAILED"), "Writer did not complete successfully", error)
+            raise self.boundary_error(error.get("code", "WRITER_FAILED"), f"Role {role_id} did not complete successfully", error)
         if child.get("persistence_state") != "committed":
-            raise self.fail(EngineError("PUBLICATION_INCOMPLETE", "Writer output publication is incomplete"))
+            raise self.fail(EngineError("PUBLICATION_INCOMPLETE", f"Role {role_id} output publication is incomplete"))
         if not value.get("output_ref") or not value.get("export_receipt"):
-            raise self.fail(EngineError("PUBLICATION_INCOMPLETE", "Writer output was not exported to the Workflow"))
+            raise self.fail(EngineError("PUBLICATION_INCOMPLETE", f"Role {role_id} output was not exported to the Workflow"))
         return {"status": value["status"], "recording_status": value["recording_status"],
                 "output_ref": value["output_ref"], "child_run": value["child_run"],
                 "usage": child.get("usage")}

@@ -7,8 +7,8 @@ import pytest
 
 from deepresearch.engine.agent import Runtime
 from deepresearch.engine.contracts import (
-    AgentDefinition, BindingSet, BudgetLedger, EngineError, Err, ExecutionContext,
-    Grant, GrantSet, Ok, ScopeRef, deadline_after,
+    AgentDefinition, ArtifactRef, BindingSet, BudgetLedger, EngineError, Err, ExecutionContext,
+    Grant, GrantSet, Ok, ScopeRef, canonical_json, deadline_after,
 )
 from deepresearch.engine.providers import ProviderConfig, ProviderFactory
 from deepresearch.engine.storage import StorageSession
@@ -131,14 +131,117 @@ async def test_missing_start_or_intent_receipt_prevents_model_dispatch(tmp_path)
     await storage.close()
 
 
-@pytest.mark.asyncio
-async def test_schema_failure_is_recorded_and_never_published_as_success(tmp_path):
-    storage, binding, context, definition = await setup(tmp_path, lambda req: final_response("wrong"), output_schema={"type": "string", "const": "right"})
-    runtime = Runtime()
-    result = await runtime.execute((await runtime.admit(definition, "task", binding, context)).unwrap())
+async def assert_failed_raw_archive_survives_reopen(tmp_path, storage, context, result, raw, validator):
     assert result.status == "validation_failed" and result.recording_status == "complete"
-    assert result.output_ref is None and result.observed_output["raw_visible_text"] == "wrong"
+    assert result.error.code == "agent.validation" and result.validation["state"] == "failed"
+    assert validator in {error["validator"] for error in result.validation["errors"]}
+    assert result.raw_output_ref is not None and result.output_ref is None
+    assert result.output is None and result.output_delivery == "none" and result.output_metadata is None
+    assert result.persistence_state == "committed" and result.cleanup.complete
+    assert result.observed_output["raw_visible_text"] == raw
+    assert result.counters["model_calls"] == 1 and result.counters["repairs"] == 0
+    assert len(result.output_publications) == 1 and result.output_publications[0]["role"] == "raw"
+    assert result.output_publications[0]["commit_state"] == "committed"
+    assert result.usage["known_subtotals"]["total_tokens"] == 9
     await storage.close()
+    reopened = (await StorageSession.open(tmp_path / "store")).unwrap()
+    try:
+        events = [row.get("event", row) for row in (await reopened.activity.query(context)).unwrap().events]
+        terminal = next(event for event in events if event["kind"] == "agent.finished")
+        payload = terminal["payload"]
+        assert payload["status"] == "validation_failed" and payload["recording_status"] == "complete"
+        assert payload["output_ref"] is None and payload["raw_output_ref"] == result.raw_output_ref.to_dict()
+        assert payload["terminal_state"]["raw_output_ref"] == payload["raw_output_ref"]
+        assert payload["terminal_state"]["output_ref"] is None
+        assert [publication["role"] for publication in payload["output_publications"]] == ["raw"]
+        kinds = [event["kind"] for event in events]
+        assert kinds.count("model.intent") == kinds.count("model.outcome") == kinds.count("artifact.committed") == 1
+        assert kinds.index("model.outcome") < kinds.index("artifact.committed") < kinds.index("agent.finished")
+        assert raw not in canonical_json(events).decode("utf-8")
+        ref = ArtifactRef(**payload["raw_output_ref"])
+        reader = (await reopened.artifacts.open(context, ref, max_bytes=len(raw.encode("utf-8")))).unwrap()
+        try:
+            chunk = (await reader.read(context)).unwrap()
+            assert chunk.bytes == raw.encode("utf-8") and chunk.eof
+        finally:
+            assert (await reader.aclose(context)).is_ok
+    finally:
+        await reopened.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mode,schema,raw,validator", [
+    ("text", {"type": "string", "const": "right"}, "wrong α\r\nuntrusted source text\n", "const"),
+    ("json", {"type": "object", "properties": {"required_field": {"type": "string"}},
+              "required": ["required_field"], "additionalProperties": False},
+     ' { "unexpected_field": "untrusted α source text" }\r\n', "required"),
+], ids=["text-schema", "json-missing-required-field"])
+async def test_schema_failure_is_recorded_and_never_published_as_success(tmp_path, mode, schema, raw, validator):
+    storage, binding, context, definition = await setup(tmp_path, lambda req: final_response(raw), output_schema=schema)
+    definition.output_mode = mode
+    definition.output_media_type = "application/json" if mode == "json" else "text/markdown"
+    try:
+        runtime = Runtime()
+        result = await runtime.execute((await runtime.admit(definition, "task", binding, context)).unwrap())
+        await assert_failed_raw_archive_survives_reopen(tmp_path, storage, context, result, raw, validator)
+    finally:
+        await storage.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("raw", [
+    '{ "answer": "unclosed α source text"',
+    '{"answer": 1, "answer": 2}\n',
+    '{"answer": NaN}\n',
+    '{} {}\r\n',
+    "[" * 33 + "0" + "]" * 33,
+], ids=["malformed-json", "duplicate-keys", "nonfinite-number", "trailing-json", "excessive-depth"])
+async def test_invalid_strict_json_final_retains_only_raw_bytes_after_reopen(tmp_path, raw):
+    storage, binding, context, definition = await setup(tmp_path, lambda req: final_response(raw),
+                                                       output_schema={"type": "object"})
+    definition.output_mode = "json"
+    definition.output_media_type = "application/json"
+    try:
+        runtime = Runtime()
+        result = await runtime.execute((await runtime.admit(definition, "task", binding, context)).unwrap())
+        assert result.observed_output["parsed_value"] is None
+        await assert_failed_raw_archive_survives_reopen(tmp_path, storage, context, result, raw, "strict_json")
+    finally:
+        await storage.close()
+
+
+@pytest.mark.asyncio
+async def test_oversized_final_output_is_not_archived_by_schema_failure_path(tmp_path):
+    storage, binding, context, definition = await setup(tmp_path, lambda req: final_response("x" * 9),
+        output_schema={"type": "string", "const": "right"}, limits={"max_final_output_bytes": 8})
+    try:
+        runtime = Runtime()
+        result = await runtime.execute((await runtime.admit(definition, "task", binding, context)).unwrap())
+        assert result.status == "limit_exhausted" and result.error.code == "LIMIT_EXCEEDED"
+        assert result.raw_output_ref is None and result.output_ref is None and result.output_publications == []
+        assert result.persistence_state == "not_applicable" and result.validation["state"] == "not_run"
+        assert result.recording_status == "complete" and result.cleanup.complete
+    finally:
+        await storage.close()
+
+
+@pytest.mark.asyncio
+async def test_incomplete_provider_text_is_not_archived_by_schema_failure_path(tmp_path):
+    def handler(req):
+        return httpx.Response(200, json={"choices": [{"finish_reason": "length", "message": {
+            "role": "assistant", "content": "wrong truncated candidate"}}],
+            "usage": {"prompt_tokens": 5, "completion_tokens": 4, "total_tokens": 9}})
+    storage, binding, context, definition = await setup(tmp_path, handler,
+                                                       output_schema={"type": "string", "const": "right"})
+    try:
+        runtime = Runtime()
+        result = await runtime.execute((await runtime.admit(definition, "task", binding, context)).unwrap())
+        assert result.status == "failed" and result.error.code == "provider.incomplete"
+        assert result.raw_output_ref is None and result.output_ref is None and result.output_publications == []
+        assert result.persistence_state == "not_applicable" and result.validation["state"] == "not_run"
+        assert result.recording_status == "complete" and result.cleanup.complete
+    finally:
+        await storage.close()
 
 
 @pytest.mark.asyncio
@@ -295,8 +398,11 @@ async def test_json_raw_and_canonical_output_have_separate_durable_artifacts(tmp
 
 
 @pytest.mark.asyncio
-async def test_lost_publication_ack_reconciles_without_second_write(tmp_path):
-    storage, binding, context, definition = await setup(tmp_path, lambda req: final_response())
+@pytest.mark.parametrize("invalid_output", [False, True], ids=["valid-output", "invalid-raw-only"])
+async def test_lost_publication_ack_reconciles_without_second_write(tmp_path, invalid_output):
+    raw = "Exact\r\nreport\n"
+    schema = {"type": "string", "const": "different"} if invalid_output else None
+    storage, binding, context, definition = await setup(tmp_path, lambda req: final_response(raw), output_schema=schema)
     real = binding.artifacts
     writes = 0
     class LoseReply:
@@ -307,26 +413,118 @@ async def test_lost_publication_ack_reconciles_without_second_write(tmp_path):
             assert isinstance(actual, Ok)
             return Err(EngineError("LOST_ACK", "Controlled publication acknowledgement loss", commit_state="unknown"))
     binding.artifacts = LoseReply()
-    runtime = Runtime()
-    result = await runtime.execute((await runtime.admit(definition, "task", binding, context)).unwrap())
-    assert result.status == "succeeded" and result.recording_status == "complete"
-    assert result.persistence_state == "committed" and writes == 1
-    await storage.close()
+    try:
+        runtime = Runtime()
+        result = await runtime.execute((await runtime.admit(definition, "task", binding, context)).unwrap())
+        assert result.status == ("validation_failed" if invalid_output else "succeeded")
+        assert result.recording_status == "complete" and result.persistence_state == "committed" and writes == 1
+        if invalid_output:
+            await assert_failed_raw_archive_survives_reopen(tmp_path, storage, context, result, raw, "const")
+        else:
+            assert result.output_ref == result.raw_output_ref and result.output == raw
+    finally:
+        await storage.close()
 
 
 @pytest.mark.asyncio
-async def test_known_publication_failure_can_be_completely_recorded(tmp_path):
-    storage, binding, context, definition = await setup(tmp_path, lambda req: final_response())
+@pytest.mark.parametrize("invalid_output", [False, True], ids=["valid-output", "invalid-raw-only"])
+async def test_known_publication_failure_can_be_completely_recorded(tmp_path, invalid_output):
+    schema = {"type": "string", "const": "different"} if invalid_output else None
+    storage, binding, context, definition = await setup(tmp_path, lambda req: final_response(), output_schema=schema)
     class DenyPublication:
         async def put(self, *args):
             return Err(EngineError("ARTIFACT_IO_FAILURE", "Controlled known publication failure", commit_state="not_committed"))
     binding.artifacts = DenyPublication()
-    runtime = Runtime()
-    result = await runtime.execute((await runtime.admit(definition, "task", binding, context)).unwrap())
-    assert result.status == "failed" and result.recording_status == "complete"
-    assert result.persistence_state == "not_committed" and result.output_ref is None
-    assert result.observed_output["validation_state"] == "passed" and result.terminal_event_receipt is not None
-    await storage.close()
+    try:
+        runtime = Runtime()
+        result = await runtime.execute((await runtime.admit(definition, "task", binding, context)).unwrap())
+        assert result.status == "failed" and result.error.code == "ARTIFACT_IO_FAILURE"
+        assert result.recording_status == "complete" and result.persistence_state == "not_committed"
+        assert result.raw_output_ref is None and result.output_ref is None and result.output_delivery == "none"
+        assert result.observed_output["validation_state"] == ("failed" if invalid_output else "passed")
+        assert result.terminal_event_receipt is not None and result.cleanup.complete
+        assert result.counters["model_calls"] == 1 and result.counters["repairs"] == 0
+        assert [publication["role"] for publication in result.output_publications] == ["raw"]
+        events = [row.get("event", row) for row in (await storage.activity.query(context)).unwrap().events]
+        assert "artifact.committed" not in {event["kind"] for event in events}
+        terminal = next(event["payload"] for event in events if event["kind"] == "agent.finished")
+        assert terminal["recording_status"] == "complete" and terminal["persistence_state"] == "not_committed"
+        assert terminal["raw_output_ref"] is None and terminal["output_ref"] is None
+        assert terminal["validation"]["state"] == ("failed" if invalid_output else "passed")
+    finally:
+        await storage.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("committed", [False, True], ids=["unobserved-uncommitted", "lost-committed-ack"])
+async def test_unknown_raw_archive_commit_is_not_claimed_or_replayed(tmp_path, monkeypatch, committed):
+    raw = "Invalid candidate with untrusted α source text\r\n"
+    storage, binding, context, definition = await setup(tmp_path, lambda req: final_response(raw),
+                                                       output_schema={"type": "string", "const": "different"})
+    actual_artifacts = binding.artifacts
+    writes = []
+    status_queries = []
+    class LoseReply:
+        async def put(self, ctx, operation, scope, data, metadata):
+            writes.append(operation)
+            if committed:
+                assert isinstance(await actual_artifacts.put(ctx, operation, scope, data, metadata), Ok)
+            return Err(EngineError("LOST_ACK", "Controlled uncertain publication", commit_state="unknown"))
+    async def unavailable_status(ctx, operation):
+        status_queries.append(operation)
+        return Err(EngineError("STATUS_UNAVAILABLE", "Controlled unavailable operation status"))
+    binding.artifacts = LoseReply()
+    monkeypatch.setattr(storage.operations, "status", unavailable_status)
+    try:
+        runtime = Runtime()
+        result = await runtime.execute((await runtime.admit(definition, "task", binding, context)).unwrap())
+        assert result.status == "failed" and result.error.code == "LOST_ACK"
+        assert result.recording_status == "incomplete" and result.persistence_state == "unknown"
+        assert result.validation["state"] == "failed" and result.observed_output["raw_visible_text"] == raw
+        assert result.raw_output_ref is None and result.output_ref is None and result.output is None
+        assert result.output_delivery == "none" and result.cleanup.complete
+        assert result.terminal_event_receipt is not None
+        assert result.counters["model_calls"] == 1 and result.counters["repairs"] == 0
+        assert len(writes) == 1 and status_queries == writes
+        assert len(result.output_publications) == 1
+        publication = result.output_publications[0]
+        assert publication["role"] == "raw" and publication["operation_id"] == writes[0]
+        assert publication["commit_state"] == "unknown" and publication["artifact_ref"] is None
+        events = [row.get("event", row) for row in (await storage.activity.query(context)).unwrap().events]
+        assert sum(event["kind"] == "artifact.committed" for event in events) == int(committed)
+        assert sum(event["kind"] == "model.intent" for event in events) == 1
+        terminal = next(event["payload"] for event in events if event["kind"] == "agent.finished")
+        assert terminal["recording_status"] == "incomplete" and terminal["persistence_state"] == "unknown"
+        assert terminal["raw_output_ref"] is None and terminal["output_ref"] is None
+        assert terminal["output_publications"][0]["commit_state"] == "unknown"
+        assert raw not in canonical_json(events).decode("utf-8")
+    finally:
+        await storage.close()
+
+
+@pytest.mark.asyncio
+async def test_invalid_raw_archive_respects_shared_storage_byte_budget(tmp_path):
+    raw = "Invalid candidate α\r\n"
+    storage, binding, context, definition = await setup(tmp_path, lambda req: final_response(raw),
+                                                       output_schema={"type": "string", "const": "different"})
+    context.ledger.limits["storage_bytes"] = len(raw.encode("utf-8")) - 1
+    try:
+        runtime = Runtime()
+        result = await runtime.execute((await runtime.admit(definition, "task", binding, context)).unwrap())
+        assert result.status == "limit_exhausted" and result.error.code == "LIMIT_EXCEEDED"
+        assert result.validation["state"] == "failed" and result.observed_output["raw_visible_text"] == raw
+        assert result.recording_status == "complete" and result.persistence_state == "not_committed"
+        assert result.raw_output_ref is None and result.output_ref is None and result.output_delivery == "none"
+        assert result.counters["model_calls"] == 1 and result.counters["repairs"] == 0
+        assert result.cleanup.complete and result.terminal_event_receipt is not None
+        assert context.ledger.used.get("storage_bytes", 0) == 0
+        events = [row.get("event", row) for row in (await storage.activity.query(context)).unwrap().events]
+        assert "artifact.committed" not in {event["kind"] for event in events}
+        terminal = next(event["payload"] for event in events if event["kind"] == "agent.finished")
+        assert terminal["validation"]["state"] == "failed" and terminal["output_ref"] is None
+        assert terminal["raw_output_ref"] is None and terminal["persistence_state"] == "not_committed"
+    finally:
+        await storage.close()
 
 
 @pytest.mark.asyncio

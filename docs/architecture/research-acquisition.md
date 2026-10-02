@@ -4,6 +4,9 @@ Recorded on 2026-10-02 from the user's requirements. This preserves the acquisit
 agreement. Stages 1 and 2 are now implemented; see the
 [actual structure](project-structure.md), [Workflow guide](../usage/workflows.md)
 and [acceptance](../research-acceptance.md) for executable interfaces and checks.
+The formal [baseline revision 2](baseline.md) composes these same operations
+with planning, evidence analysis, bounded follow-up rounds and report review.
+The acquisition/context contracts below remain shared across methods.
 
 ## Decision
 

@@ -49,10 +49,10 @@ async def server(settings):
             assert cleanup is not None and cleanup["complete"], f"{field} was incomplete"
 
 
-async def report(client, run_id):
+async def saved_bytes(client, path):
     parts, offset = [], 0
     while True:
-        response = await client.get(f"/api/v1/research-runs/{run_id}/report",
+        response = await client.get(path,
                                     params={"start": offset, "max_bytes": 4096})
         response.raise_for_status()
         chunk = response.json()
@@ -66,6 +66,10 @@ async def report(client, run_id):
             assert len(content) == chunk["total_bytes"] and digest_bytes(content) == chunk["sha256"]
             return content
         assert data, "Report chunk made no progress"
+
+
+async def report(client, run_id):
+    return await saved_bytes(client, f"/api/v1/research-runs/{run_id}/report")
 
 
 async def replay(client, run_id):
@@ -121,7 +125,17 @@ async def check(args):
             again = await client.post("/api/v1/research-runs", json=request)
             assert again.status_code == 202 and again.json()["run_id"] == run_id
             if request["method_id"] == "baseline":
-                assert "model.intent" in kinds and kinds.index("workflow.context.selected") < kinds.index("model.intent")
+                assert "model.intent" in kinds
+                if request.get("method_revision", 1) == 1:
+                    assert kinds.index("workflow.context.selected") < kinds.index("model.intent")
+                else:
+                    completed = {row["event"]["payload"]["node_id"] for row in events
+                                 if row["event"]["kind"] == "workflow.node.completed"}
+                    assert {"plan.research", "r1.analyze.evidence", "report.1.review", "publish.result"} <= completed
+                    result_manifest = json.loads(await saved_bytes(client,
+                        f"/api/v1/research-runs/{run_id}/artifacts/{view['result_manifest_ref']['artifact_id']}"))
+                    assert result_manifest["method_revision"] == 2 and result_manifest["drafts"][-1]["accepted"]
+                    assert len(view["usage"]["per_attempt_usage_refs"]) == kinds.count("model.intent")
                 assert sum(source["status"] == "succeeded" for source in view["sources"]["items"]) >= 1
                 model_intents = [row["event"]["payload"] for row in events if row["event"]["kind"] == "model.intent"]
                 # No model receives a registered discovery/fetch/read function.

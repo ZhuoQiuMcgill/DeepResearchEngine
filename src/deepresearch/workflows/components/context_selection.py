@@ -14,7 +14,7 @@ def relevance(text, question):
     return sum(min(lower.count(word), 20) for word in words)
 
 
-async def scan_source(context, source, question, max_scan_bytes):
+async def scan_source(context, source, question, max_scan_bytes, *, node_prefix=""):
     kind = "pages" if source.page_count is not None else "lines"
     count = source.page_count if kind == "pages" else source.line_count
     step = 10 if kind == "pages" else 200
@@ -23,7 +23,7 @@ async def scan_source(context, source, question, max_scan_bytes):
         interval = SourceRange(kind=kind, start=start, end_exclusive=min(start + step, count + 1))
         cursor = None
         while used < max_scan_bytes:
-            node_id = f"read.{source.item_id}.{serial}"
+            node_id = f"{node_prefix}read.{source.item_id}.{serial}"
             serial += 1
             async with context.node(node_id, "source_read", {"item_id": source.item_id, "range": interval.tool_range()}):
                 result = await context.port.run_tool("document.read", {"snapshot_ref": source.snapshot_ref.to_dict(),
@@ -47,18 +47,20 @@ async def scan_source(context, source, question, max_scan_bytes):
     return best
 
 
-async def assemble_context(context, sources, question, *, token_budget, max_text_bytes, max_scan_bytes, strict_tokens=False):
+async def assemble_context(context, sources, question, *, token_budget, max_text_bytes, max_scan_bytes,
+                           strict_tokens=False, recipient_role="baseline.writer", node_prefix=""):
     usable = [source for source in sources.items if source.status == "succeeded"]
-    ids = await context.select("context.select", "context.select", [source.item_id for source in usable])
+    async with context.node(node_prefix + "context.select", "context_selection"):
+        ids = await context.select(node_prefix + "context.select", "context.select", [source.item_id for source in usable])
     by_id = {source.item_id: source for source in usable}
     selections, blocks = [], []
     for item_id in ids:
         source = by_id[item_id]
-        candidate = await scan_source(context, source, question, max_scan_bytes)
+        candidate = await scan_source(context, source, question, max_scan_bytes, node_prefix=node_prefix)
         if candidate is None:
             continue
         _, interval, value, action_id = candidate
-        async with context.node(f"context.{item_id}", "context_selection", {"item_id": item_id}):
+        async with context.node(f"{node_prefix}context.{item_id}", "context_selection", {"item_id": item_id}):
             spans = value.get("spans") or []
             offset = spans[0]["start_byte"] if spans else None
             def render_block(selected, shortened):
@@ -100,8 +102,8 @@ async def assemble_context(context, sources, question, *, token_budget, max_text
     rendered = "\n\n".join(blocks)
     measurement = context.tokens.measure(rendered, context.model_ref, scope="assembled", rendering_revision="evidence-blocks/1",
         require_verified=strict_tokens)
-    ref = await context.port.publish(rendered.encode("utf-8"), "text/plain", "selected-context.txt")
-    plan = ContextPlan(recipient_role="baseline.writer", model_ref=context.model_ref, token_budget=token_budget,
+    ref = await context.port.publish(rendered.encode("utf-8"), "text/plain", node_prefix + "selected-context.txt")
+    plan = ContextPlan(recipient_role=recipient_role, model_ref=context.model_ref, token_budget=token_budget,
         max_text_bytes=max_text_bytes, selections=selections, context_ref=ref,
         measurement=TokenMeasurement.model_validate(measurement.to_dict()), strict_tokens=strict_tokens)
     await context.port.emit("workflow.context.selected", {"context_ref": ref, "source_ids": [s.item_id for s in selections],

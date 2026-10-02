@@ -559,6 +559,7 @@ class Runtime:
                 result.validation["state"] = "failed" if errors else "passed"
                 result.validation["errors"] = errors
                 if errors:
+                    await self._publish_output(result, binding, root_context, raw, None, None, definition, raw_only=True)
                     raise EngineError("agent.validation", "Final output failed its registered schema", {"errors": errors})
                 validated = canonical_json(value) if definition.output_mode == "json" else raw
                 if len(validated) > limits["max_final_output_bytes"]:
@@ -723,11 +724,14 @@ class Runtime:
         Runtime._usage_completeness(result)
 
     @staticmethod
-    async def _publish_output(result, binding, context, raw, validated, value, definition):
+    async def _publish_output(result, binding, context, raw, validated, value, definition, *, raw_only=False):
         scope = getattr(binding, "output_scope", None) or context.scope
         result.persistence_state = "not_committed"
         refs = {}
-        for role, data, media in (("raw", raw, "application/json" if definition.output_mode == "json" else definition.output_media_type), ("validated", validated, definition.output_media_type)):
+        publications = [("raw", raw, "application/json" if definition.output_mode == "json" else definition.output_media_type)]
+        if not raw_only:
+            publications.append(("validated", validated, definition.output_media_type))
+        for role, data, media in publications:
             if role == "validated" and validated == raw:
                 refs[role] = refs["raw"]
                 continue
@@ -761,8 +765,10 @@ class Runtime:
             else:
                 result.output_ref = receipt.artifact_ref
         result.raw_output_ref = refs["raw"]
-        result.output_ref = refs["validated"]
         result.persistence_state = "committed"
+        if raw_only:
+            return
+        result.output_ref = refs["validated"]
         result.output_delivery = "artifact" if definition.output_contract.get("delivery") == "artifact" else "inline"
         result.output = None if result.output_delivery == "artifact" else value
         result.output_metadata = {"mode": definition.output_mode, "media_type": definition.output_media_type, "byte_length": len(validated), "sha256": digest_bytes(validated), "raw_media_type": "application/json" if definition.output_mode == "json" else definition.output_media_type, "raw_byte_length": len(raw), "raw_sha256": digest_bytes(raw)}

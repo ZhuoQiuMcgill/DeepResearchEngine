@@ -145,6 +145,22 @@ after append. The host then opens a fresh `Engine.open_run_access` session to
 read/export output and save a final checkpoint; expired execution authority is
 never revived. See the root baseline documentation for that host workflow.
 
+A complete final response within the output byte bound that fails strict JSON
+parsing or the registered output schema retains its exact UTF-8 bytes as a
+scoped raw artifact before `agent.finished`. Successful archival leaves execution
+`validation_failed`, sets `raw_output_ref` and records that reference in the
+terminal, including after restart. It creates no validated artifact, `output_ref`,
+successful delivery or child-result export. `persistence_state="committed"` in
+this case describes the raw archive, not a valid output. Read it only through
+explicit authorized Storage/result access; source/task text is not logged.
+
+Raw archival uses the existing live publication authority, Storage budgets and
+acknowledgement reconciliation. Known archival failure has no committed raw
+reference; uncertain commitment remains `unknown` with incomplete recording.
+It does not retry the model, repair JSON or bypass cancellation/expiry using
+cleanup authority. Failed, refused, incomplete and oversized provider outputs
+retain their previous behavior and are not archived by this validation path.
+
 Execution status, recording completeness and publication commitment are
 independent. Lost acknowledgements reconcile the same event/operation ID;
 unknown remote effects never trigger a replay. Known publication failure may
