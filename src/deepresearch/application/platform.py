@@ -5,13 +5,29 @@ import asyncio
 from typing import Any
 
 from deepresearch.engine.contracts import (
-    ArtifactRef, CheckpointEnvelope, EngineError, StateMutation,
+    ArtifactRef, CheckpointEnvelope, EngineError, Err, Ok, StateCommitReceipt, StateMutation,
     canonical_json, new_id, to_json_value,
 )
 from deepresearch.workflows.contracts import ResearchRunView
 from .usage import aggregate_usage
 
 RESEARCH_STATE_KEY = "research.run/1"
+
+
+class _RoleCancellation(asyncio.Event):
+    """Local cancellation that also observes the root signal synchronously."""
+
+    def __init__(self, parent):
+        super().__init__()
+        self._parent = parent
+
+    def is_set(self):
+        return super().is_set() or self._parent.is_set()
+
+    async def wait(self):
+        if self.is_set():
+            return True
+        return await super().wait()
 
 
 class ResearchPlatformPort:
@@ -25,6 +41,7 @@ class ResearchPlatformPort:
         self.engine, self.live, self.roles = engine, live, roles
         self._lock = asyncio.Lock()
         self.failure: EngineError | None = None
+        self._projection_error: EngineError | None = None
         self._role_usages = []
 
     @property
@@ -61,25 +78,63 @@ class ResearchPlatformPort:
         context.assert_active()
         if context.grants.is_revoked():
             raise EngineError("ACCESS_DENIED", "Workflow authority is revoked")
+        if self._projection_error is not None:
+            raise self._projection_error
         state = {"schema_version": 1, "request_fingerprint": self.live.fingerprint,
                  "method_manifest_ref": self.live.method_manifest_ref,
                  "view": view.to_dict()}
+        operation = new_id("research_state_")
+        expected_version = self.live.version
+        mutation = StateMutation(self.session.context.scope, RESEARCH_STATE_KEY,
+                                 "put", expected_version, state)
+
+        async def settle():
+            try:
+                try:
+                    written = await self.session.binding.storage.state.commit(context, operation, [mutation])
+                except asyncio.CancelledError:
+                    written = Err(EngineError("STATE_COMMIT_UNKNOWN", "Projection commit owner was interrupted",
+                                              {"operation_id": operation}, commit_state="unknown"))
+                if isinstance(written, Err) and written.error.commit_state == "unknown":
+                    checked = await self.session.binding.storage.operations.status(context.for_cleanup(5), operation)
+                    if isinstance(checked, Ok) and checked.value.state == "committed" and checked.value.receipt is not None:
+                        written = Ok(checked.value.receipt)
+                receipt = written.unwrap()
+                scope = self.session.context.scope
+                versions = [{"scope": f"{scope.kind}:{scope.id}", "key": RESEARCH_STATE_KEY,
+                             "old_version": expected_version, "new_version": expected_version + 1}]
+                if (not isinstance(receipt, StateCommitReceipt) or receipt.operation_id != operation
+                        or receipt.store_id != context.store_id or receipt.mutation_versions != versions):
+                    raise EngineError("INTEGRITY_ERROR", "Projection commit receipt differs from its admitted mutation",
+                                      {"operation_id": operation}, commit_state="unknown")
+                self.live.version = expected_version + 1
+                self.live.view = view
+                return receipt
+            except EngineError as error:
+                if error.commit_state == "unknown":
+                    # An uncertain head cannot authorize a fresh CAS. Preserve
+                    # the original uncertainty rather than masking it later.
+                    self._projection_error = error
+                self.fail(error)
+                raise
+
+        pending = asyncio.create_task(settle(), name=f"deepresearch-projection:{self.live.view.run_id}")
+        cancelled = False
         try:
-            receipt = (await self.session.binding.storage.state.commit(
-                context, new_id("research_state_"),
-                [StateMutation(self.session.context.scope, RESEARCH_STATE_KEY,
-                               "put", self.live.version, state)],
-            )).unwrap()
-        except EngineError as error:
-            self.fail(error)
-            raise
-        self.live.version = receipt.mutation_versions[0]["new_version"]
-        self.live.view = view
-        return receipt
+            while True:
+                try:
+                    return await asyncio.shield(pending)
+                except asyncio.CancelledError:
+                    if pending.cancelled():
+                        raise
+                    cancelled = True
+        finally:
+            if cancelled:
+                raise asyncio.CancelledError
 
     async def update(self, *, cleanup=False, **fields):
         allowed = {"nodes", "sources", "context_plan", "report_ref",
-                   "result_manifest_ref", "checkpoint_ref", "usage"}
+                   "result_manifest_ref", "checkpoint_ref", "usage", "quality"}
         if (not cleanup and set(fields) <= {"nodes", "sources"}
                 and (self.session.context.cancellation.is_set()
                      or self.session.context.remaining_seconds() <= 0)):
@@ -242,21 +297,51 @@ class ResearchPlatformPort:
             rendered = spec.render_task(task_input)
         except ValueError:
             raise EngineError("INVALID_DATA", "Role input failed its pinned task template/schema") from None
-        outcome = await self.session.binding.invoker.invoke(
-            self.session.context, registered.ref, rendered,
-        )
+        # Keep the existing caller's authority and lineage budget. A local
+        # signal can settle this invocation without changing Workflow status.
+        caller = self.session.context.for_action(self.session.context.action_id,
+            self.session.context.attempt_id, cancellation=_RoleCancellation(self.session.context.cancellation))
+        invocation = asyncio.create_task(self._invoke_agent(role_id, registered, rendered, caller),
+                                         name=f"deepresearch-role:{self.live.view.run_id}:{role_id}")
+        cancelled = False
+        try:
+            while True:
+                try:
+                    return await asyncio.shield(invocation)
+                except asyncio.CancelledError:
+                    if invocation.cancelled():
+                        raise
+                    cancelled = True
+                    # Let the bound invoker receive a cancelled AgentResult and
+                    # record its outcome, rather than interrupting that owner.
+                    caller.cancellation.set()
+        finally:
+            if cancelled:
+                raise asyncio.CancelledError
+
+    async def _invoke_agent(self, role_id, registered, rendered, caller):
+        async def propagate_cancel():
+            await self.session.context.cancellation.wait()
+            caller.cancellation.set()
+
+        watcher = asyncio.create_task(propagate_cancel())
+        try:
+            outcome = await self.session.binding.invoker.invoke(caller, registered.ref, rendered)
+        finally:
+            watcher.cancel()
+            await asyncio.gather(watcher, return_exceptions=True)
         value = to_json_value(outcome)
         child = value.get("child_result") or {}
         original_error = value.get("error") or child.get("error")
         if child.get("usage") is not None:
-            self._role_usages.append(child["usage"])
-            total = aggregate_usage(self._role_usages)
-            if self.session.context.cancellation.is_set() or self.session.context.remaining_seconds() <= 0:
-                # Derived recorder facts are an internal terminal projection,
-                # not a method-controlled cleanup business write.
-                await self.commit(self.live.view.model_copy(update={"usage": total}), cleanup=True)
-            else:
-                await self.update(usage=total)
+            async with self._lock:
+                self._role_usages.append(child["usage"])
+                total = aggregate_usage(self._role_usages)
+                # Merge recorder facts with the latest projection while owning
+                # its CAS lock, including after cancellation or deadline expiry.
+                cleanup = (self.session.context.cancellation.is_set()
+                           or self.session.context.remaining_seconds() <= 0)
+                await self._commit(self.live.view.model_copy(update={"usage": total}), cleanup=cleanup)
         if (value.get("recording_status") == "complete" and not child
                 and value.get("status") != "succeeded"):
             error = original_error or {}

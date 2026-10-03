@@ -287,7 +287,7 @@
             "items": {
               "$ref": "#/components/schemas/ContextSelection"
             },
-            "maxItems": 32,
+            "maxItems": 512,
             "title": "Selections",
             "type": "array"
           },
@@ -1348,6 +1348,86 @@
         "title": "ResearchEventPage",
         "type": "object"
       },
+      "ResearchQuality": {
+        "additionalProperties": false,
+        "description": "Research coverage is independent of execution and report acceptance.",
+        "properties": {
+          "attempted_sources": {
+            "maximum": 32.0,
+            "minimum": 0.0,
+            "title": "Attempted Sources",
+            "type": "integer"
+          },
+          "distilled_sources": {
+            "maximum": 32.0,
+            "minimum": 0.0,
+            "title": "Distilled Sources",
+            "type": "integer"
+          },
+          "evidence_sufficient": {
+            "title": "Evidence Sufficient",
+            "type": "boolean"
+          },
+          "fully_read_sources": {
+            "maximum": 32.0,
+            "minimum": 0.0,
+            "title": "Fully Read Sources",
+            "type": "integer"
+          },
+          "gaps": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 16,
+            "title": "Gaps",
+            "type": "array"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 16,
+            "title": "Reasons",
+            "type": "array"
+          },
+          "report_accepted": {
+            "default": false,
+            "title": "Report Accepted",
+            "type": "boolean"
+          },
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "sufficient",
+              "partial",
+              "insufficient"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "substantive_sources": {
+            "maximum": 32.0,
+            "minimum": 0.0,
+            "title": "Substantive Sources",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "status",
+          "evidence_sufficient",
+          "attempted_sources",
+          "substantive_sources",
+          "fully_read_sources",
+          "distilled_sources"
+        ],
+        "title": "ResearchQuality",
+        "type": "object"
+      },
       "ResearchRunPage": {
         "additionalProperties": false,
         "properties": {
@@ -1552,6 +1632,16 @@
               }
             ],
             "title": "Profile Ref"
+          },
+          "quality": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResearchQuality"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "recording_status": {
             "default": "pending",

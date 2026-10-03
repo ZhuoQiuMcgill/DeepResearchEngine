@@ -7,7 +7,15 @@ and Storage retain execution authority, validation, recording and budgets.
 
 The catalog does not open model connections, fetch evidence, register invocation
 edges or issue grants. Importing and loading roles needs no credentials.
-`baseline@4` pins `baseline.writer@4` and `baseline.reviewer@3`: the Writer's
+`baseline@5` pins Planner 3, Distiller 1, Analyst 3, Writer 5 and Reviewer 4.
+All five compile into the same Agent Runtime container. Distiller inputs identify
+one archived source/chunk and its actual read segments; outputs contain short
+claims with verifiable quotations and content classification. Analyst inputs
+integrate those digests with retained original text and permit explicit range
+requests. Writer/Reviewer inputs carry an independent coverage assessment.
+See [parallel baseline](baseline-parallel.md) for input/output and frontend access.
+
+`baseline@4` retains `baseline.writer@4` and `baseline.reviewer@3`: the Writer's
 final report and the Reviewer's issue strings use English. Earlier role bundles
 remain available with their original instructions. The Workflow's separate
 publication check rejects CJK narrative even if the model reviewer accepts it.

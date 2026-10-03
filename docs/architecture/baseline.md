@@ -1,6 +1,11 @@
 # Baseline method revision 2
 
-Revision 4 is the current experiment entry point. It preserves the expanded
+Revision 5 is the current experiment entry point. It adds bounded parallel source
+distillation, complete or explicitly partial archived reads, gap-driven source
+access, alternate acquisition and independent research-quality status. See
+[parallel usage and module interfaces](../usage/baseline-parallel.md).
+
+Revision 4 preserves the expanded
 revision 3 budgets and search tool pin, adds Writer 4 and Reviewer 3 for English
 reports, and rejects CJK narrative before final publication. EBD experiment
 input remains exactly `What is EBD (Environment Based Design)?`.
@@ -23,7 +28,7 @@ or a successful external run.
 
 ## Versions and pins
 
-Bootstrap registers Baseline revisions 1–4 and `example.echo@1`.
+Bootstrap registers Baseline revisions 1–5 and `example.echo@1`.
 `ResearchRunRequest.method_revision` still defaults to **1** for compatibility.
 New consumers must send `method_id: "baseline", method_revision: 2` explicitly.
 Wire `schema_version: 1` and HTTP `/api/v1` are independent of method revision.
@@ -34,6 +39,7 @@ Wire `schema_version: 1` and HTTP `/api/v1` are independent of method revision.
 | `baseline@2` | Plan, bounded research rounds, analysis, synthesis and review | `baseline.planner@1`, `baseline.analyst@1`, `baseline.writer@2`, `baseline.reviewer@1` |
 | `baseline@3` | Expanded budgets and observed search | `baseline.planner@2`, `baseline.analyst@2`, `baseline.writer@3`, `baseline.reviewer@2` |
 | `baseline@4` | Expanded research with English report instructions and publication checks | `baseline.planner@2`, `baseline.analyst@2`, `baseline.writer@4`, `baseline.reviewer@3` |
+| `baseline@5` | Archived reads, parallel source distillation, recovery and independent coverage | `baseline.planner@3`, `baseline.distiller@1`, `baseline.analyst@3`, `baseline.writer@5`, `baseline.reviewer@4` |
 | `example.echo@1` | Model-free integration over real Storage | No Agent roles |
 
 The old method lives in `methods/baseline/v1/` with its own schemas. Its parameter

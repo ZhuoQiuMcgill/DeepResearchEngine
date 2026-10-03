@@ -27,15 +27,19 @@ def citation_issues(report, source_ids):
     return issues
 
 
-async def write_and_review(context, question, plan, analysis, evidence, context_plan, *, max_attempts, revision=2):
+async def write_and_review(context, question, plan, analysis, evidence, context_plan, *, max_attempts, revision=2,
+                           quality=None):
     feedback, drafts = [], []
     source_ids = [selection.item_id for selection in context_plan.selections]
     for attempt in range(1, max_attempts + 1):
         prefix = f"report.{attempt}"
-        raw, writer = await invoke_role(context, "baseline.writer", {
+        writer_input = {
             "question": question, "plan": plan.to_dict(), "analysis": analysis.to_dict(),
             "evidence": evidence, "feedback": feedback,
-        }, node_id=prefix + ".write")
+        }
+        if quality is not None:
+            writer_input["quality"] = quality.to_dict()
+        raw, writer = await invoke_role(context, "baseline.writer", writer_input, node_id=prefix + ".write")
         try:
             report = raw.decode("utf-8")
         except UnicodeDecodeError:
@@ -43,10 +47,15 @@ async def write_and_review(context, question, plan, analysis, evidence, context_
         structural = citation_issues(report, source_ids)
         if revision >= 4:
             structural.extend(english_report_issues(report))
-        review, reviewer = await decision(context, "baseline.reviewer", {
+        if quality is not None and f"Research coverage: {quality.status}" not in report:
+            structural.append(f"Include the exact label 'Research coverage: {quality.status}' and explain the material evidence gaps.")
+        reviewer_input = {
             "question": question, "plan": plan.to_dict(), "analysis": analysis.to_dict(),
             "evidence": evidence, "report": report,
-        }, ReportReview, node_id=prefix + ".review")
+        }
+        if quality is not None:
+            reviewer_input["quality"] = quality.to_dict()
+        review, reviewer = await decision(context, "baseline.reviewer", reviewer_input, ReportReview, node_id=prefix + ".review")
         feedback = list(dict.fromkeys(structural + review.issues))[:8]
         accepted = not feedback and review.verdict == "accept"
         record = {"attempt": attempt, "draft_ref": writer["output_ref"], "review_ref": reviewer["output_ref"],

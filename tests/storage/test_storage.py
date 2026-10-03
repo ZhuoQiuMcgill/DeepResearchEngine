@@ -74,7 +74,7 @@ async def test_real_close_reopen_all_objects(tmp_path):
     assert (await reopened.state.get(fresh, fresh.scope, "answer")).unwrap().value == {"n": 42}
     assert await read_all(reopened, fresh, artifact.artifact_ref) == b"exact \x00\xf0\x9f\x98\x80 bytes"
     read = (await reopened.snapshots.read(fresh, snapshot.snapshot_ref, interval("lines", 1, 3), 1024, None)).unwrap()
-    assert read.text == "first\nsecond"
+    assert read.text == "first\nsecond\n"
     assert (await reopened.checkpoints.load(fresh, checkpoint.checkpoint_ref)).unwrap().payload["report"] == artifact.artifact_ref.to_dict()
     assert (await reopened.recorder.status(fresh, "event-a", digest_bytes(canonical_json(event)))).unwrap().receipt == receipt
     assert (await reopened.operations.status(fresh, "state-a")).unwrap().receipt.mutation_versions == state.mutation_versions
@@ -180,9 +180,25 @@ async def test_exact_empty_and_trailing_line_counts(tmp_path, text, count):
     session, ctx = await opened(tmp_path / "store")
     sr = (await session.snapshots.commit(ctx, "snap", ctx.scope, proposal(text))).unwrap()
     assert sr.line_count == count
+    whole = (await session.snapshots.read(ctx, sr.snapshot_ref, interval("lines", 1, count + 1), 64, None)).unwrap()
+    assert whole.text == text and not whole.has_more_in_document
     empty = (await session.snapshots.read(ctx, sr.snapshot_ref, interval("lines", count + 1, count + 1), 64, None)).unwrap()
     assert empty.text == "" and empty.spans == [] and empty.next_position is None
     assert (await session.snapshots.read(ctx, sr.snapshot_ref, interval("lines", count + 1, count + 2), 64, None)).error.code == "INVALID_DATA"
+    await session.close()
+
+
+async def test_last_line_continuation_retains_terminal_lf_after_utf8_budget(tmp_path):
+    session, ctx = await opened(tmp_path / "store")
+    sr = (await session.snapshots.commit(ctx, "terminal-lf", ctx.scope, proposal("😀\n"))).unwrap()
+    requested = interval("lines", 1, 2)
+    first = (await session.snapshots.read(ctx, sr.snapshot_ref, requested, 4, None)).unwrap()
+    assert first.text == "😀" and first.has_more_in_requested_range
+    assert first.next_position == {"unit": 1, "offset": 4}
+    last = (await session.snapshots.read(ctx, sr.snapshot_ref, requested, 1, first.continuation)).unwrap()
+    assert first.text + last.text == "😀\n"
+    assert last.spans[0]["start_byte"] == 4 and last.spans[0]["end_byte"] == 5
+    assert not last.has_more_in_document and last.continuation is None
     await session.close()
 
 

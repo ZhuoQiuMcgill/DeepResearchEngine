@@ -134,6 +134,8 @@ bounded read selectors and artifact result export.
 - `workflow.node.started`, `workflow.node.completed`, `workflow.node.failed`
 - `workflow.hook.observed`, `workflow.hook.decision`, `workflow.hook.failed`
 - `workflow.context.selected`, `workflow.source.ready`, `workflow.measurement`
+- `workflow.evidence.distilled`: a source/chunk's saved task input, output,
+  validated digest and archived access references; the event grants no new access
 - `workflow.finished`
 
 The producer is `workflow`. Each call creates one event ID and preserves its

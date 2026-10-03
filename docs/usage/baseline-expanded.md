@@ -1,5 +1,10 @@
 # Run Baseline revision 4
 
+New experiments use [Baseline revision 5](baseline-parallel.md), which adds
+complete/explicitly partial archived reads, parallel source distillation,
+acquisition recovery and independent coverage status. The standard request now
+selects revision 5. This page documents the retained revision 4 behavior.
+
 `baseline@4` uses the same Planner -> acquisition/analysis -> Writer -> Reviewer
 flow as [revision 2](baseline.md), with larger resource allowances. It pins
 Planner 2, Analyst 2, Writer 4 and Reviewer 3. Earlier method and role revisions
@@ -8,8 +13,9 @@ It also pins `web.search@2`; see [search profiles](tools.md#search-revision-2).
 Revision 4 preserves revision 3 budgets and search behavior and adds English
 Writer/Reviewer instructions. The EBD experiment input is exactly
 `What is EBD (Environment Based Design)?`; it supplies no fixed queries or URLs.
-`examples/live_research_check.py` rejects modified EBD questions and method
-revisions without the new English report roles before starting execution.
+`examples/live_research_check.py` now requires revision 5 and rejects modified
+EBD questions before starting a new experiment. Use the CLI or API with an
+explicit revision-4 request to inspect this retained implementation.
 
 Writer 4 requires English headings and prose. Reviewer 3 requests revision for
 a non-English report. A separate publication check rejects CJK narrative even
@@ -78,15 +84,12 @@ The supplied expanded request uses 1,800 seconds for its real research retry.
 ## Run and inspect
 
 [examples/baseline-request.json](../../examples/baseline-request.json) now selects
-revision 4, 20 attempted sources, two rounds, 128k evidence tokens and a 512 KiB
-evidence byte cap. Use a fresh `client_request_id` for a new run; an identical
+revision 5. See [the current run guide](baseline-parallel.md) for the executable
+example. Revision 4 supports 20 attempted sources, two rounds, 128k evidence
+tokens and a 512 KiB evidence byte cap. Use a fresh `client_request_id` for a new run; an identical
 identity/request retrieves the earlier result instead of rerunning it.
 
-```shell
-uv run --locked python examples/live_research_check.py --request examples/baseline-request.json --store local/my-expanded-baseline --output local/my-expanded-baseline-evidence
-```
-
-The same request works through `deepresearch research` and
+An explicit revision-4 request works through `deepresearch research` and
 `POST /api/v1/research-runs`. Report, saved source/context, artifact, event/SSE and
 usage retrieval retain the [existing interface](research-service.md).
 Inspect `stop_reason`, every analysis's `sufficient`/gaps, source failures and

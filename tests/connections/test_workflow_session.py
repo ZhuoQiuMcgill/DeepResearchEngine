@@ -102,7 +102,7 @@ async def test_real_same_scope_worker_and_unique_calls_exhaust_shared_budget(eng
     second = await engine.run_workflow_tool(session, READ, args)
     third = await engine.run_workflow_tool(session, READ, args)
     assert first.status == second.status == "succeeded", (first.error, second.error)
-    assert first.result["text"] == second.result["text"] == "selected\nprivate"
+    assert first.result["text"] == second.result["text"] == "selected\nprivate\n"
     assert first.process["dispatched"] and first.process["cleanup"]["complete"]
     assert second.process["dispatched"] and second.process["cleanup"]["complete"]
     assert third.status == "limit_exhausted" and not third.invocation["dispatched"]

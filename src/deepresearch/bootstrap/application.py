@@ -4,7 +4,7 @@ from __future__ import annotations
 from deepresearch.agent_catalog import AgentCatalog
 from deepresearch.engine.providers.tokenization import TokenMeter
 from deepresearch.extensions import ExtensionRegistry
-from deepresearch.methods.baseline import BaselineMethod, EnglishBaselineMethod, ExpandedBaselineMethod, definition
+from deepresearch.methods.baseline import BaselineMethod, EnglishBaselineMethod, ExpandedBaselineMethod, ParallelBaselineMethod, definition
 from deepresearch.methods.baseline.v1 import BaselineMethod as BaselineV1Method, definition as definition_v1
 from deepresearch.methods.example_echo import EchoMethod, definition as echo_definition
 from deepresearch.workflows import MethodRegistry
@@ -16,6 +16,7 @@ def create_method_registry():
     registry.register(definition(), BaselineMethod())
     registry.register(definition(3), ExpandedBaselineMethod())
     registry.register(definition(4), EnglishBaselineMethod())
+    registry.register(definition(5), ParallelBaselineMethod())
     registry.register(echo_definition(), EchoMethod())
     return registry
 

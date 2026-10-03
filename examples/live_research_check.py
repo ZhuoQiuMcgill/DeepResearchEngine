@@ -94,8 +94,8 @@ async def check(args):
         "input": {"message": "Shared workflow interfaces are ready."}}
     if request["method_id"] == "baseline" and request.get("input", {}).get("question") != EBD_EXPERIMENT_QUESTION:
         raise ValueError(f"EBD experiments require the exact original question: {EBD_EXPERIMENT_QUESTION}")
-    if request["method_id"] == "baseline" and request.get("method_revision", 1) < 4:
-        raise ValueError("New EBD experiments require baseline revision 4 with English-only report roles")
+    if request["method_id"] == "baseline" and request.get("method_revision", 1) < 5:
+        raise ValueError("New EBD experiments require baseline revision 5 with archived-source access, parallel distillation and English report roles")
     async with server(settings) as address:
         async with httpx.AsyncClient(base_url=address, timeout=40, trust_env=False) as client:
             methods = await client.get("/api/v1/methods")
@@ -144,6 +144,12 @@ async def check(args):
                     result_manifest = json.loads(await saved_bytes(client,
                         f"/api/v1/research-runs/{run_id}/artifacts/{view['result_manifest_ref']['artifact_id']}"))
                     assert result_manifest["method_revision"] == request["method_revision"] and result_manifest["drafts"][-1]["accepted"]
+                    if request["method_revision"] >= 5:
+                        assert view["quality"] == result_manifest["quality"]
+                        assert view["quality"]["report_accepted"]
+                        assert view["quality"]["evidence_sufficient"] == (view["quality"]["status"] == "sufficient")
+                        assert f"Research coverage: {view['quality']['status']}" in content.decode("utf-8")
+                        assert any(node.startswith("r1.distill.") for node in completed)
                     assert len(view["usage"]["per_attempt_usage_refs"]) == kinds.count("model.intent")
                 assert sum(source["status"] == "succeeded" for source in view["sources"]["items"]) >= 1
                 model_intents = [row["event"]["payload"] for row in events if row["event"]["kind"] == "model.intent"]
@@ -170,6 +176,8 @@ async def check(args):
         "status": view["status"], "recording_status": view["recording_status"], "events": len(events),
         "report_bytes": len(content), "report_sha256": digest_bytes(content),
         "http_sse_replay": True, "idempotency": True, "restart_report_identical": True}
+    if view.get("quality") is not None:
+        summary["quality"] = view["quality"]
     (out / "acceptance.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(summary))
 

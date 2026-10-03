@@ -1,18 +1,23 @@
 # ResearchRun service
 
 `ResearchRunService` owns complete method execution over one caller-owned Engine.
-The method catalog includes optional `tool_revisions` pins. For `baseline@3` and `baseline@4`,
+The method catalog includes optional `tool_revisions` pins. For `baseline@3` through `baseline@5`,
 `{"web.search": 2}` selects the observed Yahoo/DuckDuckGo search worker;
 methods without pins retain revision 1. These pins are part of the method digest
 and saved execution manifest, so clients can identify the chosen tool contract.
 `MethodRegistry` pins the method revision and its agent roles; the shared request
 and view models are `deepresearch.workflows.ResearchRunRequest` and `ResearchRunView`.
-Bootstrap supplies Baseline revisions 1–4 and model-free `example.echo@1`.
+Bootstrap supplies Baseline revisions 1–5 and model-free `example.echo@1`.
 A workflow root has no agent identity, provider, model grant or credentials.
 The formal baseline plans, acquires and selects saved evidence, analyzes gaps,
 then writes and reviews a report. The Planner sees the question before acquisition;
 all evidence-consuming roles receive only explicitly selected saved text.
-See [Baseline usage](baseline.md) and [method design](../architecture/baseline.md).
+See [parallel Baseline usage](baseline-parallel.md) and [method design](../architecture/baseline.md).
+Revision 5 distills archived sources with bounded parallel children and exposes
+optional `quality` on the run view. Its `status`/`evidence_sufficient` and
+`report_accepted` are independent from execution `status`. The result manifest's
+`source_access_ref` and `distillations_ref` link coverage, ranges and raw/validated
+child outputs; read them through the existing artifact route.
 
 ## Python composition
 
@@ -105,7 +110,7 @@ Start a complete baseline with a configured named profile:
   "schema_version": 1,
   "client_request_id": "ebd-question-001",
   "method_id": "baseline",
-  "method_revision": 4,
+  "method_revision": 5,
   "input": {"question": "What is EBD (Environment Based Design)?"},
   "parameters": {"max_sources": 3},
   "profile_ref": "deepseek",
@@ -120,8 +125,8 @@ real Storage. It is a separate integration method, not a simulated baseline.
 All methods validate the chosen profile/model against `engine.list_profiles()`;
 validating configured names does not resolve credentials.
 The request's method revision still defaults to 1 for compatibility. Select
-revision 4 for expanded budgets, observed search and English reports. Revisions
-1–3 remain available for existing consumers; method revisions and wire v1 are independent.
+revision 5 for source access, parallel distillation and English reports. Revisions
+1–4 remain available for existing consumers; method revisions and wire v1 are independent.
 
 A saved source read has this body:
 

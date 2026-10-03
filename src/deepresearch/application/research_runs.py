@@ -315,6 +315,10 @@ class ResearchRunService:
                 "result_manifest_ref": final.result_manifest_ref.to_dict() if final.result_manifest_ref else None,
                 "checkpoint_ref": final.checkpoint_ref,
             }
+            if final.quality is not None:
+                terminal_payload.update(quality_status=final.quality.status,
+                    evidence_sufficient=final.quality.evidence_sufficient,
+                    report_accepted=final.quality.report_accepted)
             if len(canonical_json(terminal_payload)) > 16384:
                 # The authoritative projection retains all nodes. Long methods
                 # must still be able to acknowledge a bounded terminal event.

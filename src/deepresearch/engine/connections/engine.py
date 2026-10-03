@@ -33,7 +33,7 @@ WORKFLOW_EVENTS = frozenset({
     "workflow.accepted", "workflow.node.started", "workflow.node.completed",
     "workflow.node.failed", "workflow.hook.observed", "workflow.hook.decision",
     "workflow.hook.failed", "workflow.context.selected", "workflow.source.ready",
-    "workflow.measurement", "workflow.finished",
+    "workflow.measurement", "workflow.evidence.distilled", "workflow.finished",
 })
 WORKFLOW_EVENT_MAX_BYTES = 16384
 WORKFLOW_CLEANUP_EVENTS = frozenset({

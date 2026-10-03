@@ -46,7 +46,7 @@ async def test_fresh_result_access_real_bytes_history_observer_and_reopen(tmp_pa
     assert (await reader.read(access.context, 100)).unwrap().bytes == b"immutable output"
     (await reader.aclose(access.context)).unwrap()
     slice_ = (await access.storage.snapshots.read(access.context, snapshot.snapshot_ref, request.read_objects[1].range, 100)).unwrap()
-    assert slice_.text == "first\nsecond"
+    assert slice_.text == "first\nsecond\n"
     page = (await access.history.query(access.context, {"run_id": original.run_id}, None, 100)).unwrap()
     assert event.event_id in [row["event"]["event_id"] for row in page.events]
     await access.close()

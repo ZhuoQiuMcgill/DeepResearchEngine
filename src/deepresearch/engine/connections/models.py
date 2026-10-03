@@ -55,7 +55,7 @@ class EngineSettings:
     max_run_seconds: float = 1800
     max_access_seconds: float = 120
     max_depth: int = 4
-    max_descendants: int = 16
+    max_descendants: int = 32
     max_active_descendants: int = 4
     openalex_admission: bool = False
     fetch_concurrency: int = 1
@@ -65,7 +65,7 @@ class EngineSettings:
         "source_bytes": 67108864, "storage_bytes": 134217728,
         "storage_writes": 4096, "storage_reads": 2048, "status_reads": 2048,
         "storage_read_bytes": 134217728,
-        "descendants": 16,
+        "descendants": 32,
     })
 
 

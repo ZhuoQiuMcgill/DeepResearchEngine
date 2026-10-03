@@ -159,6 +159,11 @@ def slice_document(text: bytes, index: dict, requested: dict, budget: int, posit
     while unit_id < end:
         unit = units[unit_id - 1]
         segment_end = units[unit_id]["start_byte"] if unit_id + 1 < end else unit["end_byte"]
+        # The line index excludes delimiters. A range ending at the document's
+        # last line must still make its retained terminal LF readable; there
+        # is no following line through which a bridge could return that byte.
+        if kind == "lines" and unit_id == len(units):
+            segment_end = len(text)
         offset = unit["start_byte"] if byte_offset is None else byte_offset
         if not unit["start_byte"] <= offset <= segment_end or not boundary(text, offset):
             raise StorageFailure("INVALID_CURSOR", "Continuation byte position is invalid")

@@ -2,8 +2,9 @@
 
 DeepResearch Engine separates execution capabilities, Workflow composition,
 concrete research methods, role assets, optional extensions, application ownership,
-interfaces and bootstrap. `baseline@2` is the formal method built over those
-modules: Planner 1, bounded evidence/Analyst 1 rounds, Writer 2 and Reviewer 1.
+interfaces and bootstrap. `baseline@5` is the current formal method built over
+those modules: Planner 3, bounded acquisition/archived reads, parallel Distiller 1,
+Analyst 3, Writer 5 and Reviewer 4, with independent research-quality status.
 See [Baseline architecture](baseline.md) for its flow and research contracts.
 
 The platform package is `deepresearch`; the distribution is `deepresearch-engine`
@@ -41,14 +42,23 @@ src/deepresearch/
       acquisition.py       URL manifest -> acknowledged immutable snapshots
       context_selection.py saved-source scanning -> bounded evidence
       agents.py            invoke a pinned role and read its exported artifact
+      retrieval.py         bounded query recovery and available work locations
+      source_access.py     complete/explicitly partial recorded source reads
+      parallel.py          bounded tasks and sibling cancellation/drain
+      quotations.py        exact saved quote location and PDF soft word wraps
   methods/
     baseline/
       workflow.py          formal revision 2 orchestration
+      parallel_workflow.py revision 5 parallel evidence orchestration
       contracts.py         ResearchPlan, EvidenceAnalysis and ReportReview
+      evidence_contracts.py source digests and range-read decisions
       stages/
         roles.py           structured role decisions and evidence validation
         reporting.py       bounded drafting/review and citation-label checks
+        distillation.py    parallel source roles and verified quotations
+        evidence_delivery.py digests and recorded text -> synthesis evidence
       resources/2/         method.json, input.schema.json, parameters.schema.json
+      resources/3..5/      preserved newer method schemas and role pins
       v1/                  retained revision 1 workflow and schemas
     example_echo/          real model-free integration method
   extensions/              Hook contracts, registry, dispatcher and cleanup
@@ -72,9 +82,9 @@ docs/                      setup, architecture, usage and acceptance evidence
 
 Method 2 pins `baseline.planner@1`, `baseline.analyst@1`, `baseline.writer@2` and
 `baseline.reviewer@1`, each with the five standard resources above. Writer 1 and
-the v1 method remain available. Bootstrap registers `baseline@1`, `baseline@2`
+the v1 method remain available. Bootstrap registers `baseline@1` through `baseline@5`
 and `example.echo@1`; wire `method_revision` defaults to 1 for compatibility.
-New consumers explicitly request 2. HTTP `/api/v1` and wire schema 1 do not select
+New consumers explicitly request 5. HTTP `/api/v1` and wire schema 1 do not select
 the method revision.
 
 ## Dependency direction and ownership
@@ -130,6 +140,8 @@ Engine and frontend lifecycle code should remain method-independent.
 | `SourceManifest` | Acquisition -> method/UI | Per-item status, snapshot, provenance, committed recording and measurements |
 | `ContextPlan` | Selection -> Analyst/Writer/UI | Chosen snapshot/range/bytes, read action, hashes and context artifact |
 | `ResearchPlan` / `EvidenceAnalysis` / `ReportReview` | Baseline roles -> Baseline stages | Method-specific structured research decisions |
+| `SourceDistillation` / `DistilledAnalysis` | Baseline source/analysis roles -> stages | Source-bound quotes and gap-driven read requests |
+| `ResearchQuality` | Method -> run view/result/UI | Research coverage independent of execution/report acceptance |
 | `AgentSpec` | Catalog -> common Runtime | Instructions, template, schemas and host-constrained limits/tool requests |
 | `ResearchRunRequest/View` | Frontend/CLI -> application | Intent identity, version/model pins, nodes, sources, refs, terminal facts and usage |
 | `HookEvent/Decision` | Node/selection -> extension | Immutable metadata and validated subset/reordering |
@@ -160,7 +172,7 @@ facts, not authority to resume; `automatic_resume` is false.
 
 ## Bounds, measurements and usage
 
-The host sets resource grants. Default `storage_writes=1024` accommodates the
+The host sets resource grants. Default `storage_writes=4096` accommodates the
 formal method's child records, nodes and projections. It remains a shared tree
 allowance; host configuration can narrow it and other limits remain independent.
 A new role, node or round does not reset budgets. Parameter maxima describe
@@ -174,7 +186,7 @@ a registered tokenizer for the selected model. The evidence budget covers
 assembled passages/provenance; Runtime separately bounds complete rendered role
 requests. Neither promises hard exact provider token spend.
 
-Provider usage aggregates observed attempts across Planner, every Analyst and
+Provider usage aggregates observed attempts across Planner, source Distillers, every Analyst and
 all Writer/Reviewer drafts, including available observations from failed outputs.
 Known subtotals, completeness and per-attempt event references preserve available
 facts. Do not replace missing counts with zero or report only the last Writer.

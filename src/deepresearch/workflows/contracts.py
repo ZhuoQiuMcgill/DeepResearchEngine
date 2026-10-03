@@ -157,7 +157,7 @@ class ContextPlan(Contract):
     model_ref: str = Field(min_length=1, max_length=128)
     token_budget: int = Field(ge=1)
     max_text_bytes: int = Field(ge=1, le=1048576)
-    selections: list[ContextSelection] = Field(default_factory=list, max_length=32)
+    selections: list[ContextSelection] = Field(default_factory=list, max_length=512)
     measurement: TokenMeasurement | None = None
     context_ref: ArtifactReference | None = None
     strict_tokens: bool = False
@@ -181,6 +181,32 @@ class NodeView(Contract):
     detail: dict[str, Any] = Field(default_factory=dict)
 
 
+class ResearchQuality(Contract):
+    """Research coverage is independent of execution and report acceptance."""
+    status: Literal["sufficient", "partial", "insufficient"]
+    report_accepted: bool = False
+    evidence_sufficient: bool
+    attempted_sources: int = Field(ge=0, le=32)
+    substantive_sources: int = Field(ge=0, le=32)
+    fully_read_sources: int = Field(ge=0, le=32)
+    distilled_sources: int = Field(ge=0, le=32)
+    gaps: list[str] = Field(default_factory=list, max_length=16)
+    reasons: list[str] = Field(default_factory=list, max_length=16)
+
+    @field_validator("gaps", "reasons")
+    @classmethod
+    def bounded_reasons(cls, values):
+        if any(not value.strip() or len(value) > 1024 for value in values):
+            raise ValueError("Coverage reasons require bounded nonblank text")
+        return values
+
+    @model_validator(mode="after")
+    def coherent_coverage(self):
+        if (self.status == "sufficient") != self.evidence_sufficient:
+            raise ValueError("Sufficient coverage must agree with its explicit flag")
+        return self
+
+
 class ResearchRunView(Contract):
     run_id: str
     method_id: str
@@ -202,5 +228,6 @@ class ResearchRunView(Contract):
     result_manifest_ref: ArtifactReference | None = None
     checkpoint_ref: dict[str, Any] | None = None
     usage: dict[str, Any] | None = None
+    quality: ResearchQuality | None = None
     error: dict[str, Any] | None = None
     automatic_resume: Literal[False] = False

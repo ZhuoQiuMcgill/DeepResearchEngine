@@ -390,7 +390,7 @@ async def test_baseline_real_saved_reads_writer_sees_only_selected_text(tmp_path
         child = engine.list_agents()[0]["definition"]
         assert child["allowed_tools"] == [] and child["input_schema"]["type"] == "string"
         source = await service.read_source(view.run_id, "requested-001", SourceRange(kind="lines", start=201, end_exclusive=202), 1024)
-        assert source["text"] == "UNSELECTED_SECRET_MARKER"
+        assert source["text"] == "UNSELECTED_SECRET_MARKER\n"
         rows = (await service.events(view.run_id))["events"]
         assert len([row for row in rows if row["event"]["kind"] == "agent.finished"]) == 1
         assert all(row["event"]["context"]["context_kind"] == "agent" for row in rows if row["event"]["kind"] == "agent.finished")

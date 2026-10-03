@@ -25,6 +25,13 @@ class WorkflowContext:
         self.run_id, self.model_ref = run_id, model_ref
         self.port, self.hooks, self.tokens = port, hooks, token_meter
         self.nodes = {}
+        self._nodes_lock = asyncio.Lock()
+
+    async def _flush_nodes(self, *, cleanup=False):
+        # Snapshot under the same lock as node admission. Parallel child exits
+        # must not overwrite a projection with an older subset of the nodes.
+        async with self._nodes_lock:
+            await self.port.update(cleanup=cleanup, nodes=list(self.nodes.values()))
 
     @asynccontextmanager
     async def node(self, node_id: str, kind: str, detail=None):
@@ -34,20 +41,28 @@ class WorkflowContext:
         detail = dict(detail or {})
         canonical_json(detail, 16384)
         node = {"schema_version": 1, "node_id": node_id, "kind": kind, "status": "running", "detail": detail}
-        self.nodes[node_id] = node
-        await self.port.update(nodes=list(self.nodes.values()))
+        admitted = False
         try:
+            async with self._nodes_lock:
+                self.port.assert_active()
+                if node_id in self.nodes:
+                    raise EngineError("INVALID_DATA", "A logical node identity can execute only once")
+                self.nodes[node_id] = node
+                admitted = True
+                await self.port.update(nodes=list(self.nodes.values()))
             await self.port.emit("workflow.node.started", node)
             await self.hooks.observe(HookEvent(self.run_id, node_id, "node.before",
                 {"kind": kind, "status": "running", "detail_sha256": digest_json(detail)}))
             yield node
             self.port.assert_active()
         except BaseException as error:
+            if not admitted:
+                raise
             cancelled = isinstance(error, asyncio.CancelledError) or (isinstance(error, EngineError) and error.code == "CANCELLED")
             node["status"] = "cancelled" if cancelled else "failed"
             node["detail"] = {**detail, "error_code": error.code if isinstance(error, EngineError) else type(error).__name__}
             await self.port.emit("workflow.node.failed", node, cleanup=True)
-            await self.port.update(cleanup=True, nodes=list(self.nodes.values()))
+            await self._flush_nodes(cleanup=True)
             await self.hooks.observe(HookEvent(self.run_id, node_id, "node.failed",
                 {"kind": kind, "status": node["status"], "detail_sha256": digest_json(node["detail"])}))
             raise
@@ -56,7 +71,7 @@ class WorkflowContext:
             await self.port.emit("workflow.node.completed", node)
             await self.hooks.observe(HookEvent(self.run_id, node_id, "node.after",
                 {"kind": kind, "status": "succeeded", "detail_sha256": digest_json(node["detail"])}))
-            await self.port.update(nodes=list(self.nodes.values()))
+            await self._flush_nodes()
 
     async def select(self, node_id, point, candidate_ids):
         return await self.hooks.select(HookEvent(self.run_id, node_id, point,

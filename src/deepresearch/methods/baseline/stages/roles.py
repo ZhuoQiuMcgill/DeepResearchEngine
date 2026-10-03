@@ -5,8 +5,8 @@ from deepresearch.engine.contracts import EngineError, canonical_json, strict_js
 from deepresearch.workflows.components.agents import invoke_role
 
 
-async def decision(context, role_id, task_input, contract, *, node_id):
-    raw, outcome = await invoke_role(context, role_id, task_input, node_id=node_id)
+async def decision(context, role_id, task_input, contract, *, node_id, input_ref=None):
+    raw, outcome = await invoke_role(context, role_id, task_input, node_id=node_id, input_ref=input_ref)
     async with context.node(node_id + ".validate", "decision_validation", {"role_id": role_id}):
         try:
             value = contract.model_validate(strict_json_loads(raw, 65536))

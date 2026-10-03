@@ -26,6 +26,11 @@ def definition(revision=2):
         assets[name] = digest_bytes(files(__package__).joinpath(name).read_bytes())
     for name in ("discovery.py", "acquisition.py", "context_selection.py", "agents.py", "search_policy.py"):
         assets["component:" + name] = digest_bytes(files("deepresearch.workflows.components").joinpath(name).read_bytes())
+    if revision >= 5:
+        for name in ("parallel_workflow.py", "evidence_contracts.py", "stages/distillation.py", "stages/evidence_delivery.py"):
+            assets[name] = digest_bytes(files(__package__).joinpath(name).read_bytes())
+        for name in ("source_access.py", "retrieval.py", "parallel.py", "quotations.py"):
+            assets["component:" + name] = digest_bytes(files("deepresearch.workflows.components").joinpath(name).read_bytes())
     return MethodDefinition("baseline", revision, spec["description"], resource("input.schema.json", revision),
         resource("parameters.schema.json", revision), tuple((role["role_id"], role["revision"]) for role in spec["agent_roles"]), assets,
         tool_revisions=spec.get("tool_revisions", {}))

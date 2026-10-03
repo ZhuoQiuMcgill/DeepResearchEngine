@@ -151,12 +151,214 @@ def build_index(text: bytes, pages: list[dict] | None) -> dict:
     return {"schema_version": 1, "format": "document_index/1", "text_sha256": digest(text), "lines": lines, "pages": pages}
 
 
+
+_HTML_EXTRACTION = "html_article/1+trafilatura/2.2.0"
+_ABSTRACT_NAMES = {"abstract", "articleabstract", "abstracttext", "abstractcontent", "abstractsection", "abstractbody"}
+_BODY_NAMES = {"articlebody", "articlecontent", "articletext", "fulltext", "fulltextcontent", "bodytext"}
+_REFERENCE_NAMES = {"reference", "references", "referencelist", "referenceslist", "refs", "reflist", "bibliography", "referencessection"}
+_NOISE_NAMES = {"nav", "navigation", "navbar", "menu", "sidebar", "toolbar", "social", "share", "sharing",
+                "related", "relatedarticles", "recommendedarticles", "recommendations", "advertisement", "ads",
+                "cookiebanner", "citationtools", "metrics", "hidden", "sronly", "visuallyhidden", "paywallcontent"}
+_HTML_BLOCKS = {"article", "section", "main", "div", "p", "h1", "h2", "h3", "h4", "h5", "h6",
+                "ul", "ol", "li", "table", "tr", "td", "th", "blockquote", "pre", "br", "dl", "dt", "dd"}
+_CITATION_FIELDS = (
+    ("Title", ("citation_title", "dc.title")),
+    ("Authors", ("citation_author", "citation_authors", "dc.creator")),
+    ("Publication date", ("citation_publication_date", "citation_date", "dc.date")),
+    ("Online date", ("citation_online_date",)),
+    ("Journal", ("citation_journal_title",)),
+    ("DOI", ("citation_doi",)),
+    ("Volume", ("citation_volume",)),
+    ("Issue", ("citation_issue",)),
+    ("First page", ("citation_firstpage",)),
+    ("Last page", ("citation_lastpage",)),
+    ("Keywords", ("citation_keywords",)),
+)
+
+
+def _html_names(node) -> set[str]:
+    # Whitespace separates class names. Do not confuse 'reference-implementation'
+    # or 'abstract-art' with actual reference/abstract containers.
+    return {re.sub(r"[^a-z0-9]", "", value.lower())
+            for value in ((node.get("id") or "") + " " + (node.get("class") or "")).split()}
+
+
+def _html_text(node) -> str:
+    from lxml import etree
+    parts = []
+    for event, element in etree.iterwalk(node, events=("start", "end")):
+        if element.tag in _HTML_BLOCKS: parts.append("\n")
+        if event == "start" and element.text: parts.append(element.text)
+        if event == "end" and element is not node and element.tail: parts.append(element.tail)
+    # Preserve inline concatenation, paragraph/table boundaries and literal data.
+    return "\n".join(line for raw in normalize("".join(parts)).split("\n")
+                     if (line := " ".join(raw.split())))
+
+
+def _html_top_nodes(root, nodes) -> list:
+    selected = set(nodes)
+    return [node for node in root.iter() if node in selected
+            and not any(parent in selected for parent in node.iterancestors())]
+
+
+def _html_heading_scope(node) -> list:
+    """A labelled section or following siblings, never an entire enclosing article."""
+    heading = node
+    while heading is not None and heading.tag not in {"h1", "h2", "h3", "h4", "h5", "h6"}:
+        heading = heading.getparent()
+    if heading is None: return [node]
+    parent = heading.getparent()
+    if parent is None: return [heading]
+    if "panelheading" in _html_names(parent):
+        panel = parent.getparent()
+        if panel is not None and "panel" in _html_names(panel): return [panel]
+    if (parent.tag in {"div", "section"} and len(parent) and parent[0] is heading
+            and not any(child is not heading and child.tag in {"h1", "h2", "h3", "h4", "h5", "h6"}
+                        and child.tag <= heading.tag for child in parent.iter())):
+        return [parent]
+    siblings = [heading]
+    for sibling in heading.itersiblings():
+        if sibling.tag in {"h1", "h2", "h3", "h4", "h5", "h6"} and sibling.tag <= heading.tag: break
+        siblings.append(sibling)
+    return siblings
+
+
+def _html_access_url(value: str, info: dict) -> str | None:
+    value = value.strip()
+    if not value or value.startswith(("#", "javascript:", "data:")): return None
+    try:
+        base = info.get("final_url") or info.get("requested_url") or ""
+        # Resolution uses only the known response URL, never a page-controlled base
+        # or JavaScript onclick. URL validation performs no DNS/network access.
+        return url(urljoin(base, value))
+    except (ToolFault, ValueError):
+        return None
+
+
+def _extract_html(source: str, info: dict) -> tuple[str, str]:
+    """Retain visible same-body article sections and labelled public metadata."""
+    from lxml import html
+    import trafilatura
+    try:
+        root = html.document_fromstring(source.encode("utf-8"), parser=html.HTMLParser(
+            encoding="utf-8", no_network=True, remove_comments=True,
+        ))
+    except (ValueError, html.etree.ParserError) as exc:
+        raise ToolFault("EXTRACTION_EMPTY", "Static HTML has no extractable document text") from exc
+    meta = {}
+    for node in root.xpath("//head/meta[@name or @property]"):
+        name = (node.get("name") or node.get("property") or "").lower()
+        value = " ".join((node.get("content") or "").split())
+        if value and value not in meta.setdefault(name, []): meta[name].append(value)
+    for node in list(root.iter()):
+        if node is root or node.getparent() is None: continue
+        style = node.get("style") or ""
+        if (node.tag in {"script", "style", "noscript", "template", "nav", "aside", "footer", "iframe", "object", "embed",
+                         "input", "select", "textarea", "button"}
+                or "hidden" in node.attrib or (node.get("aria-hidden") or "").lower() == "true"
+                or re.search(r"(?:display\s*:\s*none|visibility\s*:\s*hidden)", style, re.I)
+                or (node.get("role") or "").lower() in {"navigation", "menu", "menubar", "search"}
+                or _html_names(node) & _NOISE_NAMES):
+            node.drop_tree()
+    # Publisher forms can wrap real article text. Only discard their controls;
+    # unwrapping prevents trafilatura from dropping a legitimate abstract form.
+    for node in list(root.iter("form")): node.drop_tag()
+    metadata = []
+    for label, names in _CITATION_FIELDS:
+        for name in names:
+            if meta.get(name):
+                metadata.append(label + ": " + "; ".join(meta[name]))
+                break
+    if not any(item.startswith("Title:") for item in metadata):
+        title = root.xpath("//article//h1 | //main//h1")
+        if title and _html_text(title[0]): metadata.insert(0, "Title: " + " ".join(_html_text(title[0]).split()))
+    reference_nodes = []
+    for node in root.iter():
+        if _html_names(node) & _REFERENCE_NAMES:
+            reference_nodes.extend(_html_heading_scope(node) if node.tag in {"a", "h1", "h2", "h3", "h4", "h5", "h6"} else [node])
+        elif node.tag in {"h1", "h2", "h3", "h4", "h5", "h6"} and _html_text(node).strip(" :：").lower() in {"references", "bibliography", "reference list"}:
+            reference_nodes.extend(_html_heading_scope(node))
+    references = []
+    for node in _html_top_nodes(root, reference_nodes):
+        value = _html_text(node)
+        if len(value) >= 20: references.append(value)
+        node.drop_tree()
+    access_urls = set()
+    for name in ("citation_pdf_url", "citation_fulltext_html_url", "citation_abstract_html_url"):
+        for value in meta.get(name, []):
+            target = _html_access_url(value, info)
+            if target and target not in access_urls:
+                metadata.append(f"Access URL ({name}; not fetched): {target}")
+                access_urls.add(target)
+    for node in root.iter("a"):
+        label, href = " ".join(_html_text(node).split()), node.get("href") or ""
+        try: pdf_path = urlsplit(href).path.lower().endswith(".pdf")
+        except ValueError: pdf_path = False
+        if (re.fullmatch(r"(?:view\s+|download\s+)?(?:pdf|full\s*text)(?:\s*\([^)]*\))?(?:\s*\d+)?", label, re.I)
+                or pdf_path):
+            target = _html_access_url(href, info)
+            if target and target not in access_urls:
+                metadata.append(f"Access URL (same-body href; not fetched): {target}")
+                access_urls.add(target)
+    abstract_nodes = []
+    for node in root.iter():
+        if node.tag in {"div", "section", "p"} and _html_names(node) & _ABSTRACT_NAMES:
+            abstract_nodes.append(node)
+        elif node.tag == "p" and re.match(r"^(?:abstract|摘要)\s*[:：]", _html_text(node), re.I):
+            abstract_nodes.append(node)
+    # A standalone Abstract heading may introduce multiple paragraphs. If a
+    # labelled paragraph already supplies it, avoid taking a whole tab panel
+    # (which may also contain keyword, share and citation-manager widgets).
+    for node in root.iter():
+        if node.tag in {"h1", "h2", "h3", "h4", "h5", "h6"} and _html_text(node).strip(" :：").lower() in {"abstract", "摘要"}:
+            scope = _html_heading_scope(node)
+            if not any(candidate is section or section in candidate.iterancestors()
+                       for section in scope for candidate in abstract_nodes):
+                abstract_nodes.extend(scope)
+    abstracts = []
+    for node in _html_top_nodes(root, abstract_nodes):
+        value = _html_text(node)
+        if len(value) >= 20: abstracts.append(value)
+        node.drop_tree()
+    if not abstracts and meta.get("citation_abstract"):
+        abstracts.extend("Abstract (citation_abstract metadata): " + value for value in meta["citation_abstract"])
+    bodies = []
+    explicit = [node for node in root.iter() if node.tag in {"div", "section", "article", "main"}
+                and (_html_names(node) & _BODY_NAMES or "articleBody" in (node.get("itemprop") or "").split())]
+    for candidates, marked in ((explicit, True), (list(root.iter("article")), False), (list(root.iter("main")), False)):
+        for node in _html_top_nodes(root, candidates):
+            value = _html_text(node)
+            substantive = marked or any(len(_html_text(p)) >= 40 for p in node.iter("p")) or len(" ".join((node.text or "").split())) >= 80
+            if len(value) >= 40 and substantive: bodies.append(value)
+        if bodies: break
+    sections = []
+    if metadata: sections.append("[Same-body article metadata; not article full text]\n" + "\n".join(metadata))
+    if abstracts: sections.append("[Same-body abstract; not full text]\n" + "\n\n".join(dict.fromkeys(abstracts)))
+    if bodies:
+        sections.append("[Same-body article body; completeness not verified]\n" + "\n\n".join(dict.fromkeys(bodies)))
+        classification = "article_body"
+    elif abstracts:
+        classification = "article_abstract"
+    else:
+        # A generic page still uses trafilatura. Exclude references/navigation
+        # before selection so a large bibliography cannot win over article prose.
+        fallback = trafilatura.extract(html.tostring(root, encoding="unicode"), include_comments=False,
+                                       include_tables=True, output_format="txt")
+        if fallback and fallback.strip():
+            sections.append("[Same-body extracted text; article coverage unverified]\n" + normalize(fallback) if metadata or references else normalize(fallback))
+        classification = "article_metadata" if metadata and not fallback else "static_text"
+    if references: sections.append("[Same-body references; not article body]\n" + "\n\n".join(dict.fromkeys(references)))
+    text = "\n\n".join(sections)
+    if not text.strip(): raise ToolFault("EXTRACTION_EMPTY", "Static HTML has no extractable document text")
+    return text, classification
+
 def extract(body: bytes, info: dict, limits: dict | None = None) -> dict:
     limits = LIMITS | (limits or {})
     content_type = info["content_type"]
     media = content_type.split(";", 1)[0].strip().lower()
     pages, charset, charset_source = None, None, None
     parser_warning_count = 0
+    classification = "static_text"
     if body.startswith(b"%PDF-") and media != "application/pdf":
         raise ToolFault("CONTENT_TYPE_MISMATCH", "PDF bytes disagree with declared media type")
     if media == "application/pdf":
@@ -193,14 +395,14 @@ def extract(body: bytes, info: dict, limits: dict | None = None) -> dict:
             parser_warning_count = counter.count
             logger.handlers, logger.propagate = old_handlers, old_propagate
     elif media in ("text/html", "application/xhtml+xml"):
+        if len(body) > limits["raw_bytes"]:
+            raise ToolFault("RESPONSE_LIMIT", "Source component exceeds limit", status="limit_exhausted")
         source, charset, charset_source = decode_text(body, content_type, html=True)
         lowered = source.lower()
         if any(marker in lowered for marker in ("cf-chl-", "verify you are human", "just a moment...", "enable javascript and cookies to continue")):
             raise ToolFault("SOURCE_CHALLENGE", "Source requires interactive access")
-        import trafilatura
-        text = trafilatura.extract(source, include_comments=False, include_tables=True, output_format="txt")
-        if not text or not text.strip(): raise ToolFault("EXTRACTION_EMPTY", "Static HTML has no extractable document text")
-        text, extraction = normalize(text), "trafilatura/2.2.0"
+        text, classification = _extract_html(source, info)
+        text, extraction = normalize(text), _HTML_EXTRACTION
     elif media == "text/plain":
         text, charset, charset_source = decode_text(body, content_type)
         text, extraction = normalize(text), "plain_text/1"
@@ -216,7 +418,7 @@ def extract(body: bytes, info: dict, limits: dict | None = None) -> dict:
                   "text_bytes": len(encoded), "text_sha256": digest(encoded),
                   "index_bytes": len(index), "index_sha256": digest(index),
                   "extraction_version": extraction, "normalization_version": "lf/1",
-                  "classification": "static_text", "physical_page_count": len(pages) if pages is not None else None,
+                  "classification": classification, "physical_page_count": len(pages) if pages is not None else None,
                   "parser_warning_count": parser_warning_count}
     encode(provenance, limits["provenance_bytes"])
     return {"original": body, "text": encoded, "index": index, "provenance": provenance,

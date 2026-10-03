@@ -2,9 +2,9 @@
 
 A modular execution platform for reusable research methods. Agent Runtime,
 Toolset, Storage and Connections provide execution capabilities; Workflows
-compose them through an application port. The formal **`baseline@4`** plans
-research, searches and archives sources in bounded rounds, analyzes selected
-passages, then writes and reviews a cited report. Its four Agent roles are
+compose them through an application port. The formal **`baseline@5`** plans
+research, searches and archives sources, reads retained documents and distills
+them with parallel source Agents before synthesis and review. Its five Agent roles are
 all tool-free and use the common Runtime. Final reports use English.
 The fixed EBD experiment question is `What is EBD (Environment Based Design)?`;
 Agent-generated search queries remain separate from that original input.
@@ -18,7 +18,7 @@ bridges; new code uses `deepresearch.*`.
 ## Start here
 
 - [Team start](docs/team-start.md): setup, contributor interfaces and ownership.
-- [Expanded Baseline usage](docs/usage/baseline-expanded.md): explicit v4 requests, larger budgets,
+- [Parallel Baseline usage](docs/usage/baseline-parallel.md): explicit v5 requests, source access, parallel distillation and quality,
   CLI/HTTP/SSE and saved source/report/artifact reads.
 - [Baseline architecture](docs/architecture/baseline.md): role pins, bounded
   rounds/revision, publication conditions, evidence gaps and recovery.
@@ -28,9 +28,9 @@ bridges; new code uses `deepresearch.*`.
 - [ResearchRun API](docs/usage/research-service.md) and [OpenAPI](docs/api/openapi.json):
   generic frontend/application contracts. Baseline version details are in their own guides.
 
-Bootstrap registers `baseline@1`, `baseline@2`, `baseline@3`, `baseline@4` and `example.echo@1`.
+Bootstrap registers `baseline@1` through `baseline@5` and `example.echo@1`.
 **`ResearchRunRequest.method_revision` still defaults to 1. New Baseline consumers
-must explicitly request revision 4 for English reports and expanded budgets.** HTTP `/api/v1` and wire `schema_version: 1`
+must explicitly request revision 5 for parallel distillation and English reports.** HTTP `/api/v1` and wire `schema_version: 1`
 are independent of the method version. Earlier methods and role bundles are retained.
 The historical `deepresearch baseline` command runs a separate single-Agent
 workflow; registered methods use `deepresearch research`.
@@ -62,41 +62,42 @@ in `local/.env`; [.env.example](.env.example) lists their names. Preserve an
 existing file. Configuration resolves API values lazily on the host; browser
 requests select named profiles and models rather than carrying credentials.
 
-## Run Baseline revision 4
+## Run Baseline revision 5
 
 A minimal PowerShell request can concern any research question:
 
 ```powershell
 $request = @{
     schema_version = 1
-    client_request_id = "baseline-v4-" + [guid]::NewGuid().ToString("N")
+    client_request_id = "baseline-v5-" + [guid]::NewGuid().ToString("N")
     method_id = "baseline"
-    method_revision = 4
+    method_revision = 5
     input = @{ question = "What is EBD (Environment Based Design)?" }
     parameters = @{ max_rounds = 2; max_queries = 2; max_sources = 20; max_report_attempts = 4 }
     profile_ref = "deepseek"
     model_ref = "deepseek-flash"
     timeout_seconds = 1800.0
 } | ConvertTo-Json -Depth 8
-$request | uv run --locked deepresearch --store local/my-baseline-v4 research
+$request | uv run --locked deepresearch --store local/my-baseline-v5 research
 ```
 
 This uses real search/fetch/read tools and the selected model profile. Provider
 credentials and access are required. For a POSIX shell, a request file can be
 passed with `research < examples/baseline-request.json`; PowerShell uses
 `Get-Content -Raw examples/baseline-request.json | uv run --locked deepresearch
---store local/my-baseline-v4 research`. Check its version and use a fresh
+--store local/my-baseline-v5 research`. Check its version and use a fresh
 `client_request_id` for new intent. Repeating the same identity and full request
 returns the original run; changing its body is a conflict.
 
 ```mermaid
 flowchart LR
-    Question[Question] --> Planner[Planner 2]
-    Planner --> Rounds[Bounded search / fetch / context rounds]
-    Rounds --> Analyst[Analyst 2: findings and gaps]
-    Analyst -->|new queries within limits| Rounds
-    Analyst --> Writer[Writer 4]
-    Writer --> Review[Reviewer 3 and language/citation checks]
+    Question[Question] --> Planner[Planner 3]
+    Planner --> Rounds[Bounded discovery / fetch / archived reads]
+    Rounds --> Distillers[Parallel Distiller 1 pool]
+    Distillers --> Analyst[Analyst 3: findings, gaps and read requests]
+    Analyst -->|new queries / reads within limits| Rounds
+    Analyst --> Writer[Writer 5]
+    Writer --> Review[Reviewer 4 and language/citation/coverage checks]
     Review -->|revise within draft cap| Writer
     Review -->|accepted| Report[Final report and result checkpoint]
 ```
@@ -112,7 +113,9 @@ Only an accepted report is exposed as the final report; successful execution
 also requires committed terminal recording and settled cleanup. Model review
 and deterministic label checks do not guarantee external factual truth.
 
-Bounds come from the v4 [parameter schema](src/deepresearch/methods/baseline/resources/4/parameters.schema.json)
+`quality` distinguishes report acceptance from sufficient research coverage;
+source-access and distillation artifacts link summaries to saved bytes.
+Bounds come from the v5 [parameter schema](src/deepresearch/methods/baseline/resources/5/parameters.schema.json)
 and the host's shared budgets. The default shared recording allowance is
 `storage_writes=4096` to accommodate the formal flow's nodes, projections and
 child records. Host deployments may narrow it; rounds and children do not reset

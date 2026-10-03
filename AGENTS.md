@@ -5,24 +5,27 @@ in the current root chat and its in-chat subagents. Do not contact or dispatch
 work to the former module-team chats. Their reviewed documents remain design
 references, not active work assignments.
 
-The platform and formal `baseline@4` Workflow are delivered. Methods, Agent
+The platform and formal `baseline@5` Workflow are delivered. Methods, Agent
 specifications, optional Hooks, application ownership and HTTP/CLI are separate
 modules. Current source, docs/team-start.md and
 docs/architecture/project-structure.md define the development boundaries;
 docs/research-acceptance.md records actual checks. EBD strategy and console work
 consume those interfaces and are outside this baseline delivery.
-The formal method composes planning, bounded acquisition/analysis rounds and
-draft/review stages. Pin method revision 4 explicitly for English reports and expanded budgets; revisions 1–3 are retained
-for existing consumers. See docs/usage/baseline-expanded.md for the 20-source,
-two-round and 256k Agent limits. See docs/architecture/baseline.md and docs/usage/baseline.md.
-Baseline 3 and 4 pin web.search revision 2. Query preparation and topic screening
-belong to workflows/components/search_policy.py; HTTP/backends and URL decoding
+The formal method composes focused planning, bounded acquisition/archived reads,
+parallel source distillation, gap-driven reads/search and draft/review stages.
+Pin method revision 5 explicitly; revisions 1–4 remain available. See
+docs/usage/baseline-parallel.md for the 20-source/two-round/256k Agent limits,
+module interfaces, saved-source access and independent quality status.
+Baseline 3–5 pin web.search revision 2. Query preparation and topic screening
+belong to workflows/components/search_policy.py and retrieval.py; HTTP/backends and URL decoding
 belong to engine/toolset. See docs/usage/tools.md and examples/live_search_check.py.
 All EBD experiments must preserve the user's exact original question:
 `What is EBD (Environment Based Design)?` Do not expand, translate or rephrase it.
-Agent-generated search queries are separate recorded data. Baseline 4 pins
-Writer 4 and Reviewer 3, requires an English report, and rejects CJK narrative
-at publication. Do not rewrite historical saved requests or outputs.
+Agent-generated search queries are separate recorded data. Baseline 5 pins
+Planner 3, Distiller 1, Analyst 3, Writer 5 and Reviewer 4, requires English
+output, and rejects CJK narrative at publication. Report acceptance and
+ResearchRunView.quality are separate; execution success does not imply sufficient
+research. Do not rewrite historical saved requests or outputs.
 
 Read `CONTRIBUTING.md`, `docs/team-start.md`,
 `docs/teams/consumer-contract-v1.md`, `docs/teams/platform-contract-v1.md`

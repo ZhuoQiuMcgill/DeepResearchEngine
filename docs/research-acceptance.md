@@ -1,6 +1,87 @@
 # Research acceptance — 2026-10-02
 
-## Exact experiment input and English report — Baseline revision 4
+## Baseline revision 5: complete source access and parallel distillation
+
+The current method is `baseline@5`, pinning Planner 3, Distiller 1, Analyst 3,
+Writer 5 and Reviewer 4. The reusable discovery, acquisition, retained reader,
+quotation locator and bounded parallel mapper remain separate from the method's
+round/quality policies. Every role uses the ordinary Runtime with no tools and a
+262,144-token context allowance. See [the current usage and frontend contracts](usage/baseline-parallel.md).
+
+The real unseeded run is **`run_44dee4613305486aaab70b78f7c53492`**:
+
+| Check | Actual result |
+| --- | --- |
+| Full project regression | **1,118 passed in 225.97 seconds**; final methods/catalog/architecture regression after the coverage correction: **351 passed in 176.72 seconds** |
+| Original input | Exactly `What is EBD (Environment Based Design)?`; no supplied queries or URLs |
+| Execution / recording | `succeeded` / `complete`; no unsettled operations |
+| Research budget | At most two rounds and 20 attempted URLs globally; this run stopped after one round at `evidence_sufficient`, with 10 attempted URLs, six snapshots and four retained fetch failures |
+| Saved-source access | All six snapshots fully read and byte/hash checked: five complete PDFs (18, 28, 12, 9 and 10 pages) plus the 1,857-byte original lab landing page |
+| Previous ten-page omission | QMS PDF now delivers all 18 pages / 52,133 bytes, including its tail; the 2002 theory PDF delivers all 28 pages / 79,708 bytes |
+| Source distillation | Six validated source digests, 41 bound findings, seven model attempts including one quote-repair retry; **four concurrent Distillers observed in actual model intent/outcome intervals** |
+| Coverage | `quality.status=sufficient`, `evidence_sufficient=true`, `report_accepted=true`, five distinct substantive documents, six fully read/distilled sources, no required gaps/reasons |
+| Synthesis context | 284,109 UTF-8 bytes / 71,028 estimated tokens, within the 524,288-byte / 131,072-token evidence limits |
+| Model usage | 11 paired calls; 304,923 input + 14,913 output = **319,836 observed tokens**, including retries; 22,528 cached input tokens |
+| Report | English; 11,908 bytes; `sha256:6790600ef9ae0bb0bf4d8948f331d8d3f84071ed136446ff0f87e6f193ea470d`; first draft accepted and exported bytes identical to the saved Writer output |
+| HTTP/SSE / restart | 611 replayed events; reconnect, idempotent request and byte-identical report after reopening passed |
+| SQLite/provenance | **2,486 checks, zero failures**; integrity/FK checks pass, 627 events, 121 artifacts, six snapshots, four checkpoints, 31 paired tools and 11 paired models/invocations |
+| Exact Agent access | Saved Distiller task JSON matches the actual invocation-input digest; every input segment and verified quote resolves to original snapshot bytes and a recorded read action |
+| Packaging | Isolated final wheel loads Baseline revisions 1–5, all 25 new role-resource files and 256k limits; real model-free Workflow/Storage run succeeds |
+
+The report was read after publication. It explains the definition, the three
+activities, the axiomatic foundation, the Edmonton quality-manual case and the
+2023 aircraft-pylon case. It distinguishes the brief landing page from article
+full text, formal background papers from direct EBD descriptions, and a reported
+single-case expert evaluation from independent replication. `sufficient` is a
+coverage judgment for this definition question and these planned questions; it
+does not claim an exhaustive literature review or independently replicated outcomes.
+
+Controlled cases additionally verify complete line/PDF tails, partial byte caps,
+known range promotion, digest reuse, alternate full text after 403/abstract/
+bibliography results, DOI/hash deduplication, irrelevant-content exclusion and
+isolated concurrent Agent inputs. Fabricated quotes/unknown IDs still fail before
+synthesis. Whitespace and ASCII soft line hyphens locate only original saved
+substrings; known segment-pointer corrections retain raw output and a separate
+`validation_changes` record. Contradictory Analyst `sufficient=true` plus gaps or
+read requests is conservatively downgraded, with raw and normalized analysis
+references retained. Reviewer acceptance cannot override missing citations,
+wrong coverage labels or non-English narrative.
+
+Cancellation regressions delay or lose the acknowledgement after a real SQLite
+commit, including repeated cancellation and sibling failure. The same admitted
+operation is settled under the projection lock before cancellation propagates;
+live/DB versions, all usage references and terminal node/error facts remain
+consistent. Unknown commitments never authorize a replacement CAS or execution.
+Final line ranges now include the actual retained terminal LF; immutable line
+indexes and line counts are unchanged.
+
+Search remains bounded and records unavailable providers/challenges. A known,
+fully settled read-only `SEARCH_UNAVAILABLE` can continue fallback/recovery and
+retain earlier candidates. Whole-topic screening excludes the unrelated BSI
+standards found in the first trial. Cited-title recovery preserves actual titles
+and publisher/OA locations, rather than inventing URL templates.
+
+Earlier development trials are retained unchanged under fresh identities: trial
+1 exposed the event allowlist and cancelled CAS acknowledgement race; trial 2
+exposed settled search failure classification; trial 3 exposed PDF soft word
+wraps and segment-pointer errors; trial 4 exposed contradictory Analyst coverage.
+The fixes were exercised in regression tests and trial 5 above. No earlier
+requests, outputs, role bundles or baseline revisions were retroactively rewritten.
+
+Ignored retained evidence:
+
+```text
+local/baseline-parallel-request.json, local/baseline-parallel-request-{2..5}.json
+local/baseline-parallel-live-20261002-{1..5}/
+local/baseline-parallel-live-20261002-5-evidence/
+  acceptance.json, run.json, result.json, report.md
+local/baseline-parallel-provenance-20261002-5/{audit,events}.json
+local/parallel-baseline-final-tests.txt
+local/parallel-baseline-final-method-checks.txt
+local/parallel-baseline-wheel/
+```
+
+## Retained validation: exact experiment input and English report — Baseline revision 4
 
 All current EBD experiment entry points preserve the exact user input:
 **`What is EBD (Environment Based Design)?`**. The research question is not
@@ -9,7 +90,7 @@ generated by Planner/Analyst and prepared by SearchPolicy remain separate,
 recorded data. Earlier saved experiments with different input are historical
 records and are not retroactively relabelled as identical-input trials.
 
-`examples/baseline-request.json` selects `baseline@4` with no supplied URLs or
+At this validation, `examples/baseline-request.json` selected `baseline@4` with no supplied URLs or
 queries. `examples/research.py`, the legacy baseline's new-run question and both
 search diagnostic requests use the same sentence, including its question mark.
 The live research experiment driver rejects a modified question or a method

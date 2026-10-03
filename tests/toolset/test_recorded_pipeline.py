@@ -38,7 +38,7 @@ def test_real_storage_recording_and_exact_worker_read(tmp_path):
         second = await RecordedToolAction().run(ToolRequest(ToolRef("document.read"), {"snapshot_ref": receipt.snapshot_ref.to_dict(),
             "range": {"kind": "lines", "start": 1, "end_exclusive": 3}, "continuation": first.result["continuation"]}), binding, context.for_action("read-next", root_action_id="read-next"))
         assert second.status == "succeeded"
-        assert first.result["text"] + second.result["text"] == "中abc\nsecond"
+        assert first.result["text"] + second.result["text"] == "中abc\nsecond\n"
         events = (await store.activity.query(context, {"run_id": context.run_id}, limit=100)).unwrap().events
         tools = [event for event in events if event["event"]["kind"].startswith("tool.")]
         assert [event["event"]["kind"] for event in tools] == ["tool.intent", "tool.outcome", "tool.intent", "tool.outcome"]
