@@ -20,6 +20,8 @@ from deepresearch.engine import EngineSettings
 from deepresearch.engine.contracts import digest_bytes
 from deepresearch.interfaces.http import create_app
 
+EBD_EXPERIMENT_QUESTION = "What is EBD (Environment Based Design)?"
+
 
 @asynccontextmanager
 async def server(settings):
@@ -90,6 +92,10 @@ async def check(args):
     request = json.loads(args.request.read_text(encoding="utf-8")) if args.request else {
         "client_request_id": "echo-http-example-1", "method_id": "example.echo",
         "input": {"message": "Shared workflow interfaces are ready."}}
+    if request["method_id"] == "baseline" and request.get("input", {}).get("question") != EBD_EXPERIMENT_QUESTION:
+        raise ValueError(f"EBD experiments require the exact original question: {EBD_EXPERIMENT_QUESTION}")
+    if request["method_id"] == "baseline" and request.get("method_revision", 1) < 4:
+        raise ValueError("New EBD experiments require baseline revision 4 with English-only report roles")
     async with server(settings) as address:
         async with httpx.AsyncClient(base_url=address, timeout=40, trust_env=False) as client:
             methods = await client.get("/api/v1/methods")
@@ -109,6 +115,9 @@ async def check(args):
                 raise RuntimeError("Research run did not settle")
             assert view["status"] == "succeeded" and view["recording_status"] == "complete", view.get("error")
             content = await report(client, run_id)
+            if request["method_id"] == "baseline" and request.get("method_revision", 1) >= 4:
+                from deepresearch.methods.baseline.stages.reporting import english_report_issues
+                assert not english_report_issues(content.decode("utf-8")), "Final report contains non-English narrative"
             events = await replay(client, run_id)
             kinds = [row["event"]["kind"] for row in events]
             assert kinds.count("workflow.finished") == 1

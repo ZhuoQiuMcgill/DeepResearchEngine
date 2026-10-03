@@ -91,7 +91,7 @@ Example registration and start bodies:
 ```
 
 ```json
-{"schema_version":1,"agent_id":"researcher","revision":1,"input":"What is EBD (Environment Based Design)","timeout_seconds":600,"limits":{"model_calls":16,"tool_calls":32}}
+{"schema_version":1,"agent_id":"researcher","revision":1,"input":"What is EBD (Environment Based Design)?","timeout_seconds":600,"limits":{"model_calls":16,"tool_calls":32}}
 ```
 
 Registration allows input/output schemas and bounded limits. Invocation rules

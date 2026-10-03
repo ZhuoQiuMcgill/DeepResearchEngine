@@ -159,16 +159,16 @@ def test_new_revisions_do_not_alias_or_overwrite_old_ones(bundle_root):
     catalog = AgentCatalog(bundle_root)
     first = catalog.load("baseline.writer", 1)
     with pytest.raises(CatalogError) as error:
-        catalog.load("baseline.writer", 4)
+        catalog.load("baseline.writer", 97)
     assert error.value.code == "RESOURCE_NOT_FOUND"
-    second = bundle_root / "baseline.writer" / "4"
+    second = bundle_root / "baseline.writer" / "97"
     shutil.copytree(second.parent / "1", second)
     path = second / "definition.json"
     definition = json.loads(path.read_text(encoding="utf-8"))
-    definition["revision"] = 4
+    definition["revision"] = 97
     path.write_text(json.dumps(definition), encoding="utf-8")
-    two = catalog.load("baseline.writer", 4)
-    assert two.revision == 4 and two.ref["sha256"] != first.ref["sha256"]
+    two = catalog.load("baseline.writer", 97)
+    assert two.revision == 97 and two.ref["sha256"] != first.ref["sha256"]
     assert catalog.load("baseline.writer", 1).ref == first.ref
 
 

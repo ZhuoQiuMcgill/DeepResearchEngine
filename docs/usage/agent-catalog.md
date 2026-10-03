@@ -7,6 +7,10 @@ and Storage retain execution authority, validation, recording and budgets.
 
 The catalog does not open model connections, fetch evidence, register invocation
 edges or issue grants. Importing and loading roles needs no credentials.
+`baseline@4` pins `baseline.writer@4` and `baseline.reviewer@3`: the Writer's
+final report and the Reviewer's issue strings use English. Earlier role bundles
+remain available with their original instructions. The Workflow's separate
+publication check rejects CJK narrative even if the model reviewer accepts it.
 
 ## Public interfaces
 

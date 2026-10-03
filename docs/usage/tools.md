@@ -56,7 +56,7 @@ action after an eligible source failure.
 
 Select it with `Engine.run_tool(ToolRef("web.search", 2), arguments)` or CLI
 `--revision 2`. The CLI and an unqualified ToolRef retain revision 1.
-`baseline@3` explicitly pins revision 2 through its MethodDefinition; methods
+`baseline@3` and `baseline@4` explicitly pin revision 2 through their MethodDefinitions; methods
 without a tool pin retain revision 1.
 
 The fixed plan names Yahoo followed by DuckDuckGo, with at most one named
@@ -90,8 +90,10 @@ Run the search-only live check without model or fetch calls:
 uv run --locked python examples/live_search_check.py
 ```
 
-It uses real workers, SQLite and saved artifacts, covers EBD definition,
-foundational-paper discovery and a RAG survey, and verifies topic decisions.
+It uses real workers, SQLite and saved artifacts, covers EBD definition and
+foundational-paper discovery, and verifies topic decisions. Both diagnostic
+cases retain the exact experiment question `What is EBD (Environment Based Design)?`;
+their tool queries are separate probe inputs.
 Each execution uses fresh identities; it does not replay completed runs.
 
 Fetch a source, then read the exact saved snapshot in an explicitly selected

@@ -1,5 +1,10 @@
 # Baseline method revision 2
 
+Revision 4 is the current experiment entry point. It preserves the expanded
+revision 3 budgets and search tool pin, adds Writer 4 and Reviewer 3 for English
+reports, and rejects CJK narrative before final publication. EBD experiment
+input remains exactly `What is EBD (Environment Based Design)?`.
+
 Revision 3 reuses this method's stages with a whole-run allowance of 20 attempted
 URLs, at most two research rounds, 128k default evidence tokens and four 256k
 Agent roles. See [expanded usage](../usage/baseline-expanded.md). Revision 2 and
@@ -18,7 +23,7 @@ or a successful external run.
 
 ## Versions and pins
 
-Bootstrap registers `baseline@1`, `baseline@2` and `example.echo@1`.
+Bootstrap registers Baseline revisions 1–4 and `example.echo@1`.
 `ResearchRunRequest.method_revision` still defaults to **1** for compatibility.
 New consumers must send `method_id: "baseline", method_revision: 2` explicitly.
 Wire `schema_version: 1` and HTTP `/api/v1` are independent of method revision.
@@ -27,6 +32,8 @@ Wire `schema_version: 1` and HTTP `/api/v1` are independent of method revision.
 | --- | --- | --- |
 | `baseline@1` | One discovery/acquisition/context pass followed by a Writer | `baseline.writer@1` |
 | `baseline@2` | Plan, bounded research rounds, analysis, synthesis and review | `baseline.planner@1`, `baseline.analyst@1`, `baseline.writer@2`, `baseline.reviewer@1` |
+| `baseline@3` | Expanded budgets and observed search | `baseline.planner@2`, `baseline.analyst@2`, `baseline.writer@3`, `baseline.reviewer@2` |
+| `baseline@4` | Expanded research with English report instructions and publication checks | `baseline.planner@2`, `baseline.analyst@2`, `baseline.writer@4`, `baseline.reviewer@3` |
 | `example.echo@1` | Model-free integration over real Storage | No Agent roles |
 
 The old method lives in `methods/baseline/v1/` with its own schemas. Its parameter

@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "client_request_id": "baseline-expanded-example-3",
+  "client_request_id": "baseline-english-example-4",
   "method_id": "baseline",
-  "method_revision": 3,
+  "method_revision": 4,
   "input": {
-    "question": "What is Environment-Based Design (EBD), and what are its core principles and process?"
+    "question": "What is EBD (Environment Based Design)?"
   },
   "parameters": {
     "max_queries": 2,
@@ -12,10 +12,7 @@
     "max_report_attempts": 4,
     "max_sources": 20,
     "context_tokens": 131072,
-    "source_urls": [
-      "https://users.encs.concordia.ca/~design/reference/JIDPS-EBD-QMS.pdf",
-      "https://www.cambridge.org/core/services/aop-cambridge-core/content/view/D8E51379968F4823E0BC19E017F7C075/S2732527X23001682a.pdf/div-class-title-environment-based-design-ebd-using-only-necessary-knowledge-for-designer-creativity-div.pdf"
-    ],
+    "source_urls": [],
     "max_context_bytes": 524288,
     "max_scan_bytes": 262144
   },

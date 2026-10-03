@@ -41,6 +41,8 @@ async def write_and_review(context, question, plan, analysis, evidence, context_
         except UnicodeDecodeError:
             raise EngineError("INVALID_ROLE_OUTPUT", "Writer report is not UTF-8") from None
         structural = citation_issues(report, source_ids)
+        if revision >= 4:
+            structural.extend(english_report_issues(report))
         review, reviewer = await decision(context, "baseline.reviewer", {
             "question": question, "plan": plan.to_dict(), "analysis": analysis.to_dict(),
             "evidence": evidence, "report": report,
@@ -57,3 +59,15 @@ async def write_and_review(context, question, plan, analysis, evidence, context_
             return writer["output_ref"], drafts
     raise EngineError("REPORT_REVIEW_FAILED", "Report did not pass bounded review and citation checks",
                       {"issues": feedback, "attempts": max_attempts})
+
+
+def english_report_issues(report):
+    """Reject CJK narrative independently of the model review verdict.
+
+    Bibliographic names remain verbatim in References. This script check catches
+    Chinese/Japanese/Korean prose; the Reviewer checks English for other scripts.
+    """
+    body = re.split(r"^#{1,6}\s+References\s*\r?$", report, maxsplit=1, flags=re.M | re.I)[0]
+    if re.search(r"[\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af\U00020000-\U0002fa1f]", body):
+        return ["Write all report headings and narrative in English. Translate non-English prose; retain original bibliographic names only in References."]
+    return []

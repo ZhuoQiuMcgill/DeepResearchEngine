@@ -19,8 +19,9 @@ from deepresearch.engine.contracts import (
 )
 
 
-QUESTION = "What is EBD (Environment Based Design)"
+QUESTION = "What is EBD (Environment Based Design)?"
 INSTRUCTIONS = """You are a careful research author. Answer the exact task through a finite evidence-based investigation.
+Write the final report, including its headings and prose, in English regardless of input or source language.
 Do not use internal, provider-hosted or implicit web search. Research only through the registered platform function tools. Discovery metadata and fetch previews are not cited evidence: call document.read on immutable fetched snapshots before citing content.
 First discover relevant sources with web.search and scholarly search; try precise quoted Environment Based Design queries and scholarly/institutional primary sources. Select accessible sources, fetch them, and read their saved lines or physical PDF pages. Failed or inaccessible sources are not evidence. If one service fails use another registered discovery tool; never invent sources or source text. Use at least two independent relevant fetched/read sources. Limit exploration to about 15 discovery/fetch/read calls where possible. You can batch independent tool calls.
 Produce a complete Markdown report of roughly 1000-1600 words, beginning with its title. Explain the meaning and origin of the requested EBD, its central concepts and process, how it is used, a clearly labelled illustrative application, its relationship to other design approaches if supported, and evidence limitations. Disambiguate unrelated meanings of EBD. Separate sourced claims from your illustrations/inferences. Do not treat broad bibliographic results as full-text evidence. Paraphrase sources in your own words: use at most one short quotation of at most 15 words from any source, and prefer no quotations. Avoid unsupported claims about how frequently an acronym is used.
@@ -57,7 +58,7 @@ async def history(access):
             return events
 
 
-def evidence_manifest(report, events):
+def evidence_manifest(report, events, question=QUESTION):
     intents, fetched, reads = {}, {}, []
     audits = []
     for row in events:
@@ -111,7 +112,7 @@ def evidence_manifest(report, events):
         raise RuntimeError("report lacks two independently fetched/read citations or has unmapped citations")
     if len(report.split()) < 700:
         raise RuntimeError("model report is substantively incomplete")
-    return {"schema_version": 1, "question": QUESTION, "citations": sources}, audits
+    return {"schema_version": 1, "question": question, "citations": sources}, audits
 
 
 async def run_baseline(workspace=None, storage_root=None, verify_run=None):
@@ -119,6 +120,7 @@ async def run_baseline(workspace=None, storage_root=None, verify_run=None):
     settings = EngineSettings(workspace=workspace, storage_root=storage_root, openalex_admission=True)
     engine = (await Engine.open(settings)).unwrap()
     result = None
+    question = QUESTION
     try:
         definition = AgentDefinition("ebd-baseline", INSTRUCTIONS,
             allowed_tools=[ToolRef(name) for name in ("web.search", "scholar.crossref.search", "scholar.openalex.search", "web.fetch", "document.read")],
@@ -140,7 +142,8 @@ async def run_baseline(workspace=None, storage_root=None, verify_run=None):
                     saved[name] = EventReceipt(**saved[name])
             saved["cleanup"] = CleanupReport(**saved["cleanup"])
             result = AgentResult(**saved)
-            if result.execution.get("metadata", {}).get("question") != QUESTION:
+            question = result.execution.get("metadata", {}).get("question")
+            if question not in {QUESTION, QUESTION[:-1]}:
                 raise RuntimeError("Saved run does not match the requested baseline question")
             print("verifying saved model output; no model calls or refetch", flush=True)
         else:
@@ -163,7 +166,7 @@ async def run_baseline(workspace=None, storage_root=None, verify_run=None):
             events = await history(access)
         (export_dir / "report.md").write_bytes(report_bytes)
         (export_dir / "trace.json").write_bytes(canonical_json(events))
-        manifest, audits = evidence_manifest(report_bytes.decode("utf-8"), events)
+        manifest, audits = evidence_manifest(report_bytes.decode("utf-8"), events, question)
         snapshots = tuple(SnapshotReadRequest(SnapshotRef(**s["snapshot_ref"]), s["range"]) for s in manifest["citations"])
         scope = ScopeRef("run", run_id)
         publish = (await engine.open_run_access(run_ref, RunAccessRequest(read_objects=snapshots,
@@ -187,7 +190,7 @@ async def run_baseline(workspace=None, storage_root=None, verify_run=None):
             manifest_receipt = (await publish.storage.artifacts.put(publish.context,
                 publish.identity_service.allocate(), scope, canonical_json(manifest),
                 ArtifactMetadata("application/json", "citations.json", {"purpose": "citation_manifest"}))).unwrap()
-            checkpoint = CheckpointEnvelope(run_id, {"kind": "baseline_terminal/1", "question": QUESTION,
+            checkpoint = CheckpointEnvelope(run_id, {"kind": "baseline_terminal/1", "question": question,
                 "plan": "one flat research agent with registered discovery/fetch/read tools", "run_ref": run_ref.to_dict(),
                 "definition_ref": result.definition_ref, "agent_result": result.to_dict(), "manifest_ref": manifest_receipt.artifact_ref.to_dict(),
                 "sources": [{"snapshot_ref": s["snapshot_ref"], "range": s["range"]} for s in manifest["citations"]]})
@@ -222,7 +225,7 @@ async def run_baseline(workspace=None, storage_root=None, verify_run=None):
         (export_dir / "checkpoint.json").write_bytes(canonical_json(restored_checkpoint))
         (export_dir / "request-audit.json").write_bytes(canonical_json(audits))
         (export_dir / "trace.json").write_bytes(canonical_json(final_events))
-        acceptance = {"schema_version": 1, "status": "passed", "question": QUESTION,
+        acceptance = {"schema_version": 1, "status": "passed", "question": question,
             "run_ref": run_ref.to_dict(), "report_ref": result.output_ref.to_dict(), "report_sha256": digest_bytes(restored),
             "manifest_receipt": manifest_receipt.to_dict(), "checkpoint_receipt": checkpoint_receipt.to_dict(),
             "citations": len({s["citation"] for s in manifest["citations"]}),

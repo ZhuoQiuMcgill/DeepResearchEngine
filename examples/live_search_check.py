@@ -1,7 +1,7 @@
 """Model-free live search acceptance over real workers, events and Storage.
 
 Run: uv run --locked python examples/live_search_check.py
-Records three topics in an isolated store and preserves raw discoveries and
+Records EBD diagnostics in an isolated store and preserves raw discoveries and
 screening decisions. It makes no fetch or model calls and does not resume runs.
 """
 from __future__ import annotations
@@ -20,12 +20,14 @@ from deepresearch.workflows import MethodDefinition, MethodRegistry, ResearchRun
 from deepresearch.workflows.components.discovery import discover
 from deepresearch.workflows.components.search_policy import SearchPolicy
 
+EBD_EXPERIMENT_QUESTION = "What is EBD (Environment Based Design)?"
+
 
 class SearchCheck:
     async def run(self, context, task_input, parameters):
         items, retained = await discover(context, task_input["queries"],
             ["web.search","scholar.crossref.search"],5,policy=SearchPolicy(task_input["topic"]))
-        payload = {"schema_version":1,"topic":task_input["topic"],
+        payload = {"schema_version":1,"question":task_input["question"],"topic":task_input["topic"],
             "items":[item.to_dict() for item in items],"discoveries":retained}
         result = await context.port.publish(canonical_json(payload),"application/json","search-result.json")
         report = await context.port.publish(f"Search-only diagnostic: {len(items)} candidates.\n".encode(),
@@ -52,7 +54,8 @@ async def main(args):
     output.mkdir(parents=True,exist_ok=True)
     registry = MethodRegistry()
     registry.register(MethodDefinition("acceptance.search",1,"Recorded search-only diagnostic",
-        {"type":"object","additionalProperties":False,"required":["topic","queries"],"properties":{
+        {"type":"object","additionalProperties":False,"required":["question","topic","queries"],"properties":{
+            "question":{"const":EBD_EXPERIMENT_QUESTION},
             "topic":{"type":"string","minLength":1,"maxLength":256},
             "queries":{"type":"array","minItems":1,"maxItems":2,"items":{"type":"string","minLength":1,"maxLength":4096}}}},
         {"type":"object","additionalProperties":False}, tool_revisions={"web.search":2}),SearchCheck())
@@ -61,13 +64,12 @@ async def main(args):
     records = []
     try:
         cases = [
-            ("ebd-definition","Environment-Based Design",["what is Environment-Based Design EBD definition principles process"]),
+            ("ebd-definition","Environment Based Design",[EBD_EXPERIMENT_QUESTION]),
             ("ebd-foundation","Environment-Based Design",['retrieve full text of Zeng\'s "Environment-based formulation of design problem" to obtain the primary definition']),
-            ("rag-survey","retrieval augmented generation",['"retrieval augmented generation" survey']),
         ]
         for label,topic,queries in cases:
             admitted = await service.start_run(ResearchRunRequest(client_request_id=new_id("search-check-"),
-                method_id="acceptance.search",method_revision=1,input={"topic":topic,"queries":queries},timeout_seconds=180))
+                method_id="acceptance.search",method_revision=1,input={"question":EBD_EXPERIMENT_QUESTION,"topic":topic,"queries":queries},timeout_seconds=180))
             for _ in range(1800):
                 view = await service.get_run(admitted.run_id)
                 if not view.active:

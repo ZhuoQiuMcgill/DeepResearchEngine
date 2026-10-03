@@ -146,3 +146,9 @@ class ExpandedBaselineMethod(BaselineMethod):
         "context_tokens": 131072, "max_context_bytes": 524288, "max_scan_bytes": 262144,
         "max_report_attempts": 4}
     max_source_text_bytes = 65536
+
+
+class EnglishBaselineMethod(ExpandedBaselineMethod):
+    """Expanded research with English Writer/Reviewer roles and publication checks."""
+
+    revision = 4

@@ -1,13 +1,13 @@
 # ResearchRun service
 
 `ResearchRunService` owns complete method execution over one caller-owned Engine.
-The method catalog includes optional `tool_revisions` pins. For `baseline@3`,
+The method catalog includes optional `tool_revisions` pins. For `baseline@3` and `baseline@4`,
 `{"web.search": 2}` selects the observed Yahoo/DuckDuckGo search worker;
 methods without pins retain revision 1. These pins are part of the method digest
 and saved execution manifest, so clients can identify the chosen tool contract.
 `MethodRegistry` pins the method revision and its agent roles; the shared request
 and view models are `deepresearch.workflows.ResearchRunRequest` and `ResearchRunView`.
-Bootstrap supplies `baseline@1`, formal `baseline@2` and model-free `example.echo@1`.
+Bootstrap supplies Baseline revisions 1–4 and model-free `example.echo@1`.
 A workflow root has no agent identity, provider, model grant or credentials.
 The formal baseline plans, acquires and selects saved evidence, analyzes gaps,
 then writes and reviews a report. The Planner sees the question before acquisition;
@@ -105,8 +105,8 @@ Start a complete baseline with a configured named profile:
   "schema_version": 1,
   "client_request_id": "ebd-question-001",
   "method_id": "baseline",
-  "method_revision": 2,
-  "input": {"question": "What is Environment Based Design?"},
+  "method_revision": 4,
+  "input": {"question": "What is EBD (Environment Based Design)?"},
   "parameters": {"max_sources": 3},
   "profile_ref": "deepseek",
   "model_ref": "deepseek-flash",
@@ -120,8 +120,8 @@ real Storage. It is a separate integration method, not a simulated baseline.
 All methods validate the chosen profile/model against `engine.list_profiles()`;
 validating configured names does not resolve credentials.
 The request's method revision still defaults to 1 for compatibility. Select
-revision 2 for the original formal Baseline or revision 3 for expanded budgets
-and observed search; method revisions and wire v1 are independent.
+revision 4 for expanded budgets, observed search and English reports. Revisions
+1–3 remain available for existing consumers; method revisions and wire v1 are independent.
 
 A saved source read has this body:
 

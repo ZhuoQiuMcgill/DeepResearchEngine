@@ -66,6 +66,7 @@ async def test_twenty_attempted_urls_are_shared_across_two_rounds_and_include_fa
 @pytest.mark.parametrize("role,revision", [
     ("baseline.planner", 2), ("baseline.analyst", 2),
     ("baseline.writer", 3), ("baseline.reviewer", 2),
+    ("baseline.writer", 4), ("baseline.reviewer", 3),
 ])
 async def test_expanded_roles_allow_large_inputs_and_apply_256k_token_estimate(role, revision):
     spec = AgentCatalog().load(role, revision)
@@ -118,7 +119,7 @@ def test_expanded_parameter_boundaries_and_historical_resources():
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("method_revision,tool_revision",[(2,1),(3,2)])
+@pytest.mark.parametrize("method_revision,tool_revision",[(2,1),(3,2),(4,2)])
 async def test_workflow_records_exact_search_tool_pin(tmp_path,monkeypatch,method_revision,tool_revision):
     engine,service,_,calls,_,_ = await configured(tmp_path,monkeypatch,[PLAN,analysis(),REPORT,ACCEPT])
     try:

@@ -5,19 +5,24 @@ in the current root chat and its in-chat subagents. Do not contact or dispatch
 work to the former module-team chats. Their reviewed documents remain design
 references, not active work assignments.
 
-The platform and formal `baseline@3` Workflow are delivered. Methods, Agent
+The platform and formal `baseline@4` Workflow are delivered. Methods, Agent
 specifications, optional Hooks, application ownership and HTTP/CLI are separate
 modules. Current source, docs/team-start.md and
 docs/architecture/project-structure.md define the development boundaries;
 docs/research-acceptance.md records actual checks. EBD strategy and console work
 consume those interfaces and are outside this baseline delivery.
 The formal method composes planning, bounded acquisition/analysis rounds and
-draft/review stages. Pin method revision 3 explicitly for expanded budgets; revisions 1 and 2 are retained
+draft/review stages. Pin method revision 4 explicitly for English reports and expanded budgets; revisions 1–3 are retained
 for existing consumers. See docs/usage/baseline-expanded.md for the 20-source,
 two-round and 256k Agent limits. See docs/architecture/baseline.md and docs/usage/baseline.md.
-Baseline 3 also pins web.search revision 2. Query preparation and topic screening
+Baseline 3 and 4 pin web.search revision 2. Query preparation and topic screening
 belong to workflows/components/search_policy.py; HTTP/backends and URL decoding
 belong to engine/toolset. See docs/usage/tools.md and examples/live_search_check.py.
+All EBD experiments must preserve the user's exact original question:
+`What is EBD (Environment Based Design)?` Do not expand, translate or rephrase it.
+Agent-generated search queries are separate recorded data. Baseline 4 pins
+Writer 4 and Reviewer 3, requires an English report, and rejects CJK narrative
+at publication. Do not rewrite historical saved requests or outputs.
 
 Read `CONTRIBUTING.md`, `docs/team-start.md`,
 `docs/teams/consumer-contract-v1.md`, `docs/teams/platform-contract-v1.md`

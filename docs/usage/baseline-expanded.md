@@ -1,10 +1,22 @@
-# Run Baseline revision 3
+# Run Baseline revision 4
 
-`baseline@3` uses the same Planner -> acquisition/analysis -> Writer -> Reviewer
+`baseline@4` uses the same Planner -> acquisition/analysis -> Writer -> Reviewer
 flow as [revision 2](baseline.md), with larger resource allowances. It pins
-Planner 2, Analyst 2, Writer 3 and Reviewer 2. Earlier method and role revisions
-remain available. Select `method_revision: 3`; the wire schema remains 1.
+Planner 2, Analyst 2, Writer 4 and Reviewer 3. Earlier method and role revisions
+remain available. Select `method_revision: 4`; the wire schema remains 1.
 It also pins `web.search@2`; see [search profiles](tools.md#search-revision-2).
+Revision 4 preserves revision 3 budgets and search behavior and adds English
+Writer/Reviewer instructions. The EBD experiment input is exactly
+`What is EBD (Environment Based Design)?`; it supplies no fixed queries or URLs.
+`examples/live_research_check.py` rejects modified EBD questions and method
+revisions without the new English report roles before starting execution.
+
+Writer 4 requires English headings and prose. Reviewer 3 requests revision for
+a non-English report. A separate publication check rejects CJK narrative even
+when the Reviewer accepts it, records the rejected draft and supplies English
+rewrite feedback within the existing draft/review allowance. Original
+bibliographic names can remain in References. Other languages are checked by
+the Reviewer; the structural check is not a general language classifier.
 
 | Allowance | Default | Accepted values / scope |
 | --- | --- | --- |
@@ -39,7 +51,7 @@ saved, with separate selection artifacts recording original/executed query,
 subject, accepted/rejected ranks and reasons. `selection_ref` links those
 decisions from each successful discovery entry in the result manifest.
 
-For the supplied example, `Environment-Based Design` is inferred as the subject,
+For the supplied example, `Environment Based Design` is inferred as the subject,
 so Evidence-Based Dentistry and Evidence-Based Design do not satisfy it. An
 explicit subject is useful for other question forms or domain vocabulary.
 
@@ -66,7 +78,7 @@ The supplied expanded request uses 1,800 seconds for its real research retry.
 ## Run and inspect
 
 [examples/baseline-request.json](../../examples/baseline-request.json) now selects
-revision 3, 20 attempted sources, two rounds, 128k evidence tokens and a 512 KiB
+revision 4, 20 attempted sources, two rounds, 128k evidence tokens and a 512 KiB
 evidence byte cap. Use a fresh `client_request_id` for a new run; an identical
 identity/request retrieves the earlier result instead of rerunning it.
 
