@@ -28,9 +28,9 @@ or a successful external run.
 
 ## Versions and pins
 
-Bootstrap registers Baseline revisions 1–5 and `example.echo@1`.
+Bootstrap registers Baseline revisions 1–6 and `example.echo@1`.
 `ResearchRunRequest.method_revision` still defaults to **1** for compatibility.
-New consumers must send `method_id: "baseline", method_revision: 2` explicitly.
+New consumers must send `method_id: "baseline", method_revision: 6` explicitly.
 Wire `schema_version: 1` and HTTP `/api/v1` are independent of method revision.
 
 | Method | Behavior | Role pins |
@@ -40,6 +40,7 @@ Wire `schema_version: 1` and HTTP `/api/v1` are independent of method revision.
 | `baseline@3` | Expanded budgets and observed search | `baseline.planner@2`, `baseline.analyst@2`, `baseline.writer@3`, `baseline.reviewer@2` |
 | `baseline@4` | Expanded research with English report instructions and publication checks | `baseline.planner@2`, `baseline.analyst@2`, `baseline.writer@4`, `baseline.reviewer@3` |
 | `baseline@5` | Archived reads, parallel source distillation, recovery and independent coverage | `baseline.planner@3`, `baseline.distiller@1`, `baseline.analyst@3`, `baseline.writer@5`, `baseline.reviewer@4` |
+| `baseline@6` | Same research policy as revision 5; enriched search tool contracts | Same roles as revision 5 |
 | `example.echo@1` | Model-free integration over real Storage | No Agent roles |
 
 The old method lives in `methods/baseline/v1/` with its own schemas. Its parameter

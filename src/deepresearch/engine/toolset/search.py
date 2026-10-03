@@ -11,6 +11,7 @@ from ddgs.engines.yahoo import Yahoo
 from ddgs.results import TextResult
 
 from .common import ToolFault, digest, encode, prefix_utf8, url, utc_now
+from .discovery_metadata import coverage
 
 
 class RawTextResult(TextResult):
@@ -123,7 +124,7 @@ class CorrectedGoogle(Google):
 
 
 def search_plan(revision=1) -> dict:
-    if revision == 2:
+    if revision in (2, 3):
         return {"kind": "search", "backend_order": ["yahoo", "duckduckgo"],
             "fallback_on": ["no_results", "unavailable", "invalid_urls"], "max_backend_attempts": 2,
             "backend_settings": {name:{"timeout_seconds":8,"max_redirects":2,"max_http_requests":3}
@@ -136,8 +137,8 @@ def search_plan(revision=1) -> dict:
 
 
 def search(arguments: dict, plan: dict, timeout: float, revision=1):
-    if revision == 2:
-        return observed_search(arguments, plan, timeout)
+    if revision in (2, 3):
+        return observed_search(arguments, plan, timeout, revision)
     # No public or private unchecked flag enables the Google live gate.
     if plan != search_plan(): raise ToolFault("WORKER_PROTOCOL_ERROR", "Search plan differs from registered gated profile")
     results, attempts = [], []
@@ -176,7 +177,7 @@ def search(arguments: dict, plan: dict, timeout: float, revision=1):
     return payload, observations, usage, None
 
 
-def observed_search(arguments: dict, plan: dict, timeout: float):
+def observed_search(arguments: dict, plan: dict, timeout: float, revision=2):
     """Explicit, bounded backends; preserve literal queries and diagnostic facts."""
     if plan != search_plan(2):
         raise ToolFault("WORKER_PROTOCOL_ERROR", "Search plan differs from registered revision 2")
@@ -243,7 +244,7 @@ def observed_search(arguments: dict, plan: dict, timeout: float):
             raw_rows = engine.extract_results(html) if html else []
             observation["extracted_count"] = len(raw_rows)
             seen = set()
-            for row in raw_rows:
+            for provider_rank, row in enumerate(raw_rows, 1):
                 if len(row.href.encode("utf-8")) > 8192:
                     observation["rejected_url_count"] += 1
                     continue
@@ -265,6 +266,9 @@ def observed_search(arguments: dict, plan: dict, timeout: float):
                 results.append({"rank":len(results) + 1,"title":title,"url":destination,"raw_url":row.href,"snippet":snippet,
                     "source_date":None,"backend":backend,"declared_provider":"bing","discovery_only":True,
                     "truncated_fields":[key for key, short, original in (("title",title,row.title),("snippet",snippet,row.body)) if short != original]})
+                if revision == 3:
+                    results[-1].update(provider_rank=provider_rank, domain=urlsplit(destination).hostname,
+                        missing_fields=["source_date"] + ([] if snippet else ["snippet"]))
             observation["kept_count"] = len(results)
             if results:
                 observation["outcome"] = "returned"
@@ -290,6 +294,9 @@ def observed_search(arguments: dict, plan: dict, timeout: float):
     payload = {"query":arguments["query"],"searched_at":utc_now(),
         "backend_policy":{"configured_order":["yahoo","duckduckgo","google"],"active_order":plan["backend_order"],
             "disabled_backends":plan["disabled_backends"]},"backend_attempts":attempts,"results":results}
+    if revision == 3:
+        available = attempts[-1]["returned_count"] if results else 0
+        payload["coverage"] = coverage(arguments["max_results"], len(results), available)
     observations = {"backend_attempts":attempts,"disabled_backends":plan["disabled_backends"]}
     usage = {"search_backend_attempts":len(attempts),"http_request_count":sum(row["http_request_count"] for row in attempts),
         "http_response_count":sum(row["http_response_count"] for row in attempts),"monetary_cost":None}

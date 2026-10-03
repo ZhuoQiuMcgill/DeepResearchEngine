@@ -1,9 +1,9 @@
 # Run Baseline revision 4
 
-New experiments use [Baseline revision 5](baseline-parallel.md), which adds
+New experiments use [Baseline revision 6](baseline-parallel.md), which adds
 complete/explicitly partial archived reads, parallel source distillation,
 acquisition recovery and independent coverage status. The standard request now
-selects revision 5. This page documents the retained revision 4 behavior.
+selects revision 6. This page documents the retained revision 4 behavior.
 
 `baseline@4` uses the same Planner -> acquisition/analysis -> Writer -> Reviewer
 flow as [revision 2](baseline.md), with larger resource allowances. It pins
@@ -13,7 +13,7 @@ It also pins `web.search@2`; see [search profiles](tools.md#search-revision-2).
 Revision 4 preserves revision 3 budgets and search behavior and adds English
 Writer/Reviewer instructions. The EBD experiment input is exactly
 `What is EBD (Environment Based Design)?`; it supplies no fixed queries or URLs.
-`examples/live_research_check.py` now requires revision 5 and rejects modified
+`examples/live_research_check.py` now requires revision 5 or later and rejects modified
 EBD questions before starting a new experiment. Use the CLI or API with an
 explicit revision-4 request to inspect this retained implementation.
 
@@ -84,7 +84,7 @@ The supplied expanded request uses 1,800 seconds for its real research retry.
 ## Run and inspect
 
 [examples/baseline-request.json](../../examples/baseline-request.json) now selects
-revision 5. See [the current run guide](baseline-parallel.md) for the executable
+revision 6. See [the current run guide](baseline-parallel.md) for the executable
 example. Revision 4 supports 20 attempted sources, two rounds, 128k evidence
 tokens and a 512 KiB evidence byte cap. Use a fresh `client_request_id` for a new run; an identical
 identity/request retrieves the earlier result instead of rerunning it.

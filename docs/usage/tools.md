@@ -2,7 +2,7 @@
 
 The Toolset runs real, one-shot Python workers behind the Engine's recorded
 action boundary. The registry contains five tool names. `web.search` has
-revisions 1 and 2; the other names remain at revision 1.
+revisions 1–3, scholarly searches have revisions 1–2, and fetch/read remain at revision 1.
 Use the public `deepresearch tool` command or `Engine.run_tool`; the private worker
 protocol requires an owner-issued execution plan and recorded attempt.
 
@@ -10,8 +10,10 @@ protocol requires an owner-issued execution plan and recorded attempt.
 | --- | --- | --- |
 | `web.search@1` | `query`, optional `max_results` | Original Yahoo profile, retained for existing callers |
 | `web.search@2` | `query`, optional `max_results` | Yahoo then DuckDuckGo fallback, original destination wrappers and HTTP/parser diagnostics |
+| `web.search@3` | Same literal query and count | Revision 2 transport plus explicit first-page coverage, original provider rank, domain and missing-field markers |
 | `scholar.crossref.search` | `query`, optional `max_results` | Crossref bibliographic metadata and DOI/member/publisher identities |
 | `scholar.openalex.search` | `query`, optional `max_results` | OpenAlex work/source/open-access location metadata |
+| `scholar.crossref.search@2`, `scholar.openalex.search@2` | Same literal query and count | Existing identities/locations plus provider authors, abstracts, venue, citation counts and coverage |
 | `web.fetch` | `url`, optional `mode: "static"` | Committed snapshot reference, extraction counts, provenance and bounded preview |
 | `document.read` | `snapshot_ref`, `range`, optional `max_text_bytes`, `continuation` | Saved immutable text with ranges, byte spans and continuation |
 
@@ -20,6 +22,80 @@ Queries remain literal, must be nonblank and fit 4,096 UTF-8 bytes.
 provider URL must also fit its own cap: 16,384 bytes for Crossref and 4,094 bytes
 for OpenAlex. The registry publishes JSON schemas, and its pure semantic
 validator checks byte limits and range relationships before intent recording.
+
+## Complete discovery information
+
+New consumers select `web.search@3`, `scholar.crossref.search@2` and
+`scholar.openalex.search@2` explicitly. `baseline@6` pins these versions while
+retaining revision 5's research policy and Agent roles. Earlier tool/method
+revisions remain registered; unqualified tool references still resolve to 1.
+For a new Workflow, set its `MethodDefinition.tool_revisions` to:
+
+```python
+{"web.search": 3, "scholar.crossref.search": 2, "scholar.openalex.search": 2}
+```
+
+| Information | Web revision 3 | Scholarly revision 2 |
+| --- | --- | --- |
+| Identity and selection | Title, exact decoded URL, raw wrapper, returned rank, original parsed provider rank, domain, snippet | Provider title, DOI/work ID, publication date/year, publisher/source, returned rank |
+| Bibliography | Date remains null when not supplied by the parser | `bibliography.authors`, `authors_total`, `abstract`, `container_titles`, `cited_by_count` |
+| Fetch locations | Exact result URL | Existing DOI, PDF, OA and landing-page links, with version/license/access metadata when supplied |
+| Completeness | Missing snippet/date and truncated title/snippet are explicit | `missing_fields`, `invalid_fields`, `truncated_fields` identify absent, invalid or bounded optional metadata |
+| Provenance | Literal query, search time, named backend, HTTP/parser facts | Literal query, search time, provider, HTTP/quota facts |
+
+Every successful new-revision result includes `coverage`:
+
+```json
+{
+  "scope": "first_page",
+  "requested_max_results": 5,
+  "returned_results": 5,
+  "available_on_page": 8,
+  "omitted_by_max_results": 3,
+  "provider_total_results": null,
+  "more_results_available": true
+}
+```
+
+This example describes five retained web results out of eight eligible unique
+destinations parsed on that page. Ads, invalid URLs and duplicates do not count
+as eligible. `provider_rank` is the position before this filtering;
+`rank` is the returned position. `more_results_available=null` means unknown,
+not exhausted. Web search never invents a global result count. Scholarly
+providers receive the requested maximum; `available_on_page` is their returned
+row count, while their reported global count is kept separately. Their total
+counts are provider search counts, not counts of topically relevant papers.
+The parent verifies these related fields against the request, result rows and
+backend observations. These tools make a first-page request; they do not imply
+an exhaustive search or offer a fabricated continuation token.
+
+Crossref's supplied abstract markup is converted to text with `jats-text/1`;
+OpenAlex's supplied inverted index is reconstructed with `inverted-index/1`.
+No abstract is generated from a title. Abstracts are capped at 16,384 UTF-8 bytes,
+authors at 32, and venue names at 8; every truncation is marked. `authors_total`
+counts the entries in the received provider authors list before our cap, not
+unseen provider data. Invalid optional fields become null with an error marker
+while valid bibliographic identities remain available. Zero citation counts
+remain zero. These fields are discovery metadata, not fetched full-text evidence.
+
+Raw tool outputs are retained in discovery artifacts before Workflow screening.
+Frontends and Agent orchestrators read those artifacts through the existing
+bounded artifact API; the fetched-source and context-selection APIs are separate.
+Search tools do not decide which papers to fetch, which metadata to feed an
+Agent, or whether the research is sufficient.
+
+Run the enriched search-only check with real workers, SQLite and restart reads:
+
+```shell
+uv run --locked python examples/live_search_information_check.py --admit-openalex
+```
+
+`--admit-openalex` admits the host's bounded initial anonymous allowance for this
+diagnostic store; omit it to verify the default closed-admission outcome.
+The driver retains the exact original EBD question and separately records each
+literal probe query. It uses no model or fetch calls. It records unavailable
+providers explicitly rather than treating empty/error responses as evidence of
+exhaustive coverage. See [search information acceptance](../search-information-acceptance.md).
 
 ## Run tools
 
@@ -35,13 +111,13 @@ $OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 uv run --locked deepresearch --store local/demo-store tools
 
 '{"query":"environment based design Yong Zeng","max_results":3}' |
-  uv run --locked deepresearch --store local/demo-store tool web.search --revision 2
+  uv run --locked deepresearch --store local/demo-store tool web.search --revision 3
 
 '{"query":"\"Environment based design\" \"Yong Zeng\"","max_results":3}' |
-  uv run --locked deepresearch --store local/demo-store tool scholar.crossref.search
+  uv run --locked deepresearch --store local/demo-store tool scholar.crossref.search --revision 2
 
 '{"query":"\"environment-based design\"","max_results":3}' |
-  uv run --locked deepresearch --store local/demo-store --admit-openalex tool scholar.openalex.search
+  uv run --locked deepresearch --store local/demo-store --admit-openalex tool scholar.openalex.search --revision 2
 ```
 
 OpenAlex starts closed until the host explicitly admits its initial anonymous
@@ -56,7 +132,7 @@ action after an eligible source failure.
 
 Select it with `Engine.run_tool(ToolRef("web.search", 2), arguments)` or CLI
 `--revision 2`. The CLI and an unqualified ToolRef retain revision 1.
-`baseline@3` and `baseline@4` explicitly pin revision 2 through their MethodDefinitions; methods
+`baseline@3` through `baseline@5` explicitly pin revision 2 through their MethodDefinitions; methods
 without a tool pin retain revision 1.
 
 The fixed plan names Yahoo followed by DuckDuckGo, with at most one named
@@ -181,8 +257,9 @@ The tool does not rewrite queries, paginate or replay workers; Workflow query
 preparation happens before the recorded tool call.
 
 Scholarly workers each make one bounded anonymous request to the fixed provider
-endpoint. Results are closed metadata projections, with no abstract or paper
-full text. Crossref pacing starts at no more than one request per second per
+endpoint. Revision 1 returns the original metadata projection; revision 2 also
+preserves supplied authors and abstracts. Neither fetches paper full text.
+Crossref pacing starts at no more than one request per second per
 owned executor and can narrow using response headers. OpenAlex reserves
 1,000 micro-USD per keyword request within a local ceiling of 100,000 micro-USD
 per UTC day; recognized cost/remaining/reset headers can only narrow admission.

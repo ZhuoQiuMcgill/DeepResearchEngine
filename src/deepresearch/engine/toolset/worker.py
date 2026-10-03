@@ -12,13 +12,19 @@ INVOKE_KEYS = {"run_id", "root_run_id", "correlation_id", "action_id", "attempt_
 EXITS = {"validation_failed": 2, "failed": 3, "limit_exhausted": 4, "timed_out": 5, "cancelled": 6}
 
 
+def registered_revision(name, revision):
+    return (name in NAMES and type(revision) is int and
+            (revision == 1 or name == "web.search" and revision in (2, 3) or
+             name.startswith("scholar.") and revision == 2))
+
+
 def validate_request(value, tool_name, revision):
     request = closed(value, {"schema_version", "message_type", "request_id", "tool", "invocation", "arguments", "execution", "plan"})
     if request["schema_version"] != 1 or type(request["schema_version"]) is not int or request["message_type"] != "worker_request":
         raise ToolFault("WORKER_PROTOCOL_ERROR", "Unsupported private worker envelope")
     if not isinstance(request["request_id"], str) or not 1 <= len(request["request_id"]) <= 256:
         raise ToolFault("WORKER_PROTOCOL_ERROR", "Invalid worker request identity")
-    valid_revision = revision == 1 or (tool_name == "web.search" and revision == 2)
+    valid_revision = registered_revision(tool_name, revision)
     if request["tool"] != {"name": tool_name, "revision": revision} or tool_name not in NAMES or not valid_revision:
         raise ToolFault("WORKER_PROTOCOL_ERROR", "Worker identity does not match its registered argv")
     invocation = closed(request["invocation"], INVOKE_KEYS)
@@ -64,7 +70,7 @@ def run(request, name, revision):
             from .scholarly import discover
             expected = "crossref" if name == "scholar.crossref.search" else "openalex"
             if request["plan"].get("provider") != expected: raise ToolFault("WORKER_PROTOCOL_ERROR", "Scholarly provider mismatch")
-            prepared, observations, fault = discover(arguments, request["plan"], timeout)
+            prepared, observations, fault = discover(arguments, request["plan"], timeout, revision)
             usage = {"http_request_count": observations["scholarly_attempt"]["http_request_count"],
                      "http_response_count": observations["scholarly_attempt"]["http_response_count"], "monetary_cost": None}
         elif name == "web.fetch":
@@ -86,7 +92,7 @@ def run(request, name, revision):
 
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
-    if len(argv) != 2 or argv[0] not in NAMES or not (argv[1] == "1" or (argv[0] == "web.search" and argv[1] == "2")):
+    if len(argv) != 2 or argv[1] not in ("1", "2", "3") or not registered_revision(argv[0], int(argv[1])):
         sys.stderr.write("Private worker requires registered tool identity and a bound envelope.\n")
         return 2
     try:

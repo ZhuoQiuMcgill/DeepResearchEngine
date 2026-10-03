@@ -1,6 +1,9 @@
-# Baseline revision 5: parallel source distillation
+# Baseline revisions 5–6: parallel source distillation
 
-Select `method_id: "baseline", method_revision: 5`. Older revisions keep their
+Select `method_id: "baseline", method_revision: 6`. Revision 6 upgrades only the
+search tool bindings to web revision 3 and scholarly revision 2, preserving
+provider bibliography and explicit first-page coverage. Its research policy,
+Agent roles and limits are the same as revision 5. Older revisions keep their
 role bundles and remain executable. The standard request is
 [examples/baseline-request.json](../../examples/baseline-request.json).
 All EBD experiments preserve exactly `What is EBD (Environment Based Design)?`;
@@ -95,7 +98,9 @@ gaps merely because the input is a simple definition question.
 
 All components use WorkflowContext/PlatformPort. Concrete methods do not open
 SQLite, providers or HTTP clients. Bootstrap pins Planner 3, Distiller 1,
-Analyst 3, Writer 5, Reviewer 4 and `web.search@2`. Hooks observe each source-read,
+Analyst 3, Writer 5 and Reviewer 4. Baseline 5 pins `web.search@2`; Baseline 6
+pins `web.search@3` and both scholarly tools at revision 2. See the
+[search result contract](tools.md#complete-discovery-information). Hooks observe each source-read,
 distillation and validation node; selection controls remain `discovery.select`
 and `context.select`. The method runs with no extensions installed.
 
@@ -127,7 +132,7 @@ is not guaranteed to fit a narrower host. Token estimates remain explicitly
 ## Frontend and saved access
 
 `ResearchRunView.quality` is optional for compatibility with older methods and
-available for baseline5. The wire major stays 1. Interpret it separately from
+available for baselines 5–6. The wire major stays 1. Interpret it separately from
 `status`, `recording_status` and `active`:
 
 ```json

@@ -2,7 +2,7 @@
 
 DeepResearch Engine separates execution capabilities, Workflow composition,
 concrete research methods, role assets, optional extensions, application ownership,
-interfaces and bootstrap. `baseline@5` is the current formal method built over
+interfaces and bootstrap. `baseline@6` is the current formal method built over
 those modules: Planner 3, bounded acquisition/archived reads, parallel Distiller 1,
 Analyst 3, Writer 5 and Reviewer 4, with independent research-quality status.
 See [Baseline architecture](baseline.md) for its flow and research contracts.
@@ -49,7 +49,7 @@ src/deepresearch/
   methods/
     baseline/
       workflow.py          formal revision 2 orchestration
-      parallel_workflow.py revision 5 parallel evidence orchestration
+      parallel_workflow.py revisions 5–6 parallel evidence orchestration
       contracts.py         ResearchPlan, EvidenceAnalysis and ReportReview
       evidence_contracts.py source digests and range-read decisions
       stages/
@@ -82,9 +82,9 @@ docs/                      setup, architecture, usage and acceptance evidence
 
 Method 2 pins `baseline.planner@1`, `baseline.analyst@1`, `baseline.writer@2` and
 `baseline.reviewer@1`, each with the five standard resources above. Writer 1 and
-the v1 method remain available. Bootstrap registers `baseline@1` through `baseline@5`
+the v1 method remain available. Bootstrap registers `baseline@1` through `baseline@6`
 and `example.echo@1`; wire `method_revision` defaults to 1 for compatibility.
-New consumers explicitly request 5. HTTP `/api/v1` and wire schema 1 do not select
+New consumers explicitly request 6. HTTP `/api/v1` and wire schema 1 do not select
 the method revision.
 
 ## Dependency direction and ownership

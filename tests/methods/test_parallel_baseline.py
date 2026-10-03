@@ -275,7 +275,8 @@ async def _events(service, run_id):
 
 
 @pytest.mark.asyncio
-async def test_simultaneous_distillers_isolate_sources_and_deliver_saved_pdf_tails(tmp_path, monkeypatch):
+@pytest.mark.parametrize("method_revision", [5, 6])
+async def test_simultaneous_distillers_isolate_sources_and_deliver_saved_pdf_tails(tmp_path, monkeypatch, method_revision):
     both_started, release = asyncio.Event(), asyncio.Event()
     active, peak = 0, 0
     documents = {ALPHA: _paper("ALPHA_ONLY"), BETA: _paper("BETA_ONLY")}
@@ -295,7 +296,8 @@ async def test_simultaneous_distillers_isolate_sources_and_deliver_saved_pdf_tai
             active -= 1
 
     async with _configured(tmp_path, monkeypatch, documents, respond=respond) as h:
-        run_id = (await h.service.start_run(_request(source_urls=[ALPHA, BETA]))).run_id
+        request = _request(source_urls=[ALPHA, BETA]).model_copy(update={"method_revision": method_revision})
+        run_id = (await h.service.start_run(request)).run_id
         try:
             try:
                 await asyncio.wait_for(both_started.wait(), 20)
@@ -335,6 +337,7 @@ async def test_simultaneous_distillers_isolate_sources_and_deliver_saved_pdf_tai
         assert h.role_calls("analyst")[0]["input"]["available_source_ids"] == ["r1.source-001", "r1.source-002"]
         assert any(read["range"]["kind"] == "pages" and read["range"]["end_exclusive"] > 11 for read in h.reads)
         result = await _json(h.service, run_id, view.result_manifest_ref.to_dict())
+        assert result["method_revision"] == method_revision
         access = await _json(h.service, run_id, result["source_access_ref"])
         assert all(item["complete"] and item["read_bytes"] == item["document_bytes"] for item in access["sources"])
         delivered = await _bytes(h.service, run_id, view.context_plan.context_ref.to_dict())

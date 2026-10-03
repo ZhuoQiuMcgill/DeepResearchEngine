@@ -1,8 +1,14 @@
 # Research acceptance — 2026-10-02
 
+`baseline@6` now selects the enriched search contracts while retaining revision 5's
+research policy and roles. Its model-free real-tool verification is recorded in
+[search information acceptance](search-information-acceptance.md). The full
+research run below remains the saved revision 5 experiment; it was not rerun or
+relabelled as revision 6.
+
 ## Baseline revision 5: complete source access and parallel distillation
 
-The current method is `baseline@5`, pinning Planner 3, Distiller 1, Analyst 3,
+The recorded method is `baseline@5`, pinning Planner 3, Distiller 1, Analyst 3,
 Writer 5 and Reviewer 4. The reusable discovery, acquisition, retained reader,
 quotation locator and bounded parallel mapper remain separate from the method's
 round/quality policies. Every role uses the ordinary Runtime with no tools and a

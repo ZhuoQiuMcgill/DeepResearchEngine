@@ -10,6 +10,7 @@ from deepresearch.engine.contracts import EngineError, Err, Ok, ToolDefinition
 
 from .common import LIMITS, ToolFault, validate_arguments
 from .scholarly import SCHEMA
+from .discovery_metadata import coverage_schema
 
 
 def _object(properties, required=None):
@@ -36,7 +37,10 @@ def _outputs(name, revision=1):
     interval = _inputs("document.read")["properties"]["range"]
     if name.startswith("scholar."):
         provider = name.split(".")[1]
-        return {"$ref": f"#/$defs/{provider}_result", "$defs": copy.deepcopy(SCHEMA["$defs"])}
+        suffix = "_result_v2" if revision == 2 else "_result"
+        # Preserve the released v1 schema and its identity byte-for-byte.
+        definitions = {key: value for key, value in SCHEMA["$defs"].items() if revision == 2 or not key.endswith("_v2")}
+        return {"$ref": f"#/$defs/{provider}{suffix}", "$defs": copy.deepcopy(definitions)}
     if name == "document.read":
         span = _object({"line": {"type": ["integer", "null"], "minimum": 1}, "page": {"type": ["integer", "null"], "minimum": 1}, "start_byte": integer, "end_byte": integer})
         return _object({"schema_version": {"const": 1}, "snapshot_ref": reference, "extraction_version": string,
@@ -74,7 +78,7 @@ def _outputs(name, revision=1):
         "snippet": {"type": "string", "maxLength": 16384}, "source_date": nullable,
         "backend": {"enum": backends}, "declared_provider": {"enum": ["bing", "google"]},
         "discovery_only": {"const": True}, "truncated_fields": {"type": "array", "maxItems": 2, "uniqueItems": True, "items": {"enum": ["title", "snippet"]}}})
-    if revision == 2:
+    if revision >= 2:
         candidate["properties"]["raw_url"] = {"type":"string","maxLength":8192}
         candidate["required"].append("raw_url")
         attempt["properties"].update({"http_status":{"type":["integer","null"],"minimum":100,"maximum":599},
@@ -83,12 +87,22 @@ def _outputs(name, revision=1):
             "advertisement_count":integer,"failure_reason":nullable,
             "redirects":{"type":"array","maxItems":2,"items":_object({"from_url":string,"to_url":string,"http_status":integer})}})
         attempt["required"] = list(attempt["properties"])
-    return _object({"query": string, "searched_at": string,
+    if revision == 3:
+        candidate["properties"].update(provider_rank={"type": "integer", "minimum": 1},
+            domain={"type": "string", "minLength": 1, "maxLength": 8192},
+            missing_fields={"type": "array", "uniqueItems": True, "maxItems": 2,
+                            "items": {"enum": ["snippet", "source_date"]}})
+        candidate["required"] = list(candidate["properties"])
+    result = _object({"query": string, "searched_at": string,
         "backend_policy": _object({"configured_order": {"const": backends if revision == 1 else ["yahoo","duckduckgo","google"]},
             "active_order": {"const": ["yahoo"] if revision == 1 else ["yahoo","duckduckgo"]},
             "disabled_backends": {"type": "array", "maxItems": 1, "items": disabled}}),
         "backend_attempts": {"type": "array", "maxItems": 2, "items": attempt},
         "results": {"type": "array", "maxItems": 10, "items": candidate}})
+    if revision == 3:
+        result["properties"]["coverage"] = coverage_schema()
+        result["required"].append("coverage")
+    return result
 
 
 class ToolCatalog:
@@ -113,6 +127,13 @@ class ToolCatalog:
             input_schema=_inputs("web.search"), output_schema=_outputs("web.search", 2), capabilities=first.capabilities,
             limits=dict(LIMITS), argv=(sys.executable,"-m","deepresearch.engine.toolset.worker","web.search","2"),
             config={"profile":"selected-discovery/2","google_enabled":False}, storage_needs={})
+        for name, revision in (("web.search", 3), ("scholar.crossref.search", 2), ("scholar.openalex.search", 2)):
+            base = self._entries[(name, 2 if name == "web.search" else 1)]
+            self._entries[(name, revision)] = ToolDefinition(name=name, revision=revision,
+                description=base.description + " Returns explicit first-page coverage, missing/truncated fields and provider metadata when available.",
+                input_schema=_inputs(name), output_schema=_outputs(name, revision), capabilities=base.capabilities,
+                limits=dict(LIMITS), argv=(sys.executable, "-m", "deepresearch.engine.toolset.worker", name, str(revision)),
+                config={"profile": f"selected-discovery/{revision}", "google_enabled": False}, storage_needs={})
 
     def resolve(self, name: str, revision: int = 1):
         if type(revision) is not int or (name, revision) not in self._entries:

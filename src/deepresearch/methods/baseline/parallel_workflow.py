@@ -72,6 +72,10 @@ def _work_key(item, entries):
 
 class ParallelBaselineMethod(EnglishBaselineMethod):
     revision = 5
+
+    def __init__(self, revision=5):
+        self.revision = revision
+
     defaults = {**EnglishBaselineMethod.defaults, "max_scan_bytes": 1048576,
         "search_tools": ["web.search", "scholar.crossref.search", "scholar.openalex.search"],
         "parallel_agents": 4, "max_distillation_calls": 20, "recovery_queries": 4,
@@ -93,7 +97,7 @@ class ParallelBaselineMethod(EnglishBaselineMethod):
         if len(plan.queries) > options["max_queries"]:
             raise EngineError("INVALID_ROLE_OUTPUT", "Planner exceeded the selected query budget")
         plan_ref = planner["output_ref"]
-        await context.checkpoint({"kind": "baseline-plan/5", "plan_ref": plan_ref})
+        await context.checkpoint({"kind": f"baseline-plan/{self.revision}", "plan_ref": plan_ref})
         sources, accesses, digests, rounds, discovery_sets = SourceManifest(), {}, [], [], []
         fetched, full_works, searched = set(), set(), set()
         backlog = []
@@ -249,7 +253,7 @@ class ParallelBaselineMethod(EnglishBaselineMethod):
                 "context_plan": context_plan.to_dict(), "sufficient": quality.evidence_sufficient,
                 "quality": quality.to_dict()}
             rounds.append(record)
-            await context.checkpoint({"kind": "baseline-research/5", "plan_ref": plan_ref, "rounds": rounds})
+            await context.checkpoint({"kind": f"baseline-research/{self.revision}", "plan_ref": plan_ref, "rounds": rounds})
             if quality.evidence_sufficient:
                 stop_reason = "evidence_sufficient"
                 break
@@ -266,9 +270,9 @@ class ParallelBaselineMethod(EnglishBaselineMethod):
             await retain(context, writer_plan.to_dict(), "writer-context-plan.json")
             await context.port.update(context_plan=writer_plan.to_dict())
         report_ref, drafts = await write_and_review(context, question, plan, analysis, evidence, writer_plan,
-            max_attempts=options["max_report_attempts"], revision=5, quality=quality)
+            max_attempts=options["max_report_attempts"], revision=self.revision, quality=quality)
         quality = quality.model_copy(update={"report_accepted": True})
-        result = {"schema_version": 1, "method_id": "baseline", "method_revision": 5,
+        result = {"schema_version": 1, "method_id": "baseline", "method_revision": self.revision,
             "plan_ref": plan_ref, "rounds": rounds, "stop_reason": stop_reason,
             "discovery_sets": discovery_sets, "sources": sources.to_dict(),
             "source_access_ref": access_ref, "distillations_ref": digest_ref,
@@ -276,7 +280,7 @@ class ParallelBaselineMethod(EnglishBaselineMethod):
             "drafts": drafts, "report_ref": report_ref}
         async with context.node("publish.result", "publication"):
             result_ref = await retain(context, result, "research-result.json")
-            await context.checkpoint({"kind": "baseline-result/5", "result_manifest_ref": result_ref,
+            await context.checkpoint({"kind": f"baseline-result/{self.revision}", "result_manifest_ref": result_ref,
                 "report_ref": report_ref, "quality": quality.to_dict()})
             await context.port.update(report_ref=report_ref, result_manifest_ref=result_ref,
                 sources=sources.to_dict(), context_plan=writer_plan.to_dict(), quality=quality.to_dict())

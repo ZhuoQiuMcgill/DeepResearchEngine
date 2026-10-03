@@ -5,7 +5,7 @@ in the current root chat and its in-chat subagents. Do not contact or dispatch
 work to the former module-team chats. Their reviewed documents remain design
 references, not active work assignments.
 
-The platform and formal `baseline@5` Workflow are delivered. Methods, Agent
+The platform and formal `baseline@6` Workflow are delivered. Methods, Agent
 specifications, optional Hooks, application ownership and HTTP/CLI are separate
 modules. Current source, docs/team-start.md and
 docs/architecture/project-structure.md define the development boundaries;
@@ -13,17 +13,19 @@ docs/research-acceptance.md records actual checks. EBD strategy and console work
 consume those interfaces and are outside this baseline delivery.
 The formal method composes focused planning, bounded acquisition/archived reads,
 parallel source distillation, gap-driven reads/search and draft/review stages.
-Pin method revision 5 explicitly; revisions 1–4 remain available. See
+Pin method revision 6 explicitly; revisions 1–5 remain available. See
 docs/usage/baseline-parallel.md for the 20-source/two-round/256k Agent limits,
 module interfaces, saved-source access and independent quality status.
-Baseline 3–5 pin web.search revision 2. Query preparation and topic screening
+Baseline 3–5 pin web.search revision 2. Baseline 6 pins web.search revision 3
+and both scholarly tools at revision 2 for complete discovery metadata.
+Query preparation and topic screening
 belong to workflows/components/search_policy.py and retrieval.py; HTTP/backends and URL decoding
 belong to engine/toolset. See docs/usage/tools.md and examples/live_search_check.py.
 All EBD experiments must preserve the user's exact original question:
 `What is EBD (Environment Based Design)?` Do not expand, translate or rephrase it.
-Agent-generated search queries are separate recorded data. Baseline 5 pins
-Planner 3, Distiller 1, Analyst 3, Writer 5 and Reviewer 4, requires English
-output, and rejects CJK narrative at publication. Report acceptance and
+Agent-generated search queries are separate recorded data. Baselines 5–6 pin
+Planner 3, Distiller 1, Analyst 3, Writer 5 and Reviewer 4, require English
+output, and reject CJK narrative at publication. Report acceptance and
 ResearchRunView.quality are separate; execution success does not imply sufficient
 research. Do not rewrite historical saved requests or outputs.
 

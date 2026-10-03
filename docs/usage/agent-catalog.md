@@ -7,7 +7,7 @@ and Storage retain execution authority, validation, recording and budgets.
 
 The catalog does not open model connections, fetch evidence, register invocation
 edges or issue grants. Importing and loading roles needs no credentials.
-`baseline@5` pins Planner 3, Distiller 1, Analyst 3, Writer 5 and Reviewer 4.
+`baseline@5` and `baseline@6` pin Planner 3, Distiller 1, Analyst 3, Writer 5 and Reviewer 4.
 All five compile into the same Agent Runtime container. Distiller inputs identify
 one archived source/chunk and its actual read segments; outputs contain short
 claims with verifiable quotations and content classification. Analyst inputs

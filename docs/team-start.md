@@ -1,7 +1,7 @@
 # Start building with the team
 
 Research methods are Workflows over one shared execution engine. The expanded
-`baseline@5` uses Planner 3, bounded search/fetch/archived reads, parallel Distiller 1
+`baseline@6` uses Planner 3, bounded search/fetch/archived reads, parallel Distiller 1
 workers and Analyst 3, then Writer 5 and Reviewer 4 with language/citation/coverage checks. It answers
 arbitrary topics; only a reviewed, accepted draft becomes the final report.
 All five roles are tool-free and use the common Runtime. Reports are in English.
@@ -46,36 +46,40 @@ model credentials. The HTTP check exercises loopback HTTP/SSE and reopened saved
 results. Each developer uses a separate ignored store; one Engine process owns
 a store. Do not open a second Engine over an active backend's directory.
 
-## Select Baseline revision 5 explicitly
+## Select Baseline revision 6 explicitly
 
-Bootstrap registers `baseline@1` through `baseline@5` and `example.echo@1`.
+Bootstrap registers `baseline@1` through `baseline@6` and `example.echo@1`.
 `ResearchRunRequest.method_revision` still defaults to **1**. New consumers must
-send revision 5 for source access, parallel distillation and English reports; wire `schema_version: 1` stays unchanged. V1's code and schemas
+send revision 6 for enriched search results with the existing source access,
+parallel distillation and English reports; wire `schema_version: 1` stays unchanged. V1's code and schemas
 remain under `methods/baseline/v1/`, with `baseline.writer@1` retained.
 `deepresearch baseline` is the older single-Agent CLI, separate from these methods.
 
 Revisions 3–5 pin `web.search@2` for recorded Yahoo/DuckDuckGo fallback and use
-Workflow-owned query preparation/topic screening. Standalone callers select
-`deepresearch tool web.search --revision 2`; unqualified tool calls retain revision 1.
-Run `uv run --locked python examples/live_search_check.py` for the model-free
-live search check. Its store and evidence are generated under ignored `local/`.
+Workflow-owned query preparation/topic screening. Revision 6 pins `web.search@3` and both scholarly tools at revision 2.
+Standalone callers select
+`deepresearch tool web.search --revision 3`; unqualified tool calls retain revision 1.
+Run `uv run --locked python examples/live_search_information_check.py --admit-openalex`
+for the current model-free search contract check. Its store and evidence are
+generated under ignored `local/`. The earlier `live_search_check.py` retains the
+revision 2 query-policy diagnostic.
 
 Copy [.env.example](../.env.example) to ignored `local/.env` only if that file does
 not already exist, then configure the selected provider. The default named pair
 is `deepseek` / `deepseek-flash`; environment values override the file. The browser
 selects names and never receives credentials or endpoints.
 
-Use the explicit v5 request in the [parallel usage guide](usage/baseline-parallel.md). To run a
+Use the explicit v6 request in the [parallel usage guide](usage/baseline-parallel.md). To run a
 request file in a POSIX shell:
 
 ```shell
-uv run --locked deepresearch --store local/my-baseline-v5 research < examples/baseline-request.json
+uv run --locked deepresearch --store local/my-baseline-v6 research < examples/baseline-request.json
 ```
 
 In PowerShell:
 
 ```powershell
-Get-Content -Raw examples/baseline-request.json | uv run --locked deepresearch --store local/my-baseline-v5 research
+Get-Content -Raw examples/baseline-request.json | uv run --locked deepresearch --store local/my-baseline-v6 research
 ```
 
 Check `method_revision` in the file and choose a fresh `client_request_id` for each

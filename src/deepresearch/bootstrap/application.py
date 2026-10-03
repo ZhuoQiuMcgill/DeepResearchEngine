@@ -17,6 +17,7 @@ def create_method_registry():
     registry.register(definition(3), ExpandedBaselineMethod())
     registry.register(definition(4), EnglishBaselineMethod())
     registry.register(definition(5), ParallelBaselineMethod())
+    registry.register(definition(6), ParallelBaselineMethod(6))
     registry.register(echo_definition(), EchoMethod())
     return registry
 

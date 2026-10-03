@@ -17,8 +17,10 @@ from jsonschema import Draft202012Validator, FormatChecker
 
 from .common import LIMITS, ToolFault, closed, encode, strict_json, url, utc_now
 from .retrieval import request_body
+from .discovery_metadata import bibliography, coverage, extend_scholarly_schema
 
 SCHEMA = json.loads(Path(__file__).with_name("scholarly.schema.json").read_text(encoding="utf-8"))
+extend_scholarly_schema(SCHEMA["$defs"])
 HEADERS = {
     "crossref_rate_limit": "x-rate-limit-limit", "crossref_rate_interval": "x-rate-limit-interval",
     "crossref_concurrency_limit": "x-concurrency-limit", "openalex_limit_usd": "x-ratelimit-limit-usd",
@@ -148,7 +150,7 @@ def _location(source):
             "is_oa": source.get("is_oa"), "version": source.get("version"), "license": source.get("license"), "source": host}
 
 
-def project(provider: str, source: dict, arguments: dict) -> dict:
+def project(provider: str, source: dict, arguments: dict, revision=1) -> dict:
     if provider == "crossref":
         if source.get("status") != "ok" or not isinstance(source.get("message"), dict):
             raise ToolFault("SCHOLAR_PROTOCOL_ERROR", "Crossref response lacks its expected message")
@@ -178,7 +180,13 @@ def project(provider: str, source: dict, arguments: dict) -> dict:
                 "best_oa_location": _location(row.get("best_oa_location")), "locations": [_location(item) for item in row.get("locations", [])]})
     result = {"provider": provider, "scope": "scholarly_metadata", "query": arguments["query"], "searched_at": utc_now(),
         "discovery_only": True, "provider_total_results": total, "results": results}
-    try: validate_schema(result, provider + "_result")
+    try:
+        validate_schema(result, provider + "_result")
+        if revision == 2:
+            for item, row in zip(results, rows):
+                item["bibliography"] = bibliography(provider, row)
+            result["coverage"] = coverage(arguments["max_results"], len(results), len(rows), total)
+            validate_schema(result, provider + "_result_v2")
     except ToolFault as exc:
         raise ToolFault("SCHOLAR_PROTOCOL_ERROR", "Provider metadata does not match the closed projection") from exc
     def check_urls(value):
@@ -197,7 +205,7 @@ def project(provider: str, source: dict, arguments: dict) -> dict:
     return result
 
 
-def discover(arguments: dict, plan: dict, timeout: float):
+def discover(arguments: dict, plan: dict, timeout: float, revision=1):
     provider = plan["provider"]
     if plan != provider_plan(provider, plan.get("quota_reservation_id")):
         raise ToolFault("WORKER_PROTOCOL_ERROR", "Scholarly provider plan does not match fixed registration")
@@ -219,7 +227,7 @@ def discover(arguments: dict, plan: dict, timeout: float):
             fault = ToolFault(code, "Metadata endpoint returned a non-success HTTP status", status=terminal, details={"reason": reason})
         else:
             if "json" not in info["content_type"].split(";")[0].lower(): raise ToolFault("SCHOLAR_PROTOCOL_ERROR", "Metadata endpoint did not return JSON")
-            prepared = project(provider, strict_json(body, LIMITS["metadata_bytes"]), arguments)
+            prepared = project(provider, strict_json(body, LIMITS["metadata_bytes"]), arguments, revision)
     except ToolFault as exc:
         fault = exc
         if fault.code == "INVALID_JSON":

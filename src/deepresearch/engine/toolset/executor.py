@@ -244,14 +244,22 @@ class ToolExecutor:
                 if prepared != plan["slice"]: raise ToolFault("WORKER_PROTOCOL_ERROR", "Worker changed authoritative immutable slice")
                 result.result = prepared
             elif quota:
-                validate_schema(prepared, provider + "_result"); result.result = prepared
+                validate_schema(prepared, provider + ("_result_v2" if definition.revision == 2 else "_result"))
+                if prepared["query"] != arguments["query"]:
+                    raise ToolFault("WORKER_PROTOCOL_ERROR", "Scholarly search query changed")
+                result.result = prepared
             else:
-                closed(prepared, {"query", "searched_at", "backend_policy", "backend_attempts", "results"})
+                fields = {"query", "searched_at", "backend_policy", "backend_attempts", "results"}
+                closed(prepared, fields | ({"coverage"} if definition.revision == 3 else set()))
                 if prepared["query"] != arguments["query"]: raise ToolFault("WORKER_PROTOCOL_ERROR", "Search query changed")
                 result.result = prepared
             result.status = "succeeded"
             if list(Draft202012Validator(definition.output_schema).iter_errors(result.result)):
                 raise ToolFault("WORKER_PROTOCOL_ERROR", "Tool output differs from its closed public schema")
+            if (definition.name == "web.search" and definition.revision == 3 or
+                    definition.name.startswith("scholar.") and definition.revision == 2):
+                from .discovery_metadata import validate_coverage
+                validate_coverage(result.result, arguments, scholarly=definition.name.startswith("scholar."))
             encode(result, limits["stdout_bytes"])
             return result
         except ToolFault as fault:
