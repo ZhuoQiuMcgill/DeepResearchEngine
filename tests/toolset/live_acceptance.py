@@ -11,9 +11,9 @@ import json
 import os
 from pathlib import Path
 
-from ebd.connections import Engine, EngineSettings, RunOptions
-from ebd.contracts import RunRef, SnapshotRef, canonical_json, new_id
-from ebd.connections.models import (RunAccessRequest, SnapshotReadRequest,
+from deepresearch.engine.connections import Engine, EngineSettings, RunOptions
+from deepresearch.engine.contracts import RunRef, SnapshotRef, canonical_json, new_id
+from deepresearch.engine.connections.models import (RunAccessRequest, SnapshotReadRequest,
     HistoryReadRequest, RunAccessOptions)
 
 
@@ -73,7 +73,7 @@ async def main():
                 await session.close()
                 # The public standalone CLI/Engine route reauthorizes the old
                 # snapshot explicitly and runs the real document.read worker.
-                from ebd.connections import ToolRunOptions
+                from deepresearch.engine.connections import ToolRunOptions
                 read = await engine.run_tool("document.read", {"snapshot_ref": ref.to_dict(), "range": {"kind": "lines", "start": 1, "end_exclusive": 10}},
                     ToolRunOptions(source_run_ref=RunRef(engine.storage.store_id, result.invocation["run_id"]),
                         read_objects=(SnapshotReadRequest(ref, {"kind": "lines", "start": 1, "end_exclusive": 10}),)))
@@ -83,7 +83,7 @@ async def main():
         # Concurrency two is measured only after successful single plain/HTML/PDF
         # observations; normal Engine configuration remains concurrency one.
         if any(row.get("tool", {}).get("name") == "web.fetch" and row.get("status") == "succeeded" and row.get("result", {}).get("page_count") for row in rows):
-            from ebd.toolset import ToolExecutor
+            from deepresearch.engine.toolset import ToolExecutor
             previous = engine.executor
             state, sink = previous.export_quota_checkpoint(), previous._quota_sink
             await previous.close()

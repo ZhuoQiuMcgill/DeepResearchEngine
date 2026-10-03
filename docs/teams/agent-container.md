@@ -1,5 +1,12 @@
 # Agent Container team specification
 
+> **Historical design record.** The original text below describes the earlier
+> design/review phase. Its phase holds, chat assignments and proposed API
+> signatures are not current instructions. Implementation and live acceptance
+> are complete within the documented platform scope; use [Team start](../team-start.md)
+> and the [current usage guides](../usage/connections.md) to begin work.
+> Do not contact former team chats based on this record.
+
 Status: design assignment. Shared contracts remain **DRAFT** until reconciliation and approval under the shared platform specification. This assignment authorizes design work only.
 
 ## Start here

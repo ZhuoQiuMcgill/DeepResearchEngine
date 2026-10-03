@@ -7,7 +7,7 @@ From the repository root, run the Python service in one terminal:
 
 ```powershell
 uv sync --locked
-uv run --locked ebd --store local/ui-store serve --port 8765 --origin http://127.0.0.1:5180
+uv run --locked deepresearch --store local/ui-store serve --port 8765 --origin http://127.0.0.1:5180
 ```
 
 In another terminal:
@@ -23,7 +23,7 @@ Open http://127.0.0.1:5180. For another local backend, copy `.env.example` to `.
 ## Models
 Choose an Engine profile in the header. Catalog availability does not mean credentials are present. DeepSeek/OpenAI need the corresponding key in ignored `local/.env` at the repository root. Custom models must be registered by trusted Python host configuration.
 
-For a running local NInfer service, set these host settings in ignored `local/.env` before starting `ebd serve`:
+For a running local NInfer service, set these host settings in ignored `local/.env` before starting `deepresearch serve`:
 
 ```dotenv
 NINFER_BASE_URL=http://127.0.0.1:18086/v1
@@ -32,7 +32,7 @@ NINFER_MODEL=qwen38-ninfer-256k
 
 The service registers a distinct loopback-only `ninfer` Chat Completions profile. The UI selects it by default when present. Thinking is disabled, temperature is 0.2 and output is bounded to 4096 tokens per model call. Start the model server separately; the Engine does not change its context/cache/MTP settings. The live local endpoint reported 262144 context tokens. No secrets are committed.
 
-UI NInfer agents explicitly use a 258048 context allowance (262144 minus 4096 output tokens) and a 180-second per-call timeout, rather than the Runtime's 32768 / 45-second defaults. This allowance still uses the Engine's conservative UTF-8 byte estimate, not a tokenizer measurement. Tool attempts match the selected tool-call budget. Accumulated input that exceeds an allowance returns `CONTEXT_LIMIT_EXCEEDED` with safe numeric details.
+UI NInfer agents explicitly use a 258048 context allowance (262144 minus 4096 output tokens) and a 180-second per-call timeout, rather than the Runtime's 32768 / 45-second defaults. This allowance still uses the Engine's UTF-8 byte-size/4 token estimate (rounded up), not a tokenizer measurement. Tool attempts match the selected tool-call budget. Accumulated input that exceeds an allowance returns `CONTEXT_LIMIT_EXCEEDED` with safe numeric details.
 
 UI agents opt into `finalize_on_limit`. Near the tool/model allowance, Runtime switches to a final answer with `tool_choice=none`. An oversized tool batch is declined in full and returned as not executed; a saved final answer may explicitly state insufficient source material. Tool limits, recording failures, cancellation, unauthorized calls and malformed arguments remain enforced. An answer being saved does not establish that every research question was answered. Search instructions request focused queries and reserve calls for reading.
 
@@ -52,3 +52,9 @@ Inputs are bounded to 200 KiB, report retrieval to 8 MiB. The Engine history vie
 
 ## Checks
 `npm test` and `npm run build`. Adapter tests cover saved artifact chunks, event deduplication, incomplete recording, and premature stream termination. Root Python service tests exercise the actual Runtime and Storage with controlled model responses. A live model run still requires an Engine-supported configured profile; do not treat fixture tests as live model results.
+
+## Upstream integration (October 2, 2026)
+
+The UI branch includes upstream `c30ecb8`, canonical `deepresearch.*` modules and the server-side `baseline@3` method. The editable canvas still runs individual agents through the public Agent API; it does not implicitly start the formal Baseline workflow. Local NInfer and the opt-in final-answer policy remain supported. The OpenAPI snapshot includes that optional registration flag.
+
+Live checks exercised Qwen planning, a tool-free Writer and a Reader with successful web.fetch/document.read calls through the UI bridge, with saved report retrieval and reported usage. Backend tests: 837 passed; frontend tests: 23 passed; frontend production build passed. The upstream model-free ResearchRun example also exercised HTTP/SSE, idempotency and report reads after restart. These checks do not measure a full 256K request or complete a live Baseline research run.

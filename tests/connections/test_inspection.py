@@ -3,9 +3,9 @@ import json
 
 import httpx
 
-from ebd.connections import AgentRef, Engine, EngineSettings, InvocationRule, RunOptions
-from ebd.contracts import AgentDefinition, ArtifactMetadata, Err, RunRef, StateMutation
-from ebd.providers import ProviderConfig, ProviderFactory
+from deepresearch.engine.connections import AgentRef, Engine, EngineSettings, InvocationRule, RunOptions
+from deepresearch.engine.contracts import AgentDefinition, ArtifactMetadata, Err, RunRef, StateMutation
+from deepresearch.engine.providers import ProviderConfig, ProviderFactory
 
 
 async def opened(tmp_path, monkeypatch):

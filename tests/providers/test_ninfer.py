@@ -4,9 +4,9 @@ import json
 import httpx
 import pytest
 
-from ebd.providers import ProviderConfig, ProviderFactory, ModelRequest, ModelTool
-from ebd.providers.factory import _validate_config
-from ebd.connections.config import local_profiles
+from deepresearch.engine.providers import ProviderConfig, ProviderFactory, ModelRequest, ModelTool
+from deepresearch.engine.providers.factory import _validate_config
+from deepresearch.engine.connections.config import local_profiles
 
 
 def test_ninfer_native_tool_round_trip():

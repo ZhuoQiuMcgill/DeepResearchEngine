@@ -1,5 +1,10 @@
 # Runnable platform acceptance
 
+This records acceptance before the namespace migration. Its original `ebd`
+commands and paths remain historical evidence. For current paths, use the
+[structure and migration map](architecture/project-structure.md); post-migration
+verification is in [Workflow acceptance](research-acceptance.md).
+
 Development moved to the root chat and its in-chat subagents at the user's
 direction. No former team chat was dispatched or messaged for implementation.
 All modules share uv, Python 3.11+, one lockfile and root-only Git operations.

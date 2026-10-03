@@ -17,7 +17,7 @@ preflight, so unauthorized or malformed calls are not hidden. Missing rejection
 recording prevents further model dispatch. Default strict behavior is unchanged.
 
 Local NInfer is also supported through an explicit `ninfer` provider. For
-`ebd serve`, set `NINFER_BASE_URL` and `NINFER_MODEL` in ignored `local/.env`
+`deepresearch serve`, set `NINFER_BASE_URL` and `NINFER_MODEL` in ignored `local/.env`
 or the process environment. The endpoint must be loopback. It uses Chat
 Completions with registered function tools and native tool continuation,
 separate from the vLLM deployment profile. Thinking is disabled using
@@ -30,15 +30,15 @@ completed on October 1, 2026. The latter run was
 `run_9bbe8e94205740a5b5c0a2c1a0951d0c`, with a committed report and token usage.
 These small runs do not measure performance at full 256K context.
 
-Use the platform through `ebd.connections.Engine`. `AgentDefinition` is a
+Use the platform through `deepresearch.engine.connections.Engine`. `AgentDefinition` is a
 serializable reusable definition. Connections supplies live bindings, scopes,
 deadlines, grants and a shared lineage budget; definitions and saved references
 do not supply authority. Runtime has no research strategy or EBD-specific logic.
 
 ```python
 import asyncio
-from ebd.connections import Engine, EngineSettings, RunOptions
-from ebd.contracts import AgentDefinition, ToolRef
+from deepresearch.engine.connections import Engine, EngineSettings, RunOptions
+from deepresearch.engine.contracts import AgentDefinition, ToolRef
 
 async def main():
     engine = (await Engine.open(EngineSettings())).unwrap()
@@ -111,9 +111,9 @@ children share the same ledger. Token usage missing from a dispatched attempt
 remains unknown/partial. Strict token budgeting requires a verified tokenizer
 profile and is rejected by these connectors. Automatic model retries/repairs
 are disabled; nonzero requests are rejected rather than silently replayed.
-`max_context_tokens` applies an advisory UTF-8 byte estimate to rendered context,
+`max_context_tokens` applies the advisory `ceil(UTF-8 bytes / 4)` token estimate to rendered context,
 including schemas and native history. The request audit records this measurement
-as unverified. It can reject a request conservatively and does not prove the
+as unverified with the estimator and text byte count. It does not prove the
 provider's exact token count. The independent request byte cap remains enforced.
 
 Every `model.outcome` contains normalized per-attempt token usage in Storage,
@@ -175,6 +175,22 @@ after append. The host then opens a fresh `Engine.open_run_access` session to
 read/export output and save a final checkpoint; expired execution authority is
 never revived. See the root baseline documentation for that host workflow.
 
+A complete final response within the output byte bound that fails strict JSON
+parsing or the registered output schema retains its exact UTF-8 bytes as a
+scoped raw artifact before `agent.finished`. Successful archival leaves execution
+`validation_failed`, sets `raw_output_ref` and records that reference in the
+terminal, including after restart. It creates no validated artifact, `output_ref`,
+successful delivery or child-result export. `persistence_state="committed"` in
+this case describes the raw archive, not a valid output. Read it only through
+explicit authorized Storage/result access; source/task text is not logged.
+
+Raw archival uses the existing live publication authority, Storage budgets and
+acknowledgement reconciliation. Known archival failure has no committed raw
+reference; uncertain commitment remains `unknown` with incomplete recording.
+It does not retry the model, repair JSON or bypass cancellation/expiry using
+cleanup authority. Failed, refused, incomplete and oversized provider outputs
+retain their previous behavior and are not archived by this validation path.
+
 Execution status, recording completeness and publication commitment are
 independent. Lost acknowledgements reconcile the same event/operation ID;
 unknown remote effects never trigger a replay. Known publication failure may
@@ -202,7 +218,7 @@ Storage commitments terminate the run. This policy leaves the worker caps intact
 
 ## Local vLLM Qwen
 
-Register a trusted `ebd.providers.ProviderConfig(provider="vllm", ...)` through
+Register a trusted `deepresearch.engine.providers.ProviderConfig(provider="vllm", ...)` through
 `EngineSettings.profiles` with its exact model alias, HTTP endpoint and explicit
 `deployment_manifest`. The manifest declares version, endpoint/model identity,
 model/tokenizer revisions, template hash, vLLM version/image, tool and reasoning

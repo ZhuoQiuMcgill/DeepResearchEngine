@@ -1,50 +1,52 @@
-# Module team specs
+# Team documentation index
 
-These briefs prepare independent team chats for the basic engine. Current
-work is design and research; implementation has not been authorized.
+The platform is implemented and available for teammate integration.
+**Start with [Team start](../team-start.md)** for setup, role-specific paths,
+runnable commands and interface ownership.
 
-The platform comes first so group members can build research strategies
-against working, decoupled interfaces. The orchestrator and EBD strategies
-are later consumers of this platform.
+The current platform package and CLI are `deepresearch`; source blocks live
+under `src/deepresearch/`. EBD is a research method, not the platform namespace.
+The [structure and migration map](../architecture/project-structure.md) explains
+the one-file `ebd` compatibility bridge. Historical designs and acceptance
+records below retain their original paths and commands.
 
-| Team | Spec | Current assignment |
-| --- | --- | --- |
-| Agent Container | [agent-container.md](agent-container.md) | Propose agent definition, execution interfaces, and real provider adapter design. |
-| CLI Toolset | [cli-toolset.md](cli-toolset.md) | Research free, open-source search/fetch combinations and propose tool contracts. |
-| Storage | [storage.md](storage.md) | Propose persistence, scoped access, artifacts, and automatic recording contracts. |
-| Connections | [connections.md](connections.md) | Propose bindings, context propagation, configuration, and agent invocation contracts. |
+## Current handoff documents
 
-All leaders first read [shared-platform.md](shared-platform.md) and
-[coordination.md](coordination.md), then the consolidated
-[platform-contract-v1.md](platform-contract-v1.md). Agent Container and CLI Toolset are the
-first implementation priorities after design approval. Storage and
-Connections can resolve their design boundaries in parallel now.
+| Purpose | Document |
+| --- | --- |
+| New teammate onboarding | [Team start](../team-start.md) |
+| Python orchestrator integration | [Connections](../usage/connections.md), [Agents](../usage/agents.md), [Storage](../usage/storage.md), [Tools](../usage/tools.md) |
+| Frontend integration | [HTTP walkthrough](../usage/console-quickstart.md), [service reference](../usage/service.md), [OpenAPI JSON](../api/openapi.json) |
+| Shared consumer boundary | [Consumer contract v1](consumer-contract-v1.md) |
+| Platform invariants | [Platform contract v1](platform-contract-v1.md) |
+| Actual verification | [Platform acceptance](../platform-acceptance.md), [consumer acceptance](../consumer-acceptance.md) |
+| Source ownership and Git | [AGENTS](../../AGENTS.md), [CONTRIBUTING](../../CONTRIBUTING.md) |
 
-Suggested starting prompts, from sessions opened in this workspace:
+Development coordination is in the current root chat and its in-chat subagents.
+The former cross-session module chats are closed assignments; do not contact
+or redispatch them based on the historical documents below.
 
-```text
-You are the leader of Agent Container team, now read your spec.
-You are the leader of CLI Toolset team, now read your spec.
-You are the leader of Storage team, now read your spec.
-You are the leader of Connections team, now read your spec.
-```
+## Historical design records
 
-Each leader registers with PM, completes the current assignment, saves an
-owned report, and notifies PM. PM reconciles interface proposals and selects
-the web tool combination after the CLI research arrives. PM selected DDGS,
-HTTPX, Trafilatura, and pypdf for the initial design; see [decisions.md](decisions.md).
-DDGS is best-effort and replaceable; research-task availability remains unverified.
+These documents retain earlier requirements, design rationale and review
+history. Their original phase holds, proposed interfaces, ownership and chat
+instructions describe the earlier design stage. Current public source/DTOs,
+usage guides and root instructions take precedence.
 
-Use [missions.md](missions.md) for each team's sustained module mission,
-expected evidence and PM responsibilities. The current assignment is full
-owned-design alignment; runtime implementation still awaits authorization.
-PM's final verification plan is [baseline-acceptance.md](baseline-acceptance.md).
+| Module | Original brief | Reviewed design | Historical status |
+| --- | --- | --- | --- |
+| Agent Container | [Brief](agent-container.md) | [Design](designs/agent-container-design.md) | [Report](reports/agent-container-status.md) |
+| CLI Toolset | [Brief](cli-toolset.md) | [Design](designs/cli-toolset-design.md) | [Report](reports/cli-toolset-status.md) |
+| Storage | [Brief](storage.md) | [Design](designs/storage-design.md) | [Report](reports/storage-status.md) |
+| Connections | [Brief](connections.md) | [Design](designs/connections-design.md) | [Report](reports/connections-status.md) |
 
-Background sources:
+Historical context: [shared brief](shared-platform.md), [missions](missions.md),
+[coordination history](coordination.md), [reconciliation](reconciliation.md),
+[decision log](decisions.md), [search research](../research/free-search-fetch.md).
+The [baseline criteria](baseline-acceptance.md) remain the acceptance requirements;
+their actual results are in the current acceptance documents above.
 
-- Final proposal: `docs/proposal/INSE691_Proposal_EBD-DeepResearch_Group7.docx`.
-- Earlier internal design: `docs/proposal/EBD-DeepResearch_Design_v0.1.docx`.
-
-Use the final proposal for research goals. Later user decisions recorded in
-these specs take precedence: CLI tools replace MCP, the environment is uv
-and Python 3.11+, and the basic execution platform precedes orchestration.
+Research background is in `docs/proposal/INSE691_Proposal_EBD-DeepResearch_Group7.docx`
+and `docs/proposal/EBD-DeepResearch_Design_v0.1.docx`. Later user decisions
+established CLI tools, uv/Python 3.11+, and a reusable execution platform as
+the foundation for independently developed strategies.

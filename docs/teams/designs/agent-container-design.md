@@ -1,5 +1,12 @@
 # Agent Container design aligned to platform contract v1
 
+> **Historical design record.** The original text below describes the earlier
+> design/review phase. Its phase holds, chat assignments and proposed API
+> signatures are not current instructions. Implementation and live acceptance
+> are complete within the documented platform scope; use [Team start](../../team-start.md)
+> and the [current usage guides](../../usage/connections.md) to begin work.
+> Do not contact former team chats based on this record.
+
 Status: complete owned design for shared review; revision agent-container-v1-r3, October 1, 2026 (America/Toronto). Normative shared authority: [platform-contract-v1.md](../platform-contract-v1.md); assignment: [missions.md](../missions.md); contribution rules: [CONTRIBUTING.md](../../../CONTRIBUTING.md). This revision replaces the team's earlier competing interface proposals. It is documentation, not implemented functionality or authorization to build.
 
 ## 1. Ownership and conformance rules

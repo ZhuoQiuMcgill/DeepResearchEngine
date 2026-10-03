@@ -1,7 +1,7 @@
 """A runnable consumer of the public platform, with strategy in its prompt."""
 import asyncio
-from ebd.connections import Engine, RunOptions
-from ebd.contracts import AgentDefinition, ToolRef
+from deepresearch.engine.connections import Engine, RunOptions
+from deepresearch.engine.contracts import AgentDefinition, ToolRef
 
 
 async def main():

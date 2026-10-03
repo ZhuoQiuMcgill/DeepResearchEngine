@@ -18,16 +18,16 @@ import uuid
 import httpx
 import uvicorn
 
-from ebd.baseline import history, read_artifact
-from ebd.connections import (
+from deepresearch.interfaces.cli.legacy_baseline import history, read_artifact
+from deepresearch.engine.connections import (
     ArtifactReadRequest, Engine, EngineSettings, EvidenceBinding, HistoryReadRequest,
     InvocationOptions, InvocationRule, RunAccessOptions, RunAccessRequest,
     RunOptions, SnapshotReadRequest,
 )
-from ebd.contracts import (
+from deepresearch.engine.contracts import (
     AgentDefinition, RunRef, SnapshotProposal, ToolRef, canonical_json, digest_bytes,
 )
-from ebd.service import create_app
+from deepresearch.interfaces.http import create_app
 
 
 COUNTERS = ("input_tokens", "output_tokens", "total_tokens", "cached_input_tokens",

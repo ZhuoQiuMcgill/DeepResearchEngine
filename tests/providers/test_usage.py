@@ -5,8 +5,8 @@ import json
 import httpx
 import pytest
 
-from ebd.providers import ModelRequest, ModelTool, ProviderConfig, ProviderFactory
-from ebd.providers.usage import TOKEN_COUNTS, normalize_usage, provider_usage_projection
+from deepresearch.engine.providers import ModelRequest, ModelTool, ProviderConfig, ProviderFactory
+from deepresearch.engine.providers.usage import TOKEN_COUNTS, normalize_usage, provider_usage_projection
 
 
 @pytest.mark.parametrize("native,expected,quality", [

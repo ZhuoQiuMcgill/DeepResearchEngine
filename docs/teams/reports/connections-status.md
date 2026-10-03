@@ -1,5 +1,12 @@
 # Connections team status: v1 alignment
 
+> **Historical design record.** The original text below describes the earlier
+> design/review phase. Its phase holds, chat assignments and proposed API
+> signatures are not current instructions. Implementation and live acceptance
+> are complete within the documented platform scope; use [Team start](../../team-start.md)
+> and the [current usage guides](../../usage/connections.md) to begin work.
+> Do not contact former team chats based on this record.
+
 Date: 2026-10-01 (America/Toronto).
 Phase: design alignment; implementation/API phase remains unauthorized.
 State: full owned design and limited PM corrections completed for review/commit.

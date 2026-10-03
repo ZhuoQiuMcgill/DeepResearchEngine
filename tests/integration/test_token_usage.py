@@ -9,16 +9,16 @@ import json
 import httpx
 import pytest
 
-from ebd.connections import (
+from deepresearch.engine.connections import (
     Engine, EngineSettings, HistoryReadRequest, RunAccessOptions, RunAccessRequest,
     RunOptions,
 )
-from ebd.contracts import (
+from deepresearch.engine.contracts import (
     AgentDefinition, EngineError, ExecutionEvent, RunRef, SnapshotProposal, ToolRef,
     canonical_json, digest_bytes,
 )
-from ebd.providers import ProviderConfig, ProviderFactory
-from ebd.storage._ranges import line_spans
+from deepresearch.engine.providers import ProviderConfig, ProviderFactory
+from deepresearch.engine.storage._ranges import line_spans
 
 
 COUNTERS = ("input_tokens", "output_tokens", "total_tokens",

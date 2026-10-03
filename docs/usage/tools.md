@@ -2,7 +2,7 @@
 
 The Toolset runs real, one-shot Python workers behind the Engine's recorded
 action boundary. The current registry contains five tools, all at revision 1.
-Use the public `ebd tool` command or `Engine.run_tool`; the private worker
+Use the public `deepresearch tool` command or `Engine.run_tool`; the private worker
 protocol requires an owner-issued execution plan and recorded attempt.
 
 | Tool | Closed arguments | Result |
@@ -30,16 +30,16 @@ result. Success requires both `status: "succeeded"` and
 
 ```powershell
 $OutputEncoding = [System.Text.UTF8Encoding]::new($false)
-uv run --locked ebd --store local/demo-store tools
+uv run --locked deepresearch --store local/demo-store tools
 
 '{"query":"environment based design Yong Zeng","max_results":3}' |
-  uv run --locked ebd --store local/demo-store tool web.search
+  uv run --locked deepresearch --store local/demo-store tool web.search
 
 '{"query":"\"Environment based design\" \"Yong Zeng\"","max_results":3}' |
-  uv run --locked ebd --store local/demo-store tool scholar.crossref.search
+  uv run --locked deepresearch --store local/demo-store tool scholar.crossref.search
 
 '{"query":"\"environment-based design\"","max_results":3}' |
-  uv run --locked ebd --store local/demo-store --admit-openalex tool scholar.openalex.search
+  uv run --locked deepresearch --store local/demo-store --admit-openalex tool scholar.openalex.search
 ```
 
 OpenAlex starts closed until the host explicitly admits its initial anonymous
@@ -56,7 +56,7 @@ end-exclusive interval. Keep the same store between commands.
 
 ```powershell
 $fetch = ('{"url":"https://www.rfc-editor.org/rfc/rfc9110.txt"}' |
-  uv run --locked ebd --store local/demo-store tool web.fetch) | ConvertFrom-Json
+  uv run --locked deepresearch --store local/demo-store tool web.fetch) | ConvertFrom-Json
 if ($fetch.status -ne 'succeeded' -or $fetch.recording.status -ne 'complete') {
   throw 'Fetch did not produce an acknowledged snapshot'
 }
@@ -65,7 +65,7 @@ $readArgs = @{
   range = @{ kind = 'lines'; start = 1; end_exclusive = 10 }
   max_text_bytes = 65536
 } | ConvertTo-Json -Depth 10 -Compress
-$readArgs | uv run --locked ebd --store local/demo-store tool document.read `
+$readArgs | uv run --locked deepresearch --store local/demo-store tool document.read `
   --source-run $fetch.invocation.run_id
 ```
 

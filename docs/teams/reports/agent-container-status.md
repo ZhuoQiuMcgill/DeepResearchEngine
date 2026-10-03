@@ -1,5 +1,12 @@
 # Agent Container team status
 
+> **Historical design record.** The original text below describes the earlier
+> design/review phase. Its phase holds, chat assignments and proposed API
+> signatures are not current instructions. Implementation and live acceptance
+> are complete within the documented platform scope; use [Team start](../../team-start.md)
+> and the [current usage guides](../../usage/connections.md) to begin work.
+> Do not contact former team chats based on this record.
+
 Owner: Agent Container Team. Revision: agent-container-v1-r3, October 1, 2026 (America/Toronto).
 Status: complete owned design alignment for PM review; design/research phase only. Freeze these two owned paths after completed QA/handoff until PM confirms the commit or coordinates another revision.
 

@@ -12,16 +12,17 @@ import time
 import httpx
 import pytest
 
-from ebd.connections import (
+from deepresearch.engine.connections import (
     AgentRef, Engine, EngineSettings, RunOptions, InvocationRule, SnapshotReadRequest, ToolRunOptions,
 )
-from ebd.contracts import (
+from deepresearch.engine.contracts import (
     AgentDefinition, ArtifactMetadata, EngineError, Err, RunRef, SnapshotProposal,
     canonical_json, digest_bytes, new_id,
 )
-from ebd.providers import ProviderConfig, ProviderFactory
-from ebd.service import RunService, create_app
-from ebd.service.models import (
+from deepresearch.engine.providers import ProviderConfig, ProviderFactory
+from deepresearch.application.agent_runs import RunService
+from deepresearch.interfaces.http import create_app
+from deepresearch.application.agent_contracts import (
     ArtifactChunkView, EventPageView, ResultView, RunPageView, UsageView,
 )
 

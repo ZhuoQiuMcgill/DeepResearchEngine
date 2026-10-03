@@ -1,5 +1,11 @@
 # Implementation takeover
 
+Current handoff entry: [Team start](team-start.md). The execution platform,
+per-response usage and consumer interfaces are delivered; teammates can begin
+orchestrator and console integration. Current HTTP fields are available in
+[OpenAPI](api/openapi.json), with a [walkthrough](usage/console-quickstart.md).
+The takeover history below explains the transition from the former design chats.
+
 2026-10-01, America/Toronto. The user directed development to continue in the
 current chat and its subagents, with no further cross-session coordination.
 All four reviewed designs are available at commit `6e02808`.

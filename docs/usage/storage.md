@@ -6,7 +6,7 @@ the scoped facades into runtime/tool/result-access bindings. Callers receive
 typed `Ok(value)` or `Err(EngineError)` results; references carry identity only.
 
 ```python
-from ebd.connections import Engine, EngineSettings
+from deepresearch.engine.connections import Engine, EngineSettings
 
 engine = (await Engine.open(EngineSettings(storage_root="local/store"))).unwrap()
 # Engine.run_agent, Engine.run_tool and Engine.open_run_access provide contexts
@@ -152,8 +152,8 @@ capture/invalid-field facts rather than raw response bodies or diagnostics.
 Retrieve committed usage through a fresh read-only result-access lease:
 
 ```python
-from ebd.connections import RunAccessRequest, RunAccessOptions, HistoryReadRequest
-from ebd.contracts import RunRef
+from deepresearch.engine.connections import RunAccessRequest, RunAccessOptions, HistoryReadRequest
+from deepresearch.engine.contracts import RunRef
 
 request = RunAccessRequest(history=HistoryReadRequest(max_pages=20, max_events=1000))
 access = (await engine.open_run_access(

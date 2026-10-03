@@ -5,11 +5,11 @@ import dataclasses
 
 import pytest
 
-from ebd.contracts import (ArtifactContent, ArtifactMetadata, ArtifactRef, BudgetLedger,
+from deepresearch.engine.contracts import (ArtifactContent, ArtifactMetadata, ArtifactRef, BudgetLedger,
     CheckpointEnvelope, ExecutionContext, ExecutionEvent, Grant, GrantSet, ScopeRef,
     SnapshotProposal, StateMutation, canonical_json, deadline_after, digest_bytes)
-from ebd.storage import StorageSession
-from ebd.storage._ranges import line_spans
+from deepresearch.engine.storage import StorageSession
+from deepresearch.engine.storage._ranges import line_spans
 
 
 def context(store, run="host-a", principal="host", grants=None):
@@ -324,7 +324,7 @@ async def test_expiring_history_selector_cannot_fall_back_after_sqlite_read(tmp_
 
 
 async def test_incremental_sql_range_decodes_only_returned_records(tmp_path, monkeypatch):
-    import ebd.storage._backend as backend_module
+    import deepresearch.engine.storage._backend as backend_module
     store = (await StorageSession.open(tmp_path / "store")).unwrap()
     writer = await provision(store, "one")
     foreign = await provision(store, "foreign", owner="other-host")

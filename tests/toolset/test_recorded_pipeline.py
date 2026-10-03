@@ -3,16 +3,16 @@ from __future__ import annotations
 import asyncio
 import dataclasses
 
-from ebd.agent import RecordedToolAction
-from ebd.connections.engine import ToolPlanFactory
-from ebd.contracts import (AttemptLease, BindingSet, EngineError, Err, ExecutionContext,
+from deepresearch.engine.agent import RecordedToolAction
+from deepresearch.engine.connections.engine import ToolPlanFactory
+from deepresearch.engine.contracts import (AttemptLease, BindingSet, EngineError, Err, ExecutionContext,
     Grant, GrantSet, Ok, ScopeRef, SnapshotProposal, ToolRef, ToolRequest,
     ToolStoragePlan, deadline_after)
-from ebd.storage import StorageSession
-from ebd.toolset import ToolCatalog, ToolExecutor
-from ebd.toolset.common import encode, strict_json
-from ebd.toolset.process import ProcessOutcome
-from ebd.toolset.retrieval import extract, pack_component
+from deepresearch.engine.storage import StorageSession
+from deepresearch.engine.toolset import ToolCatalog, ToolExecutor
+from deepresearch.engine.toolset.common import encode, strict_json
+from deepresearch.engine.toolset.process import ProcessOutcome
+from deepresearch.engine.toolset.retrieval import extract, pack_component
 
 
 async def setup(path):
