@@ -18,7 +18,12 @@ export function EngineHistory({ onClose }: { onClose: () => void }) {
     return () => abort.abort();
   }, []);
   return (
-    <div className="modal-backdrop">
+    <div
+      className="modal-backdrop"
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
       <section
         className="history-modal"
         role="dialog"

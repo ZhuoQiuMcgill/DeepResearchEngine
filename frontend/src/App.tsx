@@ -1272,7 +1272,12 @@ export default function App() {
         <EngineHistory onClose={() => setShowEngineHistory(false)} />
       )}
       {showReport && (
-        <div className="modal-backdrop">
+        <div
+          className="modal-backdrop"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) setShowReport(false);
+          }}
+        >
           <section
             className="history-modal"
             role="dialog"
