@@ -172,7 +172,14 @@ class ResearchRunService:
                     roles[role_id] = (spec, self.engine.register_agent(agent).unwrap())
             except ValueError:
                 raise EngineError("INVALID_DATA", "Pinned agent role resources failed catalog validation") from None
-            tools = tuple(tool.ref for tool in self.engine.catalog.definitions)
+            # Names used by a Workflow select exactly one admitted revision.
+            # Unpinned methods preserve revision 1; method pins are explicit.
+            names = dict.fromkeys(tool.name for tool in self.engine.catalog.definitions)
+            tools = tuple(self.engine.catalog.resolve(name, definition.tool_revisions.get(name, 1)).unwrap().ref
+                          for name in names)
+            for name in definition.tool_revisions:
+                if name not in names:
+                    raise EngineError("UNKNOWN_TOOL", "Method pins an unregistered tool")
             rules = tuple(InvocationRule(registered.ref, allowed_tools=(), allow_model=True,
                          allow_export=True, allow_evidence=False,
                          timeout_seconds=request.timeout_seconds)

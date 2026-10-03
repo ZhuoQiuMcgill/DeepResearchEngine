@@ -8,6 +8,7 @@ from deepresearch.workflows import FetchItem, FetchManifest, MethodDefinition, S
 from deepresearch.workflows.components.acquisition import acquire
 from deepresearch.workflows.components.context_selection import assemble_context
 from deepresearch.workflows.components.discovery import discover
+from deepresearch.workflows.components.search_policy import SearchPolicy, infer_topic
 from .contracts import EvidenceAnalysis, ResearchPlan
 from .stages.roles import decision, retain, validate_findings
 from .stages.reporting import write_and_review
@@ -23,10 +24,11 @@ def definition(revision=2):
               for name in ("method.json", "input.schema.json", "parameters.schema.json")}
     for name in ("workflow.py", "contracts.py", "stages/roles.py", "stages/reporting.py"):
         assets[name] = digest_bytes(files(__package__).joinpath(name).read_bytes())
-    for name in ("discovery.py", "acquisition.py", "context_selection.py", "agents.py"):
+    for name in ("discovery.py", "acquisition.py", "context_selection.py", "agents.py", "search_policy.py"):
         assets["component:" + name] = digest_bytes(files("deepresearch.workflows.components").joinpath(name).read_bytes())
     return MethodDefinition("baseline", revision, spec["description"], resource("input.schema.json", revision),
-        resource("parameters.schema.json", revision), tuple((role["role_id"], role["revision"]) for role in spec["agent_roles"]), assets)
+        resource("parameters.schema.json", revision), tuple((role["role_id"], role["revision"]) for role in spec["agent_roles"]), assets,
+        tool_revisions=spec.get("tool_revisions", {}))
 
 
 class BaselineMethod:
@@ -40,6 +42,9 @@ class BaselineMethod:
     async def run(self, context, task_input, parameters):
         question = task_input["question"].strip()
         options = {**self.defaults, **parameters}
+        if "search_topic" in options and not options["search_topic"].strip():
+            raise EngineError("INVALID_DATA", "Search topic must be nonblank")
+        search_policy = SearchPolicy(options.get("search_topic") or infer_topic(question)) if self.revision >= 3 else None
         if not question:
             raise EngineError("INVALID_DATA", "Research question must be nonblank")
         if len(options["queries"]) > options["max_queries"]:
@@ -66,7 +71,9 @@ class BaselineMethod:
                 if not query.strip() or len(query.encode("utf-8")) > 4096:
                     raise EngineError("INVALID_DATA", "Each literal search query must fit 4,096 UTF-8 bytes")
             discovered, sets = await discover(context, fresh_queries, options["search_tools"],
-                options["max_results"], node_prefix=prefix)
+                options["max_results"], node_prefix=prefix, policy=search_policy,
+                source_ids=[source.item_id for source in sources.items],
+                rewrite_queries=not (round_index == 1 and options["queries"]))
             searched.update(fresh_queries)
             discovery_sets.extend(sets)
             candidates, seen = [], set(fetched)

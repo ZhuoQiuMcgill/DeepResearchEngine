@@ -3,6 +3,9 @@
   "method_id": "baseline",
   "revision": 3,
   "description": "Planned two-round research with up to 20 attempted sources, expanded evidence context and 256k Agent windows.",
+  "tool_revisions": {
+    "web.search": 2
+  },
   "agent_roles": [
     {
       "role_id": "baseline.planner",

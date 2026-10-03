@@ -116,7 +116,7 @@ class ToolExecutor:
             if storage_plan.request and validate_arguments(definition.name, storage_plan.request) != arguments:
                 raise ToolFault("ACCESS_DENIED", "Frozen plan request differs from public arguments")
             if definition.name == "web.search":
-                context.authorize("network.search"); plan = search_plan()
+                context.authorize("network.search"); plan = search_plan(definition.revision)
             elif definition.name.startswith("scholar."):
                 context.authorize("network.search")
                 provider = definition.name.split(".")[1]

@@ -1,13 +1,15 @@
 # Registered CLI tools
 
 The Toolset runs real, one-shot Python workers behind the Engine's recorded
-action boundary. The current registry contains five tools, all at revision 1.
+action boundary. The registry contains five tool names. `web.search` has
+revisions 1 and 2; the other names remain at revision 1.
 Use the public `deepresearch tool` command or `Engine.run_tool`; the private worker
 protocol requires an owner-issued execution plan and recorded attempt.
 
 | Tool | Closed arguments | Result |
 | --- | --- | --- |
-| `web.search` | `query`, optional `max_results` | Yahoo discoveries with backend/provider identity and attempt observations |
+| `web.search@1` | `query`, optional `max_results` | Original Yahoo profile, retained for existing callers |
+| `web.search@2` | `query`, optional `max_results` | Yahoo then DuckDuckGo fallback, original destination wrappers and HTTP/parser diagnostics |
 | `scholar.crossref.search` | `query`, optional `max_results` | Crossref bibliographic metadata and DOI/member/publisher identities |
 | `scholar.openalex.search` | `query`, optional `max_results` | OpenAlex work/source/open-access location metadata |
 | `web.fetch` | `url`, optional `mode: "static"` | Committed snapshot reference, extraction counts, provenance and bounded preview |
@@ -33,7 +35,7 @@ $OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 uv run --locked deepresearch --store local/demo-store tools
 
 '{"query":"environment based design Yong Zeng","max_results":3}' |
-  uv run --locked deepresearch --store local/demo-store tool web.search
+  uv run --locked deepresearch --store local/demo-store tool web.search --revision 2
 
 '{"query":"\"Environment based design\" \"Yong Zeng\"","max_results":3}' |
   uv run --locked deepresearch --store local/demo-store tool scholar.crossref.search
@@ -45,10 +47,52 @@ uv run --locked deepresearch --store local/demo-store tools
 OpenAlex starts closed until the host explicitly admits its initial anonymous
 budget. `--admit-openalex` performs that initial admission; existing persisted
 quota state is retained. Reopening the same store does not replenish the local
-budget or clear a provider block. Search availability is external: Yahoo has
-both succeeded and returned `SEARCH_UNAVAILABLE` during real acceptance.
+budget or clear a provider block. Free search backends can return empty results,
+HTTP challenges or rate limits.
 Strategies can select another registered discovery tool in a new recorded
 action after an eligible source failure.
+
+## Search revision 2
+
+Select it with `Engine.run_tool(ToolRef("web.search", 2), arguments)` or CLI
+`--revision 2`. The CLI and an unqualified ToolRef retain revision 1.
+`baseline@3` explicitly pins revision 2 through its MethodDefinition; methods
+without a tool pin retain revision 1.
+
+The fixed plan names Yahoo followed by DuckDuckGo, with at most one named
+backend attempt each. Each backend has eight seconds inside the shared worker
+deadline and up to two explicit HTTPS redirects, at most three HTTP requests.
+Redirects must stay on that backend's search host and preserve the literal query.
+Yahoo's `/_bv/v.gif` wrapper is allowed only when its single embedded `orig`
+points back to that search host with the same query; cookies remain inside the
+one worker attempt.
+HTTP errors, challenges, empty parsing or rejected destinations permit the next
+named backend. A successful result stops backend fallback; there is no merge or
+worker replay. Google remains disabled. Anonymous HTML search requires no key.
+
+Result rows add `raw_url` alongside the decoded `url`. Yahoo and DuckDuckGo
+wrappers are decoded once; destination query strings, literal plus signs and
+percent escapes are preserved. Advertising URLs are rejected after unwrapping.
+All result rows remain discoveries, not fetched evidence.
+
+Each backend observation records HTTP request/response counts, final status,
+received body bytes/SHA-256, explicit redirects, extracted candidates, rejected
+URLs, ads, retained results and a failure reason. Reasons distinguish HTTP
+errors, challenges, rate limits, no-result markers, missing parser matches,
+rejected candidates, backend deadlines, transport errors and parser errors. Body size is checked
+before parsing at 1 MiB; the HTTP client receives the body first, so the existing
+worker memory ceiling and deadline also bound that stage. Raw response bodies
+are not included in the public result.
+
+Run the search-only live check without model or fetch calls:
+
+```shell
+uv run --locked python examples/live_search_check.py
+```
+
+It uses real workers, SQLite and saved artifacts, covers EBD definition,
+foundational-paper discovery and a RAG survey, and verifies topic decisions.
+Each execution uses fresh identities; it does not replay completed runs.
 
 Fetch a source, then read the exact saved snapshot in an explicitly selected
 source run. This example reads the first nine lines, using a one-based,
@@ -124,13 +168,15 @@ drains owned work and returns a `CleanupReport`.
 
 ## Discovery and retrieval policy
 
-General discovery uses the pinned DDGS Yahoo engine directly for one first-page
-request, without the DDGS aggregator's hidden engine merge. Yahoo declares
-Bing as its underlying provider. The corrected Google parser passes integrated
-controlled raw-HTML wrapper tests for escapes, literal plus and query-bearing
-URLs, but Google remains disabled because its live fidelity gate is pending.
-Results report active/disabled backends and actual attempts. There is no
-automatic DDG substitution, query rewriting, pagination or hidden retry.
+Revision 1 uses the pinned DDGS Yahoo engine directly for one first-page
+search. Revision 2 uses the explicit Yahoo/DuckDuckGo plan described above.
+Neither profile uses the DDGS aggregator or merges its engines. Both installed
+engines declare Bing as their underlying provider. The corrected Google parser
+passes controlled raw-HTML wrapper tests for escapes, literal plus and
+query-bearing URLs, but Google remains disabled because its live fidelity gate
+is pending. Results report active/disabled backends and actual attempts.
+The tool does not rewrite queries, paginate or replay workers; Workflow query
+preparation happens before the recorded tool call.
 
 Scholarly workers each make one bounded anonymous request to the fixed provider
 endpoint. Results are closed metadata projections, with no abstract or paper

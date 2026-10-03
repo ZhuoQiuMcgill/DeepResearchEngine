@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import time
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from fastapi import Query, Request
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -31,6 +31,7 @@ class MethodView(Contract):
     input_schema: dict[str, Any]
     parameters_schema: dict[str, Any]
     agent_roles: list[RolePin]
+    tool_revisions: dict[str, Annotated[int, Field(ge=1)]] = Field(default_factory=dict)
     resource_digests: dict[str, str]
     sha256: str
 

@@ -36,9 +36,21 @@ def candidates(name, payload, discovery_ref):
     return projected
 
 
-async def discover(context, queries, search_tools, max_results, *, node_prefix=""):
+async def discover(context, queries, search_tools, max_results, *, node_prefix="", policy=None,
+                   source_ids=(), rewrite_queries=True):
     found, retained = [], []
     for query_index, query in enumerate(queries):
+        original_query, preparation = query, "literal_query"
+        if policy is not None:
+            query, preparation = policy.prepare(query, source_ids, rewrite=rewrite_queries)
+            if query is None:
+                async with context.node(f"{node_prefix}discovery.query.{query_index}", "query_validation",
+                    {"query":original_query,"skipped":True,"reason":preparation}) as node:
+                    ref = await context.port.publish(canonical_json({"schema_version":1,"original_query":original_query,
+                        "executed_query":None,"reason":preparation}), "application/json",
+                        f"{node_prefix}discovery.query.{query_index}.json")
+                    node["detail"]["decision_ref"] = ref
+                continue
         for tool_index, name in enumerate(search_tools):
             node_id = f"{node_prefix}discovery.{query_index}.{tool_index}"
             async with context.node(node_id, "discovery", {"tool": name, "query": query}):
@@ -46,10 +58,21 @@ async def discover(context, queries, search_tools, max_results, *, node_prefix="
                 if result.get("recording", {}).get("status") != "complete":
                     raise EngineError("RECORDING_INCOMPLETE", "Discovery outcome was not durably acknowledged")
                 ref = await context.port.publish(canonical_json(result), "application/json", node_id + ".json")
-                retained.append({"discovery_id": node_id, "tool": name, "query": query,
-                    "status": result["status"], "artifact_ref": ref})
+                entry = {"discovery_id": node_id, "tool": name, "query": query,
+                    "status": result["status"], "artifact_ref": ref}
+                retained.append(entry)
                 if result["status"] == "succeeded":
-                    projected = candidates(name, result["result"], node_id)
+                    payload = result["result"]
+                    if policy is not None:
+                        screened, decisions = policy.screen(payload.get("results", []))
+                        selection = {"schema_version":1,"tool":name,"original_query":original_query,
+                            "executed_query":query,"preparation":preparation,"topic":policy.topic,
+                            "received_count":len(decisions),"accepted_count":len(screened),"decisions":decisions}
+                        selection_ref = await context.port.publish(canonical_json(selection), "application/json", node_id + ".selection.json")
+                        entry["selection_ref"] = selection_ref
+                        entry["original_query"] = original_query
+                        payload = {**payload, "results":screened}
+                    projected = candidates(name, payload, node_id)
                     found.extend(projected)
                     if projected:
                         break

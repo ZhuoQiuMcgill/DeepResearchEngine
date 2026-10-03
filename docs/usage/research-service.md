@@ -1,6 +1,10 @@
 # ResearchRun service
 
 `ResearchRunService` owns complete method execution over one caller-owned Engine.
+The method catalog includes optional `tool_revisions` pins. For `baseline@3`,
+`{"web.search": 2}` selects the observed Yahoo/DuckDuckGo search worker;
+methods without pins retain revision 1. These pins are part of the method digest
+and saved execution manifest, so clients can identify the chosen tool contract.
 `MethodRegistry` pins the method revision and its agent roles; the shared request
 and view models are `deepresearch.workflows.ResearchRunRequest` and `ResearchRunView`.
 Bootstrap supplies `baseline@1`, formal `baseline@2` and model-free `example.echo@1`.
@@ -116,8 +120,8 @@ real Storage. It is a separate integration method, not a simulated baseline.
 All methods validate the chosen profile/model against `engine.list_profiles()`;
 validating configured names does not resolve credentials.
 The request's method revision still defaults to 1 for compatibility. Select
-revision 2 explicitly for the formal Baseline; method revisions and wire v1 are
-independent.
+revision 2 for the original formal Baseline or revision 3 for expanded budgets
+and observed search; method revisions and wire v1 are independent.
 
 A saved source read has this body:
 

@@ -788,6 +788,14 @@
           "sha256": {
             "title": "Sha256",
             "type": "string"
+          },
+          "tool_revisions": {
+            "additionalProperties": {
+              "minimum": 1.0,
+              "type": "integer"
+            },
+            "title": "Tool Revisions",
+            "type": "object"
           }
         },
         "required": [

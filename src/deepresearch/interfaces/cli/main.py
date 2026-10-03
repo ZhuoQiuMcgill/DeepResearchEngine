@@ -73,7 +73,8 @@ async def run(args):
             options = ToolRunOptions(timeout_seconds=args.timeout,
                 source_run_ref=RunRef(engine.storage.store_id, args.source_run),
                 read_objects=(SnapshotReadRequest(SnapshotRef(**arguments["snapshot_ref"]), arguments["range"], arguments.get("max_text_bytes", 65536)),))
-        result = await engine.run_tool(args.name, arguments, options)
+        from deepresearch.engine.contracts import ToolRef
+        result = await engine.run_tool(ToolRef(args.name, args.revision), arguments, options)
         sys.stdout.buffer.write(canonical_json(result) + b"\n")
         return 0 if result.status == "succeeded" and result.recording.get("status") == "complete" else 2
     finally:
@@ -99,6 +100,7 @@ def main():
     research.add_argument("--output", help="Destination for --report")
     tool = commands.add_parser("tool", help="Run a real recorded standalone tool")
     tool.add_argument("name")
+    tool.add_argument("--revision", type=int, default=1, help="Exact registered tool revision")
     tool.add_argument("--arguments", help="Strict JSON arguments; otherwise read stdin")
     tool.add_argument("--timeout", type=float, default=90)
     tool.add_argument("--source-run", help="Explicit owned run containing a snapshot selected for document.read")

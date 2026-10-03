@@ -4,6 +4,7 @@
 flow as [revision 2](baseline.md), with larger resource allowances. It pins
 Planner 2, Analyst 2, Writer 3 and Reviewer 2. Earlier method and role revisions
 remain available. Select `method_revision: 3`; the wire schema remains 1.
+It also pins `web.search@2`; see [search profiles](tools.md#search-revision-2).
 
 | Allowance | Default | Accepted values / scope |
 | --- | --- | --- |
@@ -20,10 +21,32 @@ remain available. Select `method_revision: 3`; the wire schema remains 1.
 | Agent model request bytes | 2,097,152 | Independent request byte bound |
 | Agent output | 8,192 tokens | Per model call; final output still capped at 65,536 bytes |
 
+## Search preparation and screening
+
+The Workflow's pure SearchPolicy quotes explicit multiword subjects in
+Agent-generated queries and reduces retrieval instructions to their cited title,
+named author and year. Host-provided `queries` remain literal in the first round.
+Queries containing internal retained-source IDs are recorded as skipped queries;
+they are not sent to Internet search. This does not implement the separate
+gap-driven reader.
+
+`search_topic` optionally specifies the subject. Without it, simple definition
+subjects and expanded parenthetical names are inferred from the question. The
+policy requires subject terms in discovery titles/snippets before projecting
+URLs; it is a lexical heuristic, not a semantic model. If all web rows are
+rejected, the configured scholarly fallback still runs. Raw tool results remain
+saved, with separate selection artifacts recording original/executed query,
+subject, accepted/rejected ranks and reasons. `selection_ref` links those
+decisions from each successful discovery entry in the result manifest.
+
+For the supplied example, `Environment-Based Design` is inferred as the subject,
+so Evidence-Based Dentistry and Evidence-Based Design do not satisfy it. An
+explicit subject is useful for other question forms or domain vocabulary.
+
 Evidence selection retains the existing relevance-window and equal-allocation
 policy. Revision 3 permits up to 65,536 selected bytes per source instead of
 16,384. Small-source unused allocations are still not redistributed. Larger
-allowances do not themselves add semantic reranking, targeted gap-driven reads
+allowances do not themselves add model reranking, targeted gap-driven reads
 or a stricter report completeness gate. Writer 3 explicitly distinguishes
 source-document reference numbers from report citation IDs, duplicate copies
 from independent evidence and author affiliations from origin claims.

@@ -4,6 +4,8 @@ This records acceptance before the namespace migration. Its original `ebd`
 commands and paths remain historical evidence. For current paths, use the
 [structure and migration map](architecture/project-structure.md); post-migration
 verification is in [Workflow acceptance](research-acceptance.md).
+Current `web.search@2` and unseeded Baseline verification are recorded in
+[search acceptance](research-acceptance.md#search-revision-2-and-unseeded-baseline-acceptance).
 
 Development moved to the root chat and its in-chat subagents at the user's
 direction. No former team chat was dispatched or messaged for implementation.

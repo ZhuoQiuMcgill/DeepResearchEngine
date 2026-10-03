@@ -2,6 +2,12 @@
   "type": "object",
   "additionalProperties": false,
   "properties": {
+    "search_topic": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "description": "Explicit subject for lexical title/snippet screening; when absent, simple definition subjects and expanded parenthetical names are inferred."
+    },
     "max_results": {
       "type": "integer",
       "minimum": 1,

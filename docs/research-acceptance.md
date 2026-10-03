@@ -1,5 +1,92 @@
 # Research acceptance — 2026-10-02
 
+## Search revision 2 and unseeded Baseline acceptance
+
+`baseline@3` now pins `web.search@2`. The worker explicitly attempts Yahoo then
+DuckDuckGo, with an eight-second allowance per backend, at most two same-host
+query-preserving redirects and three HTTP requests each. Yahoo's verification
+redirect is observable. Destination wrappers decode once, ads are excluded
+after decoding, and HTTP/parser/rejection counts distinguish backend failures.
+Google remains disabled; the implementation uses the locked existing
+dependencies and requires no search API key.
+
+The generic Workflow SearchPolicy prepares Agent-generated queries, screens
+explicit topic terms in titles/snippets and retains separate decisions beside
+the original tool result. Irrelevant web rows do not suppress configured
+scholarly fallback. Queries referencing retained source IDs are recorded as
+skipped, rather than sent to Internet search. Explicit host queries remain
+literal. These are query/metadata heuristics, not semantic reranking or a
+gap-driven archive reader. Methods expose optional tool pins through the
+frontend MethodView and the regenerated OpenAPI, still 30 paths and wire v1.
+See [tool guide](usage/tools.md#search-revision-2),
+[Workflow guide](usage/workflows.md) and
+[expanded Baseline guide](usage/baseline-expanded.md).
+
+The model-free [live search check](../examples/live_search_check.py) passed
+three real worker/SQLite cases; each returned five selected candidates:
+
+| Case | Actual run / observation |
+| --- | --- |
+| EBD definition | `run_d6c39087902c4adba192116e70a7d059`; Yahoo 307 → 307 → 200, with related EBD results |
+| Foundational paper | `run_53dcca8d59574cf797302f3e9f0af594`; Yahoo parsed zero, DuckDuckGo returned the 2004 paper with DOI `10.3233/JID-2004-8404` |
+| RAG survey | `run_764869b943834298a8622bddfc65ebbe`; Yahoo returned related survey results |
+
+An earlier passing search check observed DuckDuckGo HTTP 202 and successful
+Crossref fallback. It remains separately retained. These checks made no model
+or fetch calls and do not claim that every discovered URL is accessible.
+
+The actual two-round Baseline retry is
+**`run_0511ae447d064db69d5b935feaca2c1b`**, using configured DeepSeek
+`deepseek-flash`, **no supplied source URLs**, 20 attempted-source capacity and
+the existing 256k role limits. No scripted model response was used.
+
+| Observation | Recorded fact |
+| --- | --- |
+| Final full test suite | **850 passed in 97.24 seconds**; includes exact tool pins, source-ID query rejection, irrelevant-result fallback, redirect/query fidelity and transport/parser failure classification |
+| Execution / recording | `succeeded` / `complete` |
+| Discovery | Four real `web.search@2` calls, all returned usable metadata; two exercised DuckDuckGo fallback after Yahoo parser misses |
+| Topic decisions | One of 18 returned rows excluded; 17 selected rows deduplicate to 15 fetched URLs |
+| Acquisition | Six successful snapshots, nine recorded HTTP 403 failures |
+| Useful papers | QMS case study, ICED23 creativity paper, 2011 EBD paper and 2025 TRIZ/EBD paper discovered and archived without seeded URLs; TRIZ HTML/PDF are copies of the same paper |
+| Other source | A 571-byte Scribd description, explicitly qualified as a short secondary source |
+| Context | 233,455 UTF-8 bytes / 58,364 estimated tokens; selected ranges remain partial |
+| Model usage | Five calls; 181,723 input + 6,132 output = 187,855 observed tokens, including 4,608 cached input tokens |
+| Stop / review | Two rounds, `round_limit`, both analyses `sufficient=false`; first draft accepted with no structural or review issues |
+| Report | 12,860 bytes; `sha256:78ffd8b850473731c33607ca593a1222ce337f0a776c800d3cf306b4548ef101` |
+| HTTP/SSE and restart | 475 replayed events, reconnect/idempotency and byte-identical report after reopening passed |
+| Independent provenance audit | 1,634 checks, zero failures; 490 events, 32 paired tools, five paired models, 63 artifacts, six snapshots and five checkpoints; no unsettled operations |
+| Packaging | Built wheel loads both search revisions, the shared policy, all Baseline versions and role resources; isolated real Storage Workflow succeeded |
+| Public CLI | `deepresearch tool web.search --revision 2` returned three real candidates with `succeeded` / `complete`; four HTTP requests recorded |
+
+The report was read. It covers the definition, environment principles, ROM,
+conflict identification, recursive solution generation, applications and
+qualified TRIZ comparisons. Compared with the earlier seeded run, search now
+acquires relevant additional primary text itself. It still lacks independent
+origin-history verification and exhaustive procedure/comparison coverage.
+Accepted publication does not imply sufficient research or complete source
+coverage; publisher 403s and targeted archive reads remain separate limits.
+
+The preceding unseeded run, `run_46f4e2eb40de4a99a405fd8517b0518c`, had already
+archived relevant papers, including an accessible copy of the 2004 foundation.
+It failed when the second Analyst produced a claim over the existing
+2,048-character limit. Its failed status, raw output and absent report remain
+retained; an independent audit passed 1,365 checks. The retry used a new client
+identity and store, without relaxing role validation or replaying that run.
+
+Ignored retained evidence:
+
+```text
+local/search-fix-live-20261002-verified/{store,evidence}/
+local/search-fix-live-20261002-final/{store,evidence}/
+local/baseline-search-fixed-live-20261002/                 failed Analyst run
+local/baseline-search-fixed-live-20261002-retry2/
+local/baseline-search-fixed-live-20261002-retry2-evidence/
+  acceptance.json, run.json, result.json, report.md, analysis-1.json, analysis-2.json
+local/baseline-search-fixed-provenance-20261002/{audit,events}.json
+local/baseline-search-fixed-provenance-20261002-failed/{audit,events}.json
+local/search-fixed-wheel/
+```
+
 ## Expanded Baseline revision 3
 
 The expanded method retains revisions 1 and 2 and their role resource bundles.

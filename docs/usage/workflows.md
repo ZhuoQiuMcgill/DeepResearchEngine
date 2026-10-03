@@ -93,7 +93,10 @@ runner or duplicate the root node.
 
 A `MethodDefinition` pins a method ID, positive integer revision, input and
 parameter JSON schemas, exact `(role_id, revision)` Agent role pairs and resource
-digests. Register it with an object implementing:
+digests. Optional `tool_revisions={"web.search": 2}` pins tools by name. The
+application admits exactly one revision per name; unpinned names retain revision 1.
+Pins are included in the definition digest and method catalog. Register it with
+an object implementing:
 
 ```python
 class MyMethod:
@@ -132,7 +135,7 @@ For a full research method, compose the shared components in
 
 | Component | Work through the existing context/port |
 | --- | --- |
-| `discovery.discover` | Record explicit discovery-tool results and project URL candidates. |
+| `discovery.discover` | Record tool results, optionally prepare queries/screen metadata with SearchPolicy, and project URL candidates; all rejected results permit the configured fallback. |
 | `acquisition.acquire` | Execute a selected `FetchManifest` and retain READY source snapshots. |
 | `context_selection.assemble_context` | Read saved sources, select bounded text and record target-model token measurements. |
 | `agents.invoke_role` | Invoke a pinned role in a node, require a committed output, then explicitly read its saved artifact. |

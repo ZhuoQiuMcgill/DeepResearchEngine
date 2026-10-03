@@ -52,6 +52,12 @@ send revision 3 for expanded budgets; wire `schema_version: 1` stays unchanged. 
 remain under `methods/baseline/v1/`, with `baseline.writer@1` retained.
 `deepresearch baseline` is the older single-Agent CLI, separate from these methods.
 
+Revision 3 pins `web.search@2` for recorded Yahoo/DuckDuckGo fallback and uses
+Workflow-owned query preparation/topic screening. Standalone callers select
+`deepresearch tool web.search --revision 2`; unqualified tool calls retain revision 1.
+Run `uv run --locked python examples/live_search_check.py` for the model-free
+live search check. Its store and evidence are generated under ignored `local/`.
+
 Copy [.env.example](../.env.example) to ignored `local/.env` only if that file does
 not already exist, then configure the selected provider. The default named pair
 is `deepseek` / `deepseek-flash`; environment values override the file. The browser

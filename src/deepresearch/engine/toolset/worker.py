@@ -18,7 +18,8 @@ def validate_request(value, tool_name, revision):
         raise ToolFault("WORKER_PROTOCOL_ERROR", "Unsupported private worker envelope")
     if not isinstance(request["request_id"], str) or not 1 <= len(request["request_id"]) <= 256:
         raise ToolFault("WORKER_PROTOCOL_ERROR", "Invalid worker request identity")
-    if request["tool"] != {"name": tool_name, "revision": revision} or tool_name not in NAMES or revision != 1:
+    valid_revision = revision == 1 or (tool_name == "web.search" and revision == 2)
+    if request["tool"] != {"name": tool_name, "revision": revision} or tool_name not in NAMES or not valid_revision:
         raise ToolFault("WORKER_PROTOCOL_ERROR", "Worker identity does not match its registered argv")
     invocation = closed(request["invocation"], INVOKE_KEYS)
     if invocation["context_kind"] not in ("agent", "standalone_tool", "workflow") or any(not isinstance(invocation[key], str) or not 1 <= len(invocation[key]) <= 256 for key in INVOKE_KEYS - {"context_kind"}):
@@ -58,7 +59,7 @@ def run(request, name, revision):
     try:
         if name == "web.search":
             from .search import search
-            prepared, observations, usage, fault = search(arguments, request["plan"], timeout)
+            prepared, observations, usage, fault = search(arguments, request["plan"], timeout, revision)
         elif name.startswith("scholar."):
             from .scholarly import discover
             expected = "crossref" if name == "scholar.crossref.search" else "openalex"
@@ -85,13 +86,13 @@ def run(request, name, revision):
 
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
-    if len(argv) != 2 or argv[0] not in NAMES or argv[1] != "1":
+    if len(argv) != 2 or argv[0] not in NAMES or not (argv[1] == "1" or (argv[0] == "web.search" and argv[1] == "2")):
         sys.stderr.write("Private worker requires registered tool identity and a bound envelope.\n")
         return 2
     try:
         raw = sys.stdin.buffer.read(LIMITS["stdin_bytes"] + 1)
         request = strict_json(raw, LIMITS["stdin_bytes"])
-        response, exit_code = run(request, argv[0], 1)
+        response, exit_code = run(request, argv[0], int(argv[1]))
         cap = LIMITS["fetch_stdout_bytes"] if argv[0] == "web.fetch" else LIMITS["stdout_bytes"]
         try:
             output = encode(response, cap)

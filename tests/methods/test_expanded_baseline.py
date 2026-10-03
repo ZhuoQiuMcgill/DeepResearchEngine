@@ -11,7 +11,7 @@ from deepresearch.engine.contracts import EngineError
 from deepresearch.engine.providers import ModelRequest, ProviderConfig, ProviderFactory
 from deepresearch.workflows import ResearchRunRequest
 from tests.agent_catalog.test_baseline_roles import role_input
-from tests.methods.test_baseline import ACCEPT, PLAN, REPORT, analysis, close, configured, request
+from tests.methods.test_baseline import ACCEPT, PLAN, REPORT, analysis, close, configured, request, settle
 
 
 @pytest.mark.asyncio
@@ -115,3 +115,26 @@ def test_expanded_parameter_boundaries_and_historical_resources():
     value["available_source_ids"] = [f"source-{index}" for index in range(21)]
     with pytest.raises(CatalogError):
         catalog.load("baseline.analyst", 2).render_task(value)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("method_revision,tool_revision",[(2,1),(3,2)])
+async def test_workflow_records_exact_search_tool_pin(tmp_path,monkeypatch,method_revision,tool_revision):
+    engine,service,_,calls,_,_ = await configured(tmp_path,monkeypatch,[PLAN,analysis(),REPORT,ACCEPT])
+    try:
+        admitted = await service.start_run(request().model_copy(update={"method_revision":method_revision}))
+        view = await settle(service,admitted.run_id)
+        assert view.status == "succeeded", view.error
+        events,position = [],0
+        while True:
+            page = await service.events(view.run_id,position)
+            events.extend(page["events"])
+            position = page["next_after_seq"]
+            if not page["has_more"]:
+                break
+        intents = [row["event"]["payload"] for row in events if row["event"]["kind"] == "tool.intent"]
+        searches = [intent["tool"] for intent in intents if intent["tool"]["name"] == "web.search"]
+        assert searches == [{"name":"web.search","revision":tool_revision}]
+        assert len(calls) == 4
+    finally:
+        await close(engine,service)

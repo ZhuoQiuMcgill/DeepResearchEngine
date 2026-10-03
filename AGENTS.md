@@ -15,6 +15,9 @@ The formal method composes planning, bounded acquisition/analysis rounds and
 draft/review stages. Pin method revision 3 explicitly for expanded budgets; revisions 1 and 2 are retained
 for existing consumers. See docs/usage/baseline-expanded.md for the 20-source,
 two-round and 256k Agent limits. See docs/architecture/baseline.md and docs/usage/baseline.md.
+Baseline 3 also pins web.search revision 2. Query preparation and topic screening
+belong to workflows/components/search_policy.py; HTTP/backends and URL decoding
+belong to engine/toolset. See docs/usage/tools.md and examples/live_search_check.py.
 
 Read `CONTRIBUTING.md`, `docs/team-start.md`,
 `docs/teams/consumer-contract-v1.md`, `docs/teams/platform-contract-v1.md`

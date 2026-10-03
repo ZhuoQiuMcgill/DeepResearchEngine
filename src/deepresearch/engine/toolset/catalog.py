@@ -28,7 +28,7 @@ def _inputs(name):
                     "continuation": {"type": ["string", "null"], "maxLength": 8192}}, ["snapshot_ref", "range"])
 
 
-def _outputs(name):
+def _outputs(name, revision=1):
     string = {"type": "string"}
     nullable = {"type": ["string", "null"]}
     integer = {"type": "integer", "minimum": 0}
@@ -64,17 +64,28 @@ def _outputs(name):
     disabled = _object({"backend": {"const": "google"}, "reason": {"const": "URL_FIDELITY_GATE_PENDING"}})
     failure = {"anyOf": [{"type": "null"}, _object({"code": string, "message": string,
         "details": _object({}), "observed_effect_state": string})]}
+    backends = ["yahoo", "google"] if revision == 1 else ["yahoo", "duckduckgo", "google"]
     attempt = _object({"backend_attempt_index": {"type": "integer", "minimum": 1, "maximum": 2},
-        "backend": {"enum": ["yahoo", "google"]}, "declared_provider": {"enum": ["bing", "google"]},
+        "backend": {"enum": backends}, "declared_provider": {"enum": ["bing", "google"]},
         "outcome": {"enum": ["returned", "unavailable", "failed"]}, "elapsed_ms": integer,
         "returned_count": integer, "kept_count": integer, "error": failure})
     candidate = _object({"rank": {"type": "integer", "minimum": 1, "maximum": 10},
         "title": {"type": "string", "maxLength": 4096}, "url": {"type": "string", "maxLength": 8192},
         "snippet": {"type": "string", "maxLength": 16384}, "source_date": nullable,
-        "backend": {"enum": ["yahoo", "google"]}, "declared_provider": {"enum": ["bing", "google"]},
+        "backend": {"enum": backends}, "declared_provider": {"enum": ["bing", "google"]},
         "discovery_only": {"const": True}, "truncated_fields": {"type": "array", "maxItems": 2, "uniqueItems": True, "items": {"enum": ["title", "snippet"]}}})
+    if revision == 2:
+        candidate["properties"]["raw_url"] = {"type":"string","maxLength":8192}
+        candidate["required"].append("raw_url")
+        attempt["properties"].update({"http_status":{"type":["integer","null"],"minimum":100,"maximum":599},
+            "http_request_count":integer,"http_response_count":integer,"response_bytes":{"type":["integer","null"],"minimum":0},
+            "response_sha256":nullable,"extracted_count":integer,"rejected_url_count":integer,
+            "advertisement_count":integer,"failure_reason":nullable,
+            "redirects":{"type":"array","maxItems":2,"items":_object({"from_url":string,"to_url":string,"http_status":integer})}})
+        attempt["required"] = list(attempt["properties"])
     return _object({"query": string, "searched_at": string,
-        "backend_policy": _object({"configured_order": {"const": ["yahoo", "google"]}, "active_order": {"const": ["yahoo"]},
+        "backend_policy": _object({"configured_order": {"const": backends if revision == 1 else ["yahoo","duckduckgo","google"]},
+            "active_order": {"const": ["yahoo"] if revision == 1 else ["yahoo","duckduckgo"]},
             "disabled_backends": {"type": "array", "maxItems": 1, "items": disabled}}),
         "backend_attempts": {"type": "array", "maxItems": 2, "items": attempt},
         "results": {"type": "array", "maxItems": 10, "items": candidate}})
@@ -96,6 +107,12 @@ class ToolCatalog:
                 input_schema=_inputs(name), output_schema=output, capabilities=capabilities,
                 limits=dict(LIMITS), argv=(sys.executable, "-m", "deepresearch.engine.toolset.worker", name, "1"),
                 config={"profile": "selected-discovery/1", "google_enabled": False}, storage_needs=storage_needs)
+        first = self._entries[("web.search", 1)]
+        self._entries[("web.search", 2)] = ToolDefinition(name="web.search", revision=2,
+            description="Discover web sources using bounded Yahoo then DuckDuckGo fallback. Returns literal query, ranked URLs/snippets and HTTP/parser observations; discoveries require saved source reads before citation.",
+            input_schema=_inputs("web.search"), output_schema=_outputs("web.search", 2), capabilities=first.capabilities,
+            limits=dict(LIMITS), argv=(sys.executable,"-m","deepresearch.engine.toolset.worker","web.search","2"),
+            config={"profile":"selected-discovery/2","google_enabled":False}, storage_needs={})
 
     def resolve(self, name: str, revision: int = 1):
         if type(revision) is not int or (name, revision) not in self._entries:
