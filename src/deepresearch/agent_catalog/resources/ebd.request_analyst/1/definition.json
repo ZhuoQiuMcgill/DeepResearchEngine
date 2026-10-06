@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "role_id": "ebd.request_analyst",
+  "revision": 1,
+  "description": "EBD request analysis (mission round 0): gate the client's request, record its frame and directives, model it as a ROM, list its assumptions and plan ordered questions. No tools; it never searches and never answers a question.",
+  "tool_requests": [],
+  "limits": {
+    "max_model_calls": 1,
+    "max_run_seconds": 300,
+    "max_model_seconds": 240,
+    "max_output_tokens_per_call": 8192,
+    "max_context_tokens": 262144,
+    "max_task_input_bytes": 262144,
+    "max_final_output_bytes": 65536,
+    "max_model_request_bytes": 2097152
+  },
+  "output": {
+    "mode": "json",
+    "media_type": "application/json",
+    "delivery": "artifact",
+    "native_enforcement": "disabled"
+  }
+}

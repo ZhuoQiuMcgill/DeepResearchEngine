@@ -1,0 +1,28 @@
+{
+  "type": "object",
+  "properties": {
+    "question": {
+      "description": "The client's request exactly as received; the host escapes a literal </client_request>.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 8192
+    },
+    "run_date": {
+      "description": "Mission date as YYYY-MM-DD; the host checks the format.",
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 10
+    },
+    "retry_feedback": {
+      "description": "Empty on the first attempt. On the single retry: the host's <validation_errors> block, preceded by <previous_reply> when the host could read the rejected reply.",
+      "type": "string",
+      "maxLength": 131072
+    }
+  },
+  "required": [
+    "question",
+    "run_date",
+    "retry_feedback"
+  ],
+  "additionalProperties": false
+}
