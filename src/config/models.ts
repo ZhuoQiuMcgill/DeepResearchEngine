@@ -9,7 +9,12 @@ import type { BaseChatModel } from "@langchain/core/language_models/chat_models"
 import type { Callbacks } from "@langchain/core/callbacks/manager";
 
 export interface Pricing {
-  /** USD per million input tokens, by prompt size tier. */
+  /**
+   * USD per million input tokens, by prompt size tier. The 2026-10-09 bills
+   * priced every call at the base rate, including server-side search loops
+   * whose cumulative input exceeded the long-prompt threshold, so the
+   * profiles use the base rate only.
+   */
   inputPerM: (promptTokens: number) => number;
   outputPerM: (promptTokens: number) => number;
   /** USD per billed search operation. */
@@ -55,8 +60,9 @@ export const PROFILES: Record<string, ModelProfile> = {
     toolCallsPerResearcher: 12,
     maxContinuations: 3,
     pricing: {
-      inputPerM: (p) => (p > 100_000 ? 0.5 : 0.1),
-      outputPerM: (p) => (p > 100_000 ? 2.5 : 0.5),
+      inputPerM: () => 0.1,
+      outputPerM: () => 0.5,
+      // Billed per query: each web_search use is one search.
       perSearch: 0.01,
     },
   },
@@ -69,8 +75,9 @@ export const PROFILES: Record<string, ModelProfile> = {
     webSearch: { searchContextSize: "medium", maxToolCalls: 12 },
     toolCallsPerResearcher: 12,
     pricing: {
-      inputPerM: (p) => (p > 272_000 ? 0.2 : 0.1),
-      outputPerM: (p) => (p > 272_000 ? 0.75 : 0.5),
+      inputPerM: () => 0.1,
+      outputPerM: () => 0.5,
+      // Billed per web_search call; one call often carries several queries.
       perSearch: 0.01,
     },
   },

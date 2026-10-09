@@ -154,4 +154,6 @@ Every report now opens with the answer. Haiku left `interpretation` empty for al
 
 Further fixes should come from a new class of failure on new tasks, not more patching of these four questions.
 
-Spend: 33 live runs, about $12.94 by the run summaries' estimate (Haiku about $0.45–0.86 per run, Luna about $0.03–0.40). The estimate prices each call's cumulative input at its size tier, so it overstates Haiku's server-side search loops.
+Spend: 33 live runs plus explorations. The provider dashboards show $5.57 for Anthropic (tokens $1.38, web search $4.19) and $2.70 for OpenAI on 2026-10-09, about $8.3 in total. The run summaries had estimated $12.94: they applied Haiku's long-prompt tier to the cumulative input of server-side search loops, which the bill did not. The estimator now uses base rates, and recomputing from the records reproduces both bills ($1.37 + $4.17 and $0.42 + $2.25).
+
+Claude costs more because of the search billing unit. Anthropic bills each query: 419 queries, 417 billed searches. OpenAI bills each `web_search_call`, which averaged 3.9 queries: 867 queries, 225 billed calls. Token prices are equal. Haiku's 3.4× larger input (full search results in context) adds only about $1. Per run, Haiku cost about $0.33 and Luna about $0.17.
