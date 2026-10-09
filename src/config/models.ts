@@ -32,6 +32,8 @@ interface ProfileBase {
 
 export interface AnthropicProfile extends ProfileBase {
   provider: "anthropic";
+  /** Sent explicitly as output_config.effort so a provider default change cannot alter runs. */
+  effort: "low" | "medium" | "high" | "xhigh" | "max";
   webSearch: { type: string; maxUses: number };
   webFetch?: { type: string; maxUses: number };
   /** Bounded continuation of `pause_turn` responses. */
@@ -51,6 +53,7 @@ export const PROFILES: Record<string, ModelProfile> = {
     name: "haiku",
     provider: "anthropic",
     model: "claude-haiku-5-5",
+    effort: "medium",
     // Highest value the Anthropic SDK accepts without streaming (~21.3k); thinking counts toward it.
     maxOutputTokens: 21000,
     // Direct (basic) tool versions: with the dynamic-filtering versions Haiku's
@@ -95,6 +98,7 @@ export function createChatModel(profile: ModelProfile, callbacks?: Callbacks): B
     return new ChatAnthropic({
       model: profile.model,
       maxTokens: profile.maxOutputTokens,
+      outputConfig: { effort: profile.effort },
       maxRetries: 2,
       callbacks,
     });

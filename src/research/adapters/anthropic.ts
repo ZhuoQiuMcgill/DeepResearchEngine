@@ -18,6 +18,7 @@ export async function runAnthropic(profile: AnthropicProfile, call: AdapterCall)
   const model = new ChatAnthropic({
     model: profile.model,
     maxTokens: profile.maxOutputTokens,
+    outputConfig: { effort: profile.effort },
     maxRetries: 2,
     callbacks: call.callbacks,
   }).bindTools(tools as never);
