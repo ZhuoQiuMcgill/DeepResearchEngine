@@ -17,7 +17,7 @@ not as code to port. Its two main lessons:
 
 ## Stack decisions
 
-- Both arms, baseline and EBD, are LangGraph graphs. Use LangChain for model and
+- Both arms, baseline and EBD, are LangGraph.js graphs. Use LangChain.js for model and
   tool integration and LangSmith for tracing, instead of custom infrastructure.
 - Web search uses each model API's built-in search tool. Do not add
   self-hosted search, fetching or content extraction.
@@ -29,7 +29,8 @@ not as code to port. Its two main lessons:
 - Preserve each experiment question verbatim. Do not expand, translate or
   rephrase it. The fixed EBD question is `What is EBD (Environment Based Design)?`.
   Agent-generated search queries are separate recorded data.
-- Use uv and Python 3.11+.
+- Use TypeScript on Node.js 22 with npm. Python remains only for the
+  proposal build scripts under `docs/proposal/`.
 - Never expose values from `.env` in messages, documents, traces or
   command output.
 - Only the root session edits the manifest/lockfile and performs Git writes.

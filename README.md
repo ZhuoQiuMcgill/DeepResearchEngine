@@ -4,7 +4,8 @@ A deep research agent system for Concordia INSE 691. It compares an
 Environment-Based Design (EBD) orchestrator with a baseline orchestrator on the
 same models and the same search tools.
 
-- Framework: LangGraph for both arms, LangChain integrations, LangSmith tracing.
+- Language: TypeScript on Node.js 22, managed with npm.
+- Framework: LangGraph.js for both arms, LangChain.js integrations, LangSmith tracing.
 - Search: each model API's built-in web search tool.
 - Models: `gpt-6-luna` and `claude-haiku-5-5`.
 
