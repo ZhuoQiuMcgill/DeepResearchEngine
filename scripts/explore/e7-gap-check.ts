@@ -15,7 +15,7 @@ const question = readFileSync(`${dir}/question.txt`, "utf8");
 // Simulate: the first researcher failed (provider error), everything else kept.
 const damaged = results.map((r, i) => (i === 0 ? { ...r, status: "failed" as const, notes: "", failure: { kind: "provider" as const, message: "Simulated: connection reset before any output" } } : r));
 const strategy = new BaselineStrategy();
-const ctx = { model: createChatModel(getProfile(profileName)), budget: budgetView({ researchersTotal: 10, toolCallsPerResearcher: 12 }, results.length), round: 2, runId: "e7" };
+const ctx = { model: createChatModel(getProfile(profileName)), budget: budgetView({ researchersTotal: 10, toolCallsPerResearcher: 12 }, results.length), round: 2, runId: "e7", today: new Date().toISOString().slice(0, 10) };
 const state = { question, interpretation: "", rounds: 0, notes: [], failures: [] };
 const step = await strategy.observe(state, damaged, ctx);
 console.log(JSON.stringify({ failedBrief: results[0]!.brief.objective, stop: step.decision.stop, briefs: step.decision.briefs.map((b) => b.objective), rationale: step.decision.rationale.slice(0, 500) }, null, 1));

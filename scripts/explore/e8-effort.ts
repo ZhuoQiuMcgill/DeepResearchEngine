@@ -9,7 +9,7 @@ import { UsageLedger } from "../../src/observability/usage.js";
 
 const sent: unknown[] = [];
 const realFetch = globalThis.fetch;
-globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+globalThis.fetch = (async (input: Parameters<typeof fetch>[0], init?: RequestInit) => {
   if (String(input).includes("api.anthropic.com") && typeof init?.body === "string") {
     sent.push(JSON.parse(init.body).output_config ?? null);
   }

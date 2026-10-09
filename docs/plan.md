@@ -163,3 +163,18 @@ Claude costs more because of the search billing unit. Anthropic bills each query
 The Haiku profile now sets `effort: "medium"`, sent as `output_config.effort` through `ChatAnthropic`'s `outputConfig`. Before this, all Haiku runs relied on the provider default, which was also `medium` with adaptive thinking. Luna's `reasoning.effort: "medium"` was already explicit. `scripts/explore/e8-effort.ts` captured the outgoing requests:
 - plain, structured-output (merged with `format`) and web-tool researcher calls all carried `effort: "medium"`;
 - the API accepted all three.
+
+### 2026-10-09: Platform, module and strategy plug-ins
+
+Decision: the EBD team develops the whole EBD strategy module. The platform side provides the outer layers, the plug-in mechanism and baseline as the example module.
+
+- **Plug-ins:** a strategy is `src/strategies/<name>/` default-exporting a `StrategyModule` (`name`, `description`, `contractVersion`, `create(options)`). Modules are loaded lazily by name, so a broken module affects only runs that select it. `_template/` is a minimal copy-and-edit start; it is type-checked and tested but never offered as a strategy.
+- **Contract v1:**
+  - `src/core/index.ts` is the only import surface, and `ctx.today` is shared by all components.
+  - Strategy options come from the experiment spec.
+  - Material must be researcher notes lines; the module records violations, and `check-strategy` fails on them.
+- **Module and platform:**
+  - `runResearchModule` takes injected strategy, profile and budget, and writes no files.
+  - `runOne` and `runExperiment` handle strategy and model resolution, records, tracing and cost.
+  - Experiment specs (`experiments/*.json`) choose tasks × strategies (with options and labels) × models × repeats × budget, and names are validated before any spend.
+- **Verified live:** `check-strategy` passed all checks on baseline (Haiku, EBD question). `experiments/smoke.json` completed on both models.

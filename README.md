@@ -16,30 +16,35 @@ branch `archive/concept-experiments` (tag `concept-experiments-final`).
 
 ```bash
 npm install
-npm run research -- --model haiku --task ebd          # one test question
-npm run research -- --model luna --question "..."     # any question, verbatim
-npm run batch -- --models haiku,luna --parallel 3     # all test questions
-npm test                                              # unit tests, no network
+npm run research -- --strategy baseline --model haiku --task ebd   # one run
+npm run research -- --model luna --question "..."                  # any question, verbatim
+npm run experiment -- experiments/baseline-all.json                # tasks × strategies × models × repeats
+npm run experiment -- experiments/smoke.json --dry-run             # list the runs only
+npm run check-strategy -- --strategy baseline                      # contract check for a strategy module
+npm test                                                           # unit tests, no network
 ```
 
-Options: `--strategy` (default `baseline`), `--researchers` (run budget,
-default 10), `--concurrency`, `--max-rounds`. Each run writes a record to
-`local/runs/<runId>/`: config, decisions, every researcher's notes and sources,
-the writer input, the report and a summary with usage and cost estimates.
-`npx tsx scripts/analyze-runs.ts local/runs/<runId> ...` compares report
-diagnostics across runs.
+Strategies, their options, models, repeats and budgets are chosen in the
+experiment spec. Each run writes a record: config, decisions, every
+researcher's notes and sources, the writer input, the report and a summary
+with usage and cost. `npx tsx scripts/analyze-runs.ts <run dirs>` compares
+report diagnostics across runs.
 
-See [docs/design.md](docs/design.md) for the architecture and the strategy
-interface that the EBD strategy implements, and [docs/plan.md](docs/plan.md)
-for exploration results and test rounds.
+- [docs/design.md](docs/design.md): architecture and the strategy contract.
+- [docs/strategy-modules.md](docs/strategy-modules.md): how to write a strategy
+  module such as EBD; start from `src/strategies/_template/`.
+- [docs/plan.md](docs/plan.md): exploration results and test rounds.
 
 ## Layout
 
-- `src/core/`: contracts, the strategy interface, budget, notes and URL helpers.
-- `src/graph/`: the shared LangGraph skeleton.
-- `src/research/`, `src/writer/`: shared researcher (provider adapters) and writer.
-- `src/strategies/`: strategy registry; `baseline/` is the reference strategy.
-- `src/config/`: model profiles, run defaults and test questions.
+- `src/platform/`: experiments, single runs, strategy loading, run records.
+- `src/module/`, `src/graph/`, `src/research/`, `src/writer/`: the research
+  module (skeleton graph, researchers with provider adapters, writer).
+- `src/core/`: contracts and the strategy interface; `src/core/index.ts` is the
+  import surface for strategy modules.
+- `src/strategies/<name>/`: strategy plug-ins. `baseline/` is the reference,
+  `_template/` a minimal copy-and-edit start.
+- `src/config/`: model profiles and test questions. `experiments/`: experiment specs.
 - `deploy/langfuse/`: self-hosted Langfuse.
 - `docs/background/`: course slides.
 - `docs/proposal/`: proposal and design drafts.

@@ -1,12 +1,23 @@
 /**
- * Baseline strategy: the reference implementation of ResearchStrategy.
+ * Baseline strategy module: the reference implementation of a strategy plug-in.
  * It follows the coordinator of Claude Code's deep-research skill:
  * decompose once, run researchers in parallel, optionally one extra round for
  * critical gaps, then hand every note to the writer.
+ *
+ * Like every strategy module it imports platform types from core/index.js only
+ * and default-exports a StrategyModule.
  */
 import { z } from "zod";
-import type { ResearchResult, SynthesisInput } from "../../core/contracts.js";
-import type { ResearchStrategy, StrategyContext, StrategyStep } from "../../core/strategy.js";
+import {
+  CONTRACT_VERSION,
+  type JsonValue,
+  type ResearchResult,
+  type ResearchStrategy,
+  type StrategyContext,
+  type StrategyModule,
+  type StrategyStep,
+  type SynthesisInput,
+} from "../../core/index.js";
 import { gapPrompt, planPrompt } from "./prompts.js";
 
 const BriefSchema = z.object({
@@ -29,8 +40,14 @@ const GapSchema = z.object({
   briefs: z.array(BriefSchema).describe("New assignments targeting critical gaps; empty when no further round is needed"),
 });
 
-/** Maximum researchers per round, following the skill's decomposition table. */
-const MAX_PER_ROUND = 6;
+/** Options from the experiment config; all optional. */
+const OptionsSchema = z
+  .object({
+    /** Maximum researchers per round; the skill's decomposition table goes up to 6. */
+    maxPerRound: z.number().int().min(1).max(20).default(6),
+  })
+  .strict();
+type BaselineOptions = z.infer<typeof OptionsSchema>;
 
 type BaselineNote = {
   briefId: string;
@@ -47,15 +64,15 @@ type BaselineState = {
   failures: { briefId: string; objective: string; failure: string }[];
 };
 
-const today = () => new Date().toISOString().slice(0, 10);
-
 export class BaselineStrategy implements ResearchStrategy<BaselineState> {
   readonly name = "baseline";
 
+  constructor(private readonly options: BaselineOptions = OptionsSchema.parse({})) {}
+
   async init(input: { question: string }, ctx: StrategyContext): Promise<StrategyStep<BaselineState>> {
-    const maxBriefs = Math.min(MAX_PER_ROUND, ctx.budget.researchersRemaining);
+    const maxBriefs = Math.min(this.options.maxPerRound, ctx.budget.researchersRemaining);
     const planner = planPrompt.pipe(ctx.model.withStructuredOutput(PlanSchema, { method: "jsonSchema", name: "research_plan" }));
-    const plan = await planner.invoke({ today: today(), question: input.question, maxBriefs: String(maxBriefs) });
+    const plan = await planner.invoke({ today: ctx.today, question: input.question, maxBriefs: String(maxBriefs) });
     return {
       state: { question: input.question, interpretation: plan.interpretation.trim(), rounds: 0, notes: [], failures: [] },
       decision: { briefs: plan.briefs, stop: false, rationale: plan.rationale },
@@ -91,9 +108,9 @@ export class BaselineStrategy implements ResearchStrategy<BaselineState> {
           : `### Researcher ${r.brief.id}: ${r.brief.objective}\nFAILED (${r.failure?.kind}): ${r.failure?.message?.slice(0, 200) ?? ""}`,
       )
       .join("\n\n");
-    const maxBriefs = Math.min(MAX_PER_ROUND, ctx.budget.researchersRemaining);
+    const maxBriefs = Math.min(this.options.maxPerRound, ctx.budget.researchersRemaining);
     const checker = gapPrompt.pipe(ctx.model.withStructuredOutput(GapSchema, { method: "jsonSchema", name: "gap_check" }));
-    const gap = await checker.invoke({ today: today(), question: state.question, summaries, maxBriefs: String(maxBriefs) });
+    const gap = await checker.invoke({ today: ctx.today, question: state.question, summaries, maxBriefs: String(maxBriefs) });
     return {
       state: next,
       decision: { briefs: gap.briefs, stop: gap.briefs.length === 0, rationale: gap.rationale },
@@ -109,3 +126,11 @@ export class BaselineStrategy implements ResearchStrategy<BaselineState> {
     };
   }
 }
+
+const baseline: StrategyModule = {
+  name: "baseline",
+  description: "Deep-research coordinator: one decomposition, parallel researchers, at most one follow-up round for critical gaps.",
+  contractVersion: CONTRACT_VERSION,
+  create: (options?: JsonValue) => new BaselineStrategy(OptionsSchema.parse(options ?? {})),
+};
+export default baseline;

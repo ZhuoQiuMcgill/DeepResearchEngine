@@ -15,62 +15,85 @@ shared, so differences in outcome can be attributed to the strategy.
 
 ## 2. Architecture
 
+Deep research is a module embedded in a platform. Strategies are plug-ins of
+the module. The EBD team develops the EBD strategy module; everything around it
+is shared and fixed.
+
 ```
-            ┌──────────── shared skeleton (LangGraph.js) ───────────────┐
-question ─▶ plan ─▶ research × N ─▶ observe ─▶ … ─▶ finalize ─▶ write ─▶ report
-            │          ▲   (parallel,     │             │
-            │          │  built-in search)│             │
-            ▼          └──── briefs ──────┘             ▼
-      ResearchStrategy.init   ResearchStrategy.observe   ResearchStrategy.finalize
-      └───────────── strategy (baseline or EBD), behind one interface ──────────┘
+┌ Platform (src/platform) ──────────────────────────────────────────────┐
+│ experiment config: tasks × strategies (+options) × models × repeats   │
+│ resolves strategy and model by name; records, tracing, cost, parallel │
+│   ┌ Research module (src/module, src/graph, src/research, src/writer)┐ │
+│   │ plan ─▶ research × N ─▶ observe ─▶ … ─▶ finalize ─▶ write        │ │
+│   │ (parallel researchers with built-in web search; shared writer)   │ │
+│   │   ┌ Strategy plug-in (src/strategies/<name>/) ──────────────────┐ │ │
+│   │   │ init / observe / finalize — baseline (reference), ebd, …    │ │ │
+│   │   └─────────────────────────────────────────────────────────────┘ │ │
+│   └───────────────────────────────────────────────────────────────────┘ │
+└──────────────────────────────────────────────────────────────────────────┘
 ```
 
-Three layers, each with one owner:
+| Layer | Entry point | Responsibility | Owner |
+| --- | --- | --- | --- |
+| Platform | `runExperiment(spec)`, `runOne(spec)` | Choose and load strategy and model by name, run jobs, records, tracing, usage and cost | Zhuo |
+| Research module | `runResearchModule(input)` | Skeleton graph, budget enforcement, stopping, researchers and provider adapters, writer, shared data-quality steps; no file or CLI access | Zhuo |
+| Strategy plug-in | default-exported `StrategyModule` | Question analysis, briefs, processing results, stopping, material for the writer | Baseline: Zhuo. EBD: EBD team |
 
-| Layer | Responsibility | Owner |
-| --- | --- | --- |
-| Skeleton | Graph and round loop, budget enforcement, stopping, parallel researchers, provider adapters, writer, recording | Zhuo (shared) |
-| Strategy | Question analysis, what to research next, processing findings, conflict analysis, material for the writer | Baseline: Zhuo. EBD: teammate |
-| Observability | Self-hosted Langfuse traces plus local run records | Zhuo (shared) |
+The module never inspects strategy state. A strategy never calls search, never
+sees provider-specific data and never chooses the model. The developer guide for
+strategy modules is [strategy-modules.md](strategy-modules.md).
 
-The skeleton never inspects strategy state. The strategy never calls search,
-never sees provider-specific data and never chooses the model.
+## 3. Strategy contract (version 1)
 
-## 3. Strategy interface
+`src/core/index.ts` is the only import surface for strategy code.
 
 ```ts
+interface StrategyModule {        // default export of src/strategies/<name>/index.ts
+  name: string                    // equals the directory name
+  description: string
+  contractVersion: string         // CONTRACT_VERSION, "1"
+  create(options?: JsonValue): ResearchStrategy<any>   // options from the experiment config
+}
+
 interface ResearchStrategy<S extends JsonValue = JsonValue> {
   readonly name: string
-  /** Analyse the question and choose the first briefs. */
   init(input: { question: string }, ctx: StrategyContext): Promise<StrategyStep<S>>
-  /** Process one round of results and choose the next briefs, or stop. */
   observe(state: S, results: ResearchResult[], ctx: StrategyContext): Promise<StrategyStep<S>>
-  /** Select and organise the material the shared writer receives. */
   finalize(state: S, ctx: StrategyContext): Promise<SynthesisInput>
 }
 
 type StrategyStep<S> = { state: S; decision: Decision }
 type Decision = { briefs: ResearchBriefInput[]; stop: boolean; rationale: string }
 type StrategyContext = {
-  model: BaseChatModel // the arm's model, injected by the skeleton
-  budget: BudgetView // remaining researcher budget, read-only
-  round: number // 1-based round that the returned briefs would start
+  model: BaseChatModel // the arm's model, injected by the module
+  budget: BudgetView   // researcher budget, read-only
+  round: number        // 1-based round that the returned briefs would start
   runId: string
+  today: string        // run date shared by all components
 }
 ```
 
 Rules for every implementation:
 
-1. `S` must survive `JSON.parse(JSON.stringify(state))` unchanged. The skeleton
+1. `S` must survive `JSON.parse(JSON.stringify(state))` unchanged. The module
    stores it after every step, and it appears in run records and traces.
-2. All model calls use `ctx.model`. A strategy may create its own prompts,
-   chains or LangGraph subgraphs internally.
+2. All model calls use `ctx.model`; strategies make no searches of their own.
+   A strategy may create its own prompts, chains or LangGraph subgraphs
+   internally.
 3. `observe` receives every result of the round, including failures.
 4. The question is passed verbatim. A strategy may write its own search
    objectives, but it never rewrites `question` for the writer.
 5. Briefs beyond the remaining budget are dropped by priority, highest first,
-   and the drop is recorded. A strategy should read `ctx.budget` and plan within
-   it.
+   and the drop is recorded. Invalid briefs are dropped and recorded.
+6. Material passed to the writer is researcher notes: selected, reordered or
+   excerpted by whole lines, optionally under the strategy's own headings. The
+   strategy's analysis goes into `outline` or `guidance`, never into material.
+   The module records violations as diagnostics, and `check-strategy` fails on
+   them. This keeps the evidence the same kind for both arms.
+7. A step that throws is attempted up to 3 times; then the run fails.
+
+Contract changes within version 1 only add fields. The loader rejects a module
+whose `contractVersion` has a different major version.
 
 ## 4. Data contracts
 
@@ -94,7 +117,7 @@ deep-research skill. One section per key question:
 ```markdown
 ## <key question>
 ### Takeaway
-### Cited Findings      - <claim> — [Source](URL)
+### Cited Findings      - <claim> — [Publisher or title](URL)
 ### Inferences
 ### Gaps
 ```
@@ -197,18 +220,24 @@ The reference implementation follows the deep-research skill's coordinator:
   OpenTelemetry SDK starts once per process; runs only flush. Langfuse v4
   stores events only, so read data through `/api/public/v2/observations`.
   Setup is in `deploy/langfuse/README.md`.
-- **Run records** are written to `local/runs/<runId>/`: the resolved config, the
+- **Run records** are written to `local/runs/<runId>/` (single runs) or
+  `local/experiments/<name>-<time>/runs/<runId>/` (experiments): the resolved config, the
   question, every decision with its rationale, each result (notes and JSON),
   the synthesis input, the report and a summary with usage and timings. They
   are the input for analysis and later blind judging.
 
 ## 11. Configuration
 
-A run is fully described by a config object: strategy name, model profile
-(provider, model id, reasoning effort, output limit, tool settings), budget and
-concurrency. Named profiles live in `src/config/`, and the CLI selects them.
-Strategies are registered by name in one registry, so adding EBD means one
-registration line.
+Everything that varies between runs is chosen by name in an experiment spec
+(`experiments/*.json`, schema in `src/platform/experiment.ts`):
+- tasks (ids from `src/config/tasks.ts`, or explicit verbatim questions);
+- strategies (directory names, or `{ name, options, label }` for ablation variants);
+- model profiles (`src/config/models.ts`: provider, model id, effort, output limit, tool versions and caps, prices);
+- repeats, the researcher budget, the round safety cap, concurrency and parallel runs.
+
+Names are validated before any run starts. Each run's `config.json` records
+the resolved spec, model profile and date, so every run is reproducible from
+its record.
 
 ## 12. Evaluation (outline)
 

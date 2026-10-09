@@ -12,7 +12,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "research": "tsx src/cli/research.ts",
-    "batch": "tsx src/cli/batch.ts"
+    "experiment": "tsx src/cli/experiment.ts",
+    "check-strategy": "tsx src/cli/check-strategy.ts"
   },
   "dependencies": {
     "@langchain/anthropic": "1.5.12",

@@ -61,6 +61,7 @@ async function run(strategy: ResearchStrategy<any>, opts: { total?: number; maxR
     maxRounds: opts.maxRounds ?? 8,
     concurrency: 2,
     runId: "test",
+    today: "2026-10-09",
     hooks: { onDecision: (d) => void decisions.push(d) },
   });
   const final = await graph.invoke(initialState("Q?"), { recursionLimit: 100 });

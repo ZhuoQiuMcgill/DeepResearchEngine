@@ -16,6 +16,7 @@ import {
 } from "../core/contracts.js";
 import type { JsonValue, ResearchStrategy, StrategyContext, StrategyStep } from "../core/strategy.js";
 import { markUnverifiedLinks, repairTruncatedUrls } from "../core/citations.js";
+import { materialProvenance } from "../core/material.js";
 import { pageKey } from "../core/urls.js";
 import type { ResearchFn } from "../research/researcher.js";
 import type { WriteFn } from "../writer/writer.js";
@@ -52,6 +53,8 @@ export interface SkeletonDeps {
   maxRounds: number;
   concurrency: number;
   runId: string;
+  /** The run's date, shared with the strategy, researchers and writer. */
+  today: string;
   hooks?: SkeletonHooks;
 }
 
@@ -109,6 +112,7 @@ export function buildResearchGraph(deps: SkeletonDeps) {
     budget: budgetView(limits, used),
     round,
     runId: deps.runId,
+    today: deps.today,
   });
 
   async function applyStep(
@@ -193,6 +197,10 @@ export function buildResearchGraph(deps: SkeletonDeps) {
           };
         }
         if (synthesis.material.length === 0) diagnostics.push("synthesis has no material");
+        const provenance = materialProvenance(synthesis, state.results);
+        if (provenance.unmatched) {
+          diagnostics.push(`${provenance.unmatched} of ${provenance.lines} material line(s) are not researcher notes lines, e.g. ${JSON.stringify(provenance.examples[0])}`);
+        }
         // Shared data-quality annotation, the same for every strategy.
         const unverified = new Set(state.results.flatMap((r) => r.unlistedCitations.map(pageKey)));
         if (unverified.size) {

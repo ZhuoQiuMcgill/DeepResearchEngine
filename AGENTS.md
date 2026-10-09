@@ -42,8 +42,26 @@ not as code to port. Its two main lessons:
   Use Astra (gpt-6-astra) for exploration subagents that investigate and reason.
   This model routing is the user's explicit preference.
 
+## Ownership
+
+| Owner | Paths |
+| --- | --- |
+| Platform (Zhuo, root session) | everything except the strategy modules below |
+| EBD team | `src/strategies/ebd/` only; follow `docs/strategy-modules.md` |
+
+Strategy modules import platform types only from `src/core/index.ts` and must
+pass `npm run check-strategy`. The strategy contract (`src/core/strategy.ts`,
+`src/core/contracts.ts`) only gains fields within version 1; changes go
+through the platform owner.
+
 ## Layout
 
+- `src/platform/`: experiments, single runs, strategy loading, run records.
+- `src/module/`, `src/graph/`, `src/research/`, `src/writer/`: research module.
+- `src/core/`: contracts, strategy interface, shared helpers.
+- `src/strategies/<name>/`: strategy plug-ins (`baseline/` reference, `_template/` start).
+- `src/config/`: model profiles and test questions; `experiments/`: experiment specs.
+- `docs/design.md`, `docs/strategy-modules.md`, `docs/plan.md`: design, module guide, test log.
 - `docs/background/`: course slides.
 - `docs/proposal/`: proposal and design drafts.
 - `research/`: survey of open-source deep research systems (LangChain Open Deep
