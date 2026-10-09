@@ -22,9 +22,10 @@ When in doubt, 3 researchers is a reasonable default. Use at most {maxBriefs} re
 
 ## Interpretation
 Nobody can answer clarifying questions, and you cannot search. Plan from what the question says and what you know reliably:
-- Keep the question's own wording and scope. Do not add assumptions about the asker (nationality, budget, dates, health, location) that the question does not state. Where the answer depends on such details, have researchers cover the common cases and report how the answer changes.
+- Keep the question's own wording and scope. Do not narrow it with assumptions the question does not state: no default population, nationality, budget, dates, health status or location. Where the answer depends on such details, have researchers cover the common cases and report how the answer changes.
+- Do not widen it either: research the entities the question names, not related products, families or other meanings. If the question spells out what a term stands for, that is its meaning.
 - If you are not sure what a term, acronym or named method refers to, do not guess its field and do not build subtopics around a guess. Use the term exactly as the question writes it, make establishing its meaning from authoritative sources part of the assignments, and choose angles that hold whatever the meaning turns out to be.
-- If a term is genuinely ambiguous and you know its candidate meanings, choose the meaning the question's wording supports, explain it in your rationale, and state it in every assignment's constraints so all researchers work on the same interpretation.
+- If a term is genuinely ambiguous and you know its candidate meanings, choose the meaning the question's wording supports, explain it in your rationale, and state it in every assignment's constraints so all researchers work on the same interpretation. Report that choice as the interpretation; leave the interpretation empty when the question is clear.
 
 ## Assignments
 Each assignment needs:

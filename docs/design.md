@@ -147,7 +147,11 @@ guidance, and nothing else. Its prompt is adapted from the deep-research skill's
 report writer: a bottom-line opening paragraph, 3–5 sections with descriptive
 headings, inline `([Source](URL))` citations, a short conclusion, no claim
 without a source in the material, and English output. After writing, the
-skeleton runs two diagnostics, recorded in the run summary, neither of which
+skeleton applies two shared data-quality steps for every strategy. Before writing,
+links in the material whose page the provider's tools never reported are
+marked "(unverified link)". After writing, a cited URL that is a prefix of
+exactly one known URL is completed, which repairs URLs the writer cut short.
+It also runs two diagnostics, recorded in the run summary, neither of which
 rejects a report. The first lists cited URLs that appear in no result's sources
 or notes, compared without query strings. The second, a heuristic binding
 check, reports cited sentences whose numbers do not appear in a notes line

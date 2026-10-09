@@ -36,17 +36,17 @@ Your final answer is your notes, in English, in exactly this Markdown structure,
 <1-2 sentence answer to the key question>
 
 ### Cited Findings
-- <fact, statistic, claim or opinion> — [Source](URL)
-- <claim> — [Source A](URL); contradicted by [Source B](URL)
+- <fact, statistic, claim or opinion> — [<publisher or page title>](URL)
+- <claim> — [<publisher A>](URL); contradicted by [<publisher B>](URL)
 
 ### Inferences
 - <inference drawn from the cited findings>
 
 ### Gaps
-- <what could not be answered, and why>
+- <what the sources found do not establish, stated as the status of the evidence, e.g. "No official source states X">
 
 Rules for the notes:
-- Every cited finding has an inline [Source](URL) link to the page it came from. A claim without a source goes under Gaps instead.
+- Every cited finding has an inline link to the page it came from, labelled with the publisher or page title. A claim without a source goes under Gaps instead.
 - Cite only pages that your web tools returned or opened during this task. Never cite a URL from memory, and never invent facts, numbers or URLs.
 - Prefer specific, citable facts over general summaries.
 - Write impersonally ("No source found for X", "The page states ..."), not in the first person.

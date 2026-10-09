@@ -15,6 +15,8 @@ import {
   type SynthesisInput,
 } from "../core/contracts.js";
 import type { JsonValue, ResearchStrategy, StrategyContext, StrategyStep } from "../core/strategy.js";
+import { markUnverifiedLinks, repairTruncatedUrls } from "../core/citations.js";
+import { pageKey } from "../core/urls.js";
 import type { ResearchFn } from "../research/researcher.js";
 import type { WriteFn } from "../writer/writer.js";
 
@@ -191,6 +193,20 @@ export function buildResearchGraph(deps: SkeletonDeps) {
           };
         }
         if (synthesis.material.length === 0) diagnostics.push("synthesis has no material");
+        // Shared data-quality annotation, the same for every strategy.
+        const unverified = new Set(state.results.flatMap((r) => r.unlistedCitations.map(pageKey)));
+        if (unverified.size) {
+          let marked = 0;
+          synthesis = {
+            ...synthesis,
+            material: synthesis.material.map((m) => {
+              const out = markUnverifiedLinks(m.notes, unverified);
+              marked += out.marked;
+              return { ...m, notes: out.text };
+            }),
+          };
+          if (marked) diagnostics.push(`${marked} link(s) in the material marked as unverified`);
+        }
         await hooks?.onSynthesis?.(synthesis, diagnostics);
         return { synthesis, synthesisDiagnostics: diagnostics };
       },
@@ -200,7 +216,9 @@ export function buildResearchGraph(deps: SkeletonDeps) {
       "write",
       async (state: RunStateType) => {
         const out = await deps.write(state.question, state.synthesis!);
-        return { report: out.report, writerDiagnostics: out.diagnostics };
+        const repaired = repairTruncatedUrls(out.report, state.results);
+        const diagnostics = [...out.diagnostics, ...repaired.repairs.map((r) => `repaired truncated URL ${r.from} -> ${r.to}`)];
+        return { report: repaired.report, writerDiagnostics: diagnostics };
       },
       { retryPolicy: { maxAttempts: 3 } },
     )

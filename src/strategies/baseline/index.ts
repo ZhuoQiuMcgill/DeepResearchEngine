@@ -20,7 +20,7 @@ const PlanSchema = z.object({
   rationale: z.string().describe("How you interpreted the question and why this decomposition"),
   interpretation: z
     .string()
-    .describe("The reading of the question the report should state: chosen meaning of ambiguous terms and any scope bounds. Empty if the question is unambiguous"),
+    .describe("Only if the question is ambiguous: one plain sentence stating the meaning you chose (no instructions). Empty string when the question is clear"),
   briefs: z.array(BriefSchema).describe("Researcher assignments"),
 });
 
@@ -104,7 +104,7 @@ export class BaselineStrategy implements ResearchStrategy<BaselineState> {
     return {
       material: state.notes.map((n) => ({ label: n.objective, notes: n.notes })),
       ...(state.interpretation
-        ? { guidance: `The research was scoped with this reading of the question; state it briefly where it affects the answer: ${state.interpretation}` }
+        ? { guidance: `The question was read as follows: ${state.interpretation} Mention this reading only where it changes the answer, and do not open the report with it.` }
         : {}),
     };
   }

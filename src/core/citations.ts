@@ -70,3 +70,48 @@ export function citationBinding(report: string, results: ResearchResult[]): Bind
   }
   return out;
 }
+
+const MD_LINK = /\[([^\]]*)\]\((https?:\/\/[^\s]+?)\)(?=$|[\s.,;:)\]])/g;
+
+/**
+ * Mark Markdown links whose page the provider's tools never reported, so the
+ * writer can weigh them. Applied by the skeleton to every strategy's material.
+ */
+export function markUnverifiedLinks(text: string, unverified: Set<string>): { text: string; marked: number } {
+  let marked = 0;
+  const out = text.replace(MD_LINK, (whole, _label: string, url: string) => {
+    if (!unverified.has(pageKey(url))) return whole;
+    marked += 1;
+    return `${whole} (unverified link)`;
+  });
+  return { text: out, marked };
+}
+
+/**
+ * Repair report URLs the writer cut short: an unknown URL that is a prefix of
+ * exactly one URL in the notes or sources is replaced by that URL. Unknown URLs
+ * without a unique completion are left as they are and stay in the diagnostics.
+ */
+export function repairTruncatedUrls(report: string, results: ResearchResult[]): { report: string; repairs: { from: string; to: string }[] } {
+  const known = new Set<string>();
+  for (const r of results) {
+    for (const s of r.sources) known.add(s.url);
+    for (const u of extractUrls(r.notes)) known.add(u);
+  }
+  const knownPages = new Set([...known].map(pageKey));
+  const repairs: { from: string; to: string }[] = [];
+  let out = report;
+  for (const url of extractUrls(report)) {
+    if (knownPages.has(pageKey(url))) continue;
+    const stem = url.replace(/['"]+$/, "").replace(/\/+$/, "");
+    const matches = [...known].filter((k) => k.startsWith(stem) && k !== stem);
+    if (matches.length !== 1) continue;
+    const to = matches[0]!;
+    const from = report.includes(`${url}'`) ? `${url}'` : url;
+    // Replace only where the URL ends, never inside a longer URL that shares the prefix.
+    const escaped = from.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    out = out.replace(new RegExp(`${escaped}(?![A-Za-z0-9/_\\-.~%?#=&+])`, "g"), to);
+    repairs.push({ from, to });
+  }
+  return { report: out, repairs };
+}

@@ -118,3 +118,40 @@ Both unknown URLs are model output errors that the diagnostic caught. Haiku wrot
 No run used the follow-up round. The gap rationales consider conflicts and weak spots, and judge them non-critical for these four questions, which matches the baseline's "only if absolutely necessary" rule.
 
 **E7 (follow-up round triggers when needed): yes, on both models.** `scripts/explore/e7-gap-check.ts` replays a saved run with the hardware researcher marked as a provider failure. Both models launched exactly one targeted follow-up brief and explained the missing subtopic.
+
+An independent review of the 8 round-3 runs found that most round-1 fixes held: disagreements were surfaced with both sources, every researcher's findings were used, and 30 spot-checked numbers matched their notes and URLs, with two misattributions. Remaining problems and round-4 fixes:
+
+| Problem | Class | Fix |
+| --- | --- | --- |
+| `interpretation` was filled in every run and mixed instructions into the reading; 5 of 8 reports opened with meta lines copied from the guidance | Contract/instruction | Filled only for genuinely ambiguous questions, as one plain sentence. Writer mentions it only where it changes the answer, never as the opening. |
+| Coordinator narrowed questions with default populations ("adults", "generally healthy", "mainland China") or widened them ("Quest 3 family", other EBD expansions although the question spells it out) | Instruction | Rule: neither narrow nor widen what the question names; a spelled-out term means what it says. |
+| Gaps written as process ("did not open full texts") were copied into reports as narration | Instruction | Gaps state the status of the evidence. The writer rewrites any process statement and avoids I/we/searched/retrieved. |
+| Citations to pages the tools never reported reached 4 reports | Orchestration | The skeleton marks such links "(unverified link)" in the writer's material, for every strategy. The writer may not rest a key claim on them alone. |
+| Writer cut URLs short (`https://www.jstage.jst.go.jp'`, a Concordia PDF shortened to its record page) | Orchestration | After writing, an unknown URL that is a prefix of exactly one known URL is completed. Repairs are recorded in the diagnostics. |
+| Every link labelled "Source" | Instruction | Links are labelled with the publisher or page title. |
+
+Recorded, not fixed: Luna places citations at paragraph ends and stops early, using 3 searches for EBD and none for fares in the flight question. Haiku still writes some first-person notes and rarely opens pages. One Haiku note cited a likely fabricated ResearchGate URL; the unverified-link marking now applies to such cases.
+
+### 2026-10-09: Round 4 and stopping point
+
+All 8 runs completed (`20261009-0647*` to `-0650*`).
+
+| Measure (8 reports) | Round 3 | Round 4 |
+| --- | --- | --- |
+| First-person narration | 0 | 0 |
+| Cited URLs absent from all notes | 2 | 0 |
+| Cited sentences with numbers checked / flagged | 113 / 10 | 144 / 11 |
+| Reports opening with meta text about the reading | 5 | 0 |
+| Links marked unverified in the writer's material | – | 10 (2 Luna runs) |
+
+Every report now opens with the answer. Haiku left `interpretation` empty for all four clear questions. Luna still filled it, but the writer no longer leads with it. Haiku's sleep briefs still say "focus on adults", which is a residual narrowing despite the rule. The flight briefs cover Chinese citizens in depth and summarise other passports, which follows the "common cases" rule.
+
+**Stopping here.** The remaining problems are model behaviour or tool limits, not pipeline defects:
+- Luna places citations at paragraph ends, stops researching early (EBD: 1 researcher, 3 searches), and fills `interpretation` when it is not needed.
+- Haiku rarely opens full pages, still writes some notes in the first person, and keeps some default-population constraints.
+- Built-in tools cannot open ResearchGate or ACM pages, and OpenAI does not report every page behind a citation.
+- The baseline never needed its follow-up round on these four questions. E7 shows that it triggers when an essential subtopic is missing.
+
+Further fixes should come from a new class of failure on new tasks, not more patching of these four questions.
+
+Spend: 33 live runs, about $12.94 by the run summaries' estimate (Haiku about $0.45–0.86 per run, Luna about $0.03–0.40). The estimate prices each call's cumulative input at its size tier, so it overstates Haiku's server-side search loops.
