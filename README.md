@@ -17,4 +17,5 @@ branch `archive/concept-experiments` (tag `concept-experiments-final`).
 - `docs/proposal/`: proposal and design drafts.
 - `research/`: survey of open-source deep research systems.
 
-Copy `.env.example` to `local/.env` and fill in the keys. Never commit it.
+Copy `.env.example` to `.env` at the repository root and fill in the keys.
+Git ignores `.env`; never commit it.

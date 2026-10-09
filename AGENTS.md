@@ -30,7 +30,7 @@ not as code to port. Its two main lessons:
   rephrase it. The fixed EBD question is `What is EBD (Environment Based Design)?`.
   Agent-generated search queries are separate recorded data.
 - Use uv and Python 3.11+.
-- Never expose values from `local/.env` in messages, documents, traces or
+- Never expose values from `.env` in messages, documents, traces or
   command output.
 - Only the root session edits the manifest/lockfile and performs Git writes.
 - Handoffs must run real models and tools. Controlled fault tests do not
@@ -45,4 +45,5 @@ not as code to port. Its two main lessons:
 - `docs/proposal/`: proposal and design drafts.
 - `research/`: survey of open-source deep research systems (LangChain Open Deep
   Research, GPT Researcher, Local Deep Research, MindSearch).
-- `local/`: machine-local and ignored (`.env`, run outputs).
+- `.env`: API keys at the repository root, ignored by Git.
+- `local/`: machine-local run outputs, ignored by Git.
