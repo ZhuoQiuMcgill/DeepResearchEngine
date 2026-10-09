@@ -161,6 +161,18 @@ It does not retry the model, repair JSON or bypass cancellation/expiry using
 cleanup authority. Failed, refused, incomplete and oversized provider outputs
 retain their previous behavior and are not archived by this validation path.
 
+Failed/refused/incomplete native responses now retain bounded categorical
+diagnostics in `model.outcome.error.details`: native finish/status, allowlisted
+provider error code/type, `provider_incomplete_reason`, its capture state,
+visible-text byte count, native tool-call count and continuation-size breach.
+The application forwards these facts into the role/Workflow error. Arbitrary
+provider messages and native reasoning are not copied. Unknown reason values are
+marked unsupported, never inferred as a service failure. See OpenAI's
+[incomplete response handling](https://developers.openai.com/api/docs/guides/structured-outputs)
+for the distinct output-token and content-filter cases. Historical outcomes
+whose adapter omitted these facts cannot be diagnosed retroactively from status
+or reported usage alone.
+
 Execution status, recording completeness and publication commitment are
 independent. Lost acknowledgements reconcile the same event/operation ID;
 unknown remote effects never trigger a replay. Known publication failure may
@@ -171,6 +183,12 @@ re-raised. A response completed before caller cancellation retains its actual
 usage and response metadata in the cancelled outcome. Its tools and final output
 are not dispatched or published. Recording cleanup does no business publication
 or external dispatch.
+
+The application can separately recover a fully settled, tool-free role after a
+known transient service failure by starting a new child invocation with the same
+role/input. This does not change Runtime's single-dispatch behavior or permit
+replay of an unknown remote outcome. See the
+[orchestrator policy and event contract](research-service.md#orchestrator-recovery-during-execution).
 
 An owned reserved admission cancelled or expired before execution records
 `agent.finished` with `start_state="not_started"`, zero dispatch counters and

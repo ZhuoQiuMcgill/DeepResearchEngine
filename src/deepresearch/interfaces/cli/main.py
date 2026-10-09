@@ -17,7 +17,7 @@ async def run(args):
         await run_baseline(args.workspace, args.store, args.verify_run)
         return 0
     engine = (await Engine.open(EngineSettings(workspace=args.workspace, storage_root=args.store,
-        openalex_admission=args.admit_openalex))).unwrap()
+        openalex_admission=args.admit_openalex, searxng_url=args.searxng_url))).unwrap()
     try:
         if args.command in {"methods", "research"}:
             from deepresearch.bootstrap import create_research_service
@@ -87,6 +87,7 @@ def main():
     parser = argparse.ArgumentParser(prog="deepresearch")
     parser.add_argument("--workspace", default=str(Path.cwd()))
     parser.add_argument("--store", default=None)
+    parser.add_argument("--searxng-url", default="http://127.0.0.1:18888", help="Trusted self-hosted SearXNG base URL for web.search@4")
     parser.add_argument("--admit-openalex", action="store_true", help="Authorize the initial persisted anonymous local budget; existing quota state is retained")
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("tools", help="List registered fixed-argv tool contracts")
@@ -118,7 +119,7 @@ def main():
             from deepresearch.engine.connections import EngineSettings
             from deepresearch.interfaces.http import create_app
             app = create_app(EngineSettings(workspace=args.workspace, storage_root=args.store,
-                openalex_admission=args.admit_openalex), trusted_origins=tuple(args.origin))
+                openalex_admission=args.admit_openalex, searxng_url=args.searxng_url), trusted_origins=tuple(args.origin))
             uvicorn.run(app, host="127.0.0.1", port=args.port, workers=1,
                         timeout_graceful_shutdown=30, access_log=False)
             return

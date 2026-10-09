@@ -51,6 +51,7 @@ def _copy(value):
 class Document:
     text: str
     pages: tuple[str, ...] | None = None
+    media_type: str | None = None
 
     def index(self):
         raw = self.text.encode("utf-8")
@@ -213,11 +214,12 @@ async def _configured(tmp_path, monkeypatch, documents, *, respond=None, discove
             return result
         raw = document.text.encode("utf-8")
         index = document.index()
+        media = {"media_type": document.media_type} if document.media_type is not None else {}
         receipt = (await plan.snapshot_store.commit(context, plan.operation_id, plan.scope,
-            SnapshotProposal(raw, raw, canonical_json(index), {"url": url, "controlled_fixture": True}))).unwrap()
+            SnapshotProposal(raw, raw, canonical_json(index), {"url": url, "controlled_fixture": True, **media}))).unwrap()
         result.result = {"snapshot_ref": receipt.snapshot_ref.to_dict(), "line_count": len(index["lines"]),
             "page_count": len(document.pages) if document.pages is not None else None,
-            "provenance": {"text_bytes": len(raw), "text_sha256": digest_bytes(raw), "url": url}}
+            "provenance": {"text_bytes": len(raw), "text_sha256": digest_bytes(raw), "url": url, **media}}
         result.persistence = {"required": True, "commit_state": "committed", "operation_id": plan.operation_id,
                               "receipt": receipt.to_dict()}
         return result

@@ -76,19 +76,38 @@ external retries; uncertainty never grants permission to replay execution.
 Storage publication records reuse causal action/attempt IDs and carry their
 own operation IDs. Connections does not invent a competing commit action.
 
+This is the Engine/Runtime dispatch contract. The application now provides an
+explicit, recorded [role recovery policy](../usage/research-service.md#orchestrator-recovery-during-execution)
+for fully settled transient HTTP failures. It creates another child invocation
+under the original grants, groups those invocations by `recovery_id`, and keeps
+their distinct native IDs. It does not replay an unresolved action or change
+the Engine's default dispatch policy.
+
 Each agent run has a distinct root action for `agent.started/finished`, with
 no dispatch attempt on those bookkeeping events. Model/tool/invocation
 dispatches have separate actions and mandatory attempts. A child root points
 to its parent's invocation action AND attempt. The standalone run root is
 its actual tool action, so its tool intent/outcome carries the tool attempt.
 
-A tool attempt is one admitted CLI worker dispatch. Explicitly permitted
+A tool attempt normally admits one CLI worker dispatch. Explicitly permitted
 named search fallback and fetch redirects occur within that worker and are
 bounded observations (`backend_attempt_index`, backend/outcome), not extra
 tool attempts. The immutable pre-dispatch search plan names all allowed
 fallbacks. Relaunching a worker is a new execution attempt requiring another
 durable intent. DDGS's internal HTTP request count remains unknown unless
 instrumented; fallback permission is not permission for implicit worker replay.
+
+`web.fetch@3` is a versioned exception: one durable `tool.intent` includes the
+trusted executor's `dispatch_policy` for at most two distinct phases, static and
+optional render. Both retain the outer invocation and snapshot operation ID;
+each gets a distinct worker request ID. They share the original wall-clock,
+network and stream allowances. No phase is retried and only one selected,
+validated proposal can be committed. `process.stages` records both real process
+outcomes; the ordinary process fields describe the selected worker. Parent
+selection is not a fabricated successful renderer exit. Cancellation, unknown
+cleanup, malformed responses and destination-policy faults do not authorize
+static fallback. Terminated renderer traffic remains unknown, with known lower
+bounds separately recorded. Revisions 1–2 retain their single-worker contract.
 
 `ExecutionContext` persisted metadata contains context kind
 (`agent` or `standalone_tool`), run/root/correlation IDs, nullable agent and

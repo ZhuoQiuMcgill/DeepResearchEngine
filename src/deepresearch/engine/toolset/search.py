@@ -123,7 +123,10 @@ class CorrectedGoogle(Google):
         return kept
 
 
-def search_plan(revision=1) -> dict:
+def search_plan(revision=1, *, service_url="http://127.0.0.1:18888") -> dict:
+    if revision == 4:
+        from .search_service import plan
+        return plan(service_url)
     if revision in (2, 3):
         return {"kind": "search", "backend_order": ["yahoo", "duckduckgo"],
             "fallback_on": ["no_results", "unavailable", "invalid_urls"], "max_backend_attempts": 2,
@@ -137,6 +140,9 @@ def search_plan(revision=1) -> dict:
 
 
 def search(arguments: dict, plan: dict, timeout: float, revision=1):
+    if revision == 4:
+        from .search_service import search as service_search
+        return service_search(arguments, plan, timeout)
     if revision in (2, 3):
         return observed_search(arguments, plan, timeout, revision)
     # No public or private unchecked flag enables the Google live gate.

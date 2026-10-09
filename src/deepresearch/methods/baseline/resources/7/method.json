@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "method_id": "baseline",
+  "revision": 7,
+  "description": "Parallel baseline with an explicit candidate Selection Agent, preserved discovery metadata and audited fetch decisions.",
+  "tool_revisions": {
+    "web.search": 3,
+    "scholar.crossref.search": 2,
+    "scholar.openalex.search": 2
+  },
+  "agent_roles": [
+    {
+      "role_id": "baseline.planner",
+      "revision": 3
+    },
+    {
+      "role_id": "baseline.selector",
+      "revision": 1
+    },
+    {
+      "role_id": "baseline.distiller",
+      "revision": 1
+    },
+    {
+      "role_id": "baseline.analyst",
+      "revision": 3
+    },
+    {
+      "role_id": "baseline.writer",
+      "revision": 5
+    },
+    {
+      "role_id": "baseline.reviewer",
+      "revision": 4
+    }
+  ]
+}

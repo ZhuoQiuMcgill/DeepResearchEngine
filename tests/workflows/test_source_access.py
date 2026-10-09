@@ -14,6 +14,28 @@ from deepresearch.workflows.contracts import SourceRange
 from deepresearch.workflows.components.source_access import read_retained_source
 
 
+def test_failed_read_preserves_actionable_cause_and_limit_details():
+    from deepresearch.workflows.components.source_access import _outcome
+    message = "Shared tool dispatch allowance is exhausted"
+    details = {"limit": 128, "resource": "tool_calls"}
+    with pytest.raises(EngineError) as caught:
+        _outcome({"status": "failed", "recording": {"status": "complete"},
+                  "error": {"code": "LIMIT_EXCEEDED", "message": message, "details": details}})
+    assert caught.value.code == "LIMIT_EXCEEDED"
+    assert caught.value.message == message and caught.value.details == details
+
+
+def test_source_metadata_exposes_extraction_diagnostic_without_promising_completeness():
+    from deepresearch.workflows.components.source_access import source_descriptor
+    port = RetainedPort(text="Archived body.")
+    port.source.provenance["html_extraction"] = {
+        "method": "dom-prose-overlap/1", "semantic_verification": False, "substantial_omission": True}
+    assert source_descriptor(port.source)["html_extraction"] == port.source.provenance["html_extraction"]
+    port.source.provenance["pdf_extraction"] = {
+        "method": "page-text-preservation/1", "semantic_verification": False, "fallback_pages": 2}
+    assert source_descriptor(port.source)["pdf_extraction"] == port.source.provenance["pdf_extraction"]
+
+
 class RetainedPort:
     """Recorded DocumentSlice responses, including PDF separator/range semantics."""
 
@@ -202,12 +224,20 @@ async def test_all_line_batches_and_final_unterminated_line_are_read():
     port = RetainedPort(text=text)
     access = await read_retained_source(context(port), port.source)
     assert access["complete"] and delivered(access) == port.text
-    assert [read["range"]["start"] for read in port.reads] == [1, 200, 201, 400, 401]
-    assert [read["range"] for read in port.reads if read["range"]["start"] in (200, 400)] == [
-        {"kind": "lines", "start": 200, "end_exclusive": 202},
-        {"kind": "lines", "start": 400, "end_exclusive": 402},
-    ]
+    assert len(port.reads) == 3
+    assert all(read["range"]["end_exclusive"] - read["range"]["start"] <= 200 for read in port.reads)
     assert access["segments"][-1]["text"].endswith("FINAL UNTERMINATED TAIL")
+    verify_manifest(port, access)
+
+
+@pytest.mark.asyncio
+async def test_long_line_document_does_not_spend_extra_dispatches_on_bridges():
+    text = "".join(f"section line {i}: evidence remains exact.\n" for i in range(6000)) + "UNTERMINATED TAIL"
+    port = RetainedPort(text=text)
+    access = await read_retained_source(context(port), port.source)
+    assert access["complete"] and delivered(access) == port.text
+    assert len(port.reads) == 31
+    assert access["read_bytes"] == len(port.text)
     verify_manifest(port, access)
 
 

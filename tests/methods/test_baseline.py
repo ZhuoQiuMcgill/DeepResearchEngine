@@ -292,7 +292,7 @@ async def test_no_usable_snapshot_stops_before_analysis_and_report(tmp_path, mon
 
 def test_versions_and_decision_contracts_are_explicit():
     methods = create_method_registry().list()
-    assert {(method["method_id"], method["revision"]) for method in methods} == {("baseline", 1), ("baseline", 2), ("baseline", 3), ("baseline", 4), ("baseline", 5), ("baseline", 6), ("example.echo", 1)}
+    assert {(method["method_id"], method["revision"]) for method in methods} == {*(('baseline', revision) for revision in range(1, 14)), ("example.echo", 1)}
     assert ResearchPlan.model_validate(PLAN).queries == ["literal alpha"]
     assert EvidenceAnalysis.model_validate(analysis()).to_dict()["findings"][0].get("schema_version") is None
     with pytest.raises(ValueError):

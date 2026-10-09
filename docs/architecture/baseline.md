@@ -1,6 +1,14 @@
-# Baseline method revision 2
+# Baseline methods
 
-Revision 5 is the current experiment entry point. It adds bounded parallel source
+Current entry point: `baseline@13` pins `web.search@4` and supervised `web.fetch@3`.
+It retains verified follow-up reads, source failure isolation, literal queries,
+bounded role repair and strict citation bindings. See
+[reliability contracts](../usage/baseline-reliability.md) and
+[web tools](../usage/web-tools.md) for service setup.
+
+Revision 9 was the instruction experiment entry point, retaining revision 8
+instruction/task upgrades and refining three roles after live failures; see [instruction usage](../usage/baseline-instructions.md).
+Revision 7 added a dedicated candidate Selector. Revision 5 added bounded parallel source
 distillation, complete or explicitly partial archived reads, gap-driven source
 access, alternate acquisition and independent research-quality status. See
 [parallel usage and module interfaces](../usage/baseline-parallel.md).
@@ -28,9 +36,9 @@ or a successful external run.
 
 ## Versions and pins
 
-Bootstrap registers Baseline revisions 1–6 and `example.echo@1`.
+Bootstrap registers Baseline revisions 1–13 and `example.echo@1`.
 `ResearchRunRequest.method_revision` still defaults to **1** for compatibility.
-New consumers must send `method_id: "baseline", method_revision: 6` explicitly.
+New consumers must send `method_id: "baseline", method_revision: 13` explicitly.
 Wire `schema_version: 1` and HTTP `/api/v1` are independent of method revision.
 
 | Method | Behavior | Role pins |
@@ -41,6 +49,13 @@ Wire `schema_version: 1` and HTTP `/api/v1` are independent of method revision.
 | `baseline@4` | Expanded research with English report instructions and publication checks | `baseline.planner@2`, `baseline.analyst@2`, `baseline.writer@4`, `baseline.reviewer@3` |
 | `baseline@5` | Archived reads, parallel source distillation, recovery and independent coverage | `baseline.planner@3`, `baseline.distiller@1`, `baseline.analyst@3`, `baseline.writer@5`, `baseline.reviewer@4` |
 | `baseline@6` | Same research policy as revision 5; enriched search tool contracts | Same roles as revision 5 |
+| `baseline@7` | Agent relevance/priority decisions before fetch, with bounded metadata and saved decisions | Revision 6 roles plus `baseline.selector@1` |
+| `baseline@8` | Revision 7 scheduling, tools and schemas with explicit output-instance instructions | Planner 4, Selector 2, Distiller 2, Analyst 4, Writer 6, Reviewer 5 |
+| `baseline@9` | Revision 8 contracts with targeted instruction corrections after retained trials | Planner 4, Selector 3, Distiller 3, Analyst 5, Writer 6, Reviewer 5 |
+| `baseline@10` | Revision 9 roles with SearXNG search and adaptive fetch | Same roles as revision 9 |
+| `baseline@11` | Verified reads, isolated local failures, preserved queries, bounded repair and citation checks | Planner 5, Selector 4, Distiller 4, Analyst 6, Writer 7, Reviewer 6 |
+| `baseline@12` | Forty attempted URLs; unchanged topology and Agent roles | Same roles as revision 11 |
+| `baseline@13` | Supervised fetch with preserved static fallback; same research budgets and topology | Same roles as revision 11 |
 | `example.echo@1` | Model-free integration over real Storage | No Agent roles |
 
 The old method lives in `methods/baseline/v1/` with its own schemas. Its parameter
@@ -50,7 +65,7 @@ Baseline method. Method consumers use `deepresearch research`.
 
 Each role revision in `agent_catalog/resources/<role>/<revision>/` has the
 standard five files: `definition.json`, `instructions.md`, `task.md`,
-`input.schema.json` and `output.schema.json`. The method pins exactly four roles;
+`input.schema.json` and `output.schema.json`. Revision 2 pins exactly four roles;
 role revisions are independent of method revisions. Admission retains method,
 component and role asset digests, profile/model selection and the tool catalog.
 

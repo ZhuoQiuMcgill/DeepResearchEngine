@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "method_id": "baseline",
+  "revision": 13,
+  "description": "Baseline with supervised web.fetch revision 3; unchanged roles, two rounds, forty attempted URLs and context allowances.",
+  "tool_revisions": {
+    "web.search": 4,
+    "scholar.crossref.search": 2,
+    "scholar.openalex.search": 2,
+    "web.fetch": 3
+  },
+  "agent_roles": [
+    {
+      "role_id": "baseline.planner",
+      "revision": 5
+    },
+    {
+      "role_id": "baseline.selector",
+      "revision": 4
+    },
+    {
+      "role_id": "baseline.distiller",
+      "revision": 4
+    },
+    {
+      "role_id": "baseline.analyst",
+      "revision": 6
+    },
+    {
+      "role_id": "baseline.writer",
+      "revision": 7
+    },
+    {
+      "role_id": "baseline.reviewer",
+      "revision": 6
+    }
+  ]
+}

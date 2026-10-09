@@ -1,0 +1,89 @@
+{
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "verdict": {
+      "type": "string",
+      "enum": [
+        "accept",
+        "revise"
+      ]
+    },
+    "issues": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 1024
+      },
+      "minItems": 0,
+      "maxItems": 8
+    }
+  },
+  "required": [
+    "schema_version",
+    "verdict",
+    "issues"
+  ],
+  "additionalProperties": false,
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "integer",
+          "const": 1
+        },
+        "verdict": {
+          "type": "string",
+          "const": "accept"
+        },
+        "issues": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 1024
+          },
+          "minItems": 0,
+          "maxItems": 0
+        }
+      },
+      "required": [
+        "schema_version",
+        "verdict",
+        "issues"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "integer",
+          "const": 1
+        },
+        "verdict": {
+          "type": "string",
+          "const": "revise"
+        },
+        "issues": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 1024
+          },
+          "minItems": 1,
+          "maxItems": 8
+        }
+      },
+      "required": [
+        "schema_version",
+        "verdict",
+        "issues"
+      ],
+      "additionalProperties": false
+    }
+  ]
+}

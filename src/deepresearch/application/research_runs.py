@@ -20,6 +20,7 @@ from deepresearch.workflows.context import WorkflowContext
 from deepresearch.workflows.contracts import ResearchRunRequest, ResearchRunView, SourceRange
 from deepresearch.workflows.runner import WorkflowRunner
 from .platform import RESEARCH_STATE_KEY, ResearchPlatformPort
+from .recovery import RecoveryCoordinator
 
 MAX_RESPONSE_BYTES = 524288
 MAX_SCAN_PAGES = 32
@@ -50,13 +51,14 @@ class ResearchRunService:
     """
 
     def __init__(self, engine, registry, agent_catalog, token_meter,
-                 extension_registry=None, max_active_runs=8):
+                 extension_registry=None, max_active_runs=8, recovery_policy=None):
         if type(max_active_runs) is not int or not 1 <= max_active_runs <= 128:
             raise ValueError("max_active_runs must be between 1 and 128")
         self.engine, self.registry = engine, registry
         self.agent_catalog, self.token_meter = agent_catalog, token_meter
         self.extension_registry = extension_registry if extension_registry is not None else ExtensionRegistry()
         self.max_active_runs = max_active_runs
+        self.recovery = RecoveryCoordinator(recovery_policy)
         self._runs: dict[str, LiveResearchRun] = {}
         self._starting: set[asyncio.Task] = set()
         self._start_lock = asyncio.Lock()
@@ -198,7 +200,7 @@ class ResearchRunService:
                 profile_ref=request.profile_ref, model_ref=request.model_ref,
                 pins={"method": definition.to_dict(), "roles": [spec.ref for spec, _ in roles.values()]})
             live = LiveResearchRun(session, view, fingerprint, tools)
-            port = live.port = ResearchPlatformPort(self.engine, live, roles)
+            port = live.port = ResearchPlatformPort(self.engine, live, roles, self.recovery)
             self._runs[view.run_id] = live
             try:
                 # First save the identity before manifests/events or method dispatch.
@@ -210,7 +212,8 @@ class ResearchRunService:
                     "request_ref": request_ref,
                     "profile_ref": request.profile_ref, "model_ref": request.model_ref,
                     "tools": [tool.to_dict() for tool in tools],
-                    "roles": [spec.ref for spec, _ in roles.values()]}
+                    "roles": [spec.ref for spec, _ in roles.values()],
+                    "recovery_policy": self.recovery.policy.to_dict()}
                 live.method_manifest_ref = await port.publish(canonical_json(manifest),
                     "application/json", "research-method.json")
                 await port.commit(view)

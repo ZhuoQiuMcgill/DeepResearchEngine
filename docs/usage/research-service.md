@@ -7,7 +7,7 @@ methods without pins retain revision 1. These pins are part of the method digest
 and saved execution manifest, so clients can identify the chosen tool contract.
 `MethodRegistry` pins the method revision and its agent roles; the shared request
 and view models are `deepresearch.workflows.ResearchRunRequest` and `ResearchRunView`.
-Bootstrap supplies Baseline revisions 1–5 and model-free `example.echo@1`.
+Bootstrap supplies Baseline revisions 1–12 and model-free `example.echo@1`.
 A workflow root has no agent identity, provider, model grant or credentials.
 The formal baseline plans, acquires and selects saved evidence, analyzes gaps,
 then writes and reviews a report. The Planner sees the question before acquisition;
@@ -18,6 +18,14 @@ optional `quality` on the run view. Its `status`/`evidence_sufficient` and
 `report_accepted` are independent from execution `status`. The result manifest's
 `source_access_ref` and `distillations_ref` link coverage, ranges and raw/validated
 child outputs; read them through the existing artifact route.
+
+Shared fetch/source manifests and all four `ResearchQuality` source counters
+support up to 40 sources, matching baseline12's whole-run allowance. Failed URL
+attempts remain in that total. Earlier method-specific limits remain in force;
+this does not reset budgets or increase runtime grants. The current OpenAPI
+snapshot advertises the same 40-item/count bounds, including saved runs reopened
+through the service. Clients generated against the earlier 32-source bounds
+should regenerate from this schema before consuming runs above that size.
 
 ## Python composition
 
@@ -51,7 +59,7 @@ asyncio.run(main())
 
 Direct construction accepts
 `ResearchRunService(engine, registry, agent_catalog, token_meter,
-extension_registry=None, max_active_runs=8)`.
+ extension_registry=None, max_active_runs=8, recovery_policy=None)`.
 The registry contains trusted Python method implementations; HTTP cannot register
 code, credentials, provider endpoints or execution grants.
 
@@ -148,6 +156,78 @@ Sources, context and result metadata do not automatically return source/report
 text. Token measurements distinguish verified counts from named estimates;
 `usage` retains the cumulative observed provider aggregate and its completeness,
 including available consumption from failed roles. Unknown counts remain null.
+
+## Orchestrator recovery during execution
+
+The application owns recovery through `deepresearch.application.RecoveryPolicy`.
+Runtime and provider adapters still dispatch once per child invocation. When a
+tool-free role has a completely recorded, cleaned-up transient service failure, the host can
+invoke that same pinned role with the same rendered input again. Each replacement
+has distinct child/action/attempt IDs and consumes the original Workflow's shared
+model and descendant grants. Completed nodes are retained; a transient failure
+being recovered does not cancel other parallel workers.
+
+The default policy allows **three replacements** (four attempts total) for HTTP
+429 with `rate_limit_exceeded`, and HTTP 500/502/503/504. It waits exponentially
+from two seconds, adds up to 25% jitter, and respects an available `Retry-After`.
+The maximum individual delay is 60 seconds and cumulative waiting per logical
+role call is 180 seconds, always within the root deadline. A server-requested
+delay above the policy cap stops recovery rather than retrying too early.
+Cooldown is shared by profile/model across runs owned by the same service;
+independent services/processes do not share it. This is reactive cooldown, not
+proactive token-per-minute admission control.
+
+Both the bootstrap factory and direct constructor can select or disable it:
+
+```python
+from deepresearch.application import RecoveryPolicy, ResearchRunService
+from deepresearch.bootstrap.application import create_research_service
+
+service = create_research_service(
+    engine,
+    recovery_policy=RecoveryPolicy(max_restarts=3),  # zero disables replacement
+)
+
+# For a host that supplies its own registries and token meter:
+# ResearchRunService(engine, registry, agent_catalog, token_meter,
+#                    recovery_policy=RecoveryPolicy(max_restarts=3))
+```
+
+The effective policy is saved in `research-method.json`. This is host
+configuration, not an HTTP request option. Cancellation interrupts waiting.
+Authentication/billing failures, invalid output, unknown remote completion,
+incomplete recording/cleanup and uncertain publication are not replayed by this
+policy. In particular, a network timeout with unknown completion remains an
+explicit failure. Existing bounded format repair is a separate method behavior.
+The same bounded recovery also admits a terminal Responses `failed` with
+`error.code=server_error`, or a Chat `insufficient_system_resource` finish.
+These native failures must explicitly contain zero visible-text bytes, zero
+native tool calls, no incomplete-details reason and no continuation-size breach.
+Partial text, output-token truncation, content filtering and unknown/unsupported
+incomplete details are not service-retry candidates. A generic `incomplete`
+status alone is insufficient. HTTP status and native response status remain
+separate recorded facts.
+Exhausted recovery preserves the error and stops; it never changes provider,
+instructions, context or budgets to manufacture a successful run.
+
+Discovery has a separate failure-isolation path: a completely recorded and
+cleaned-up scholarly HTTP 200 response that fails provider-metadata validation
+does not discard earlier sources or prevent the next search backend. Its failed
+outcome remains archived. This is continuation after a settled read-only error,
+not another invocation of that request. See [web tool contracts](web-tools.md).
+
+The existing events/SSE API exposes `workflow.role.attempt`,
+`workflow.role.attempt_finished`, `workflow.role.restart`, `workflow.role.wait`,
+`workflow.role.recovered` and `workflow.role.recovery_exhausted`. Events carry a
+shared `recovery_id`, role pin, rendered input digest, attempt numbers and safe
+failure facts. Restart decisions are committed before dispatch; failure details
+link the settled invocation and child terminal receipts. Successful completion
+links the child and exported output. Failed and successful attempt usage stays
+in the aggregate; unreported usage remains unknown. Frontends can show waiting
+and recovery without treating an individual failed attempt as Workflow failure.
+
+This policy recovers a role during an active run. It does not automatically
+resume a Workflow after service/process restart, as described below.
 
 ## Admission, terminal recording and recovery
 

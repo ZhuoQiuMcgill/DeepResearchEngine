@@ -1,0 +1,350 @@
+{
+  "type": "object",
+  "properties": {
+    "question": {
+      "type": "string"
+    },
+    "plan": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "integer",
+          "const": 1
+        },
+        "objective": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048,
+          "description": "A nonblank research objective; whitespace-only text is not an objective."
+        },
+        "questions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 1024,
+            "minLength": 1,
+            "description": "Nonblank, distinct text; UTF-8 encoded length must not exceed 1024 bytes."
+          },
+          "minItems": 1,
+          "maxItems": 4,
+          "uniqueItems": true
+        },
+        "queries": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 4096,
+            "minLength": 1,
+            "description": "Nonblank, distinct text; UTF-8 encoded length must not exceed 4096 bytes."
+          },
+          "minItems": 1,
+          "maxItems": 4,
+          "uniqueItems": true
+        },
+        "outline": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 1,
+            "description": "Nonblank, distinct text; UTF-8 encoded length must not exceed 256 bytes."
+          },
+          "minItems": 1,
+          "maxItems": 8,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "schema_version",
+        "objective",
+        "questions",
+        "queries",
+        "outline"
+      ],
+      "additionalProperties": false
+    },
+    "analysis": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "findings": {
+          "items": {
+            "$ref": "#/$defs/Finding"
+          },
+          "maxItems": 24,
+          "minItems": 1,
+          "title": "Findings",
+          "type": "array"
+        },
+        "gaps": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 8,
+          "title": "Gaps",
+          "type": "array"
+        },
+        "follow_up_queries": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 2,
+          "title": "Follow Up Queries",
+          "type": "array"
+        },
+        "sufficient": {
+          "title": "Sufficient",
+          "type": "boolean"
+        },
+        "follow_up_reads": {
+          "items": {
+            "$ref": "#/$defs/EvidenceReadRequest"
+          },
+          "maxItems": 8,
+          "title": "Follow Up Reads",
+          "type": "array"
+        }
+      },
+      "required": [
+        "schema_version",
+        "findings",
+        "gaps",
+        "follow_up_queries",
+        "sufficient",
+        "follow_up_reads"
+      ],
+      "title": "DistilledAnalysis",
+      "type": "object"
+    },
+    "evidence": {
+      "type": "string",
+      "maxLength": 786432
+    },
+    "report": {
+      "type": "string",
+      "maxLength": 65536
+    },
+    "quality": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": 1,
+          "type": "integer"
+        },
+        "status": {
+          "enum": [
+            "sufficient",
+            "partial",
+            "insufficient"
+          ]
+        },
+        "report_accepted": {
+          "type": "boolean"
+        },
+        "evidence_sufficient": {
+          "type": "boolean"
+        },
+        "attempted_sources": {
+          "type": "integer"
+        },
+        "substantive_sources": {
+          "type": "integer"
+        },
+        "fully_read_sources": {
+          "type": "integer"
+        },
+        "distilled_sources": {
+          "type": "integer"
+        },
+        "gaps": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "schema_version",
+        "status",
+        "report_accepted",
+        "evidence_sufficient",
+        "attempted_sources",
+        "substantive_sources",
+        "fully_read_sources",
+        "distilled_sources",
+        "gaps",
+        "reasons"
+      ],
+      "additionalProperties": false
+    },
+    "research_context": {
+      "type": "object",
+      "properties": {
+        "as_of": {
+          "type": "string"
+        },
+        "timezone": {
+          "const": "UTC"
+        }
+      },
+      "required": [
+        "as_of",
+        "timezone"
+      ],
+      "additionalProperties": false
+    },
+    "repair": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "attempt": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4
+        },
+        "previous_output": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 65536
+        },
+        "errors": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "type": "object",
+            "additionalProperties": {}
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "question",
+    "plan",
+    "analysis",
+    "evidence",
+    "report",
+    "quality",
+    "research_context",
+    "repair"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "EvidenceReadRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "source_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Source Id",
+          "type": "string"
+        },
+        "range": {
+          "$ref": "#/$defs/SourceRange"
+        },
+        "reason": {
+          "maxLength": 1024,
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_id",
+        "range",
+        "reason"
+      ],
+      "title": "EvidenceReadRequest",
+      "type": "object"
+    },
+    "Finding": {
+      "additionalProperties": false,
+      "properties": {
+        "finding_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Finding Id",
+          "type": "string"
+        },
+        "question": {
+          "maxLength": 1024,
+          "minLength": 1,
+          "title": "Question",
+          "type": "string"
+        },
+        "claim": {
+          "maxLength": 2048,
+          "minLength": 1,
+          "title": "Claim",
+          "type": "string"
+        },
+        "source_ids": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "title": "Source Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "finding_id",
+        "question",
+        "claim",
+        "source_ids"
+      ],
+      "title": "Finding",
+      "type": "object"
+    },
+    "SourceRange": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "kind": {
+          "enum": [
+            "lines",
+            "pages"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "start": {
+          "minimum": 1,
+          "title": "Start",
+          "type": "integer"
+        },
+        "end_exclusive": {
+          "minimum": 1,
+          "title": "End Exclusive",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "kind",
+        "start",
+        "end_exclusive"
+      ],
+      "title": "SourceRange",
+      "type": "object"
+    }
+  }
+}

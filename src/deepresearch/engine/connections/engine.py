@@ -34,12 +34,15 @@ WORKFLOW_EVENTS = frozenset({
     "workflow.node.failed", "workflow.hook.observed", "workflow.hook.decision",
     "workflow.hook.failed", "workflow.context.selected", "workflow.source.ready",
     "workflow.measurement", "workflow.evidence.distilled", "workflow.finished",
+    "workflow.role.repair", "workflow.evidence.quarantined", "workflow.source.range_partial",
+    "workflow.role.attempt", "workflow.role.attempt_finished", "workflow.role.restart", "workflow.role.wait",
+    "workflow.role.recovered", "workflow.role.recovery_exhausted",
 })
 WORKFLOW_EVENT_MAX_BYTES = 16384
 WORKFLOW_CLEANUP_EVENTS = frozenset({
     "workflow.cancellation.requested",
     "workflow.node.completed", "workflow.node.failed", "workflow.hook.failed", "workflow.hook.observed",
-    "workflow.finished",
+    "workflow.finished", "workflow.role.attempt_finished",
 })
 WORKFLOW_TOOL_EVENTS = frozenset({"tool.intent", "tool.outcome", "tool.rejected"})
 
@@ -166,6 +169,7 @@ class Engine:
                     await context.lease.release()
         self.executor = ToolExecutor(self.catalog, openalex_admission=self.settings.openalex_admission,
             fetch_concurrency=self.settings.fetch_concurrency,
+            searxng_url=self.settings.searxng_url,
             quota_checkpoint=checkpoint, quota_checkpoint_sink=persist)
         (await persist(self.executor.export_quota_checkpoint())).unwrap()
         await ctx.lease.release()

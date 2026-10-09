@@ -174,7 +174,9 @@ def test_new_revisions_leave_old_payloads_and_unqualified_resolution_unchanged()
     assert ToolCatalog().resolve("web.search").unwrap().revision == 1
     assert ToolCatalog().resolve("scholar.crossref.search").unwrap().revision == 1
     assert registered_revision("web.search", 3) and registered_revision("scholar.openalex.search", 2)
-    assert not registered_revision("web.fetch", 2) and not registered_revision("web.search", True)
+    assert ToolCatalog().resolve("web.fetch").unwrap().revision == 1
+    assert registered_revision("web.fetch", 3) and not registered_revision("web.fetch", 4)
+    assert not registered_revision("web.search", True)
 
 
 def test_baseline_upgrade_changes_search_bindings_without_changing_research_policy():
@@ -185,9 +187,13 @@ def test_baseline_upgrade_changes_search_bindings_without_changing_research_poli
     assert new.input_schema == old.input_schema and new.parameters_schema == old.parameters_schema
 
 
-def test_enriched_worker_output_is_recorded_and_exactly_readable(tmp_path, monkeypatch):
+@pytest.mark.parametrize("bad_optional_link", [False, True])
+def test_enriched_worker_output_is_recorded_and_exactly_readable(tmp_path, monkeypatch, bad_optional_link):
     from deepresearch.engine.toolset import scholarly
-    body = encode(crossref(total=20))
+    source = crossref(total=20)
+    if bad_optional_link:
+        source["message"]["items"][0]["link"].append({"URL": "https://example.org/first https://example.org/second"})
+    body = encode(source)
     def respond(*args, on_headers, **kwargs):
         facts = {"http_status": 200, "content_type": "application/json", "http_request_count": 1,
                  "http_response_count": 1, "response_transfer_bytes": len(body), "response_decoded_bytes": len(body)}
@@ -213,6 +219,9 @@ def test_enriched_worker_output_is_recorded_and_exactly_readable(tmp_path, monke
             result = await RecordedToolAction().run(ToolRequest(ToolRef("scholar.crossref.search", 2), ARGUMENTS), binding, context)
             assert result.status == "succeeded" and result.recording["status"] == "complete"
             assert result.result["results"][0]["bibliography"]["authors"][0]["name"] == "Yong Zeng"
+            row = result.result["results"][0]
+            assert len(row["links"]) == 1
+            assert ("links[1].url" in row["bibliography"]["invalid_fields"]) == bad_optional_link
             events = (await store.activity.query(context, {"run_id": context.run_id}, limit=100)).unwrap().events
             outcome = next(item["event"] for item in events if item["event"]["kind"] == "tool.outcome")
             assert outcome["payload"]["result_descriptor"]["sha256"]

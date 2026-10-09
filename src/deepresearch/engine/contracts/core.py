@@ -686,6 +686,7 @@ class ToolStoragePlan:
     limits: JsonObject = dataclasses.field(default_factory=dict)
     request: JsonObject = dataclasses.field(default_factory=dict)
     lease: AttemptLease | None = None
+    dispatch_policy: JsonObject | None = None
 
     def assert_recorded(self):
         if self.lease is None:

@@ -55,17 +55,20 @@ class EngineSettings:
     max_run_seconds: float = 1800
     max_access_seconds: float = 120
     max_depth: int = 4
-    max_descendants: int = 32
+    max_descendants: int = 40
     max_active_descendants: int = 4
     openalex_admission: bool = False
     fetch_concurrency: int = 1
+    searxng_url: str = "http://127.0.0.1:18888"
     profiles: dict[str, Any] = dataclasses.field(default_factory=dict, repr=False)
     limits: JsonObject = dataclasses.field(default_factory=lambda: {
-        "model_calls": 32, "tool_calls": 128, "repairs": 2,
+        # Recorded document.read windows share this allowance with network
+        # tools. Long manuals can require hundreds of bounded local reads.
+        "model_calls": 40, "tool_calls": 512, "repairs": 2,
         "source_bytes": 67108864, "storage_bytes": 134217728,
         "storage_writes": 4096, "storage_reads": 2048, "status_reads": 2048,
         "storage_read_bytes": 134217728,
-        "descendants": 32,
+        "descendants": 40,
     })
 
 

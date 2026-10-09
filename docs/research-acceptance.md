@@ -1,4 +1,48 @@
-# Research acceptance — 2026-10-02
+# Research acceptance — updated 2026-10-03
+
+Current forty-fetch baseline 12 experiments and their unchanged Agent assets are
+recorded in [the cross-scenario diagnostics](scenario-systemic-diagnostics.md).
+Use explicit baseline 12 and [its source/role contracts](usage/baseline-reliability.md).
+
+Earlier baseline 11 repair work, full regression and live experiments are recorded
+in [the systemic repair/test log](systemic-repair-results.md). Its second frozen
+three-topic/two-model matrix produced six accepted reports, with healthy SQLite,
+1,028 verified artifacts and no lineage findings. A later explicit HTML-date fix
+passed 174 focused regressions and one additional full live run; the preceding
+full suite passed 1,433 tests. Acceptance is operational, not a claim of perfect
+report semantics or unrestricted website access. Historical
+observations below retain their original methods and measured outcomes.
+
+The 2026-10-03 [systemic-error audit](systemic-error-audit.md) replays retained
+baseline 10 failures and injects controlled faults without further model calls.
+It recorded then-open defects in follow-up read validation, local failure isolation,
+role repair, query preservation and citation checks. These diagnostic observations
+are not acceptance of the implementation; historical acceptance below does not
+certify these newly exercised paths.
+
+Baseline 10 changes tool selection while retaining revision 9's Agent roles and
+research policy. The [three-question tool comparison](web-tools-comparison.md)
+records real search/fetch/SQLite tests: 19/34 to 28/34 successful archives, all
+successful documents fully read, with zero model calls. This is tool acceptance,
+not a claim that new baseline 10 reports were generated. Setup is in
+[web-tools usage](usage/web-tools.md).
+
+The 2026-10-03 [cross-topic diagnostic](cross-topic-diagnostics.md) runs the exact
+headset, Guangzhou–Montreal and sleep-food questions through unchanged baseline 9.
+Two runs failed (unsupported page request; JSON framing), one report passed with
+remaining review/coverage defects. It separates those failures from verified
+archive/context delivery and recorded search/fetch availability losses.
+
+Baseline 9 instruction refinement and the complete 2026-10-03 experiment are
+recorded in [the instruction comparison](instruction-comparison.md): two final
+live reports, all initial failures, frozen-input role checks, costs and remaining
+quotation/attribution limitations. [Role formats and current usage](usage/baseline-instructions.md)
+pin the six final bundles. Historical acceptance observations below remain unchanged.
+
+Baseline 7 adds an Agent candidate selector. Its implementation, all failed and
+successful trials, successful-sample comparison and limitations are recorded in
+[the Selector experiment](selector-comparison.md). The historical acceptance
+records below are unchanged observations of their original runs.
 
 `baseline@6` now selects the enriched search contracts while retaining revision 5's
 research policy and roles. Its model-free real-tool verification is recorded in
@@ -491,7 +535,8 @@ local/research-http-release-baseline-v2-evidence/
   report.md                                    saved report bytes
 ```
 
-The current example request selects formal revision 2. Reproduce the current
+The example request selected revision 2 at this historical acceptance. It now
+selects revision 12. Reproduce the current
 method with your own credentials and dedicated store:
 
 ```shell
@@ -502,6 +547,26 @@ A clone contains the reproducible code and request, not credentials or generated
 evidence. Repeating an identity in the same store reuses that run, including
 failures; use a new client identity for a new intent. No automatic restart or
 refetch occurs for interrupted/unknown work.
+
+## Cross-scenario system diagnostics
+
+The current revision raises the whole-run fetch-attempt ceiling to 40 while
+retaining the revision 11 roles, two research rounds and 256k Agent allowance.
+The [scenario diagnostics](scenario-systemic-diagnostics.md) record eight
+questions across DeepSeek and GPT, deterministic source/error replays, and an
+eight-run targeted verification after three general implementation fixes.
+The first batch retained all 10 successes and six failed/interrupted runs;
+the final targeted batch completed eight reports, four with partial coverage.
+These are different samples, not a controlled success-rate improvement claim.
+An intermediate two-run batch was withdrawn after exposing an extraction
+regression; its evidence remains available. Relevant final regression tests:
+262 passed. Agent instructions and schemas were unchanged during this work.
+
+The acceptance target is additional loss introduced by the system: extraction,
+identity, persistence, reading, formatting, budgets and error handling. Limited
+research depth or model reasoning alone does not fail this engineering target.
+Known remaining engineering questions, including short-HTML formatting loss,
+are listed in the diagnostics rather than hidden by report acceptance labels.
 
 ## Practical boundary
 

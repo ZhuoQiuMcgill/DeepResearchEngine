@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "method_id": "baseline",
+  "revision": 9,
+  "description": "Instruction-refined agent-selection baseline: mutually exclusive candidate partitions, conservative quote repair and required-gap triage.",
+  "tool_revisions": {
+    "web.search": 3,
+    "scholar.crossref.search": 2,
+    "scholar.openalex.search": 2
+  },
+  "agent_roles": [
+    {
+      "role_id": "baseline.planner",
+      "revision": 4
+    },
+    {
+      "role_id": "baseline.selector",
+      "revision": 3
+    },
+    {
+      "role_id": "baseline.distiller",
+      "revision": 3
+    },
+    {
+      "role_id": "baseline.analyst",
+      "revision": 5
+    },
+    {
+      "role_id": "baseline.writer",
+      "revision": 6
+    },
+    {
+      "role_id": "baseline.reviewer",
+      "revision": 5
+    }
+  ]
+}

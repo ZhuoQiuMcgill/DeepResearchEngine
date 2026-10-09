@@ -2,7 +2,13 @@
 
 The Toolset runs real, one-shot Python workers behind the Engine's recorded
 action boundary. The registry contains five tool names. `web.search` has
-revisions 1–3, scholarly searches have revisions 1–2, and fetch/read remain at revision 1.
+revisions 1–4, scholarly searches have revisions 1–2, fetch has revisions 1–3,
+and document.read remains at revision 1.
+
+For new development use [web tools setup](web-tools.md): self-hosted SearXNG
+search 4 and supervised fetch 3, selected together by baseline 13. Fetch 3
+preauthorizes a static and optional render worker under one recorded operation,
+shared limits and at most one committed snapshot; earlier revisions remain.
 Use the public `deepresearch tool` command or `Engine.run_tool`; the private worker
 protocol requires an owner-issued execution plan and recorded attempt.
 
@@ -11,10 +17,13 @@ protocol requires an owner-issued execution plan and recorded attempt.
 | `web.search@1` | `query`, optional `max_results` | Original Yahoo profile, retained for existing callers |
 | `web.search@2` | `query`, optional `max_results` | Yahoo then DuckDuckGo fallback, original destination wrappers and HTTP/parser diagnostics |
 | `web.search@3` | Same literal query and count | Revision 2 transport plus explicit first-page coverage, original provider rank, domain and missing-field markers |
+| `web.search@4` | Same literal query and count | Self-hosted SearXNG with complete available snippets, contributing engines, partial failures and discovery coverage |
 | `scholar.crossref.search` | `query`, optional `max_results` | Crossref bibliographic metadata and DOI/member/publisher identities |
 | `scholar.openalex.search` | `query`, optional `max_results` | OpenAlex work/source/open-access location metadata |
 | `scholar.crossref.search@2`, `scholar.openalex.search@2` | Same literal query and count | Existing identities/locations plus provider authors, abstracts, venue, citation counts and coverage |
 | `web.fetch` | `url`, optional `mode: "static"` | Committed snapshot reference, extraction counts, provenance and bounded preview |
+| `web.fetch@2` | `url`, optional `mode: "auto"` or `"static"` | Adaptive HTTP/Chromium acquisition in one worker, immutable selected capture and backend diagnostics |
+| `web.fetch@3` | Same arguments as revision 2 | Parent-supervised phases, validated static fallback, real stage outcomes and explicitly unknown network totals when necessary |
 | `document.read` | `snapshot_ref`, `range`, optional `max_text_bytes`, `continuation` | Saved immutable text with ranges, byte spans and continuation |
 
 Queries remain literal, must be nonblank and fit 4,096 UTF-8 bytes.
@@ -268,7 +277,7 @@ known zero stays zero, and unknown reset time cannot permit automatic replay.
 Credits and USD remain separate units. Local accounting does not control other
 hosts' traffic or assert the provider's complete remaining allowance.
 
-`web.fetch` uses HTTPX with TLS verification, no environment proxy and no
+Revision 1 of `web.fetch` uses HTTPX with TLS verification, no environment proxy and no
 automatic retry. It admits public HTTP(S) destinations, rejects credential
 URLs and non-global resolved addresses, connects to a validated pinned address
 with the original Host/SNI, and revalidates each of at most five redirects.
@@ -289,6 +298,13 @@ warnings are counted in bounded provenance rather than flooding stderr.
 Article extraction and PDF reading order are heuristic: saved text is
 reproducible evidence of the chosen extraction, not a guarantee of complete
 page content, layout, mathematical notation or font fidelity.
+
+Revision 2's PDF path now uses PyMuPDF 1.28.2 with an independent page-level
+pypdf preservation check and whole-page fallback. Optional
+`provenance.pdf_extraction` exposes changed/fallback pages, reasons and unresolved
+glyphs without asserting semantic completeness. See [web tools](web-tools.md)
+for the exact extraction version, controls and AGPL-3.0 dependency license.
+Revision 1 and historical archived text retain their existing behavior.
 
 ## Limits and process ownership
 

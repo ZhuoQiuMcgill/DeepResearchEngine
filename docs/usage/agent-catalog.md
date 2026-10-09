@@ -20,6 +20,18 @@ final report and the Reviewer's issue strings use English. Earlier role bundles
 remain available with their original instructions. The Workflow's separate
 publication check rejects CJK narrative even if the model reviewer accepts it.
 
+`baseline@7` adds `baseline.selector@1` to the same five roles. It receives bounded
+search metadata, acquisition history, gaps and budgets, and returns selected,
+deferred and rejected candidate IDs with reasons. See [selection baseline](baseline-selection.md).
+
+`baseline@8` pins Planner 4, Selector 2, Distiller 2, Analyst 4, Writer 6 and
+Reviewer 5. These retain the preceding schemas and execution limits while revising
+role instructions and task templates. See [all role formats](baseline-instructions.md).
+
+`baseline@9` retains Planner 4, Writer 6 and Reviewer 5 and pins Selector 3,
+Distiller 3 and Analyst 5 for mutually exclusive classification, conservative
+quotation repair and required-gap triage. No executable schema or limit changes.
+
 ## Public interfaces
 
 ```python

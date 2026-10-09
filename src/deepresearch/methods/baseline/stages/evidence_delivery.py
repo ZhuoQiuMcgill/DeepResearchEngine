@@ -5,6 +5,8 @@ import re
 
 from deepresearch.engine.contracts import EngineError, canonical_json, digest_bytes
 from deepresearch.workflows.contracts import ContextPlan, ContextSelection, TokenMeasurement
+from deepresearch.workflows.components.source_access import source_descriptor, source_span_origin
+from deepresearch.workflows.components.quote_bindings import bound_quote_units, indexed_quote_bindings
 from .roles import retain
 
 
@@ -12,7 +14,16 @@ def _quote_units(records, access):
     segments = {s["segment_id"]: s for s in access["segments"]}
     units, seen = [], set()
     for record in records:
-        for finding in record["distillation"]["findings"]:
+        bindings = indexed_quote_bindings(record)
+        supplied = {sid: segments[sid] for sid in record["segment_ids"]}
+        for index, finding in enumerate(record["distillation"]["findings"]):
+            if index in bindings:
+                for unit in bound_quote_units(finding, bindings[index], supplied):
+                    key = (unit["start_byte"], unit["text"])
+                    if key not in seen:
+                        seen.add(key)
+                        units.append(unit)
+                continue
             segment = segments[finding["segment_id"]]
             quote = finding["quote"]
             start = segment["text"].find(quote)
@@ -30,16 +41,32 @@ def _quote_units(records, access):
 
 
 def _block(source, access, records, units):
-    digests = [{"chunk_id": r["chunk_id"], "content_kind": r["content_kind"],
-        "summary": r["distillation"]["summary"], "limitations": r["distillation"]["limitations"],
-        "findings": [{"question": f["question"], "claim": f["claim"], "segment_id": f["segment_id"]}
-            for f in r["distillation"]["findings"]]} for r in records]
+    digests = []
+    segments = {s["segment_id"]: s for s in access["segments"]}
+    for record in records:
+        bindings, findings = indexed_quote_bindings(record), []
+        supplied = {sid: segments[sid] for sid in record["segment_ids"]}
+        for index, finding in enumerate(record["distillation"]["findings"]):
+            summary = {key: finding[key] for key in ("question", "claim", "segment_id")}
+            if index in bindings:
+                parts = bound_quote_units(finding, bindings[index], supplied)
+                summary["segment_ids"] = [p["segment_id"] for p in parts]
+            findings.append(summary)
+        digests.append({"chunk_id": record["chunk_id"], "content_kind": record["content_kind"],
+            "summary": record["distillation"]["summary"], "limitations": record["distillation"]["limitations"],
+            "findings": findings})
     lines = [f"[{source.item_id}]", f"URL: {source.url}",
         f"Snapshot: {source.snapshot_ref.snapshot_id}",
+        "Source metadata (null means unknown; retrieved_at is not publication date):",
+        canonical_json(source_descriptor(source, discovery_metadata=access.get("discovery_metadata"))).decode("utf-8"),
         f"Source read: {access['read_bytes']}/{source.text_bytes} UTF-8 bytes; complete={str(access['complete']).lower()}",
         "Source-worker digests are derived analysis, not independent corroboration:",
         canonical_json(digests).decode("utf-8"), "Verified verbatim source text:"]
     for unit in units:
+        origin = source_span_origin(source, unit['start_byte'], unit['end_byte'])
+        if origin is not None:
+            lines += ['Archive representation (host annotation, not a source quotation): ' +
+                      canonical_json(origin).decode('utf-8')]
         lines += [f"Segment {unit['segment_id']}; requested {unit['range']['kind']} "
             f"[{unit['range']['start']},{unit['range']['end_exclusive']}); "
             f"delivered UTF-8 bytes [{unit['start_byte']},{unit['end_byte']})", unit["text"]]
@@ -62,6 +89,15 @@ async def deliver_evidence(context, sources, accesses, records, *, token_budget,
         promoted.setdefault(source_id, []).append(segment)
     for item_id in ids:
         source, access, digests = source_map[item_id], accesses[item_id], by_source[item_id]
+        failed_resources = (source.provenance.get("capture") or {}).get("failed_resources", 0)
+        if failed_resources:
+            notes.append(f"Rendered source {item_id} had {failed_resources} failed auxiliary resources; dynamic content may be incomplete.")
+        if (source.provenance.get("html_extraction") or {}).get("substantial_omission"):
+            notes.append(f"Source {item_id} has substantial unmatched HTML prose in a heuristic extraction check; "
+                         "a complete archived-text read does not establish complete page extraction.")
+        if (source.provenance.get("html_extraction") or {}).get("structure", {}).get("unresolved"):
+            notes.append(f"Source {item_id} has unresolved HTML list/table/code structure differences; "
+                         "the archived extraction may omit conditions or relationships.")
         digested = {sid for r in digests for sid in r["segment_ids"]}
         units = [s for s in access["segments"] if s["segment_id"] in digested and s["text"]]
         existing = {(s["start_byte"], s["end_byte"]) for s in units}

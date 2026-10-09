@@ -1353,13 +1353,13 @@
         "description": "Research coverage is independent of execution and report acceptance.",
         "properties": {
           "attempted_sources": {
-            "maximum": 32.0,
+            "maximum": 40.0,
             "minimum": 0.0,
             "title": "Attempted Sources",
             "type": "integer"
           },
           "distilled_sources": {
-            "maximum": 32.0,
+            "maximum": 40.0,
             "minimum": 0.0,
             "title": "Distilled Sources",
             "type": "integer"
@@ -1369,7 +1369,7 @@
             "type": "boolean"
           },
           "fully_read_sources": {
-            "maximum": 32.0,
+            "maximum": 40.0,
             "minimum": 0.0,
             "title": "Fully Read Sources",
             "type": "integer"
@@ -1411,7 +1411,7 @@
             "type": "string"
           },
           "substantive_sources": {
-            "maximum": 32.0,
+            "maximum": 40.0,
             "minimum": 0.0,
             "title": "Substantive Sources",
             "type": "integer"
@@ -2428,7 +2428,7 @@
             "items": {
               "$ref": "#/components/schemas/SourceRecord"
             },
-            "maxItems": 32,
+            "maxItems": 40,
             "title": "Items",
             "type": "array"
           },

@@ -1,0 +1,693 @@
+{
+  "schema_version": 1,
+  "corpus_id": "cross-topic-diagnostics-20261003",
+  "notes": [
+    "Literal original questions; no expansion, translation or spelling correction.",
+    "All historical fetch attempts, including failures. Deduplication uses exact URL equality only; redirects and query order are not normalized.",
+    "Review cues are human prompts, not ground-truth labels or model relevance scores."
+  ],
+  "historical_attempt_count": 34,
+  "unique_url_count": 34,
+  "cases": [
+    {
+      "id": "headsets",
+      "question": "compare meta quest 3 and apple vision pro",
+      "review_cues": [
+        "Check both exact headset models, generation, region, date, specifications and price.",
+        "Distinguish comparison body from abstract, metadata, references, navigation or access challenge."
+      ]
+    },
+    {
+      "id": "flights",
+      "question": "How do I flight from GuangZhou to Montreal?",
+      "review_cues": [
+        "Check Guangzhou CAN to Montreal YUL direction; distinguish reverse routes and other airports.",
+        "Separate dated schedules, connections and bookable fares from generic flight-time estimates."
+      ]
+    },
+    {
+      "id": "sleep",
+      "question": "What food can help me sleep well?",
+      "review_cues": [
+        "Check food-specific sleep claims, study population, outcomes and uncertainty.",
+        "Distinguish full article, abstract and nutrition landing page; recommendations need human evidence review."
+      ]
+    }
+  ],
+  "fetch_corpus": [
+    {
+      "id": "url-001",
+      "url": "https://vr-compare.com/compare?h1=0q3goALzg&h2=8aL1JxO3T",
+      "prior_attempts": [
+        {
+          "case_id": "headsets",
+          "metrics_file": "local/cross-topic-diagnostics-20261003/headsets-metrics.json",
+          "run_id": "run_3b7877ba90084b50a22d5b64856d946f",
+          "source_id": "r1.source-001",
+          "status": "failed",
+          "text_bytes": null,
+          "error": {
+            "code": "EXTRACTION_EMPTY",
+            "commit_state": "not_applicable",
+            "details": {
+              "http_status": 200
+            },
+            "message": "Static HTML has no extractable document text",
+            "observed_effect_state": "unknown",
+            "retryable_delivery": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "url-002",
+      "url": "https://www.cnet.com/tech/computing/meta-quest-3-vs-apple-vision-pro-which-one-is-better-and-for-what/",
+      "prior_attempts": [
+        {
+          "case_id": "headsets",
+          "metrics_file": "local/cross-topic-diagnostics-20261003/headsets-metrics.json",
+          "run_id": "run_3b7877ba90084b50a22d5b64856d946f",
+          "source_id": "r1.source-002",
+          "status": "succeeded",
+          "text_bytes": 15797,
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "url-003",
+      "url": "https://doi.org/10.4135/9781071983508",
+      "prior_attempts": [
+        {
+          "case_id": "headsets",
+          "metrics_file": "local/cross-topic-diagnostics-20261003/headsets-metrics.json",
+          "run_id": "run_3b7877ba90084b50a22d5b64856d946f",
+          "source_id": "r1.source-003",
+          "status": "failed",
+          "text_bytes": null,
+          "error": {
+            "code": "REDIRECT_LIMIT",
+            "commit_state": "not_applicable",
+            "details": {
+              "http_status": 302
+            },
+            "message": "Redirect chain is missing a target or exceeds its limit",
+            "observed_effect_state": "unknown",
+            "retryable_delivery": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "url-004",
+      "url": "https://link.springer.com/content/pdf/10.1007/978-3-031-94150-4_1",
+      "prior_attempts": [
+        {
+          "case_id": "headsets",
+          "metrics_file": "local/cross-topic-diagnostics-20261003/headsets-metrics.json",
+          "run_id": "run_3b7877ba90084b50a22d5b64856d946f",
+          "source_id": "r1.source-004",
+          "status": "failed",
+          "text_bytes": null,
+          "error": {
+            "code": "REDIRECT_LIMIT",
+            "commit_state": "not_applicable",
+            "details": {
+              "http_status": 302
+            },
+            "message": "Redirect chain is missing a target or exceeds its limit",
+            "observed_effect_state": "unknown",
+            "retryable_delivery": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "url-005",
+      "url": "https://vr-compare.com/compare?h1=8aL1JxO3T&h2=0q3goALzg",
+      "prior_attempts": [
+        {
+          "case_id": "headsets",
+          "metrics_file": "local/cross-topic-diagnostics-20261003/headsets-metrics.json",
+          "run_id": "run_3b7877ba90084b50a22d5b64856d946f",
+          "source_id": "r1.source-005",
+          "status": "failed",
+          "text_bytes": null,
+          "error": {
+            "code": "EXTRACTION_EMPTY",
+            "commit_state": "not_applicable",
+            "details": {
+              "http_status": 200
+            },
+            "message": "Static HTML has no extractable document text",
+            "observed_effect_state": "unknown",
+            "retryable_delivery": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "url-006",
+      "url": "https://www.pcguide.com/vr/meta-quest-3-vs-apple-vision-pro/",
+      "prior_attempts": [
+        {
+          "case_id": "headsets",
+          "metrics_file": "local/cross-topic-diagnostics-20261003/headsets-metrics.json",
+          "run_id": "run_3b7877ba90084b50a22d5b64856d946f",
+          "source_id": "r1.recovery.source-006",
+          "status": "succeeded",
+          "text_bytes": 7707,
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "url-007",
+      "url": "https://businesstories.com/technology/apple-vision-pro-vs-meta-quest-3/",
+      "prior_attempts": [
+        {
+          "case_id": "headsets",
+          "metrics_file": "local/cross-topic-diagnostics-20261003/headsets-metrics.json",
+          "run_id": "run_3b7877ba90084b50a22d5b64856d946f",
+          "source_id": "r1.recovery.source-007",
+          "status": "succeeded",
+          "text_bytes": 16045,
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "url-008",
+      "url": "https://dl.acm.org/doi/10.1145/3641825.3689518",
+      "prior_attempts": [
+        {
+          "case_id": "headsets",
+          "metrics_file": "local/cross-topic-diagnostics-20261003/headsets-metrics.json",
+          "run_id": "run_3b7877ba90084b50a22d5b64856d946f",
+          "source_id": "r1.recovery.source-008",
+          "status": "failed",
+          "text_bytes": null,
+          "error": {
+            "code": "FETCH_HTTP_ERROR",
+            "commit_state": "not_applicable",
+            "details": {
+              "http_status": 403
+            },
+            "message": "Source returned a non-success HTTP status",
+            "observed_effect_state": "unknown",
+            "retryable_delivery": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "url-009",
+      "url": "https://doi.org/10.1007/978-3-031-94150-4_1",
+      "prior_attempts": [
+        {
+          "case_id": "headsets",
+          "metrics_file": "local/cross-topic-diagnostics-20261003/headsets-metrics.json",
+          "run_id": "run_3b7877ba90084b50a22d5b64856d946f",
+          "source_id": "r1.recovery.source-009",
+          "status": "succeeded",
+          "text_bytes": 7418,
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "url-010",
+      "url": "https://www.apple.com/ca/apple-vision-pro/specs/",
+      "prior_attempts": [
+        {
+          "case_id": "headsets",
+          "metrics_file": "local/cross-topic-diagnostics-20261003/headsets-metrics.json",
+          "run_id": "run_3b7877ba90084b50a22d5b64856d946f",
+          "source_id": "r2.source-010",
+          "status": "succeeded",
+          "text_bytes": 5619,
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "url-011",
+      "url": "https://www.vr-compare.com/headset/applevisionpro",
+      "prior_attempts": [
+        {
+          "case_id": "headsets",
+          "metrics_file": "local/cross-topic-diagnostics-20261003/headsets-metrics.json",
+          "run_id": "run_3b7877ba90084b50a22d5b64856d946f",
+          "source_id": "r2.source-011",
+          "status": "failed",
+          "text_bytes": null,
+          "error": {
+            "code": "EXTRACTION_EMPTY",
+            "commit_state": "not_applicable",
+            "details": {
+              "http_status": 200
+            },
+            "message": "Static HTML has no extractable document text",
+            "observed_effect_state": "unknown",
+            "retryable_delivery": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "url-012",
+      "url": "https://link.springer.com/chapter/10.1007/978-3-031-94150-4_1",
+      "prior_attempts": [
+        {
+          "case_id": "headsets",
+          "metrics_file": "local/cross-topic-diagnostics-20261003/headsets-metrics.json",
+          "run_id": "run_3b7877ba90084b50a22d5b64856d946f",
+          "source_id": "r2.source-012",
+          "status": "succeeded",
+          "text_bytes": 7418,
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "url-013",
+      "url": "https://doi.org/10.2139/ssrn.4694196",
+      "prior_attempts": [
+        {
+          "case_id": "headsets",
+          "metrics_file": "local/cross-topic-diagnostics-20261003/headsets-metrics.json",
+          "run_id": "run_3b7877ba90084b50a22d5b64856d946f",
+          "source_id": "r2.source-013",
+          "status": "failed",
+          "text_bytes": null,
+          "error": {
+            "code": "FETCH_HTTP_ERROR",
+            "commit_state": "not_applicable",
+            "details": {
+              "http_status": 403
+            },
+            "message": "Source returned a non-success HTTP status",
+            "observed_effect_state": "unknown",
+            "retryable_delivery": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "url-014",
+      "url": "https://doi.org/10.31224/8341",
+      "prior_attempts": [
+        {
+          "case_id": "headsets",
+          "metrics_file": "local/cross-topic-diagnostics-20261003/headsets-metrics.json",
+          "run_id": "run_3b7877ba90084b50a22d5b64856d946f",
+          "source_id": "r2.source-014",
+          "status": "succeeded",
+          "text_bytes": 1792,
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "url-015",
+      "url": "https://www.skyscanner.com/routes/can/ymqa/guangzhou-to-montreal.html",
+      "prior_attempts": [
+        {
+          "case_id": "flights",
+          "metrics_file": "local/cross-topic-diagnostics-20261003/flights-metrics.json",
+          "run_id": "run_46c95cc0979f4585823e914ed3f7171b",
+          "source_id": "r1.source-001",
+          "status": "succeeded",
+          "text_bytes": 15545,
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "url-016",
+      "url": "https://www.flightroutes.com/CAN-YUL",
+      "prior_attempts": [
+        {
+          "case_id": "flights",
+          "metrics_file": "local/cross-topic-diagnostics-20261003/flights-metrics.json",
+          "run_id": "run_46c95cc0979f4585823e914ed3f7171b",
+          "source_id": "r1.source-002",
+          "status": "failed",
+          "text_bytes": null,
+          "error": {
+            "code": "FETCH_HTTP_ERROR",
+            "commit_state": "not_applicable",
+            "details": {
+              "http_status": 403
+            },
+            "message": "Source returned a non-success HTTP status",
+            "observed_effect_state": "unknown",
+            "retryable_delivery": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "url-017",
+      "url": "https://flight-timecalculator.com/flight-time/can-to-yul/",
+      "prior_attempts": [
+        {
+          "case_id": "flights",
+          "metrics_file": "local/cross-topic-diagnostics-20261003/flights-metrics.json",
+          "run_id": "run_46c95cc0979f4585823e914ed3f7171b",
+          "source_id": "r1.source-003",
+          "status": "succeeded",
+          "text_bytes": 3627,
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "url-018",
+      "url": "https://flights.evaair.com/en/flights-from-guangzhou-to-montreal",
+      "prior_attempts": [
+        {
+          "case_id": "flights",
+          "metrics_file": "local/cross-topic-diagnostics-20261003/flights-metrics.json",
+          "run_id": "run_46c95cc0979f4585823e914ed3f7171b",
+          "source_id": "r1.source-004",
+          "status": "failed",
+          "text_bytes": null,
+          "error": {
+            "code": "FETCH_HTTP_ERROR",
+            "commit_state": "not_applicable",
+            "details": {
+              "http_status": 403
+            },
+            "message": "Source returned a non-success HTTP status",
+            "observed_effect_state": "unknown",
+            "retryable_delivery": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "url-019",
+      "url": "https://www.flightroutes.com/YUL-CAN",
+      "prior_attempts": [
+        {
+          "case_id": "flights",
+          "metrics_file": "local/cross-topic-diagnostics-20261003/flights-metrics.json",
+          "run_id": "run_46c95cc0979f4585823e914ed3f7171b",
+          "source_id": "r1.source-005",
+          "status": "failed",
+          "text_bytes": null,
+          "error": {
+            "code": "FETCH_HTTP_ERROR",
+            "commit_state": "not_applicable",
+            "details": {
+              "http_status": 403
+            },
+            "message": "Source returned a non-success HTTP status",
+            "observed_effect_state": "unknown",
+            "retryable_delivery": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "url-020",
+      "url": "https://www.expedia.com/lp/flights/can/yul/guangzhou-to-montreal",
+      "prior_attempts": [
+        {
+          "case_id": "flights",
+          "metrics_file": "local/cross-topic-diagnostics-20261003/flights-metrics.json",
+          "run_id": "run_46c95cc0979f4585823e914ed3f7171b",
+          "source_id": "r1.recovery.source-006",
+          "status": "failed",
+          "text_bytes": null,
+          "error": {
+            "code": "FETCH_HTTP_ERROR",
+            "commit_state": "not_applicable",
+            "details": {
+              "http_status": 429
+            },
+            "message": "Source returned a non-success HTTP status",
+            "observed_effect_state": "unknown",
+            "retryable_delivery": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "url-021",
+      "url": "https://www.skyscanner.com/routes/can/yul/guangzhou-to-montreal-pierre-elliott-trudeau.html",
+      "prior_attempts": [
+        {
+          "case_id": "flights",
+          "metrics_file": "local/cross-topic-diagnostics-20261003/flights-metrics.json",
+          "run_id": "run_46c95cc0979f4585823e914ed3f7171b",
+          "source_id": "r1.recovery.source-007",
+          "status": "succeeded",
+          "text_bytes": 12506,
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "url-022",
+      "url": "https://www.trip.com/hot/flight-time-from-guangzhou-to-montreal/",
+      "prior_attempts": [
+        {
+          "case_id": "flights",
+          "metrics_file": "local/cross-topic-diagnostics-20261003/flights-metrics.json",
+          "run_id": "run_46c95cc0979f4585823e914ed3f7171b",
+          "source_id": "r1.recovery.source-008",
+          "status": "succeeded",
+          "text_bytes": 7601,
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "url-023",
+      "url": "https://www.booking.com/flights/route/city-to-city/cn-guangzhou-to-ca-montreal.html",
+      "prior_attempts": [
+        {
+          "case_id": "flights",
+          "metrics_file": "local/cross-topic-diagnostics-20261003/flights-metrics.json",
+          "run_id": "run_46c95cc0979f4585823e914ed3f7171b",
+          "source_id": "r1.recovery.source-009",
+          "status": "failed",
+          "text_bytes": null,
+          "error": {
+            "code": "EXTRACTION_EMPTY",
+            "commit_state": "not_applicable",
+            "details": {
+              "http_status": 202
+            },
+            "message": "Static HTML has no extractable document text",
+            "observed_effect_state": "unknown",
+            "retryable_delivery": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "url-024",
+      "url": "https://www.airmilescalculator.com/flight-time/can-to-yul/",
+      "prior_attempts": [
+        {
+          "case_id": "flights",
+          "metrics_file": "local/cross-topic-diagnostics-20261003/flights-metrics.json",
+          "run_id": "run_46c95cc0979f4585823e914ed3f7171b",
+          "source_id": "r1.recovery.source-010",
+          "status": "succeeded",
+          "text_bytes": 924,
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "url-025",
+      "url": "https://www.sleepfoundation.org/nutrition/food-and-drink-promote-good-nights-sleep",
+      "prior_attempts": [
+        {
+          "case_id": "sleep",
+          "metrics_file": "local/cross-topic-diagnostics-20261003/sleep-metrics.json",
+          "run_id": "run_06fa9fcddf834b89a00ed85c80132d2d",
+          "source_id": "r1.source-001",
+          "status": "succeeded",
+          "text_bytes": 22292,
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "url-026",
+      "url": "https://health.clevelandclinic.org/foods-that-help-you-sleep",
+      "prior_attempts": [
+        {
+          "case_id": "sleep",
+          "metrics_file": "local/cross-topic-diagnostics-20261003/sleep-metrics.json",
+          "run_id": "run_06fa9fcddf834b89a00ed85c80132d2d",
+          "source_id": "r1.source-002",
+          "status": "succeeded",
+          "text_bytes": 8915,
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "url-027",
+      "url": "https://www.realsimple.com/foods-that-help-you-sleep-12074450",
+      "prior_attempts": [
+        {
+          "case_id": "sleep",
+          "metrics_file": "local/cross-topic-diagnostics-20261003/sleep-metrics.json",
+          "run_id": "run_06fa9fcddf834b89a00ed85c80132d2d",
+          "source_id": "r1.source-003",
+          "status": "failed",
+          "text_bytes": null,
+          "error": {
+            "code": "FETCH_HTTP_ERROR",
+            "commit_state": "not_applicable",
+            "details": {
+              "http_status": 403
+            },
+            "message": "Source returned a non-success HTTP status",
+            "observed_effect_state": "unknown",
+            "retryable_delivery": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "url-028",
+      "url": "https://doi.org/10.21603/2308-4057-2027-2-716",
+      "prior_attempts": [
+        {
+          "case_id": "sleep",
+          "metrics_file": "local/cross-topic-diagnostics-20261003/sleep-metrics.json",
+          "run_id": "run_06fa9fcddf834b89a00ed85c80132d2d",
+          "source_id": "r1.source-004",
+          "status": "succeeded",
+          "text_bytes": 20724,
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "url-029",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC8511346/",
+      "prior_attempts": [
+        {
+          "case_id": "sleep",
+          "metrics_file": "local/cross-topic-diagnostics-20261003/sleep-metrics.json",
+          "run_id": "run_06fa9fcddf834b89a00ed85c80132d2d",
+          "source_id": "r1.source-005",
+          "status": "succeeded",
+          "text_bytes": 93624,
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "url-030",
+      "url": "https://www.verywellhealth.com/foods-that-help-you-sleep-8762215",
+      "prior_attempts": [
+        {
+          "case_id": "sleep",
+          "metrics_file": "local/cross-topic-diagnostics-20261003/sleep-metrics.json",
+          "run_id": "run_06fa9fcddf834b89a00ed85c80132d2d",
+          "source_id": "r1.recovery.source-006",
+          "status": "failed",
+          "text_bytes": null,
+          "error": {
+            "code": "FETCH_HTTP_ERROR",
+            "commit_state": "not_applicable",
+            "details": {
+              "http_status": 403
+            },
+            "message": "Source returned a non-success HTTP status",
+            "observed_effect_state": "unknown",
+            "retryable_delivery": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "url-031",
+      "url": "https://www.healthline.com/nutrition/9-foods-to-help-you-sleep",
+      "prior_attempts": [
+        {
+          "case_id": "sleep",
+          "metrics_file": "local/cross-topic-diagnostics-20261003/sleep-metrics.json",
+          "run_id": "run_06fa9fcddf834b89a00ed85c80132d2d",
+          "source_id": "r1.recovery.source-007",
+          "status": "succeeded",
+          "text_bytes": 12949,
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "url-032",
+      "url": "https://www.sciencedirect.com/science/article/pii/S1087079221000150",
+      "prior_attempts": [
+        {
+          "case_id": "sleep",
+          "metrics_file": "local/cross-topic-diagnostics-20261003/sleep-metrics.json",
+          "run_id": "run_06fa9fcddf834b89a00ed85c80132d2d",
+          "source_id": "r1.recovery.source-008",
+          "status": "failed",
+          "text_bytes": null,
+          "error": {
+            "code": "FETCH_HTTP_ERROR",
+            "commit_state": "not_applicable",
+            "details": {
+              "http_status": 403
+            },
+            "message": "Source returned a non-success HTTP status",
+            "observed_effect_state": "unknown",
+            "retryable_delivery": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "url-033",
+      "url": "https://www.sciencedirect.com/science/article/pii/S2212267222000387",
+      "prior_attempts": [
+        {
+          "case_id": "sleep",
+          "metrics_file": "local/cross-topic-diagnostics-20261003/sleep-metrics.json",
+          "run_id": "run_06fa9fcddf834b89a00ed85c80132d2d",
+          "source_id": "r1.recovery.source-009",
+          "status": "failed",
+          "text_bytes": null,
+          "error": {
+            "code": "FETCH_HTTP_ERROR",
+            "commit_state": "not_applicable",
+            "details": {
+              "http_status": 403
+            },
+            "message": "Source returned a non-success HTTP status",
+            "observed_effect_state": "unknown",
+            "retryable_delivery": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "url-034",
+      "url": "https://www.sleepfoundation.org/nutrition",
+      "prior_attempts": [
+        {
+          "case_id": "sleep",
+          "metrics_file": "local/cross-topic-diagnostics-20261003/sleep-metrics.json",
+          "run_id": "run_06fa9fcddf834b89a00ed85c80132d2d",
+          "source_id": "r1.recovery.source-010",
+          "status": "succeeded",
+          "text_bytes": 1198,
+          "error": null
+        }
+      ]
+    }
+  ]
+}

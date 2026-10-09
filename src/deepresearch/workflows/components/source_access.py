@@ -11,6 +11,147 @@ from deepresearch.workflows.contracts import ArtifactReference, SourceRange, Sou
 _CHUNK_BYTES = 65536
 
 
+def graphic_extraction_summary(source):
+    """Whole-document coverage facts, without unread labels or DOM locations."""
+    graphics = (source.provenance.get('html_extraction') or {}).get('graphics')
+    if not graphics:
+        return None
+    return {key: value for key, value in graphics.items() if key != 'entries'}
+
+
+def source_extraction_feedback(source):
+    graphics = graphic_extraction_summary(source)
+    structured = source.provenance.get('structured_data')
+    feedback = []
+    def append(value):
+        feedback.append('Source extraction coverage (document-level, not a quotation): ' +
+            canonical_json(value).decode('utf-8'))
+    if graphics:
+        append({'html_graphics': graphics})
+    if structured:
+        append({'structured_data': {key: value for key, value in structured.items() if key != 'entries'}})
+        prefix = ('Publisher-declared JSON-LD ranges [script ordinal,start UTF-8 byte,end exclusive]. '
+            'These are not rendered body text or verified facts. A partial range does not establish '
+            'unread entity/currency/qualifiers. Host framing, not source quotations: ')
+        part = []
+        for entry in structured['entries']:
+            row = [entry['script_ordinal'], entry['start_byte'], entry['end_byte']]
+            if part and len(prefix + canonical_json(part + [row]).decode()) > 1024:
+                feedback.append(prefix + canonical_json(part).decode())
+                part = []
+            part.append(row)
+        if part:
+            feedback.append(prefix + canonical_json(part).decode())
+    supervision = source.provenance.get('fetch_supervision')
+    if supervision:
+        append({'fetch_supervision': supervision})
+    return feedback
+
+
+def source_span_origin(source, start, end):
+    """Classify actual delivered bytes without reading or inferring nearby facts."""
+    data = source.provenance.get('structured_data')
+    if not data:
+        return None
+    scripts = [entry['script_ordinal'] for entry in data['entries']
+               if start < entry['end_byte'] and end > entry['start_byte']]
+    body = start < data['base_text_bytes']
+    supplement = end > data['base_text_bytes']
+    kind = ('mixed_body_and_structured_supplement' if body and supplement else
+            'extracted_body' if body else 'publisher_declared_structured_data' if scripts else
+            'structured_data_host_framing')
+    return {'kind': kind, 'script_ordinals': scripts, 'semantic_verification': False}
+
+
+def source_descriptor(source, *, discovery_metadata=None):
+    """Capabilities and provenance for consumers; a URL suffix is not a format."""
+    ranges = [{"kind": "lines", "start": 1, "end_exclusive": source.line_count + 1,
+               "max_units_per_request": 200}]
+    if source.page_count is not None:
+        ranges.append({"kind": "pages", "start": 1, "end_exclusive": source.page_count + 1,
+                       "max_units_per_request": 10})
+    pdf = source.provenance.get("pdf_extraction")
+    if pdf and "layout" in pdf:
+        layout = pdf["layout"]
+        pdf = {**pdf, "layout": {k: v for k, v in layout.items() if k not in {"spans", "page_breaks", "text_sha256"}} |
+               {"mapped_margin_spans": len(layout["spans"])}}
+    html = source.provenance.get('html_extraction')
+    if html and 'graphics' in html:
+        html = {**html, 'graphics': graphic_extraction_summary(source)}
+    return {"source_id": source.item_id, "original_url": source.url,
+        "snapshot_ref": source.snapshot_ref.to_dict() if source.snapshot_ref else None,
+        "line_count": source.line_count, "page_count": source.page_count, "supported_ranges": ranges,
+        "capture_failures": (source.provenance.get("capture") or {}).get("resource_failures", []),
+        "discovery_metadata": discovery_metadata,
+        **{key: source.provenance.get(key) for key in
+           ("final_url", "media_type", "classification", "retrieved_at", "last_modified", "document_dates", "structured_data", "fetch_supervision")},
+        "html_extraction": html, "pdf_extraction": pdf}
+
+
+def validate_source_range(source, interval):
+    count = source.page_count if interval.kind == "pages" else source.line_count
+    if count is None or interval.end_exclusive > count + 1:
+        raise EngineError("INVALID_SOURCE_RANGE", "Requested range is not available in this immutable snapshot",
+                          {"source_id": source.item_id, "supported_ranges": source_descriptor(source)["supported_ranges"]})
+
+
+async def read_retained_range(context, source, interval, *, max_read_bytes=1048576, node_prefix=""):
+    """Read a requested interval using the same wire validator as a full scan.
+
+    Keep partial completion explicit. A per-request cap never grants more bytes
+    than the remaining allowance. Failed lifecycle/integrity checks propagate.
+    """
+    validate_source_range(source, interval)
+    if (source.status != "succeeded" or source.snapshot_ref is None
+            or source.recording_status != "complete" or source.persistence_state != "committed"):
+        raise EngineError("SOURCE_NOT_READY", "Range access requires a committed, recorded source")
+    if type(max_read_bytes) is not int or max_read_bytes < 0:
+        raise EngineError("INVALID_DATA", "Range read allowance must be a nonnegative integer")
+    snapshot, requested = source.snapshot_ref.to_dict(), interval.tool_range()
+    cursor, position, spent, serial = None, None, 0, 0
+    segments, actions, cursors = [], set(), set()
+    complete = False
+    while spent < max_read_bytes:
+        cap = min(_CHUNK_BYTES, max_read_bytes - spent)
+        node = f"{node_prefix}read.{serial}"
+        async with context.node(node, "source_read", {"source_id": source.item_id, "range": requested}):
+            try:
+                result = await context.port.run_tool("document.read", {"snapshot_ref": snapshot,
+                    "range": requested, "max_text_bytes": cap, "continuation": cursor})
+                value = _outcome(result)
+            except EngineError as error:
+                minimum = error.details.get("minimum_next_codepoint_bytes")
+                if (error.code == "LIMIT_EXCEEDED" and cap == max_read_bytes - spent
+                        and type(minimum) is int and cap < minimum <= 4
+                        and error.commit_state != "unknown" and error.observed_effect_state != "unknown"):
+                    break
+                raise
+            raw, spans, next_position, next_cursor = _slice(value, snapshot, requested, cap, position)
+            action = result.get("invocation", {}).get("action_id")
+            if not isinstance(action, str) or not action or action in actions:
+                _integrity("Range read omitted or repeated its recorded action identity")
+            if next_cursor is not None and next_cursor in cursors:
+                _integrity("Range read repeated an earlier continuation")
+            actions.add(action)
+            if spans and (source.text_bytes is None or spans[-1]["end_byte"] > source.text_bytes):
+                _integrity("Range read exceeded the retained document length")
+            spent += len(raw)
+            if raw:
+                segments.append({"segment_id": node, "range": interval.to_dict(),
+                    "start_byte": spans[0]["start_byte"], "end_byte": spans[-1]["end_byte"],
+                    "text": value["text"], "text_sha256": digest_bytes(raw), "read_action_id": action})
+            if not value["has_more_in_requested_range"]:
+                complete = True
+                break
+            cursors.add(next_cursor)
+            cursor, position, serial = next_cursor, next_position, serial + 1
+    record = {"schema_version": 1, "source_id": source.item_id, "snapshot_ref": snapshot,
+              "range": requested, "read_bytes": spent, "complete_requested_range": complete,
+              "segments": [{k: v for k, v in segment.items() if k != "text"} for segment in segments]}
+    ref = await context.port.publish(canonical_json(record), "application/json", node_prefix + "range-access.json")
+    return {**record, "segments": segments, "access_ref": ref}
+
+
 def _integrity(message: str) -> None:
     raise EngineError("INTEGRITY_ERROR", message)
 
@@ -42,7 +183,10 @@ def _outcome(result: dict[str, Any]) -> dict[str, Any]:
         raise EngineError("CLEANUP_INCOMPLETE", "Retained-source read cleanup is incomplete", **flags)
     if result.get("status") != "succeeded":
         code = error.get("code") or ("CANCELLED" if result.get("status") == "cancelled" else "SOURCE_READ_FAILED")
-        raise EngineError(code, "Retained-source read did not succeed", error.get("details") or {}, **flags)
+        message = error.get("message")
+        if not isinstance(message, str) or not message:
+            message = "Retained-source read did not succeed"
+        raise EngineError(code, message, error.get("details") or {}, **flags)
     if error:
         _integrity("Retained-source read claimed success while reporting an error")
     value = result.get("result")
@@ -132,8 +276,8 @@ async def read_retained_source(
 ) -> dict:
     """Read through the port; failures propagate and never produce a complete manifest.
 
-    PDF batches overlap one physical page. Line batches keep their 200-line
-    boundaries and use a two-line bridge to deliver the LF between batches.
+    PDF batches overlap one physical page; line batches overlap one line to
+    deliver the LF between windows without a separate bridge dispatch.
     Duplicate bytes are verified and removed. The allowance charges all tool
     payload bytes, including overlap; read_bytes counts unique returned bytes.
     The manifest omits segment text and its own access_ref. An allowance too
@@ -159,17 +303,15 @@ async def read_retained_source(
     materialized = bytearray()
     segments, actions = [], set()
     spent, serial, start = 0, 0, 1
-    next_line_start = None
     exhausted = max_read_bytes == 0
     finished = False
     # An empty document still needs a recorded read. The Tool permits [1,1);
     # SourceRange deliberately excludes empty evidence, so it creates no segment.
     while not exhausted and (start <= count or count == 0):
-        # Both native page and line spans exclude their terminal separator.
-        # A bridge covers the old final line and the new first line, then the
-        # main scan resumes at 201, 401, ... without changing its unit bound.
-        width = 2 if next_line_start is not None else step
-        end = min(start + width, count + 1)
+        # Both page and line ranges exclude their terminal separator. Overlap
+        # the last unit in the next full window; verified spans remove duplicate
+        # bytes. A separate two-line bridge needlessly doubles line dispatches.
+        end = min(start + step, count + 1)
         interval = SourceRange(kind=kind, start=start, end_exclusive=end) if count else None
         requested = interval.tool_range() if interval else {"kind": kind, "start": 1, "end_exclusive": 1}
         cursor, position, cursors = None, None, set()
@@ -246,12 +388,7 @@ async def read_retained_source(
         if end == count + 1:
             finished = True
             break
-        if kind == "pages":
-            start = end - 1
-        elif next_line_start is not None:
-            start, next_line_start = next_line_start, None
-        else:
-            next_line_start, start = end, end - 1
+        start = end - 1
 
     if finished:
         if len(materialized) != source.text_bytes or digest_bytes(bytes(materialized)) != source.text_sha256:

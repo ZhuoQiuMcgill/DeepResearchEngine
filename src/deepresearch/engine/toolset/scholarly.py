@@ -17,7 +17,7 @@ from jsonschema import Draft202012Validator, FormatChecker
 
 from .common import LIMITS, ToolFault, closed, encode, strict_json, url, utc_now
 from .retrieval import request_body
-from .discovery_metadata import bibliography, coverage, extend_scholarly_schema
+from .discovery_metadata import bibliography, coverage, extend_scholarly_schema, retain_valid_locations
 
 SCHEMA = json.loads(Path(__file__).with_name("scholarly.schema.json").read_text(encoding="utf-8"))
 extend_scholarly_schema(SCHEMA["$defs"])
@@ -181,10 +181,16 @@ def project(provider: str, source: dict, arguments: dict, revision=1) -> dict:
     result = {"provider": provider, "scope": "scholarly_metadata", "query": arguments["query"], "searched_at": utc_now(),
         "discovery_only": True, "provider_total_results": total, "results": results}
     try:
-        validate_schema(result, provider + "_result")
+        metadata = []
         if revision == 2:
             for item, row in zip(results, rows):
-                item["bibliography"] = bibliography(provider, row)
+                detail = bibliography(provider, row)
+                detail["invalid_fields"] = sorted(set(detail["invalid_fields"] + retain_valid_locations(item)))
+                metadata.append(detail)
+        validate_schema(result, provider + "_result")
+        if revision == 2:
+            for item, detail in zip(results, metadata):
+                item["bibliography"] = detail
             result["coverage"] = coverage(arguments["max_results"], len(results), len(rows), total)
             validate_schema(result, provider + "_result_v2")
     except ToolFault as exc:
@@ -196,7 +202,12 @@ def project(provider: str, source: dict, arguments: dict, revision=1) -> dict:
                 check_urls(item)
         elif isinstance(value, list):
             for item in value: check_urls(item)
-    check_urls(result)
+    try:
+        check_urls(result)
+    except ToolFault as exc:
+        # A returned metadata field is provider data, not the caller's request
+        # or an uncertain transport outcome. Legacy projections remain strict.
+        raise ToolFault("SCHOLAR_PROTOCOL_ERROR", "Provider metadata contains an invalid URL") from exc
     for item in results:
         if provider == "openalex" and (not isinstance(item["work_id"], str) or not re.fullmatch(r"https://openalex.org/W[0-9]+", item["work_id"])):
             raise ToolFault("SCHOLAR_PROTOCOL_ERROR", "Invalid OpenAlex work identifier")

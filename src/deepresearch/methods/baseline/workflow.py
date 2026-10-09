@@ -31,6 +31,9 @@ def definition(revision=2):
             assets[name] = digest_bytes(files(__package__).joinpath(name).read_bytes())
         for name in ("source_access.py", "retrieval.py", "parallel.py", "quotations.py"):
             assets["component:" + name] = digest_bytes(files("deepresearch.workflows.components").joinpath(name).read_bytes())
+    if revision >= 7:
+        for name in ("selection_workflow.py", "selection_contracts.py", "stages/selection.py"):
+            assets[name] = digest_bytes(files(__package__).joinpath(name).read_bytes())
     return MethodDefinition("baseline", revision, spec["description"], resource("input.schema.json", revision),
         resource("parameters.schema.json", revision), tuple((role["role_id"], role["revision"]) for role in spec["agent_roles"]), assets,
         tool_revisions=spec.get("tool_revisions", {}))

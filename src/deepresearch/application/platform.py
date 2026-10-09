@@ -6,7 +6,7 @@ from typing import Any
 
 from deepresearch.engine.contracts import (
     ArtifactRef, CheckpointEnvelope, EngineError, Err, Ok, StateCommitReceipt, StateMutation,
-    canonical_json, new_id, to_json_value,
+    canonical_json, digest_json, new_id, to_json_value,
 )
 from deepresearch.workflows.contracts import ResearchRunView
 from .usage import aggregate_usage
@@ -27,7 +27,15 @@ class _RoleCancellation(asyncio.Event):
     async def wait(self):
         if self.is_set():
             return True
-        return await super().wait()
+        local = asyncio.create_task(super().wait())
+        parent = asyncio.create_task(self._parent.wait())
+        try:
+            await asyncio.wait((local, parent), return_when=asyncio.FIRST_COMPLETED)
+            return True
+        finally:
+            local.cancel()
+            parent.cancel()
+            await asyncio.gather(local, parent, return_exceptions=True)
 
 
 class ResearchPlatformPort:
@@ -37,8 +45,10 @@ class ResearchPlatformPort:
     Publications return opaque, store-qualified references in the root scope.
     """
 
-    def __init__(self, engine, live, roles):
+    def __init__(self, engine, live, roles, recovery=None):
+        from .recovery import RecoveryCoordinator
         self.engine, self.live, self.roles = engine, live, roles
+        self.recovery = recovery if recovery is not None else RecoveryCoordinator()
         self._lock = asyncio.Lock()
         self.failure: EngineError | None = None
         self._projection_error: EngineError | None = None
@@ -199,8 +209,14 @@ class ResearchPlatformPort:
     @staticmethod
     def boundary_error(code, message, original=None):
         original = to_json_value(original) if original is not None else {}
-        return EngineError(code, message,
-            {"cause_code": original["code"]} if original.get("code") else {},
+        details = {"cause_code": original["code"]} if original.get("code") else {}
+        if original.get("code") in {"provider.http", "provider.incomplete", "provider.refused"}:
+            facts = original.get("details") or {}
+            details.update({key: facts[key] for key in ("http_status", "provider_error_code",
+                "provider_error_type", "error_capture_state", "retry_after_seconds", "provider_status",
+                "provider_incomplete_reason", "incomplete_details_capture", "native_finish_reason", "visible_text_bytes",
+                "native_tool_call_count", "continuation_limit_exceeded") if key in facts})
+        return EngineError(code, message, details,
             observed_effect_state=original.get("observed_effect_state", "not_observed"),
             commit_state=original.get("commit_state", "not_applicable"),
             retryable_delivery=original.get("retryable_delivery", False))
@@ -301,7 +317,10 @@ class ResearchPlatformPort:
         # signal can settle this invocation without changing Workflow status.
         caller = self.session.context.for_action(self.session.context.action_id,
             self.session.context.attempt_id, cancellation=_RoleCancellation(self.session.context.cancellation))
-        invocation = asyncio.create_task(self._invoke_agent(role_id, registered, rendered, caller),
+        key = (self.live.view.profile_ref, self.live.view.model_ref)
+        invocation = asyncio.create_task(self.recovery.execute(caller, key,
+            lambda: self._invoke_agent(role_id, registered, rendered, caller), self.emit,
+            {"role_id": role_id, "role_ref": spec.ref, "input_digest": digest_json(rendered)}),
                                          name=f"deepresearch-role:{self.live.view.run_id}:{role_id}")
         cancelled = False
         try:
@@ -355,7 +374,31 @@ class ResearchPlatformPort:
             raise self.fail(self.boundary_error("CLEANUP_INCOMPLETE", f"Role {role_id} invocation cleanup is incomplete", original_error))
         if value.get("status") != "succeeded" or value.get("error"):
             error = value.get("error") or child.get("error") or {}
-            raise self.boundary_error(error.get("code", "WRITER_FAILED"), f"Role {role_id} did not complete successfully", error)
+            observed = child.get("observed_output") or {}
+            raw = observed.get("raw_visible_text")
+            if (child.get("status") == "validation_failed" and child.get("validation", {}).get("state") == "failed"
+                    and child.get("persistence_state") == "committed" and child.get("raw_output_ref")
+                    and "repair" in self.roles[role_id][0].input_schema.get("properties", {})
+                    and isinstance(raw, str) and len(raw.encode("utf-8")) <= 65536):
+                # Copy only the returned, durably retained invalid output into
+                # this Workflow's diagnostic scope. Never export it as a valid
+                # Agent result or grant authority to a child artifact reference.
+                diagnostic = await self.publish(raw.encode("utf-8"), "text/plain",
+                    f"{role_id}.{child['raw_output_ref']['artifact_id']}.invalid-output.txt")
+                raise EngineError("INVALID_ROLE_OUTPUT", "Recorded role output failed its pinned output schema",
+                    {"role_id": role_id, "output_ref": diagnostic, "diagnostic_only": True,
+                     "validation_errors": child["validation"].get("errors", [])[:12]})
+            failure = self.boundary_error(error.get("code", "WRITER_FAILED"), f"Role {role_id} did not complete successfully", error)
+            # A host recovery is eligible only after both owners settled and
+            # their receipts/cleanup passed the checks above. The pinned roles
+            # have no tool permissions. Native response failures must separately
+            # prove a transient cause and no partial text/calls in the coordinator.
+            if child.get("status") == "failed" and failure.code in {"provider.http", "provider.incomplete"} and not raw:
+                failure.details["settled_role_attempt"] = {
+                    "child_run": value.get("child_run"), "invocation": value.get("execution"),
+                    "outcome_receipt": value.get("outcome_receipt"),
+                    "terminal_receipt": child.get("terminal_event_receipt")}
+            raise failure
         if child.get("persistence_state") != "committed":
             raise self.fail(EngineError("PUBLICATION_INCOMPLETE", f"Role {role_id} output publication is incomplete"))
         if not value.get("output_ref") or not value.get("export_receipt"):

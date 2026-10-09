@@ -1,0 +1,13 @@
+use_default_settings:
+  engines:
+    keep_only: [yahoo, duckduckgo]
+server:
+  secret_key: "__LOCAL_SECRET__"
+  limiter: false
+  image_proxy: false
+search:
+  safe_search: 0
+  formats: [html, json]
+outgoing:
+  request_timeout: 8.0
+  max_request_timeout: 12.0

@@ -52,3 +52,19 @@ def test_source_span_bound_is_checked_after_soft_wrap_expansion():
     quote = "a" * 2048
     source = "a" * 1024 + "-\n" + "a" * 1024
     assert locate_quote(quote, source) is None
+
+
+@pytest.mark.parametrize("glyph", list("ﬀﬁﬂﬃﬄﬅﬆ"))
+def test_soft_word_wrap_preserves_presentation_ligature(glyph):
+    source = f"A dan-\nce{glyph}oor passage."
+    assert locate_quote(f"A dance{glyph}oor passage.", source) == source
+    assert locate_quote(source, f"A dance{glyph}oor passage.") == f"A dance{glyph}oor passage."
+
+
+@pytest.mark.parametrize("quote,text", [
+    ("dancefloor", "dan-\nceﬂoor"), ("danceﬂoor", "dan-\ncefloor"),
+    ("ID_danceﬂoor", "ID_dan-\nceﬂoor"), ("danceﬂoor2", "dan-\nceﬂoor2"),
+    ("danceﬂoor", "dan-ceﬂoor"), ("A 23ﬂ", "A 2-\n3ﬂ"),
+])
+def test_ligatures_do_not_enable_compatibility_or_identifier_repair(quote, text):
+    assert locate_quote(quote, text) is None

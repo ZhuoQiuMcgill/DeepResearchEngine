@@ -11,6 +11,7 @@ import base64
 from contextlib import asynccontextmanager
 import json
 from pathlib import Path
+import re
 import socket
 
 import httpx
@@ -32,13 +33,16 @@ async def server(settings):
     host = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", log_level="error", access_log=False))
     task = asyncio.create_task(host.serve(sockets=[sock]))
     try:
-        for _ in range(300):
+        # Reopening a real experiment verifies considerably more stored data
+        # than the empty echo store. Bound wall time, not polling iterations.
+        deadline = asyncio.get_running_loop().time() + 60
+        while asyncio.get_running_loop().time() < deadline:
             if host.started:
                 break
             if task.done():
                 await task
                 raise RuntimeError("HTTP server did not start")
-            await asyncio.sleep(.01)
+            await asyncio.sleep(.05)
         else:
             raise RuntimeError("HTTP server startup timed out")
         yield address
@@ -87,15 +91,27 @@ async def replay(client, run_id):
             return events
 
 
+def completed_baseline_nodes(events):
+    """Check logical roles, including their bounded format-repair attempts."""
+    completed = {row["event"]["payload"]["node_id"] for row in events
+                 if row["event"]["kind"] == "workflow.node.completed"
+                 and row["event"]["payload"]["status"] == "succeeded"}
+    for role in ("plan.research", "r1.analyze.evidence", "report.1.review"):
+        pattern = re.escape(role) + r"(?:\.repair-(?:[2-9]|[1-9][0-9]+))?"
+        assert any(re.fullmatch(pattern, node) for node in completed), f"No successful role: {role}"
+    assert "publish.result" in completed, "No successful publication"
+    return completed
+
+
 async def check(args):
     settings = EngineSettings(workspace=Path.cwd(), storage_root=args.store)
     request = json.loads(args.request.read_text(encoding="utf-8")) if args.request else {
         "client_request_id": "echo-http-example-1", "method_id": "example.echo",
         "input": {"message": "Shared workflow interfaces are ready."}}
-    if request["method_id"] == "baseline" and request.get("input", {}).get("question") != EBD_EXPERIMENT_QUESTION:
-        raise ValueError(f"EBD experiments require the exact original question: {EBD_EXPERIMENT_QUESTION}")
+    if request["method_id"] == "baseline" and request.get("input", {}).get("question") != args.expected_question:
+        raise ValueError(f"Experiment requires the exact original question: {args.expected_question}")
     if request["method_id"] == "baseline" and request.get("method_revision", 1) < 5:
-        raise ValueError("New EBD experiments require baseline revision 5 with archived-source access, parallel distillation and English report roles")
+        raise ValueError("New experiments require baseline revision 5 or later with archived-source access, parallel distillation and English report roles")
     async with server(settings) as address:
         async with httpx.AsyncClient(base_url=address, timeout=40, trust_env=False) as client:
             methods = await client.get("/api/v1/methods")
@@ -113,12 +129,22 @@ async def check(args):
                 await asyncio.sleep(.2)
             else:
                 raise RuntimeError("Research run did not settle")
+            out = Path(args.output)
+            out.mkdir(parents=True, exist_ok=True)
+            (out / "run.json").write_text(json.dumps(view, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+            if view["status"] != "succeeded" or view["recording_status"] != "complete":
+                failed_events = await replay(client, run_id)
+                (out / "events.json").write_text(json.dumps(failed_events, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
             assert view["status"] == "succeeded" and view["recording_status"] == "complete", view.get("error")
             content = await report(client, run_id)
+            # Preserve observed output even if a later acceptance check fails.
+            # Only acceptance.json, written last, certifies the whole check.
+            (out / "report.md").write_bytes(content)
+            events = await replay(client, run_id)
+            (out / "events.json").write_text(json.dumps(events, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
             if request["method_id"] == "baseline" and request.get("method_revision", 1) >= 4:
                 from deepresearch.methods.baseline.stages.reporting import english_report_issues
                 assert not english_report_issues(content.decode("utf-8")), "Final report contains non-English narrative"
-            events = await replay(client, run_id)
             kinds = [row["event"]["kind"] for row in events]
             assert kinds.count("workflow.finished") == 1
             async with client.stream("GET", f"/api/v1/research-runs/{run_id}/events/stream") as stream:
@@ -138,9 +164,7 @@ async def check(args):
                 if request.get("method_revision", 1) == 1:
                     assert kinds.index("workflow.context.selected") < kinds.index("model.intent")
                 else:
-                    completed = {row["event"]["payload"]["node_id"] for row in events
-                                 if row["event"]["kind"] == "workflow.node.completed"}
-                    assert {"plan.research", "r1.analyze.evidence", "report.1.review", "publish.result"} <= completed
+                    completed = completed_baseline_nodes(events)
                     result_manifest = json.loads(await saved_bytes(client,
                         f"/api/v1/research-runs/{run_id}/artifacts/{view['result_manifest_ref']['artifact_id']}"))
                     assert result_manifest["method_revision"] == request["method_revision"] and result_manifest["drafts"][-1]["accepted"]
@@ -186,6 +210,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--store", default="local/research-http-check")
     parser.add_argument("--request", type=Path)
+    parser.add_argument("--expected-question", default=EBD_EXPERIMENT_QUESTION,
+                        help="Exact original baseline input to verify (defaults to the EBD benchmark).")
     parser.add_argument("--output", default="local/research-http-check-evidence")
     asyncio.run(check(parser.parse_args()))
 

@@ -104,12 +104,20 @@ class RecordedToolAction:
                 raise plan.error
             if isinstance(plan, Ok):
                 plan = plan.value
+            policy_factory = getattr(binding.executor, 'execution_policy', None)
+            dispatch_policy = policy_factory(definition) if policy_factory is not None else None
+            if dispatch_policy is not None:
+                # This trusted host policy is recorded before any internal phase.
+                # It does not authorize replaying the logical tool attempt.
+                canonical_json(dispatch_policy, 4096)
+                plan.dispatch_policy = dispatch_policy
             intent = await append_event(binding, attempt_context, "tool.intent", {
                 "tool": request.tool, "arguments": request.arguments if len(canonical_json(request.arguments)) <= 16384 else None,
                 "arguments_digest": digest_json(request.arguments),
                 "provider_call_id": request.provider_call_id,
                 "model_action_id": request.model_action_id, "model_attempt_id": request.model_attempt_id,
                 "operation_id": getattr(plan, "operation_id", None),
+                **({'dispatch_policy': dispatch_policy} if dispatch_policy is not None else {}),
             })
             if isinstance(intent, Err):
                 return ToolResult(request.tool, {"action_id": action_id, "attempt_id": attempt_id, "dispatched": False}, "failed", error=intent.error,

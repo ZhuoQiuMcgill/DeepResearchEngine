@@ -188,10 +188,10 @@ def _preference(url, pdf, oa):
     return 40
 
 
-def _project(name, rows, discovery_id, topic, query):
+def _project(name, rows, discovery_id, topic, query, *, screen_candidates=True):
     projected, decisions = [], []
     for index, row in enumerate(rows, 1):
-        keep, reason = _screen(row, topic, query)
+        keep, reason = _screen(row, topic, query) if screen_candidates else (True, "agent_selection_pending")
         title = _title(row)
         title_key = _key(title)
         doi = _doi(row)
@@ -208,16 +208,23 @@ def _project(name, rows, discovery_id, topic, query):
                 continue
             title_sha256 = digest_bytes(title_key.encode()) if title_key else None
             work_id = "doi:" + doi if doi else "title:" + title_sha256 if title_sha256 else "url:" + digest_bytes(url.encode())
-            projected.append({"url": url, "work_id": work_id, "doi": doi,
+            candidate = {"url": url, "work_id": work_id, "doi": doi,
                 "title": title, "title_key": title_key, "title_sha256": title_sha256,
                 "location": location, "rank": row.get("rank", index),
-                "preference": _preference(url, pdf, oa), "discovery_ref": discovery_id})
+                "preference": _preference(url, pdf, oa), "discovery_ref": discovery_id}
+            if not screen_candidates:
+                # Preserve provider metadata for a separate selection policy.
+                # It is discovery data, never fetched-source evidence.
+                candidate["metadata"] = {key: value for key, value in row.items()
+                    if key not in {"links", "locations", "best_oa_location", "primary_location"}}
+                candidate["search_tool"] = name
+            projected.append(candidate)
     return projected, decisions
 
 
 def _optional_admission_denial(result, name):
     error, process = result.get("error") or {}, result.get("process") or {}
-    return (name == "scholar.openalex.search" and result.get("status") == "limit_exhausted"
+    return (name in {"scholar.openalex.search", "scholar.crossref.search"} and result.get("status") == "limit_exhausted"
         and error.get("code") == "SCHOLAR_QUOTA_EXHAUSTED"
         and result.get("recording", {}).get("status") == "complete"
         and process.get("dispatched") is False
@@ -234,7 +241,7 @@ def _settled_search_unavailable(result, name):
     # discoveries. The worker's generic unknown-effect label is retained; it
     # cannot turn this no-mutation outcome into an unresolved business commit.
     return (name == "web.search" and tool.get("name") == name
-        and type(tool.get("revision")) is int and tool["revision"] in {1, 2}
+        and type(tool.get("revision")) is int and tool["revision"] in {1, 2, 3, 4}
         and result.get("status") == "failed" and result.get("result") is None
         and error.get("code") == "SEARCH_UNAVAILABLE"
         and error.get("commit_state") == "not_applicable"
@@ -256,21 +263,84 @@ def _must_stop(result, name):
     # Generic ToolFault labels also cover settled read-only unavailability.
     # Exempt only that exact terminal or the proven no-dispatch admission
     # denial. Unknown status/commitment and shared execution limits still stop.
-    known_read_failure = _settled_search_unavailable(result, name)
+    throttled = _settled_scholarly_throttle(result, name)
+    known_read_failure = (_settled_search_unavailable(result, name) or throttled
+                          or _settled_scholarly_invalid_response(result, name))
     if (result.get("status") == "unknown" or error.get("commit_state") == "unknown"
             or (error.get("observed_effect_state") == "unknown" and not (quota_denial or known_read_failure))
             or persistence.get("commit_state") == "unknown"):
         raise EngineError(error.get("code", "DISCOVERY_UNKNOWN"), "Discovery effect or commitment is unresolved",
                           observed_effect_state="unknown", commit_state="unknown")
-    if result.get("status") in {"cancelled", "timed_out", "limit_exhausted"} and not quota_denial:
+    if result.get("status") in {"cancelled", "timed_out", "limit_exhausted"} and not (quota_denial or throttled):
         raise EngineError(error.get("code", "DISCOVERY_FAILED"), "Discovery reached a shared execution limit")
     if result.get("process", {}).get("cleanup", {}).get("complete") is False:
         raise EngineError("CLEANUP_INCOMPLETE", "Discovery resources did not settle")
 
 
+def _settled_scholarly_throttle(result, name):
+    """A recorded HTTP 429 is a provider limit, with no snapshot commit to resolve.
+
+    Preserve the original generic effect label. This permits remaining backends,
+    never a retry or quota escalation; the executor retains its blocked quota.
+    """
+    if name not in {"scholar.crossref.search", "scholar.openalex.search"}:
+        return False
+    provider = "crossref" if name == "scholar.crossref.search" else "openalex"
+    tool, error = result.get("tool") or {}, result.get("error") or {}
+    process, recording = result.get("process") or {}, result.get("recording") or {}
+    cleanup, persistence = process.get("cleanup") or {}, result.get("persistence") or {}
+    details = error.get("details") or {}
+    attempt = (result.get("observations") or {}).get("scholarly_attempt") or {}
+    return (tool.get("name") == name and type(tool.get("revision")) is int and tool["revision"] in {1, 2}
+        and result.get("status") == "limit_exhausted" and result.get("result") is None
+        and error.get("code") == "SCHOLAR_RATE_LIMITED" and error.get("commit_state") == "not_applicable"
+        and error.get("retryable_delivery") is False
+        and details.get("provider") == provider and details.get("http_status") == 429
+        and details.get("observed_requests") == 1 and details.get("observed_responses") == 1
+        and attempt.get("provider") == provider and attempt.get("http_status") == 429
+        and attempt.get("http_request_count") == 1 and attempt.get("http_response_count") == 1
+        and recording.get("status") == "complete" and recording.get("error") is None
+        and process.get("dispatched") is True and process.get("exit_code") == 4
+        and process.get("termination_reason") is None
+        and cleanup.get("complete") is True and cleanup.get("errors") == [] and cleanup.get("unconfirmed_resources") == []
+        and persistence.get("required") is False and persistence.get("commit_state") == "not_applicable"
+        and persistence.get("operation_id") is None and persistence.get("receipt") is None)
+
+
+def _settled_scholarly_invalid_response(result, name):
+    """A completely observed bad metadata response cannot invalidate prior work.
+
+    Preserve the failed result and allow other discovery backends. This does not
+    retry the request, admit malformed URLs, or relax storage/cleanup checks.
+    """
+    if name not in {"scholar.crossref.search", "scholar.openalex.search"}:
+        return False
+    provider = "crossref" if name == "scholar.crossref.search" else "openalex"
+    tool, error = result.get("tool") or {}, result.get("error") or {}
+    process, recording = result.get("process") or {}, result.get("recording") or {}
+    cleanup, persistence = process.get("cleanup") or {}, result.get("persistence") or {}
+    details = error.get("details") or {}
+    attempt = (result.get("observations") or {}).get("scholarly_attempt") or {}
+    return (tool.get("name") == name and type(tool.get("revision")) is int and tool["revision"] in {1, 2}
+        and result.get("status") == "failed" and result.get("result") is None
+        and error.get("code") == "SCHOLAR_PROTOCOL_ERROR" and error.get("commit_state") == "not_applicable"
+        and error.get("retryable_delivery") is False
+        and details.get("provider") == provider and details.get("http_status") == 200
+        and details.get("reason") == "invalid_provider_response"
+        and details.get("observed_requests") == 1 and details.get("observed_responses") == 1
+        and attempt.get("provider") == provider and attempt.get("http_status") == 200
+        and attempt.get("http_request_count") == 1 and attempt.get("http_response_count") == 1
+        and recording.get("status") == "complete" and recording.get("error") is None
+        and process.get("dispatched") is True and process.get("exit_code") == 3
+        and process.get("termination_reason") is None
+        and cleanup.get("complete") is True and cleanup.get("errors") == [] and cleanup.get("unconfirmed_resources") == []
+        and persistence.get("required") is False and persistence.get("commit_state") == "not_applicable"
+        and persistence.get("operation_id") is None and persistence.get("receipt") is None)
+
+
 async def retrieve_candidates(context, queries, search_tools, max_results, *, topic,
                               node_prefix="", source_ids=(), recovery_limit=4,
-                              rewrite_queries=True):
+                              rewrite_queries=True, screen_candidates=True):
     """Return FetchItems and recorded discovery entries, without fetching.
 
     Recovery queries are globally unique within the call and carry a one-based
@@ -291,6 +361,8 @@ async def retrieve_candidates(context, queries, search_tools, max_results, *, to
             or len(node_prefix) > 100 or (topic is not None and (not isinstance(topic, str) or len(topic.encode()) > 1024))
             or any(not isinstance(query, str) or not query.strip() or len(query.encode()) > 4096 for query in queries)):
         raise EngineError("INVALID_DATA", "Retrieval inputs exceed the bounded query/tool contract")
+    if type(screen_candidates) is not bool:
+        raise EngineError("INVALID_DATA", "Candidate screening must be an explicit boolean")
     prepared = [_prepare(query, topic, reserved, rewrite_queries) for query in queries]
     retained, found, disabled, dispatched = [], [], set(), set()
     ids, serial, recovery_used = {}, 0, 0
@@ -311,7 +383,8 @@ async def retrieve_candidates(context, queries, search_tools, max_results, *, to
                 _must_stop(result, name)
                 candidates, decisions = [], []
                 if result.get("status") == "succeeded":
-                    candidates, decisions = _project(name, result["result"].get("results", []), node_id, topic, original)
+                    candidates, decisions = _project(name, result["result"].get("results", []), node_id, topic, original,
+                        screen_candidates=screen_candidates)
                 for candidate in candidates:
                     if candidate["url"] not in ids:
                         serial += 1
@@ -320,7 +393,12 @@ async def retrieve_candidates(context, queries, search_tools, max_results, *, to
                         ids[candidate["url"]] = f"{node_prefix}source-{serial:03d}"
                     candidate["item_id"] = ids[candidate["url"]]
                 found.extend(candidates)
-                usable_web |= name == "web.search" and any(candidate["preference"] < 60 for candidate in candidates)
+                # Keep the existing query-recovery trigger even when candidate
+                # relevance is delegated. Unrelated hits must not prevent a
+                # simpler query; every valid hit still reaches the Selector.
+                usable_web |= name == "web.search" and any(candidate["preference"] < 60
+                    and (screen_candidates or _screen(candidate["metadata"], topic, original)[0])
+                    for candidate in candidates)
                 selection = {"schema_version": 1, "tool": name, "original_query": original.original,
                     "executed_query": query, "topic": topic, "preparation": original.preparation,
                     "recovery_index": recovery_index, "received_count": len(decisions),
@@ -332,7 +410,7 @@ async def retrieve_candidates(context, queries, search_tools, max_results, *, to
                     "preparation_ref": preparation_ref, "selection_ref": selection_ref,
                     "recovery_index": recovery_index, "candidates": candidates})
                 node["detail"].update(artifact_ref=raw_ref, selection_ref=selection_ref, candidate_count=len(candidates))
-                if _optional_admission_denial(result, name):
+                if _optional_admission_denial(result, name) or _settled_scholarly_throttle(result, name):
                     disabled.add(name)
         return usable_web
 
@@ -378,7 +456,8 @@ async def retrieve_candidates(context, queries, search_tools, max_results, *, to
         current = unique.get(candidate["url"])
         if current is None or (candidate["preference"], candidate["rank"]) < (current["preference"], current["rank"]):
             unique[candidate["url"]] = candidate
-    ordered = sorted(unique.values(), key=lambda candidate: (candidate["preference"], candidate["rank"], int(candidate["item_id"].rsplit("-", 1)[1])))
+    ordered = (sorted(unique.values(), key=lambda candidate: (candidate["preference"], candidate["rank"], int(candidate["item_id"].rsplit("-", 1)[1])))
+        if screen_candidates else list(unique.values()))
     items, works = [], {}
     for candidate in ordered:
         reason = {key: candidate[key] for key in ("work_id", "title_sha256", "location", "rank", "preference")}

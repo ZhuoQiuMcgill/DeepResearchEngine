@@ -1,0 +1,69 @@
+{
+  "type": "object",
+  "properties": {
+    "question": {
+      "type": "string"
+    },
+    "user_queries": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "max_queries": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 4
+    },
+    "research_context": {
+      "type": "object",
+      "properties": {
+        "as_of": {
+          "type": "string"
+        },
+        "timezone": {
+          "const": "UTC"
+        }
+      },
+      "required": [
+        "as_of",
+        "timezone"
+      ],
+      "additionalProperties": false
+    },
+    "repair": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "attempt": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4
+        },
+        "previous_output": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 65536
+        },
+        "errors": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "type": "object",
+            "additionalProperties": {}
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "question",
+    "user_queries",
+    "max_queries",
+    "research_context",
+    "repair"
+  ],
+  "additionalProperties": false
+}

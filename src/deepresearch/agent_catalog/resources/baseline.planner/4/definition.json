@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "role_id": "baseline.planner",
+  "revision": 4,
+  "description": "Plan focused research with exact downstream question keys and a strict JSON instance without claiming acquired evidence.",
+  "tool_requests": [],
+  "limits": {
+    "max_model_calls": 1,
+    "max_run_seconds": 180,
+    "max_model_seconds": 90,
+    "max_output_tokens_per_call": 8192,
+    "max_context_tokens": 262144,
+    "max_task_input_bytes": 1048576,
+    "max_final_output_bytes": 65536,
+    "max_model_request_bytes": 2097152
+  },
+  "output": {
+    "mode": "json",
+    "media_type": "application/json",
+    "delivery": "artifact",
+    "native_enforcement": "disabled"
+  }
+}

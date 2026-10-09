@@ -1,0 +1,133 @@
+{
+  "schema_version": 1,
+  "purpose": "Find shared non-model, non-workflow-topology defects; shared failures are hypotheses until deterministic or fixed-input controls support attribution.",
+  "method_revision": 12,
+  "models": [
+    {
+      "id": "deepseek",
+      "profile_ref": "deepseek",
+      "model_ref": "deepseek-flash"
+    },
+    {
+      "id": "gpt",
+      "profile_ref": "openai",
+      "model_ref": "gpt-6-luna"
+    }
+  ],
+  "parameters": {
+    "max_queries": 2,
+    "max_results": 5,
+    "max_rounds": 2,
+    "max_report_attempts": 4,
+    "max_sources": 40,
+    "context_tokens": 131072,
+    "source_urls": [],
+    "max_context_bytes": 524288,
+    "max_scan_bytes": 1048576,
+    "parallel_agents": 4,
+    "max_distillation_calls": 20,
+    "recovery_queries": 4,
+    "min_substantive_sources": 2
+  },
+  "controls": [
+    "Same pinned roles and tools as baseline 11",
+    "262144-token per-agent allowance, not guaranteed model capacity",
+    "Fresh separate stores; two independent runs at most",
+    "Original three question strings unchanged",
+    "No source URLs or hand-picked queries seeded",
+    "No automatic reruns of failed executions",
+    "Live searches differ; paired outcomes alone do not establish causation"
+  ],
+  "cases": [
+    {
+      "id": "headsets",
+      "scenario": "consumer-comparison",
+      "question": "compare meta quest 3 and apple vision pro",
+      "audit_requirements": [
+        "Version and market ambiguity",
+        "First-party specifications versus early reviews",
+        "Price date and storage variant"
+      ]
+    },
+    {
+      "id": "headsets-scoped",
+      "scenario": "consumer-comparison",
+      "question": "Compare Meta Quest 3 (512 GB) and the original M2 Apple Vision Pro (256 GB) for VR gaming and productivity. Use official specifications for hardware, distinguish launch prices from currently advertised US prices, and separate measured results from reviewer opinions.",
+      "audit_requirements": [
+        "Original M2 identity",
+        "512/256 GB price binding",
+        "Official specifications",
+        "Review versus benchmark"
+      ],
+      "paired_with": "headsets",
+      "intervention": "Explicit scope and source/depth requirements, a bundled intervention; not an isolated wording effect."
+    },
+    {
+      "id": "flights",
+      "scenario": "travel-planning",
+      "question": "How do I flight from GuangZhou to Montreal?",
+      "audit_requirements": [
+        "Missing dates and nationality",
+        "Airline schedule versus route aggregator",
+        "Connection versus separate tickets"
+      ]
+    },
+    {
+      "id": "flights-scoped",
+      "scenario": "travel-planning",
+      "question": "How can a Chinese passport holder with a valid Canadian permanent resident card fly one-way from Guangzhou (CAN) to Montreal (YUL) on November 15, 2026? Prefer a single ticket with at most one connection. Use airline sources for routes and official government sources for entry or transit requirements. Do not invent live fares or availability.",
+      "audit_requirements": [
+        "Date and identity constraints",
+        "Single ticket versus self-transfer",
+        "Authoritative entry/transit sources",
+        "No fabricated availability"
+      ],
+      "paired_with": "flights",
+      "intervention": "Explicit scope and source/depth requirements, a bundled intervention; not an isolated wording effect."
+    },
+    {
+      "id": "sleep",
+      "scenario": "health-evidence",
+      "question": "What food can help me sleep well?",
+      "audit_requirements": [
+        "Mechanistic versus clinical evidence",
+        "Secondary summaries versus human trials",
+        "Population and preparation applicability"
+      ]
+    },
+    {
+      "id": "sleep-scoped",
+      "scenario": "health-evidence",
+      "question": "For adults with chronic insomnia, what randomized human trial evidence supports kiwifruit or tart cherry juice for improving sleep? Identify the population, sample size, control group, dose, duration, and measured effect; distinguish primary trials from reviews and nutrient mechanisms.",
+      "audit_requirements": [
+        "Human RCT versus uncontrolled trial",
+        "Original study access",
+        "Sample/control/dose/duration/effect",
+        "Generalization beyond study population"
+      ],
+      "paired_with": "sleep",
+      "intervention": "Explicit scope and source/depth requirements, a bundled intervention; not an isolated wording effect."
+    },
+    {
+      "id": "ebd",
+      "scenario": "specialized-definition",
+      "question": "What is EBD (Environment Based Design)?",
+      "audit_requirements": [
+        "Acronym disambiguation",
+        "Foundational primary literature",
+        "Definition versus an unnecessary survey"
+      ]
+    },
+    {
+      "id": "sqlite",
+      "scenario": "versioned-technical-reference",
+      "question": "In Python 3.12 sqlite3, how do autocommit=False, autocommit=True, and LEGACY_TRANSACTION_CONTROL differ? Use the Python 3.12 documentation, explain the effect of isolation_level, commit(), rollback(), and the connection context manager, and provide a minimal example for each mode.",
+      "audit_requirements": [
+        "Exact documentation version",
+        "Long-page anchors and code/table extraction",
+        "Negation and conditional behavior",
+        "Examples supported by documentation"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,65 @@
+{
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "selections": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/SelectionChoice"
+      },
+      "maxItems": 20,
+      "description": "Priority order for the immediate batch only; also bounded by remaining_fetches and batch_fetch_limit."
+    },
+    "deferred": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/SelectionChoice"
+      },
+      "maxItems": 128,
+      "description": "Priority-ordered viable reserves, including same-work alternatives awaiting failure."
+    },
+    "rejected": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/SelectionChoice"
+      },
+      "maxItems": 128,
+      "description": "Excluded candidates with explicit reasons."
+    }
+  },
+  "required": [
+    "schema_version",
+    "selections",
+    "deferred",
+    "rejected"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "SelectionChoice": {
+      "type": "object",
+      "properties": {
+        "candidate_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160,
+          "description": "Exact nonblank delivered candidate ID; never normalize or invent it."
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024,
+          "description": "Concise nonblank English reason based on supplied metadata and acquisition context."
+        }
+      },
+      "required": [
+        "candidate_id",
+        "reason"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "description": "Every delivered candidate ID must occur exactly once across all three lists. Pydantic checks uniqueness; the host cross-validates membership, exhaustive classification and fetch budgets."
+}

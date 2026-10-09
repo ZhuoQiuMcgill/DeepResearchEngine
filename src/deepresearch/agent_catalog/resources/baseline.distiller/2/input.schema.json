@@ -1,0 +1,212 @@
+{
+  "type": "object",
+  "properties": {
+    "question": {
+      "type": "string"
+    },
+    "plan": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "integer",
+          "const": 1
+        },
+        "objective": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048,
+          "description": "A nonblank research objective; whitespace-only text is not an objective."
+        },
+        "questions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 1024,
+            "minLength": 1,
+            "description": "Nonblank, distinct text; UTF-8 encoded length must not exceed 1024 bytes."
+          },
+          "minItems": 1,
+          "maxItems": 4,
+          "uniqueItems": true
+        },
+        "queries": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 4096,
+            "minLength": 1,
+            "description": "Nonblank, distinct text; UTF-8 encoded length must not exceed 4096 bytes."
+          },
+          "minItems": 1,
+          "maxItems": 4,
+          "uniqueItems": true
+        },
+        "outline": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 1,
+            "description": "Nonblank, distinct text; UTF-8 encoded length must not exceed 256 bytes."
+          },
+          "minItems": 1,
+          "maxItems": 8,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "schema_version",
+        "objective",
+        "questions",
+        "queries",
+        "outline"
+      ],
+      "additionalProperties": false
+    },
+    "source": {
+      "type": "object",
+      "properties": {
+        "source_id": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        },
+        "snapshot_ref": {
+          "type": "object",
+          "properties": {
+            "schema_version": {
+              "type": "integer",
+              "const": 1
+            },
+            "store_id": {
+              "type": "string"
+            },
+            "snapshot_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "schema_version",
+            "store_id",
+            "snapshot_id"
+          ],
+          "additionalProperties": false
+        },
+        "document_bytes": {
+          "type": "integer"
+        },
+        "read_bytes": {
+          "type": "integer"
+        },
+        "complete_read": {
+          "type": "boolean"
+        },
+        "content_hint": {
+          "enum": [
+            "substantive",
+            "abstract",
+            "bibliography"
+          ]
+        }
+      },
+      "required": [
+        "source_id",
+        "url",
+        "snapshot_ref",
+        "document_bytes",
+        "read_bytes",
+        "complete_read",
+        "content_hint"
+      ],
+      "additionalProperties": false
+    },
+    "chunk_id": {
+      "type": "string"
+    },
+    "segments": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 256,
+      "items": {
+        "type": "object",
+        "properties": {
+          "segment_id": {
+            "type": "string"
+          },
+          "range": {
+            "type": "object",
+            "properties": {
+              "schema_version": {
+                "type": "integer",
+                "const": 1
+              },
+              "kind": {
+                "enum": [
+                  "pages",
+                  "lines"
+                ]
+              },
+              "start": {
+                "type": "integer"
+              },
+              "end_exclusive": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "schema_version",
+              "kind",
+              "start",
+              "end_exclusive"
+            ],
+            "additionalProperties": false
+          },
+          "start_byte": {
+            "type": "integer"
+          },
+          "end_byte": {
+            "type": "integer"
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 65536
+          },
+          "text_sha256": {
+            "type": "string"
+          },
+          "read_action_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "segment_id",
+          "range",
+          "start_byte",
+          "end_byte",
+          "text",
+          "text_sha256",
+          "read_action_id"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "feedback": {
+      "type": "array",
+      "maxItems": 8,
+      "items": {
+        "type": "string",
+        "maxLength": 1024
+      }
+    }
+  },
+  "required": [
+    "question",
+    "plan",
+    "source",
+    "chunk_id",
+    "segments",
+    "feedback"
+  ],
+  "additionalProperties": false
+}

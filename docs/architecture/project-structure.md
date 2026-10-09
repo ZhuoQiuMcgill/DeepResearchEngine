@@ -1,10 +1,14 @@
 # Project structure and dependency rules
 
+Current tool selection: `baseline@10` retains revision 9 roles and research policy,
+with `web.search@4` and `web.fetch@2`. See [web tools](../usage/web-tools.md)
+for module responsibilities, service setup and measured comparisons.
+
 DeepResearch Engine separates execution capabilities, Workflow composition,
 concrete research methods, role assets, optional extensions, application ownership,
-interfaces and bootstrap. `baseline@6` is the current formal method built over
-those modules: Planner 3, bounded acquisition/archived reads, parallel Distiller 1,
-Analyst 3, Writer 5 and Reviewer 4, with independent research-quality status.
+interfaces and bootstrap. `baseline@10` is the current formal method built over
+those modules: Planner 4, Selector 3, bounded acquisition/archived reads, parallel Distiller 3,
+Analyst 5, Writer 6 and Reviewer 5, with independent research-quality status.
 See [Baseline architecture](baseline.md) for its flow and research contracts.
 
 The platform package is `deepresearch`; the distribution is `deepresearch-engine`
@@ -23,6 +27,11 @@ src/deepresearch/
     providers/             native model connectors and observed usage
       tokenization/        registered tokenizer and estimate policies
     toolset/               fixed-argv search/fetch/read workers
+      search_service.py    bounded SearXNG adapter and discovery contract
+      fetch_v2.py          ordered capture attempts and archive proposal
+      fetch_transport.py   curl transport, public DNS pinning and HTTP bounds
+      browser_capture.py   guarded Chromium rendering and process cleanup
+      article_extraction.py library-led HTML text/table extraction
     storage/               SQLite state, immutable objects and event receipts
   agent_catalog/
     catalog.py             validate, resolve, render and compile pinned roles
@@ -49,16 +58,19 @@ src/deepresearch/
   methods/
     baseline/
       workflow.py          formal revision 2 orchestration
-      parallel_workflow.py revisions 5–6 parallel evidence orchestration
+      parallel_workflow.py shared revisions 5–10 evidence orchestration
+      selection_workflow.py revisions 7–10 candidate-selection policy
+      selection_contracts.py structured candidate choices
       contracts.py         ResearchPlan, EvidenceAnalysis and ReportReview
       evidence_contracts.py source digests and range-read decisions
       stages/
         roles.py           structured role decisions and evidence validation
+        selection.py       bounded candidate metadata and Agent decision binding
         reporting.py       bounded drafting/review and citation-label checks
         distillation.py    parallel source roles and verified quotations
         evidence_delivery.py digests and recorded text -> synthesis evidence
       resources/2/         method.json, input.schema.json, parameters.schema.json
-      resources/3..5/      preserved newer method schemas and role pins
+      resources/3..10/     preserved newer method schemas and role/tool pins
       v1/                  retained revision 1 workflow and schemas
     example_echo/          real model-free integration method
   extensions/              Hook contracts, registry, dispatcher and cleanup
@@ -77,14 +89,16 @@ src/ebd/
   __init__.py              deprecated import bridge; no implementation tree
 tests/                     module, application, HTTP and boundary checks
 examples/                  executable consumers, never implementation dependencies
+  benchmarks/web-tools.json fixed questions and historical URL corpus
+deploy/web-tools/          pinned self-hosted search service and configuration template
 docs/                      setup, architecture, usage and acceptance evidence
 ```
 
 Method 2 pins `baseline.planner@1`, `baseline.analyst@1`, `baseline.writer@2` and
 `baseline.reviewer@1`, each with the five standard resources above. Writer 1 and
-the v1 method remain available. Bootstrap registers `baseline@1` through `baseline@6`
+the v1 method remain available. Bootstrap registers `baseline@1` through `baseline@10`
 and `example.echo@1`; wire `method_revision` defaults to 1 for compatibility.
-New consumers explicitly request 6. HTTP `/api/v1` and wire schema 1 do not select
+New consumers explicitly request 10. HTTP `/api/v1` and wire schema 1 do not select
 the method revision.
 
 ## Dependency direction and ownership

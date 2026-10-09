@@ -78,6 +78,46 @@ def extend_scholarly_schema(definitions):
         definitions[provider + "_result_v2"] = result
 
 
+def retain_valid_locations(candidate):
+    """Flag malformed optional URLs without discarding usable work metadata.
+
+    Paths refer to the projected provider row before filtering. Crossref links
+    require a URL, so an invalid link is omitted as a unit. Other location URL
+    fields already admit null. Never split, repair or synthesize destinations.
+    The caller has built this projection separately from the provider response.
+    """
+    invalid = []
+    if "links" in candidate:
+        retained = []
+        for index, link in enumerate(candidate["links"]):
+            try:
+                url(link.get("url"))
+            except ToolFault:
+                invalid.append(f"links[{index}].url")
+            else:
+                retained.append(link)
+        candidate["links"] = retained
+
+    def visit(value, path=""):
+        if isinstance(value, dict):
+            for key, item in value.items():
+                field = f"{path}.{key}" if path else key
+                if key.endswith("_url") or key == "url":
+                    if item is not None:
+                        try:
+                            url(item)
+                        except ToolFault:
+                            value[key] = None
+                            invalid.append(field)
+                else:
+                    visit(item, field)
+        elif isinstance(value, list):
+            for index, item in enumerate(value):
+                visit(item, f"{path}[{index}]")
+    visit(candidate)
+    return invalid
+
+
 class _AbstractText(HTMLParser):
     def __init__(self):
         super().__init__(convert_charrefs=True)

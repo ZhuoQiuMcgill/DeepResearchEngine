@@ -352,12 +352,13 @@ def _extract_html(source: str, info: dict) -> tuple[str, str]:
     if not text.strip(): raise ToolFault("EXTRACTION_EMPTY", "Static HTML has no extractable document text")
     return text, classification
 
-def extract(body: bytes, info: dict, limits: dict | None = None) -> dict:
+def extract(body: bytes, info: dict, limits: dict | None = None, *, recover_pdf=False) -> dict:
     limits = LIMITS | (limits or {})
     content_type = info["content_type"]
     media = content_type.split(";", 1)[0].strip().lower()
     pages, charset, charset_source = None, None, None
     parser_warning_count = 0
+    pdf_diagnostic = None
     classification = "static_text"
     if body.startswith(b"%PDF-") and media != "application/pdf":
         raise ToolFault("CONTENT_TYPE_MISMATCH", "PDF bytes disagree with declared media type")
@@ -379,8 +380,15 @@ def extract(body: bytes, info: dict, limits: dict | None = None) -> dict:
             if reader.is_encrypted: raise ToolFault("PDF_ENCRYPTED", "Encrypted PDF is unsupported")
             if len(reader.pages) > limits["pdf_pages"]: raise ToolFault("PDF_PAGE_LIMIT", "PDF physical page count exceeds limit", status="limit_exhausted")
             page_texts, pages, offset = [], [], 0
-            for number, page in enumerate(reader.pages, 1):
-                value = normalize(page.extract_text() or "")
+            if recover_pdf:
+                from .pdf_extraction import VERSION, extract_pages
+                values, pdf_diagnostic = extract_pages(reader, body, limits)
+                extraction = VERSION
+            else:
+                values = (page.extract_text() or "" for page in reader.pages)
+                extraction = "pypdf/6.19.0"
+            for number, value in enumerate(values, 1):
+                value = normalize(value)
                 encoded = value.encode("utf-8")
                 pages.append({"page": number, "start_byte": offset, "end_byte": offset + len(encoded)})
                 offset += len(encoded) + 1
@@ -388,7 +396,6 @@ def extract(body: bytes, info: dict, limits: dict | None = None) -> dict:
                 page_texts.append(value)
             text = "\n".join(page_texts)
             if not text.strip(): raise ToolFault("PDF_NO_TEXT", "PDF contains no usable text; OCR is required", details={"classification": "OCR_REQUIRED"})
-            extraction = "pypdf/6.19.0"
         except ToolFault: raise
         except Exception as exc: raise ToolFault("PDF_INVALID", "PDF parser could not extract this document") from exc
         finally:
@@ -420,6 +427,8 @@ def extract(body: bytes, info: dict, limits: dict | None = None) -> dict:
                   "extraction_version": extraction, "normalization_version": "lf/1",
                   "classification": classification, "physical_page_count": len(pages) if pages is not None else None,
                   "parser_warning_count": parser_warning_count}
+    if pdf_diagnostic is not None:
+        provenance["pdf_extraction"] = pdf_diagnostic
     encode(provenance, limits["provenance_bytes"])
     return {"original": body, "text": encoded, "index": index, "provenance": provenance,
             "extraction_version": extraction, "normalization_version": "lf/1", "media_type": media}

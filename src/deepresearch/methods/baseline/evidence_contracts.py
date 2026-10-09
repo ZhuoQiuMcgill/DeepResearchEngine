@@ -43,6 +43,7 @@ class EvidenceReadRequest(BaseModel):
 class DistilledAnalysis(EvidenceAnalysis):
     follow_up_reads: list[EvidenceReadRequest] = Field(max_length=8)
     _reported_sufficient: bool = PrivateAttr(default=False)
+    _read_adjustments: list = PrivateAttr(default_factory=list)
 
     @model_validator(mode="after")
     def sufficient_has_no_missing_evidence(self):

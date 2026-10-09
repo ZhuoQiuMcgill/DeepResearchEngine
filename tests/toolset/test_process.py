@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import ctypes
+import json
 import os
 import sys
 from pathlib import Path
@@ -16,7 +17,8 @@ FIXTURE = str(Path(__file__).with_name("process_fixture.py"))
 def run(mode, *, timeout=3, stdout_cap=65536, extra=()):
     async def check():
         runner = ProcessRunner()
-        result = await runner.run((sys.executable, FIXTURE, mode, *extra), '{"hello":"中"}'.encode(), timeout=timeout, stdout_cap=stdout_cap)
+        observer = ("--observer-pid", str(os.getpid())) if os.name == "nt" else ()
+        result = await runner.run((sys.executable, FIXTURE, mode, *extra, *observer), '{"hello":"中"}'.encode(), timeout=timeout, stdout_cap=stdout_cap)
         assert (await runner.close())["complete"]
         return result
     return asyncio.run(check())
@@ -39,34 +41,38 @@ def test_actual_stream_flood_terminates_tree(mode):
 @pytest.mark.parametrize("root_wait", [False, True])
 def test_sleeping_descendant_and_inherited_pipes_are_removed(root_wait):
     result = run("descendant", timeout=.3, extra=("wait",) if root_wait else ())
-    assert result.cleanup_complete
-    assert_child_terminated(int(result.stdout.strip()))
+    assert_descendant_cleanup(result)
 
 
-def assert_child_terminated(child_pid):
+def assert_descendant_cleanup(result):
+    identity = json.loads(result.stdout)
     if os.name == "nt":
         from ctypes import wintypes
         kernel = ctypes.WinDLL("kernel32", use_last_error=True)
-        kernel.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
-        kernel.OpenProcess.restype = wintypes.HANDLE
-        handle = kernel.OpenProcess(0x100000 | 0x1000, False, child_pid)
-        if handle:
-            kernel.WaitForSingleObject.argtypes = [wintypes.HANDLE, wintypes.DWORD]
-            assert kernel.WaitForSingleObject(handle, 0) == 0
-            kernel.CloseHandle.argtypes = [wintypes.HANDLE]; kernel.CloseHandle(handle)
+        kernel.WaitForSingleObject.argtypes = [wintypes.HANDLE, wintypes.DWORD]
+        kernel.WaitForSingleObject.restype = wintypes.DWORD
+        kernel.CloseHandle.argtypes = [wintypes.HANDLE]
+        handle = identity["handle"]
+        try:
+            assert result.cleanup_complete
+            # Termination is asynchronous. Observe the original object within
+            # a bounded interval; a sleeping/leaked descendant still fails.
+            assert kernel.WaitForSingleObject(handle, 1000) == 0
+        finally:
+            kernel.CloseHandle(handle)
     else:
-        with pytest.raises(ProcessLookupError): os.kill(child_pid, 0)
+        assert result.cleanup_complete
+        with pytest.raises(ProcessLookupError): os.kill(identity["pid"], 0)
 
 
 def test_abrupt_worker_crash_preserves_nonzero_exit_and_settles_descendant_pipes():
     result = run("crash_with_descendant")
     assert isinstance(result, ProcessOutcome) and result.exit_code == 61
     assert result.termination_reason is None  # actual root crash, no parent limit
-    assert result.cleanup_complete
     assert result.stdout_bytes == len(result.stdout)
     assert result.stderr == b"worker aborted before a response\n"
     assert result.stderr_bytes == len(result.stderr)
-    assert_child_terminated(int(result.stdout.strip()))
+    assert_descendant_cleanup(result)
 
 
 def test_python_cancellation_settles_actual_worker():

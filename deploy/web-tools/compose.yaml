@@ -1,0 +1,12 @@
+name: deepresearch-web-tools
+services:
+  search:
+    image: searxng/searxng@sha256:c642712fcedcdaa78fac44f71eada86aff510745826ba1bd1a368211fea2ce7f
+    ports:
+      - "127.0.0.1:18888:8080"
+    volumes:
+      - ../../local/web-tools-service/settings.yml:/etc/searxng/settings.yml:ro
+    mem_limit: 512m
+    cpus: 2.0
+    pids_limit: 128
+    restart: "no"

@@ -2,9 +2,9 @@
 
 A modular execution platform for reusable research methods. Agent Runtime,
 Toolset, Storage and Connections provide execution capabilities; Workflows
-compose them through an application port. The formal **`baseline@6`** plans
-research, searches and archives sources, reads retained documents and distills
-them with parallel source Agents before synthesis and review. Its five Agent roles are
+compose them through an application port. The formal **`baseline@13`** plans
+research, selects search candidates with a dedicated Agent and archives sources, reads retained documents and distills
+them with parallel source Agents before synthesis and review. Its six Agent roles are
 all tool-free and use the common Runtime. Final reports use English.
 The fixed EBD experiment question is `What is EBD (Environment Based Design)?`;
 Agent-generated search queries remain separate from that original input.
@@ -17,8 +17,12 @@ bridges; new code uses `deepresearch.*`.
 
 ## Start here
 
+- [Web tools setup](docs/usage/web-tools.md): free open-source search/fetch, pinned local service, browser installation and the fixed three-question benchmark.
 - [Team start](docs/team-start.md): setup, contributor interfaces and ownership.
-- [Parallel Baseline usage](docs/usage/baseline-parallel.md): explicit v6 requests, source access, parallel distillation and quality,
+- [Cross-scenario diagnostics](docs/scenario-systemic-diagnostics.md): paired model scenarios and the testable variable inventory.
+- [Baseline reliability](docs/usage/baseline-reliability.md): current revision 13 contracts, repairs, isolation and diagnostic reads.
+- [Known limitations](docs/known-limitations.md): remaining engineering gaps, evidence boundaries and recommended follow-up priorities.
+- [Instruction Baseline usage](docs/usage/baseline-instructions.md): explicit v9 requests, candidate decisions, source access, parallel distillation and quality,
   CLI/HTTP/SSE and saved source/report/artifact reads.
 - [Baseline architecture](docs/architecture/baseline.md): role pins, bounded
   rounds/revision, publication conditions, evidence gaps and recovery.
@@ -28,10 +32,12 @@ bridges; new code uses `deepresearch.*`.
 - [ResearchRun API](docs/usage/research-service.md) and [OpenAPI](docs/api/openapi.json):
   generic frontend/application contracts. Baseline version details are in their own guides.
 
-Bootstrap registers `baseline@1` through `baseline@6` and `example.echo@1`.
+Bootstrap registers `baseline@1` through `baseline@13` and `example.echo@1`.
 **`ResearchRunRequest.method_revision` still defaults to 1. New Baseline consumers
-must explicitly request revision 6 for the enriched search contracts.** It retains
-revision 5's parallel distillation, English reports and research policy.
+must explicitly request revision 13 for the verified read, repair, source isolation and citation contracts.**
+See [baseline reliability](docs/usage/baseline-reliability.md). **Historical selection:** Revision 7 retains the earlier
+Selector instructions; revision 6
+retains rule selection with the same search tools as the comparison control.
 HTTP `/api/v1` and wire `schema_version: 1`
 are independent of the method version. Earlier methods and role bundles are retained.
 The historical `deepresearch baseline` command runs a separate single-Agent
@@ -44,6 +50,7 @@ Use Python 3.11+ and uv from the project root:
 ```shell
 uv sync --locked
 uv run --locked python --version
+uv run --locked playwright install chromium --only-shell
 uv run --locked pytest -q
 uv run --locked deepresearch methods
 uv run --locked python examples/workflow_method.py
@@ -64,42 +71,46 @@ in `local/.env`; [.env.example](.env.example) lists their names. Preserve an
 existing file. Configuration resolves API values lazily on the host; browser
 requests select named profiles and models rather than carrying credentials.
 
-## Run Baseline revision 6
+## Run Baseline revision 13
 
 A minimal PowerShell request can concern any research question:
 
 ```powershell
 $request = @{
     schema_version = 1
-    client_request_id = "baseline-v6-" + [guid]::NewGuid().ToString("N")
+    client_request_id = "baseline-v13-" + [guid]::NewGuid().ToString("N")
     method_id = "baseline"
-    method_revision = 6
+    method_revision = 13
     input = @{ question = "What is EBD (Environment Based Design)?" }
-    parameters = @{ max_rounds = 2; max_queries = 2; max_sources = 20; max_report_attempts = 4 }
+    parameters = @{ max_rounds = 2; max_queries = 2; max_sources = 40; max_report_attempts = 4 }
     profile_ref = "deepseek"
     model_ref = "deepseek-flash"
     timeout_seconds = 1800.0
 } | ConvertTo-Json -Depth 8
-$request | uv run --locked deepresearch --store local/my-baseline-v6 research
+$request | uv run --locked deepresearch --store local/my-baseline-v13 research
 ```
 
 This uses real search/fetch/read tools and the selected model profile. Provider
 credentials and access are required. For a POSIX shell, a request file can be
 passed with `research < examples/baseline-request.json`; PowerShell uses
 `Get-Content -Raw examples/baseline-request.json | uv run --locked deepresearch
---store local/my-baseline-v6 research`. Check its version and use a fresh
+--store local/my-baseline-v13 research`. Check its version and use a fresh
 `client_request_id` for new intent. Repeating the same identity and full request
 returns the original run; changing its body is a conflict.
 
 ```mermaid
 flowchart LR
-    Question[Question] --> Planner[Planner 3]
-    Planner --> Rounds[Bounded discovery / fetch / archived reads]
-    Rounds --> Distillers[Parallel Distiller 1 pool]
-    Distillers --> Analyst[Analyst 3: findings, gaps and read requests]
-    Analyst -->|new queries / reads within limits| Rounds
-    Analyst --> Writer[Writer 5]
-    Writer --> Review[Reviewer 4 and language/citation/coverage checks]
+    Question[Question] --> Planner[Planner 5]
+    Planner --> Search[Recorded discovery]
+    Search --> Selector[Selector 4: candidate IDs and reasons]
+    Selector --> Fetch[Bounded fetch and archive]
+    Fetch --> Read[Read archived sources]
+    Read --> Distillers[Parallel Distiller 4 pool]
+    Distillers --> Analyst[Analyst 6: findings, gaps and read requests]
+    Analyst -->|new queries within limits| Search
+    Analyst -->|saved ranges within limits| Read
+    Analyst --> Writer[Writer 7]
+    Writer --> Review[Reviewer 6 and language/citation/coverage checks]
     Review -->|revise within draft cap| Writer
     Review -->|accepted| Report[Final report and result checkpoint]
 ```
@@ -117,7 +128,7 @@ and deterministic label checks do not guarantee external factual truth.
 
 `quality` distinguishes report acceptance from sufficient research coverage;
 source-access and distillation artifacts link summaries to saved bytes.
-Bounds come from the v6 [parameter schema](src/deepresearch/methods/baseline/resources/6/parameters.schema.json)
+Bounds come from the v11 [parameter schema](src/deepresearch/methods/baseline/resources/11/parameters.schema.json)
 and the host's shared budgets. The default shared recording allowance is
 `storage_writes=4096` to accommodate the formal flow's nodes, projections and
 child records. Host deployments may narrow it; rounds and children do not reset

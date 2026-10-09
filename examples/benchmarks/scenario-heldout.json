@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "purpose": "Held-out format/source-access verification; no Agent instruction or workflow changes.",
+  "method_revision": 12,
+  "models": [
+    {
+      "id": "deepseek",
+      "profile_ref": "deepseek",
+      "model_ref": "deepseek-flash"
+    },
+    {
+      "id": "gpt",
+      "profile_ref": "openai",
+      "model_ref": "gpt-6-luna"
+    }
+  ],
+  "parameters": {
+    "max_queries": 2,
+    "max_results": 5,
+    "max_rounds": 2,
+    "max_report_attempts": 4,
+    "max_sources": 40,
+    "context_tokens": 131072,
+    "source_urls": [],
+    "max_context_bytes": 524288,
+    "max_scan_bytes": 1048576,
+    "parallel_agents": 4,
+    "max_distillation_calls": 20,
+    "recovery_queries": 4,
+    "min_substantive_sources": 2
+  },
+  "controls": [
+    "Same pinned roles and tools as baseline 11",
+    "262144-token per-agent allowance, not guaranteed model capacity",
+    "Fresh separate stores; two independent runs at most",
+    "Original three question strings unchanged",
+    "No source URLs or hand-picked queries seeded",
+    "No automatic reruns of failed executions",
+    "Live searches differ; paired outcomes alone do not establish causation"
+  ],
+  "cases": [
+    {
+      "id": "http-semantics",
+      "scenario": "protocol-reference",
+      "question": "How do HTTP 429 and 503 differ, and how should a client interpret Retry-After? Use the applicable HTTP specifications and distinguish status semantics from a server's rate-limit policy.",
+      "audit_requirements": [
+        "Original question preserved",
+        "Normative source versus implementation advice",
+        "Linked sections and examples readable",
+        "No undocumented guarantee of retry safety"
+      ]
+    },
+    {
+      "id": "bee-navigation",
+      "scenario": "scientific-mechanism",
+      "question": "How do honeybees communicate the direction and distance of a food source? Distinguish experimental observations from proposed mechanisms.",
+      "audit_requirements": [
+        "Primary versus secondary evidence",
+        "Original papers versus abstract-only access",
+        "Distance versus direction and units",
+        "Distillation and quote bindings"
+      ]
+    }
+  ]
+}

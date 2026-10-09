@@ -25,6 +25,9 @@ class WorkflowContext:
         self.run_id, self.model_ref = run_id, model_ref
         self.port, self.hooks, self.tokens = port, hooks, token_meter
         self.nodes = {}
+        # Method-owned defaults rendered and retained with every role input.
+        # Only methods whose pinned role schemas admit these fields set them.
+        self.agent_input_defaults = {}
         self._nodes_lock = asyncio.Lock()
 
     async def _flush_nodes(self, *, cleanup=False):

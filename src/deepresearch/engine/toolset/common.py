@@ -124,7 +124,7 @@ def prefix_utf8(text: str, cap: int) -> str:
     return text.encode("utf-8")[:cap].decode("utf-8", errors="ignore")
 
 
-def validate_arguments(name: str, arguments: Any) -> dict:
+def validate_arguments(name: str, arguments: Any, revision: int = 1) -> dict:
     encode(arguments, LIMITS["stdin_bytes"])
     if name in ("web.search", "scholar.crossref.search", "scholar.openalex.search"):
         value = closed(arguments, {"query", "max_results"}, {"query"})
@@ -137,9 +137,10 @@ def validate_arguments(name: str, arguments: Any) -> dict:
         return {"query": query, "max_results": count}
     if name == "web.fetch":
         value = closed(arguments, {"url", "mode"}, {"url"})
-        if value.get("mode", "static") != "static":
-            raise ToolFault("INVALID_ARGUMENT", "Only static retrieval is registered", status="validation_failed")
-        return {"url": url(value["url"]), "mode": "static"}
+        mode = value.get("mode", "auto" if revision >= 2 else "static")
+        if mode not in (("static", "auto") if revision >= 2 else ("static",)):
+            raise ToolFault("INVALID_ARGUMENT", "Unsupported retrieval mode for this revision", status="validation_failed")
+        return {"url": url(value["url"]), "mode": mode}
     if name == "document.read":
         value = closed(arguments, {"snapshot_ref", "range", "max_text_bytes", "continuation"}, {"snapshot_ref", "range"})
         interval = closed(value["range"], {"kind", "start", "end_exclusive"})

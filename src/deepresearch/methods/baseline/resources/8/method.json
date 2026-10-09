@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "method_id": "baseline",
+  "revision": 8,
+  "description": "Agent-selection baseline with six versioned instruction and output-instance contracts; revision 7 tools, schemas and scheduling are retained.",
+  "tool_revisions": {
+    "web.search": 3,
+    "scholar.crossref.search": 2,
+    "scholar.openalex.search": 2
+  },
+  "agent_roles": [
+    {
+      "role_id": "baseline.planner",
+      "revision": 4
+    },
+    {
+      "role_id": "baseline.selector",
+      "revision": 2
+    },
+    {
+      "role_id": "baseline.distiller",
+      "revision": 2
+    },
+    {
+      "role_id": "baseline.analyst",
+      "revision": 4
+    },
+    {
+      "role_id": "baseline.writer",
+      "revision": 6
+    },
+    {
+      "role_id": "baseline.reviewer",
+      "revision": 5
+    }
+  ]
+}

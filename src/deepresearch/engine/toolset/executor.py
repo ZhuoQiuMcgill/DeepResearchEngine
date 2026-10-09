@@ -39,11 +39,13 @@ def terminal(error):
 
 class ToolExecutor:
     def __init__(self, catalog=None, *, openalex_admission=False, fetch_concurrency=1, memory_bytes=512 << 20,
-                 quota_checkpoint=None, quota_checkpoint_sink=None):
+                 quota_checkpoint=None, quota_checkpoint_sink=None, searxng_url="http://127.0.0.1:18888"):
         if type(fetch_concurrency) is not int or not 1 <= fetch_concurrency <= 2:
             raise ValueError("fetch concurrency must be one or two after measurement")
         self.catalog = catalog or ToolCatalog()
         self.runner = ProcessRunner(memory_bytes=memory_bytes)
+        from .search_service import service_endpoint
+        self.searxng_url = service_endpoint(searxng_url)
         self.quotas = {"crossref": ProviderQuota("crossref"), "openalex": ProviderQuota("openalex", anonymous_admission=openalex_admission)}
         self._quota_sink = quota_checkpoint_sink
         if quota_checkpoint is not None:
@@ -58,6 +60,15 @@ class ToolExecutor:
     def export_quota_checkpoint(self):
         return {"schema_version": 1, "owner_scope": "executor_local",
             "providers": {provider: quota.export_checkpoint() for provider, quota in self.quotas.items()}}
+
+    def execution_policy(self, definition):
+        if definition.name == 'web.fetch' and definition.revision == 3:
+            return {'id': 'adaptive/2', 'phases': ['static', 'optional_render'],
+                'max_worker_dispatches': 2, 'max_snapshot_commits': 1,
+                'http_request_limit': 40, 'decoded_byte_limit': 32 << 20,
+                'work_seconds_limit': LIMITS['work_seconds'],
+                'stdout_bytes_limit': LIMITS['fetch_stdout_bytes'], 'stderr_bytes_limit': LIMITS['stderr_bytes']}
+        return None
 
     async def _persist_quota(self):
         if self._quota_sink is None: return
@@ -99,12 +110,14 @@ class ToolExecutor:
             if not isinstance(storage_plan.tool, ToolRef) or storage_plan.tool != definition.ref or storage_plan.context is not context:
                 raise ToolFault("ACCESS_DENIED", "Storage plan is not bound to this live attempt")
             storage_plan.assert_recorded()
+            if storage_plan.dispatch_policy != self.execution_policy(definition):
+                raise ToolFault('ACCESS_DENIED', 'Tool phases differ from their recorded dispatch policy')
             if storage_plan.lease.context is not context or not context.attempt_id:
                 raise ToolFault("ACCESS_DENIED", "Attempt lease is not bound to this execution")
             context.authorize("tool.execute", object_id=definition.name)
             key = (context.run_id, context.action_id, context.attempt_id)
-            if key in self._attempts: raise ToolFault("ATTEMPT_REUSED", "A recorded attempt cannot dispatch twice")
-            arguments = validate_arguments(definition.name, arguments)
+            if key in self._attempts: raise ToolFault("ATTEMPT_REUSED", "A recorded logical tool attempt cannot execute twice")
+            arguments = validate_arguments(definition.name, arguments, definition.revision)
             if list(Draft202012Validator(definition.input_schema).iter_errors(arguments)):
                 raise ToolFault("INVALID_ARGUMENT", "Arguments do not match the registered schema", status="validation_failed")
             self._attempts.add(key)
@@ -113,10 +126,10 @@ class ToolExecutor:
             for name, value in storage_plan.limits.items():
                 if type(value) is not int or not 0 < value <= limits[name]: raise ToolFault("INVALID_ARGUMENT", "Bound limit must narrow the registered profile", status="validation_failed")
                 limits[name] = value
-            if storage_plan.request and validate_arguments(definition.name, storage_plan.request) != arguments:
+            if storage_plan.request and validate_arguments(definition.name, storage_plan.request, definition.revision) != arguments:
                 raise ToolFault("ACCESS_DENIED", "Frozen plan request differs from public arguments")
             if definition.name == "web.search":
-                context.authorize("network.search"); plan = search_plan(definition.revision)
+                context.authorize("network.search"); plan = search_plan(definition.revision, service_url=self.searxng_url)
             elif definition.name.startswith("scholar."):
                 context.authorize("network.search")
                 provider = definition.name.split(".")[1]
@@ -131,6 +144,8 @@ class ToolExecutor:
                     raise ToolFault("ACCESS_DENIED", "Fetch has no bound snapshot publication plan")
                 plan = {"kind": "fetch", "operation_id": storage_plan.operation_id, "representation": "content_decoded",
                     "extraction_config_ref": "static/1", "normalization_version": "lf/1"}
+                if definition.revision >= 2:
+                    plan.update(representation="selected_capture", extraction_config_ref="adaptive/1")
                 result.persistence = {"required": True, "operation_id": storage_plan.operation_id, "commit_state": "not_committed", "receipt": None}
             else:
                 if storage_plan.snapshot_store is None: raise ToolFault("ACCESS_DENIED", "Read has no scoped snapshot client")
@@ -152,10 +167,38 @@ class ToolExecutor:
                 result.process["dispatched"] = True
                 return await self.runner.run(definition.argv, payload, timeout=min(work, context.remaining_seconds()),
                     stdout_cap=cap, stderr_cap=limits["stderr_bytes"], context_cancelled=context.cancellation.is_set)
+            supervised_response = None
             if definition.name == "web.fetch":
                 while self._fetch.locked():
                     context.assert_active(); await asyncio.sleep(.02)
-                async with self._fetch: process = await dispatch()
+                async with self._fetch:
+                    if definition.revision == 3:
+                        from .fetch_supervisor import supervise
+                        async def dispatch_stage(bound, data, seconds, stdout_cap, stderr_cap):
+                            context.assert_active(); storage_plan.assert_recorded()
+                            result.process['dispatched'] = True
+                            return await self.runner.run(definition.argv, data,
+                                timeout=min(seconds, context.remaining_seconds()), stdout_cap=stdout_cap,
+                                stderr_cap=stderr_cap, context_cancelled=context.cancellation.is_set)
+                        def observe_stage(row):
+                            stages = result.process.setdefault('stages', [])
+                            stages.append(row)
+                            result.process['dispatched'] = any(s['dispatched'] for s in stages)
+                            result.process.update(exit_code=row['exit_code'], termination_reason=row['termination_reason'],
+                                cleanup={'complete': all(s['cleanup_complete'] for s in stages),
+                                    'errors': [], 'unconfirmed_resources': [] if all(s['cleanup_complete'] for s in stages) else ['worker-tree-or-pipes']},
+                                total_stdout_bytes=sum(s['stdout_bytes'] for s in stages),
+                                total_stderr_bytes=sum(s['stderr_bytes'] for s in stages))
+                            result.observations['resources'] = {
+                                key: max((s[key] for s in stages if s[key] is not None), default=None)
+                                for key in ('peak_job_memory_bytes', 'peak_process_memory_bytes')}
+                            result.observations['resources'].update(job_memory_ceiling_bytes=self.runner.memory_bytes,
+                                memory_scope='WindowsJob' if any(s['peak_job_memory_bytes'] is not None for s in stages) else 'unmeasured')
+                        process, request, supervised_response, selected_stage = await supervise(
+                            request, definition, limits, context, dispatch_stage, observe_stage)
+                        result.process['selected_stage'] = selected_stage
+                    else:
+                        process = await dispatch()
             else: process = await dispatch()
             result.process.update(exit_code=process.exit_code, termination_reason=process.termination_reason,
                 stdin_bytes=process.stdin_bytes, stdout_bytes=process.stdout_bytes, stderr_bytes=process.stderr_bytes,
@@ -163,15 +206,15 @@ class ToolExecutor:
                     "errors": [], "unconfirmed_resources": [] if process.cleanup_complete else ["worker-tree-or-pipes"]})
             if process.termination_reason == "spawn_failed" and process.pid is None:
                 result.process["dispatched"] = False
-            result.observations["resources"] = {"peak_job_memory_bytes": process.peak_job_memory_bytes,
+            result.observations.setdefault("resources", {"peak_job_memory_bytes": process.peak_job_memory_bytes,
                 "peak_process_memory_bytes": process.peak_process_memory_bytes, "job_memory_ceiling_bytes": self.runner.memory_bytes,
-                "memory_scope": "WindowsJob" if process.peak_job_memory_bytes is not None else "unmeasured"}
+                "memory_scope": "WindowsJob" if process.peak_job_memory_bytes is not None else "unmeasured"})
             if process.termination_reason:
                 mapping = {"deadline": ("DEADLINE_EXCEEDED", "timed_out"), "cancelled": ("CANCELLED", "cancelled"), "stream_limit": ("LIMIT_EXCEEDED", "limit_exhausted"), "memory_limit": ("MEMORY_LIMIT", "limit_exhausted"), "spawn_failed": ("WORKER_START_FAILED", "failed")}
                 code, status = mapping.get(process.termination_reason, ("CLEANUP_INCOMPLETE", "failed"))
                 raise ToolFault(code, "Worker stopped under parent control", status=status)
             if not process.cleanup_complete: raise ToolFault("CLEANUP_INCOMPLETE", "Worker resources did not settle")
-            response = strict_json(process.stdout, cap, limits["json_depth"])
+            response = supervised_response if supervised_response is not None else strict_json(process.stdout, cap, limits["json_depth"])
             closed(response, {"schema_version", "message_type", "request_id", "tool", "invocation", "phase", "prepared", "error", "observations", "usage"})
             if response["schema_version"] != 1 or response["message_type"] != "worker_response" or any(response[key] != request[key] for key in ("request_id", "tool", "invocation")):
                 raise ToolFault("WORKER_PROTOCOL_ERROR", "Worker response identity differs from request")
@@ -202,7 +245,12 @@ class ToolExecutor:
                     "provider_limits": parsed, "quota": quota.observation(reservation, parsed)})
             else:
                 observation_keys = {"backend_attempts", "disabled_backends"} if definition.name == "web.search" else {"http_status", "redirects", "final_url", "extraction_version"} if definition.name == "web.fetch" else set()
-                closed(response["observations"], observation_keys, required=observation_keys if response["phase"] == "prepared" else set())
+                if definition.name == "web.fetch" and definition.revision >= 2:
+                    observation_keys |= {"fetch_attempts", "representation"}
+                required_observations = set(observation_keys) if response['phase'] == 'prepared' else set()
+                if definition.name == 'web.fetch' and definition.revision == 3:
+                    observation_keys.add('fetch_supervision')
+                closed(response["observations"], observation_keys, required=required_observations)
                 result.observations.update(response["observations"])
             result.usage.update(response["usage"])
             if response["phase"] == "failed":
@@ -250,13 +298,13 @@ class ToolExecutor:
                 result.result = prepared
             else:
                 fields = {"query", "searched_at", "backend_policy", "backend_attempts", "results"}
-                closed(prepared, fields | ({"coverage"} if definition.revision == 3 else set()))
+                closed(prepared, fields | ({"coverage"} if definition.revision >= 3 else set()))
                 if prepared["query"] != arguments["query"]: raise ToolFault("WORKER_PROTOCOL_ERROR", "Search query changed")
                 result.result = prepared
             result.status = "succeeded"
             if list(Draft202012Validator(definition.output_schema).iter_errors(result.result)):
                 raise ToolFault("WORKER_PROTOCOL_ERROR", "Tool output differs from its closed public schema")
-            if (definition.name == "web.search" and definition.revision == 3 or
+            if (definition.name == "web.search" and definition.revision >= 3 or
                     definition.name.startswith("scholar.") and definition.revision == 2):
                 from .discovery_metadata import validate_coverage
                 validate_coverage(result.result, arguments, scholarly=definition.name.startswith("scholar."))

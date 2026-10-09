@@ -7,6 +7,11 @@ from urllib.parse import urlsplit
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
+# Shared source containers must carry the largest admitted workflow allowance.
+# Individual methods still enforce their own (possibly smaller) fetch budgets.
+MAX_RESEARCH_SOURCES = 40
+
+
 class Contract(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True, allow_inf_nan=False)
     schema_version: Literal[1] = 1
@@ -63,7 +68,7 @@ class FetchItem(Contract):
 
 
 class FetchManifest(Contract):
-    items: list[FetchItem] = Field(max_length=32)
+    items: list[FetchItem] = Field(max_length=MAX_RESEARCH_SOURCES)
 
     @model_validator(mode="after")
     def unique_items(self):
@@ -121,7 +126,7 @@ class SourceRecord(Contract):
 
 
 class SourceManifest(Contract):
-    items: list[SourceRecord] = Field(default_factory=list, max_length=32)
+    items: list[SourceRecord] = Field(default_factory=list, max_length=MAX_RESEARCH_SOURCES)
 
     @model_validator(mode="after")
     def unique_items(self):
@@ -186,10 +191,10 @@ class ResearchQuality(Contract):
     status: Literal["sufficient", "partial", "insufficient"]
     report_accepted: bool = False
     evidence_sufficient: bool
-    attempted_sources: int = Field(ge=0, le=32)
-    substantive_sources: int = Field(ge=0, le=32)
-    fully_read_sources: int = Field(ge=0, le=32)
-    distilled_sources: int = Field(ge=0, le=32)
+    attempted_sources: int = Field(ge=0, le=MAX_RESEARCH_SOURCES)
+    substantive_sources: int = Field(ge=0, le=MAX_RESEARCH_SOURCES)
+    fully_read_sources: int = Field(ge=0, le=MAX_RESEARCH_SOURCES)
+    distilled_sources: int = Field(ge=0, le=MAX_RESEARCH_SOURCES)
     gaps: list[str] = Field(default_factory=list, max_length=16)
     reasons: list[str] = Field(default_factory=list, max_length=16)
 

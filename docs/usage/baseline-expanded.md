@@ -75,7 +75,7 @@ Default evidence counts and complete provider-request preflight both estimate
 provider counts. Evidence strict mode requires a registered model tokenizer;
 provider usage is measured separately from actual responses.
 
-The default Engine grant permits 32 model calls, 128 tool calls, 4,096 storage
+The current default Engine grant permits 40 model calls, 512 tool calls, 4,096 storage
 writes, 2,048 storage reads/status reads, 64 MiB source bytes and 128 MiB storage
 bytes/read bytes. The whole tree shares the grant and deadline; rounds do not
 reset it. The request defaults to 600 seconds and accepts up to 1,800 seconds.
@@ -84,7 +84,7 @@ The supplied expanded request uses 1,800 seconds for its real research retry.
 ## Run and inspect
 
 [examples/baseline-request.json](../../examples/baseline-request.json) now selects
-revision 6. See [the current run guide](baseline-parallel.md) for the executable
+revision 12. See [the current run guide](baseline-parallel.md) for the executable
 example. Revision 4 supports 20 attempted sources, two rounds, 128k evidence
 tokens and a 512 KiB evidence byte cap. Use a fresh `client_request_id` for a new run; an identical
 identity/request retrieves the earlier result instead of rerunning it.

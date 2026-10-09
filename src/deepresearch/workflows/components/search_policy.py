@@ -12,16 +12,22 @@ def terms(text):
 
 
 def infer_topic(question):
-    """Recognize an explicit definition subject or expanded parenthetical name."""
-    for phrase in re.findall(r'["“]([^"”]{3,256})["”]', question):
-        if len(terms(phrase)) >= 2:
-            return phrase.strip()
-    for phrase in re.findall(r"[（(]([^()（）]{3,256})[）)]", question):
-        if len(terms(phrase)) >= 2 and not phrase.casefold().startswith(("e.g.", "for example")):
+    """Infer only a definition subject or an adjacent, matching acronym expansion.
+
+    Parenthesized capacities, dates and audience constraints are not the topic.
+    Comparison questions deliberately have no single inferred subject.
+    """
+    for match in re.finditer(r"\b([A-Z]{2,10})\s*[（(]([^()（）]{3,256})[）)]", question):
+        acronym, phrase = match.groups()
+        words = re.findall(r"[A-Za-z]+", phrase)
+        significant = [word for word in words if word.lower() not in {"of", "the", "and", "for", "in"}]
+        if len(words) >= 2 and acronym.lower() in {
+                "".join(word[0].lower() for word in words),
+                "".join(word[0].lower() for word in significant)}:
             return phrase.strip()
     match = re.match(r"\s*(?:what\s+is|define|explain)\s+(?:the\s+)?([^?(),;]{3,256})", question, re.I)
     if match:
-        phrase = re.split(r"\s+and\s+(?:what|how|why|its)\b", match.group(1), flags=re.I)[0].strip()
+        phrase = re.split(r"\s+and\s+(?:what|how|why|its)\b", match.group(1), flags=re.I)[0].strip().strip('"“”')
         if 2 <= len(terms(phrase)) <= 8:
             return phrase
     return None

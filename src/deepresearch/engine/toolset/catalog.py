@@ -18,11 +18,11 @@ def _object(properties, required=None):
             "required": list(properties) if required is None else required}
 
 
-def _inputs(name):
+def _inputs(name, revision=1):
     query = _object({"query": {"type": "string", "minLength": 1, "maxLength": 4096},
                      "max_results": {"type": "integer", "minimum": 1, "maximum": 10}}, ["query"])
     if "search" in name: return query
-    if name == "web.fetch": return _object({"url": {"type": "string", "minLength": 1, "maxLength": 8192}, "mode": {"const": "static"}}, ["url"])
+    if name == "web.fetch": return _object({"url": {"type": "string", "minLength": 1, "maxLength": 8192}, "mode": {"enum": ["static", "auto"]} if revision >= 2 else {"const": "static"}}, ["url"])
     reference = _object({"schema_version": {"const": 1}, "store_id": {"type": "string", "minLength": 1}, "snapshot_id": {"type": "string", "minLength": 1}})
     interval = _object({"kind": {"enum": ["lines", "pages"]}, "start": {"type": "integer", "minimum": 1}, "end_exclusive": {"type": "integer", "minimum": 1}})
     return _object({"snapshot_ref": reference, "range": interval, "max_text_bytes": {"type": "integer", "minimum": 1, "maximum": 65536},
@@ -30,6 +30,9 @@ def _inputs(name):
 
 
 def _outputs(name, revision=1):
+    if name == "web.search" and revision == 4:
+        from .search_service import schema
+        return schema()
     string = {"type": "string"}
     nullable = {"type": ["string", "null"]}
     integer = {"type": "integer", "minimum": 0}
@@ -62,9 +65,13 @@ def _outputs(name, revision=1):
             "index_bytes": integer, "index_sha256": string, "extraction_version": string,
             "normalization_version": string, "classification": string, "physical_page_count": {"type": ["integer", "null"], "minimum": 0},
             "parser_warning_count": integer})
-        return _object({"snapshot_ref": reference, "extraction_version": string, "normalization_version": string,
+        result = _object({"snapshot_ref": reference, "extraction_version": string, "normalization_version": string,
             "line_count": integer, "page_count": {"type": ["integer", "null"], "minimum": 0},
             "provenance": provenance, "preview": {"type": "string", "maxLength": 65536}})
+        if revision >= 2:
+            from .fetch_v2 import extend_schema
+            return extend_schema(result, supervised=revision >= 3)
+        return result
     disabled = _object({"backend": {"const": "google"}, "reason": {"const": "URL_FIDELITY_GATE_PENDING"}})
     failure = {"anyOf": [{"type": "null"}, _object({"code": string, "message": string,
         "details": _object({}), "observed_effect_state": string})]}
@@ -134,6 +141,26 @@ class ToolCatalog:
                 input_schema=_inputs(name), output_schema=_outputs(name, revision), capabilities=base.capabilities,
                 limits=dict(LIMITS), argv=(sys.executable, "-m", "deepresearch.engine.toolset.worker", name, str(revision)),
                 config={"profile": f"selected-discovery/{revision}", "google_enabled": False}, storage_needs={})
+        self._entries[("web.search", 4)] = ToolDefinition(name="web.search", revision=4,
+            description="Discover sources through self-hosted SearXNG with explicit Yahoo/DuckDuckGo aggregation. Preserves literal queries, result URLs, engine identities, dates when supplied, and partial engine failures. Discovery is not fetched evidence.",
+            input_schema=_inputs("web.search"), output_schema=_outputs("web.search", 4),
+            capabilities=first.capabilities, limits=dict(LIMITS),
+            argv=(sys.executable, "-m", "deepresearch.engine.toolset.worker", "web.search", "4"),
+            config={"profile": "searxng/1"}, storage_needs={})
+        base = self._entries[("web.fetch", 1)]
+        self._entries[("web.fetch", 2)] = ToolDefinition(name="web.fetch", revision=2,
+            description="Archive one public URL using browser-compatible HTTP and bounded Chromium rendering for JavaScript shells. Auto mode selects capture; static mode disables rendering. Returns saved text/index references and explicit capture provenance; access barriers fail explicitly.",
+            input_schema=_inputs("web.fetch", 2), output_schema=_outputs("web.fetch", 2),
+            capabilities=base.capabilities, limits=dict(LIMITS),
+            argv=(sys.executable, "-m", "deepresearch.engine.toolset.worker", "web.fetch", "2"),
+            config={"profile": "adaptive/1"}, storage_needs=base.storage_needs)
+
+        self._entries[("web.fetch", 3)] = ToolDefinition(name="web.fetch", revision=3,
+            description="Archive one public URL with supervised static and optional rendered capture. Both phases share original network, stream and work grants; a confirmed renderer failure may retain validated static bytes. Unknown terminated-phase network totals are null and explicit lower bounds are recorded. Access barriers and uncertain cleanup remain explicit.",
+            input_schema=_inputs("web.fetch", 3), output_schema=_outputs("web.fetch", 3),
+            capabilities=base.capabilities, limits=dict(LIMITS),
+            argv=(sys.executable, "-m", "deepresearch.engine.toolset.worker", "web.fetch", "3"),
+            config={"profile": "adaptive/2"}, storage_needs=base.storage_needs)
 
     def resolve(self, name: str, revision: int = 1):
         if type(revision) is not int or (name, revision) not in self._entries:
@@ -150,7 +177,7 @@ class ToolCatalog:
     def validate_arguments(self, definition, arguments):
         """Pure semantic preflight; no network, reads, reservation or processes."""
         try:
-            normalized = validate_arguments(definition.name, arguments)
+            normalized = validate_arguments(definition.name, arguments, definition.revision)
             if definition.name.startswith("scholar."):
                 from .scholarly import request_url
                 request_url(definition.name.split(".")[1], normalized)

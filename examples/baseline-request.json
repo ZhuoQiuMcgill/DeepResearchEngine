@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "client_request_id": "baseline-parallel-example-6",
+  "client_request_id": "baseline-reliability-example-1",
   "method_id": "baseline",
-  "method_revision": 6,
+  "method_revision": 13,
   "input": {
     "question": "What is EBD (Environment Based Design)?"
   },
@@ -10,7 +10,7 @@
     "max_queries": 2,
     "max_rounds": 2,
     "max_report_attempts": 4,
-    "max_sources": 20,
+    "max_sources": 40,
     "context_tokens": 131072,
     "source_urls": [],
     "max_context_bytes": 524288,

@@ -14,7 +14,8 @@ EXITS = {"validation_failed": 2, "failed": 3, "limit_exhausted": 4, "timed_out":
 
 def registered_revision(name, revision):
     return (name in NAMES and type(revision) is int and
-            (revision == 1 or name == "web.search" and revision in (2, 3) or
+            (revision == 1 or name == "web.search" and revision in (2, 3, 4) or
+             name == "web.fetch" and revision in (2, 3) or
              name.startswith("scholar.") and revision == 2))
 
 
@@ -40,13 +41,22 @@ def validate_request(value, tool_name, revision):
     except (TypeError, ValueError) as exc: raise ToolFault("WORKER_PROTOCOL_ERROR", "Worker deadline is malformed") from exc
     remaining = (deadline - datetime.now(timezone.utc)).total_seconds()
     if remaining <= 0: raise ToolFault("DEADLINE_EXCEEDED", "Worker deadline expired", status="timed_out")
-    arguments = validate_arguments(tool_name, request["arguments"])
+    arguments = validate_arguments(tool_name, request["arguments"], revision)
     plan = request["plan"]
     if not isinstance(plan, dict): raise ToolFault("WORKER_PROTOCOL_ERROR", "Worker plan is missing")
     if tool_name == "web.fetch":
-        closed(plan, {"kind", "operation_id", "representation", "extraction_config_ref", "normalization_version"})
-        if plan["kind"] != "fetch" or plan["representation"] != "content_decoded" or plan["normalization_version"] != "lf/1" or plan["extraction_config_ref"] != "static/1" or not isinstance(plan["operation_id"], str):
+        phased = revision == 3
+        fields = {"kind", "operation_id", "representation", "extraction_config_ref", "normalization_version"}
+        closed(plan, fields | ({'stage', 'network_grant'} if phased else set()))
+        if plan["kind"] != "fetch" or plan["representation"] != ("selected_capture" if revision >= 2 else "content_decoded") or plan["normalization_version"] != "lf/1" or plan["extraction_config_ref"] not in ({'adaptive/2'} if revision == 3 else {'adaptive/1'} if revision == 2 else {'static/1'}) or not isinstance(plan["operation_id"], str):
             raise ToolFault("WORKER_PROTOCOL_ERROR", "Fetch plan is invalid")
+        if phased:
+            grant = closed(plan['network_grant'], {'requests', 'decoded_bytes'})
+            if (plan['stage'] not in {'static', 'render'} or
+                    type(grant['requests']) is not int or not 1 <= grant['requests'] <= 40 or
+                    type(grant['decoded_bytes']) is not int or not 1 <= grant['decoded_bytes'] <= 32 << 20 or
+                    (plan['stage'] == 'render' and arguments.get('mode', 'auto') != 'auto')):
+                raise ToolFault('WORKER_PROTOCOL_ERROR', 'Invalid isolated fetch stage or residual network grant')
     elif tool_name == "document.read":
         closed(plan, {"kind", "slice"})
         if plan["kind"] != "read" or not isinstance(plan["slice"], dict): raise ToolFault("WORKER_PROTOCOL_ERROR", "Read injection is missing")
@@ -74,7 +84,10 @@ def run(request, name, revision):
             usage = {"http_request_count": observations["scholarly_attempt"]["http_request_count"],
                      "http_response_count": observations["scholarly_attempt"]["http_response_count"], "monetary_cost": None}
         elif name == "web.fetch":
-            from .retrieval import fetch
+            if revision >= 2:
+                from .fetch_v2 import fetch
+            else:
+                from .retrieval import fetch
             prepared, observations, usage = fetch(arguments, request["plan"], limits, timeout)
         else:
             prepared, observations, usage = request["plan"]["slice"], {}, {"http_request_count": 0, "http_response_count": 0, "monetary_cost": None}
@@ -85,14 +98,22 @@ def run(request, name, revision):
         response["usage"] = getattr(exc, "usage", {})
     except Exception: fault = ToolFault("WORKER_FAILED", "Worker could not complete the registered operation")
     if fault:
-        response.update(phase="failed", prepared=None, error=fault.wire())
+        effect = "unknown"
+        if name == "web.fetch" and revision in (2, 3) and fault.details.get("failure_scope") == "fetch":
+            # The worker returned a settled read-only acquisition failure; its
+            # HTTP observations are distinct from the parent's snapshot commit.
+            if response["usage"].get("http_response_count", 0):
+                effect = "observed"
+            elif response["usage"].get("http_request_count") == 0:
+                effect = "not_observed"
+        response.update(phase="failed", prepared=None, error=fault.wire(effect))
     response["usage"]["duration_ms"] = int((time.monotonic() - start) * 1000)
     return response, EXITS.get(fault.status, 3) if fault else 0
 
 
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
-    if len(argv) != 2 or argv[1] not in ("1", "2", "3") or not registered_revision(argv[0], int(argv[1])):
+    if len(argv) != 2 or argv[1] not in ("1", "2", "3", "4") or not registered_revision(argv[0], int(argv[1])):
         sys.stderr.write("Private worker requires registered tool identity and a bound envelope.\n")
         return 2
     try:

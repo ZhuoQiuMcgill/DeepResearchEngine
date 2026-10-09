@@ -83,6 +83,56 @@ def candidates(entries):
 
 
 @pytest.mark.asyncio
+async def test_agent_selection_receives_foundations_and_ambiguity_without_lexical_or_pdf_ranking():
+    rows = [("Evidence-based healthcare design", "https://example.org/health"),
+        (FOUNDATION, "https://example.org/theory"),
+        (TOPIC, "https://university.edu/topic.pdf")]
+    port = SearchPort(lambda name, args: web(rows, args["query"]))
+    selected, entries = await retrieve_candidates(context(port), [TOPIC], ["web.search"], 5,
+        topic=TOPIC, recovery_limit=0, screen_candidates=False)
+    assert [item.url for item in selected] == [row[1] for row in rows]
+    assert [c["metadata"]["title"] for c in candidates(entries)] == [row[0] for row in rows]
+    saved = port.artifact(entries[0]["selection_ref"])
+    assert all(d["accepted"] and d["reason"] == "agent_selection_pending" for d in saved["decisions"])
+    legacy = SearchPort(lambda name, args: web(rows, args["query"]))
+    previous, _ = await retrieve_candidates(context(legacy), [TOPIC], ["web.search"], 5,
+        topic=TOPIC, recovery_limit=0)
+    assert [item.url for item in previous] == [rows[2][1]]
+
+
+@pytest.mark.asyncio
+async def test_agent_inventory_keeps_scholarly_abstract_and_actual_locations_but_rejects_invalid_urls():
+    row = {"rank": 1, "titles": [FOUNDATION], "doi": "10.1234/theory", "year": 2002,
+        "doi_url": "https://doi.org/10.1234/theory", "links": [
+            {"url": "https://example.org/theory.pdf", "content_type": "application/pdf"},
+            {"url": "https://user:password@example.org/private", "content_type": "application/pdf"}],
+        "bibliography": {"abstract": "A formal foundation of design reasoning.",
+            "authors": [{"name": "Example Author"}], "container_titles": ["Design Journal"]}}
+    port = SearchPort(lambda name, args: {"status": "succeeded", "recording": {"status": "complete"},
+        "result": {"results": [row]}, "error": None})
+    items, entries = await retrieve_candidates(context(port), [TOPIC], ["scholar.crossref.search"], 5,
+        topic=TOPIC, recovery_limit=0, screen_candidates=False)
+    assert {item.url for item in items} == {"https://example.org/theory.pdf", "https://doi.org/10.1234/theory"}
+    assert all(c["metadata"]["bibliography"] == row["bibliography"] for c in candidates(entries))
+    assert all(c["work_id"] == "doi:10.1234/theory" for c in candidates(entries))
+
+
+@pytest.mark.asyncio
+async def test_agent_inventory_does_not_let_irrelevant_hits_suppress_query_recovery():
+    exact = '"Environment-based formulation of design problem"'
+    def respond(name, args):
+        rows = [("Evidence-based healthcare design", "https://example.org/unrelated")]
+        if args["query"] == exact:
+            rows = [("Environment-based formulation of design problem", "https://example.org/foundation")]
+        return web(rows, args["query"])
+    port = SearchPort(respond)
+    items, entries = await retrieve_candidates(context(port), [CAPTURED_RETRIEVAL], ["web.search"], 5,
+        topic=TOPIC, recovery_limit=2, screen_candidates=False)
+    assert [args["query"] for _, args in port.reads] == [entries[0]["query"], exact]
+    assert {item.url for item in items} == {"https://example.org/unrelated", "https://example.org/foundation"}
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("query", [QUESTION, CAPTURED_LONG, CAPTURED_COMPARISON,
     "Environment Based Design definition ecological eco-design sustainability lifecycle assessment green innovation"])
 async def test_subject_queries_do_not_expand_into_speculative_definition_vocabulary(query):
@@ -610,8 +660,10 @@ def settled_search_unavailable():
 
 
 @pytest.mark.asyncio
-async def test_settled_search_unavailable_keeps_first_candidates_and_allows_backend_then_title_recovery():
+@pytest.mark.parametrize("tool_revision", [1, 2, 3])
+async def test_settled_search_unavailable_keeps_first_candidates_and_allows_backend_then_title_recovery(tool_revision):
     failure = settled_search_unavailable()
+    failure["tool"]["revision"] = tool_revision
     frozen = copy.deepcopy(failure)
     initial = '"Environment Based Design" definition'
     exact = '"Environment-based formulation of design problem"'
@@ -654,6 +706,7 @@ async def test_repeated_settled_search_unavailability_is_retained_and_recovery_s
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("tool_revision", [2, 3])
 @pytest.mark.parametrize("change", [
     {"status": "unknown"}, {"status": "cancelled"}, {"status": "timed_out"}, {"status": "limit_exhausted"},
     {"error": {"code": "WORKER_FAILED"}}, {"error": {"commit_state": "unknown"}},
@@ -668,8 +721,9 @@ async def test_repeated_settled_search_unavailability_is_retained_and_recovery_s
     {"persistence": {"operation_id": "pending-write"}}, {"persistence": {"receipt": {"operation_id": "write"}}},
     {"tool": {"name": "web.fetch"}}, {"result": {"unexpected": "payload"}},
 ])
-async def test_search_unavailability_exception_never_masks_unknown_commit_or_unsettled_execution(change):
+async def test_search_unavailability_exception_never_masks_unknown_commit_or_unsettled_execution(change, tool_revision):
     outcome = settled_search_unavailable()
+    outcome["tool"]["revision"] = tool_revision
     def merge(target, changes):
         for key, value in changes.items():
             if isinstance(value, dict) and isinstance(target.get(key), dict):

@@ -89,6 +89,30 @@ def _usage(value: Any) -> dict[str, Any]:
     return normalize_usage(value)
 
 
+def _response_failure_facts(native, provider, finish, visible, call_count, continuation_limit):
+    """Keep categorical terminal reasons, never provider messages/native state."""
+    facts = {"native_finish_reason": finish, "provider_status": finish if provider == "openai" else None,
+             "provider_incomplete_reason": None, "provider_error_code": None, "provider_error_type": None,
+             "incomplete_details_capture": "absent",
+             "visible_text_bytes": len(visible.encode("utf-8")), "native_tool_call_count": call_count,
+             "continuation_limit_exceeded": continuation_limit}
+    if provider == "openai":
+        details = native.get("incomplete_details")
+        reason = details.get("reason") if isinstance(details, dict) else None
+        if isinstance(reason, str) and reason in {"max_output_tokens", "content_filter"}:
+            facts["provider_incomplete_reason"] = reason
+            facts["incomplete_details_capture"] = "known_reason"
+        elif details is not None and not (isinstance(details, dict) and "reason" in details and reason is None):
+            facts["incomplete_details_capture"] = "unsupported"
+        error = native.get("error")
+        if isinstance(error, dict):
+            for key in ("code", "type"):
+                item = error.get(key)
+                if isinstance(item, str) and item in PROVIDER_ERROR_ENUMS:
+                    facts["provider_error_" + key] = item
+    return facts
+
+
 class ProviderFactory:
     """Opening a connector performs local validation only; generate is the dispatch."""
 
@@ -419,14 +443,23 @@ class ProviderSession:
                 argument_error = _error("tool.unauthorized", "Provider requested an unregistered function")
             parsed_calls.append(ModelCall(call_id, index, name, tool.name if tool else None, tool.revision if tool else None, arguments_json, arguments, argument_error))
         continuation_bytes = _bytes(history)
-        if len(continuation_bytes) > request.max_continuation_bytes:
+        continuation_limit = len(continuation_bytes) > request.max_continuation_bytes
+        if continuation_limit:
             incomplete = True
         completion = "refused" if refusal else "incomplete" if incomplete else "tool_calls" if parsed_calls else "final"
         continuation = NativeContinuation(self.config.provider, self.config.model_id, self.config.profile_name, request.run_id, request.definition_digest, tuple(history), tuple(c.provider_call_id for c in parsed_calls)) if not incomplete else None
         reported = _safe_id(native.get("model"))
         response_id = _safe_id(native.get("id"))
         audit = {**prepared.audit, "provider_request_id": request_id, "provider_response_id": response_id, "reported_model_id": reported}
-        return ModelResponse(completion, "".join(text), tuple(parsed_calls) if completion == "tool_calls" else (), finish, _usage(native.get("usage")), continuation, audit, request_id, response_id, reported, _error("provider." + completion, "Provider did not return a complete callable/final response", effect_state="observed") if completion in {"refused", "incomplete"} else None, True, provider_usage_projection(native.get("usage")))
+        visible = "".join(text)
+        error = None
+        if completion in {"refused", "incomplete"}:
+            error = _error("provider." + completion, "Provider did not return a complete callable/final response",
+                effect_state="observed", **_response_failure_facts(native, self.config.provider, finish,
+                    visible, len(calls), continuation_limit))
+        return ModelResponse(completion, visible, tuple(parsed_calls) if completion == "tool_calls" else (),
+            finish, _usage(native.get("usage")), continuation, audit, request_id, response_id, reported,
+            error, True, provider_usage_projection(native.get("usage")))
 
     async def aclose(self):
         if not self.closed:

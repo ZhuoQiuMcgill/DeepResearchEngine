@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "method_id": "baseline",
+  "revision": 10,
+  "description": "Instruction-refined baseline with self-hosted SearXNG discovery and adaptive curl/Chromium source capture; retains revision 9 agent roles and research policy.",
+  "tool_revisions": {
+    "web.search": 4,
+    "scholar.crossref.search": 2,
+    "scholar.openalex.search": 2,
+    "web.fetch": 2
+  },
+  "agent_roles": [
+    {
+      "role_id": "baseline.planner",
+      "revision": 4
+    },
+    {
+      "role_id": "baseline.selector",
+      "revision": 3
+    },
+    {
+      "role_id": "baseline.distiller",
+      "revision": 3
+    },
+    {
+      "role_id": "baseline.analyst",
+      "revision": 5
+    },
+    {
+      "role_id": "baseline.writer",
+      "revision": 6
+    },
+    {
+      "role_id": "baseline.reviewer",
+      "revision": 5
+    }
+  ]
+}

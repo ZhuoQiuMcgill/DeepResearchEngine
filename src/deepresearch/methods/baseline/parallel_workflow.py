@@ -3,19 +3,20 @@ from __future__ import annotations
 
 import math
 import re
+from datetime import datetime, timezone
 
 from deepresearch.engine.contracts import EngineError, digest_bytes, strict_json_loads
 from deepresearch.workflows import FetchItem, FetchManifest, ResearchQuality, SourceManifest
 from deepresearch.workflows.components.acquisition import acquire
 from deepresearch.workflows.components.retrieval import retrieve_candidates
 from deepresearch.workflows.components.search_policy import infer_topic
-from deepresearch.workflows.components.source_access import read_retained_source
+from deepresearch.workflows.components.source_access import read_retained_source, read_retained_range, validate_source_range
 from .contracts import ResearchPlan
 from .evidence_contracts import DistilledAnalysis
 from .stages.distillation import content_hint, distill_sources
 from .stages.evidence_delivery import deliver_evidence, discovered_access_urls, reference_queries
 from .stages.reporting import write_and_review
-from .stages.roles import decision, retain, validate_findings
+from .stages.roles import decision, retain, validate_findings, validate_analysis, validate_plan
 from .workflow import EnglishBaselineMethod
 
 
@@ -72,6 +73,7 @@ def _work_key(item, entries):
 
 class ParallelBaselineMethod(EnglishBaselineMethod):
     revision = 5
+    agent_selection = False
 
     def __init__(self, revision=5):
         self.revision = revision
@@ -83,6 +85,10 @@ class ParallelBaselineMethod(EnglishBaselineMethod):
 
     async def run(self, context, task_input, parameters):
         question = task_input["question"]
+        hardened = self.revision >= 11
+        if hardened:
+            context.agent_input_defaults = {"research_context": {"as_of": datetime.now(timezone.utc).isoformat(), "timezone": "UTC"}, "repair": {}}
+            await retain(context, context.agent_input_defaults["research_context"], "research-context.json")
         if not question.strip():
             raise EngineError("INVALID_DATA", "Research question must be nonblank")
         options = {**self.defaults, **parameters}
@@ -93,7 +99,8 @@ class ParallelBaselineMethod(EnglishBaselineMethod):
             context.tokens.measure("", context.model_ref, require_verified=True)
         plan, planner = await decision(context, "baseline.planner", {
             "question": question, "user_queries": options["queries"], "max_queries": options["max_queries"],
-        }, ResearchPlan, node_id="plan.research")
+        }, ResearchPlan, node_id="plan.research",
+            validator=(lambda value: validate_plan(value, options["max_queries"])) if hardened else None)
         if len(plan.queries) > options["max_queries"]:
             raise EngineError("INVALID_ROLE_OUTPUT", "Planner exceeded the selected query budget")
         plan_ref = planner["output_ref"]
@@ -104,6 +111,7 @@ class ParallelBaselineMethod(EnglishBaselineMethod):
         attempted_items = []
         call_counter = {"used": 0}
         pending_reads, supplemental = [], []
+        selections, selection_gaps = [], []
         queries = options["queries"] or plan.queries
         stop_reason = "round_limit"
 
@@ -111,11 +119,29 @@ class ParallelBaselineMethod(EnglishBaselineMethod):
             nonlocal sources, backlog
             candidates = list(candidates) + backlog
             backlog = []
+            if self.agent_selection:
+                # A newly discovered copy must not erase an explicit user URL
+                # that was deferred in a preceding selection batch.
+                candidates.sort(key=lambda item: item.reason != "User-selected source")
             candidates = list({item.url: item for item in reversed(candidates)}.values())[::-1]
+            selection_record = None
+            if self.agent_selection:
+                from .stages.selection import select_sources
+                candidates = [item for item in candidates
+                    if item.url not in fetched and _work_key(item, discovery_sets) not in full_works]
+                candidates, backlog, selection_record = await select_sources(context, candidates,
+                    discovery_sets, {item.url: _work_key(item, discovery_sets) for item in candidates},
+                    question=question, plan=plan, sources=sources, accesses=accesses, digests=digests,
+                    gaps=selection_gaps, budget={"remaining_fetches": options["max_sources"] - len(fetched),
+                        "batch_fetch_limit": max(0, ceiling - len(fetched)), "round": round_index,
+                        "max_rounds": options["max_rounds"]}, node_prefix=prefix)
+                selections.append(selection_record)
             async with context.node(prefix + "discovery.select", "source_selection", {"candidate_count": len(candidates)}):
                 ids = await context.select(prefix + "discovery.select", "discovery.select", [item.item_id for item in candidates])
                 by_id = {item.item_id: item for item in candidates}
                 queue = [by_id[item_id] for item_id in ids]
+                if selection_record is not None:
+                    selection_record["hook_selected_ids"] = list(ids)
                 await retain(context, {"schema_version": 1, "items": [item.to_dict() for item in queue[:options['max_sources'] - len(fetched)]]},
                     prefix + "fetch-candidates.json")
             attempted = []
@@ -133,7 +159,8 @@ class ParallelBaselineMethod(EnglishBaselineMethod):
                 attempted.append(item)
                 attempted_items.append(item)
                 # Every submitted URL counts, even a denied/partial retrieval.
-                sources = await acquire(context, FetchManifest(items=[item]), previous=sources)
+                sources = await acquire(context, FetchManifest(items=[item]), previous=sources,
+                    mode="auto" if self.revision >= 10 else "static")
                 source = sources.items[-1]
                 if source.status != "succeeded":
                     continue
@@ -141,8 +168,13 @@ class ParallelBaselineMethod(EnglishBaselineMethod):
                     max_read_bytes=options["max_scan_bytes"], node_prefix=prefix + "access.")
                 access["classification"] = source.provenance.get("classification", "static_text")
                 access["work_id"] = work
+                if hardened:
+                    from .stages.selection import candidate_cards
+                    cards, _, _, _ = candidate_cards([candidate], discovery_sets, {candidate.url: work}, prefix)
+                    access["discovery_metadata"] = ({"origin": "discovery_only_not_source_evidence",
+                        **{key: cards[0][key] for key in ("title", "bibliography", "metadata_notes")}} if cards else None)
                 accesses[source.item_id] = access
-                if content_hint(access) == "substantive" and access["complete"]:
+                if content_hint(access, provenance=source.provenance) == "substantive" and access["complete"]:
                     # Defer alternatives until the Distiller confirms useful
                     # full text; a long paywall page must not suppress them.
                     read_works.add(work)
@@ -151,10 +183,17 @@ class ParallelBaselineMethod(EnglishBaselineMethod):
                     # never constructed from publisher URL conventions.
                     for number, url in enumerate(discovered_access_urls(access), 1):
                         if url not in fetched:
-                            queue.insert(0, FetchItem(item_id=f"{source.item_id}.referral-{number}", url=url,
-                                discovery_ref=source.item_id, reason=f"Archived access link from {source.item_id}"))
+                            referral = FetchItem(item_id=f"{source.item_id}.referral-{number}", url=url,
+                                discovery_ref=source.item_id, reason=f"Archived access link from {source.item_id}")
+                            if self.agent_selection:
+                                backlog.append(referral)
+                            else:
+                                queue.insert(0, referral)
             backlog.extend(queue)
-            return await retain(context, FetchManifest(items=attempted).to_dict(), prefix + "fetch-manifest.json")
+            manifest_ref = await retain(context, FetchManifest(items=attempted).to_dict(), prefix + "fetch-manifest.json")
+            if selection_record is not None:
+                selection_record["fetch_manifest_ref"] = manifest_ref
+            return manifest_ref
 
         def confirm_full_works():
             full_works.update(accesses[record["source_id"]]["work_id"] for record in digests
@@ -163,12 +202,14 @@ class ParallelBaselineMethod(EnglishBaselineMethod):
         for round_index in range(1, options["max_rounds"] + 1):
             prefix = f"r{round_index}."
             round_attempt_start = len(attempted_items)
+            round_selection_start = len(selections)
             fresh = list(dict.fromkeys(q for q in queries if q not in searched))[:options["max_queries"]]
             searched.update(fresh)
             candidates, entries = await retrieve_candidates(context, fresh, options["search_tools"],
                 options["max_results"], topic=topic, node_prefix=prefix,
                 source_ids=list(accesses), recovery_limit=options["recovery_queries"],
-                rewrite_queries=not (round_index == 1 and options["queries"]))
+                rewrite_queries=not hardened and not (round_index == 1 and options["queries"]),
+                screen_candidates=not self.agent_selection)
             recovery_remaining = options["recovery_queries"] - max((entry.get("recovery_index", 0) for entry in entries), default=0)
             discovery_sets.extend(entries)
             if round_index == 1:
@@ -187,7 +228,7 @@ class ParallelBaselineMethod(EnglishBaselineMethod):
                     max_read_bytes=options["max_scan_bytes"])
             digests, skipped = await distill_sources(context, accesses, sources, question, plan,
                 records=digests, concurrency=options["parallel_agents"], max_calls=options["max_distillation_calls"],
-                call_counter=call_counter, node_prefix=prefix)
+                call_counter=call_counter, node_prefix=prefix, isolate_errors=hardened)
             confirm_full_works()
             # Poor snippets and bibliography-only responses trigger alternate
             # discovery inside the same round; they do not consume a third round.
@@ -202,13 +243,14 @@ class ParallelBaselineMethod(EnglishBaselineMethod):
                     searched.update(rescue)
                     extra, entries = await retrieve_candidates(context, rescue, options["search_tools"],
                         options["max_results"], topic=topic, node_prefix=prefix + "recovery.",
-                        source_ids=list(accesses), recovery_limit=recovery_remaining - len(rescue))
+                        source_ids=list(accesses), recovery_limit=recovery_remaining - len(rescue), rewrite_queries=not hardened,
+                        screen_candidates=not self.agent_selection)
                     discovery_sets.extend(entries)
             if (extra or backlog) and len(fetched) < round_ceiling:
                 await fetch_candidates(extra, prefix + "recovery.", ceiling=round_ceiling)
                 digests, more_skipped = await distill_sources(context, accesses, sources, question, plan,
                     records=digests, concurrency=options["parallel_agents"], max_calls=options["max_distillation_calls"],
-                    call_counter=call_counter, node_prefix=prefix + "recovery.")
+                    call_counter=call_counter, node_prefix=prefix + "recovery.", isolate_errors=hardened)
                 skipped.extend(more_skipped)
                 confirm_full_works()
             fetch_ref = await retain(context, FetchManifest(items=attempted_items[round_attempt_start:]).to_dict(),
@@ -222,7 +264,8 @@ class ParallelBaselineMethod(EnglishBaselineMethod):
             analysis, analyst = await decision(context, "baseline.analyst", {
                 "question": question, "plan": plan.to_dict(), "evidence": evidence,
                 "available_source_ids": selected_ids, "round": round_index,
-            }, DistilledAnalysis, node_id=prefix + "analyze.evidence")
+            }, DistilledAnalysis, node_id=prefix + "analyze.evidence",
+                validator=(lambda value: validate_analysis(value, selected_ids, plan, sources)) if hardened else None)
             async with context.node(prefix + "analyze.bindings", "evidence_validation"):
                 validate_findings(analysis, selected_ids, plan)
                 if any(read.source_id not in accesses for read in analysis.follow_up_reads):
@@ -230,9 +273,10 @@ class ParallelBaselineMethod(EnglishBaselineMethod):
             analysis_ref = await retain(context, analysis.to_dict(), prefix + "validated-analysis.json")
             analysis_adjustments = ([{"kind": "contradictory_sufficiency", "reported_sufficient": True,
                 "validated_sufficient": False}] if analysis._reported_sufficient and not analysis.sufficient else [])
+            analysis_adjustments += analysis._read_adjustments
             await retain(context, {"schema_version": 1, "analyst_output_ref": analyst["output_ref"],
                 "analysis_ref": analysis_ref, "adjustments": analysis_adjustments}, prefix + "analysis-validation.json")
-            notes += [f"Chunk {item['chunk_id']} could not be distilled within the shared call allowance." for item in skipped]
+            notes += [f"Chunk {item['chunk_id']} was not used: {item['reason']}." for item in skipped]
             quality = research_quality(sources, accesses, digests, analysis, plan, notes)
             if quality.substantive_sources < options["min_substantive_sources"]:
                 quality = quality.model_copy(update={"status": "partial" if quality.substantive_sources else "insufficient",
@@ -253,11 +297,14 @@ class ParallelBaselineMethod(EnglishBaselineMethod):
                 "context_plan": context_plan.to_dict(), "sufficient": quality.evidence_sufficient,
                 "quality": quality.to_dict()}
             rounds.append(record)
+            if self.agent_selection:
+                record["selections"] = selections[round_selection_start:]
             await context.checkpoint({"kind": f"baseline-research/{self.revision}", "plan_ref": plan_ref, "rounds": rounds})
             if quality.evidence_sufficient:
                 stop_reason = "evidence_sufficient"
                 break
             pending_reads = analysis.follow_up_reads
+            selection_gaps = list(analysis.gaps) + list(quality.reasons)
             queries = list(dict.fromkeys(analysis.follow_up_queries + reference_queries(digests)))
             queries = [q for q in queries if q not in searched]
             if not queries and topic and round_index < options["max_rounds"]:
@@ -270,7 +317,9 @@ class ParallelBaselineMethod(EnglishBaselineMethod):
             await retain(context, writer_plan.to_dict(), "writer-context-plan.json")
             await context.port.update(context_plan=writer_plan.to_dict())
         report_ref, drafts = await write_and_review(context, question, plan, analysis, evidence, writer_plan,
-            max_attempts=options["max_report_attempts"], revision=self.revision, quality=quality)
+            max_attempts=options["max_report_attempts"], revision=self.revision, quality=quality,
+            source_urls={source.item_id: {url for url in (source.url, source.provenance.get("final_url")) if url}
+                         for source in sources.items})
         quality = quality.model_copy(update={"report_accepted": True})
         result = {"schema_version": 1, "method_id": "baseline", "method_revision": self.revision,
             "plan_ref": plan_ref, "rounds": rounds, "stop_reason": stop_reason,
@@ -278,6 +327,8 @@ class ParallelBaselineMethod(EnglishBaselineMethod):
             "source_access_ref": access_ref, "distillations_ref": digest_ref,
             "context_plan": writer_plan.to_dict(), "quality": quality.to_dict(),
             "drafts": drafts, "report_ref": report_ref}
+        if self.agent_selection:
+            result["selections"] = selections
         async with context.node("publish.result", "publication"):
             result_ref = await retain(context, result, "research-result.json")
             await context.checkpoint({"kind": f"baseline-result/{self.revision}", "result_manifest_ref": result_ref,
@@ -292,6 +343,7 @@ class ParallelBaselineMethod(EnglishBaselineMethod):
         extra = []
         for index, request in enumerate(requests):
             source = by_id[request.source_id]
+            validate_source_range(source, request.range)
             # A requested range already read can be promoted directly into
             # synthesis, including tail pages omitted by quote-only delivery.
             cached = [segment for segment in accesses[source.item_id]["segments"]
@@ -301,31 +353,11 @@ class ParallelBaselineMethod(EnglishBaselineMethod):
             if accesses[source.item_id]["complete"] and cached:
                 extra.extend((source.item_id, segment) for segment in cached)
                 continue
-            cursor, used = None, 0
-            serial = 0
-            while used < max_read_bytes:
-                node = f"{prefix}gap-read.{index}.{serial}"
-                async with context.node(node, "source_read", {"source_id": source.item_id, "range": request.range.tool_range()}):
-                    result = await context.port.run_tool("document.read", {"snapshot_ref": source.snapshot_ref.to_dict(),
-                        "range": request.range.tool_range(), "max_text_bytes": min(65536, max_read_bytes - used),
-                        "continuation": cursor})
-                    if result["status"] != "succeeded" or result.get("recording", {}).get("status") != "complete":
-                        raise EngineError("SOURCE_READ_FAILED", "Requested evidence could not be read with complete recording")
-                    value = result["result"]
-                    text = value["text"]
-                    used += len(text.encode("utf-8"))
-                    spans = value.get("spans") or []
-                    if text:
-                        start = spans[0]["start_byte"]
-                        segment = {"segment_id": node, "range": request.range.to_dict(), "start_byte": start,
-                            "end_byte": start + len(text.encode("utf-8")), "text": text,
-                            "text_sha256": digest_bytes(text.encode("utf-8")),
-                            "read_action_id": result["invocation"]["action_id"]}
-                        extra.append((source.item_id, segment))
-                    if not value.get("has_more_in_requested_range"):
-                        break
-                    next_cursor = value.get("continuation")
-                    if not next_cursor or next_cursor == cursor:
-                        raise EngineError("SOURCE_READ_FAILED", "Requested source continuation made no progress")
-                    cursor, serial = next_cursor, serial + 1
+            result = await read_retained_range(context, source, request.range,
+                max_read_bytes=max_read_bytes, node_prefix=f"{prefix}gap-read.{index}.")
+            extra.extend((source.item_id, segment) for segment in result["segments"])
+            if not result["complete_requested_range"]:
+                await context.port.emit("workflow.source.range_partial", {
+                    "source_id": source.item_id, "access_ref": result["access_ref"],
+                    "read_bytes": result["read_bytes"]})
         return extra

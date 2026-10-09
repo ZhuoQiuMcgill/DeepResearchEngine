@@ -1,5 +1,9 @@
 # Baseline revisions 5–6: parallel source distillation
 
+Revision 7 adds a candidate Selector; see [selection usage](baseline-selection.md).
+The standard example now requests revision 9; explicitly select 5, 6 or 7 to reproduce
+this guide's rule-selection policy.
+
 Select `method_id: "baseline", method_revision: 6`. Revision 6 upgrades only the
 search tool bindings to web revision 3 and scholarly revision 2, preserving
 provider bibliography and explicit first-page coverage. Its research policy,
@@ -121,7 +125,7 @@ and `context.select`. The method runs with no extensions installed.
 | Every Agent context | 262,144 tokens; provider/host may narrow it |
 | Draft/review pairs | At most 4, separate from research rounds |
 
-The default host grants 32 total model calls and 32 cumulative descendants;
+The default host grants 40 total model calls and 40 cumulative descendants;
 the worst configured role count is 1 Planner + 20 Distiller calls + 2 Analyst
 calls + 8 Writer/Reviewer calls = 31. Calls share the original ledger/deadline,
 including failed attempts. Tool calls, Storage reads/writes/bytes and output
