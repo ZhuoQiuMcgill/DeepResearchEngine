@@ -18,7 +18,9 @@ not as code to port. Its two main lessons:
 ## Stack decisions
 
 - Both arms, baseline and EBD, are LangGraph.js graphs. Use LangChain.js for model and
-  tool integration and LangSmith for tracing, instead of custom infrastructure.
+  tool integration and self-hosted Langfuse (Docker) for tracing, usage records
+  and prompt management, instead of custom infrastructure. Do not send traces to
+  hosted observability services.
 - Web search uses each model API's built-in search tool. Do not add
   self-hosted search, fetching or content extraction.
 - Models: `gpt-6-luna` and `claude-haiku-5-5`. Each provider searches with its
