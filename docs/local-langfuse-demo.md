@@ -96,10 +96,10 @@ estimate must not be treated as the total cost of this mode. This integration
 is an optional third model profile, separate from the main project's provider-
 native Haiku/Luna search profiles and their within-model comparisons.
 
-At integration time, the local machine had no Tavily API key. The controlled
-tool tests and missing-key readiness check passed; a real live-web baseline
-remains pending until a key is configured. The offline run documented in
-[demo results](local-demo-results.md) is not a substitute for that live run.
+After the user configured their key, a real live-web baseline completed. See
+[web run results](web-demo-results.md), including its answer scope error and
+the actual managed-tool/trace records. The offline run documented in
+[demo results](local-demo-results.md) is a separate run.
 
 ### Offline documents
 
