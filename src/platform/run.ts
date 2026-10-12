@@ -40,7 +40,8 @@ export interface RunSpec {
 
 export interface RunSummary {
   tracing?: { enabled: boolean; traceId?: string; url?: string };
-  sourceMode?: "local-corpus" | "provider-web";
+  sourceMode?: "local-corpus" | "provider-web" | "tavily-web";
+  unpricedServices?: string[];
   runId: string;
   dir: string;
   status: "ok" | "error";
@@ -78,6 +79,8 @@ function makeRunId(label: string, profile: string, question: string): string {
 
 export async function runOne(spec: RunSpec, log: (line: string) => void = () => {}): Promise<RunSummary> {
   const profile = getProfile(spec.profile);
+  if (profile.provider === "local" && profile.sourceMode === "tavily-web" && !process.env.TAVILY_API_KEY?.trim())
+    throw new Error("Configure TAVILY_API_KEY in the ignored project .env before a local-web run. No model or search call was made.");
   const label = spec.strategy.label ?? spec.strategy.name;
   const runId = makeRunId(label, profile.name, spec.question);
   const recorder = new RunRecorder(spec.outDir, runId);
@@ -135,7 +138,8 @@ export async function runOne(spec: RunSpec, log: (line: string) => void = () => 
   const total = ledger.total();
   const summary: RunSummary = {
     tracing: tracing.info(),
-    sourceMode: profile.provider === "local" ? "local-corpus" : "provider-web",
+    sourceMode: profile.provider === "local" ? profile.sourceMode ?? "local-corpus" : "provider-web",
+    ...(profile.provider === "local" && profile.sourceMode === "tavily-web" ? { unpricedServices: ["Tavily search/extract"] } : {}),
     runId,
     dir: recorder.dir,
     status: out.status,

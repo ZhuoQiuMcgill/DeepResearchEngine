@@ -69,6 +69,40 @@ named volume. This script does not delete or resize other data.
 
 ## Run and inspect
 
+### Local inference with live web search
+
+Use `--model local-web` to keep Qwen inference local while using managed Tavily
+Search and Extract through the official `@langchain/tavily` integration. This
+mode does not read the downloaded corpus and never falls back to offline data.
+Set `TAVILY_API_KEY` in the ignored root `.env` (obtain a key from
+https://app.tavily.com/), then run:
+
+```powershell
+npm run web:check
+npm run research -- --strategy baseline --model local-web --task ebd --out local/langfuse-web-baseline
+```
+
+The readiness check makes one actual search and no model call. Missing keys
+stop the full run before any model or search request. The profile's source mode
+is recorded as `tavily-web`; exported timelines label it live web research.
+Only pages returned by search may be read, response excerpts are bounded and
+truncation is explicit. Provider failures remain gaps, not fabricated sources.
+Both search and read operations share the eight-call researcher allowance.
+
+Search queries and public page URLs are sent to Tavily; the model and Langfuse
+stay local. API inference charges are zero for Qwen, but Tavily uses its account
+quota/credits: the summary lists it under `unpricedServices`. The numeric cost
+estimate must not be treated as the total cost of this mode. This integration
+is an optional third model profile, separate from the main project's provider-
+native Haiku/Luna search profiles and their within-model comparisons.
+
+At integration time, the local machine had no Tavily API key. The controlled
+tool tests and missing-key readiness check passed; a real live-web baseline
+remains pending until a key is configured. The offline run documented in
+[demo results](local-demo-results.md) is not a substitute for that live run.
+
+### Offline documents
+
 ```powershell
 npm run langfuse:check
 npm run research -- --strategy baseline --model local --task ebd

@@ -51,6 +51,7 @@ export interface LocalProfile extends ProfileBase {
   baseURL: string;
   contextWindowTokens: number;
   corpusPath: string;
+  sourceMode?: "local-corpus" | "tavily-web";
 }
 export type ModelProfile = AnthropicProfile | OpenAIProfile | LocalProfile;
 
@@ -109,8 +110,9 @@ export const PROFILES: Record<string, ModelProfile> = {
 
 export function getProfile(name: string): ModelProfile {
   if (name === "local") return localProfile();
+  if (name === "local-web") return { ...localProfile(), name: "local-web", sourceMode: "tavily-web" };
   const profile = PROFILES[name];
-  if (!profile) throw new Error(`Unknown model profile "${name}". Known: ${[...Object.keys(PROFILES), "local"].join(", ")}`);
+  if (!profile) throw new Error(`Unknown model profile "${name}". Known: ${[...Object.keys(PROFILES), "local", "local-web"].join(", ")}`);
   return profile;
 }
 
