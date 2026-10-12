@@ -5,7 +5,7 @@
 # External connections from other machines will not be able to reach these services directly.
 services:
   langfuse-worker:
-    image: docker.langfuse.com/langfuse/langfuse-worker:4
+    image: docker.langfuse.com/langfuse/langfuse-worker@sha256:9bfad6a90ee9930070b635e80afa27249b400ac862851c4a04e62dfba874290d
     restart: always
     depends_on: &langfuse-depends-on
       postgres:
@@ -108,11 +108,11 @@ services:
       LANGFUSE_IN_APP_AGENT_SANDBOX_AWS_LAMBDA_MICROVM_REGION: ${LANGFUSE_IN_APP_AGENT_SANDBOX_AWS_LAMBDA_MICROVM_REGION:-}
 
   langfuse-web:
-    image: docker.langfuse.com/langfuse/langfuse:4
+    image: docker.langfuse.com/langfuse/langfuse@sha256:326f54d976d645f96868a64a5c98d98471ed73bf757d180a8cb4b94be750ffc1
     restart: always
     depends_on: *langfuse-depends-on
     ports:
-      - 3000:3000
+      - 127.0.0.1:3000:3000
     environment:
       <<: *langfuse-worker-env
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-mysecret} # CHANGEME
@@ -166,10 +166,10 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minio}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-miniosecret} # CHANGEME
     ports:
-      - 9090:9000
+      - 127.0.0.1:9090:9000
       - 127.0.0.1:9091:9001
     volumes:
-      - langfuse_minio_data:/data
+      - ${LANGFUSE_MINIO_VOLUME:-langfuse_minio_data}:/data
     healthcheck:
       test: ["CMD", "mc", "ready", "local"]
       interval: 1s

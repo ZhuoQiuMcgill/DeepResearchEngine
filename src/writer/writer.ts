@@ -83,8 +83,8 @@ export function createWriter(model: BaseChatModel, today: string): WriteFn {
       : (msg.content as { type: string; text?: string }[]).filter((b) => b.type === "text").map((b) => b.text ?? "").join("")
     ).trim();
     const diagnostics: string[] = [];
-    const stop = (msg.response_metadata as { stop_reason?: string; status?: string } | undefined) ?? {};
-    if (stop.stop_reason === "max_tokens" || stop.status === "incomplete") diagnostics.push("report output truncated");
+    const stop = (msg.response_metadata as { stop_reason?: string; finish_reason?: string; status?: string } | undefined) ?? {};
+    if (stop.stop_reason === "max_tokens" || stop.finish_reason === "length" || stop.status === "incomplete") diagnostics.push("report output truncated");
     if (!report) diagnostics.push("writer returned an empty report");
     return { report, diagnostics };
   };

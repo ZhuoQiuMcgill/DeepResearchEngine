@@ -13,7 +13,10 @@
     "test": "vitest run",
     "research": "tsx src/cli/research.ts",
     "experiment": "tsx src/cli/experiment.ts",
-    "check-strategy": "tsx src/cli/check-strategy.ts"
+    "check-strategy": "tsx src/cli/check-strategy.ts",
+    "corpus:prepare": "tsx scripts/prepare-local-corpus.ts",
+    "langfuse:setup": "tsx scripts/setup-langfuse.ts",
+    "langfuse:check": "tsx scripts/check-langfuse.ts"
   },
   "dependencies": {
     "@langchain/anthropic": "1.5.12",
@@ -24,6 +27,7 @@
     "@langfuse/otel": "5.13.1",
     "@opentelemetry/sdk-node": "0.223.0",
     "dotenv": "18.0.6",
+    "pdf-parse": "2.4.5",
     "zod": "4.6.5"
   },
   "devDependencies": {

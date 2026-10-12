@@ -39,6 +39,8 @@ export interface RunSpec {
 }
 
 export interface RunSummary {
+  tracing?: { enabled: boolean; traceId?: string; url?: string };
+  sourceMode?: "local-corpus" | "provider-web";
   runId: string;
   dir: string;
   status: "ok" | "error";
@@ -132,6 +134,8 @@ export async function runOne(spec: RunSpec, log: (line: string) => void = () => 
   if (out.report) await recorder.text("report.md", out.report);
   const total = ledger.total();
   const summary: RunSummary = {
+    tracing: tracing.info(),
+    sourceMode: profile.provider === "local" ? "local-corpus" : "provider-web",
     runId,
     dir: recorder.dir,
     status: out.status,

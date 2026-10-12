@@ -1,9 +1,14 @@
 # Self-hosted Langfuse
 
-`docker-compose.yml` is the official Langfuse compose file from release
-`v4.55.0`, unchanged. Secrets and the headless initialisation (organisation,
+`docker-compose.yml` is based on the official Langfuse compose file from release
+`v4.55.0`. This branch binds public ports to loopback, permits an optional MinIO
+volume override, and pins the tested Langfuse 4.57.0 web/worker images by digest.
+Secrets and the headless initialisation (organisation,
 project, API keys, admin user) come from `deploy/langfuse/.env`, which Git
 ignores and each machine generates for itself.
+
+See [local baseline demo](../../docs/local-langfuse-demo.md) for generated local
+setup, offline papers, the optional WSL storage mount and trace export.
 
 ## First start
 

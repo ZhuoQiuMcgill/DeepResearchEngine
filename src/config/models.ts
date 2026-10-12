@@ -46,7 +46,28 @@ export interface OpenAIProfile extends ProfileBase {
   webSearch: { searchContextSize: "low" | "medium" | "high"; maxToolCalls: number };
 }
 
-export type ModelProfile = AnthropicProfile | OpenAIProfile;
+export interface LocalProfile extends ProfileBase {
+  provider: "local";
+  baseURL: string;
+  contextWindowTokens: number;
+  corpusPath: string;
+}
+export type ModelProfile = AnthropicProfile | OpenAIProfile | LocalProfile;
+
+export function localProfile(env: NodeJS.ProcessEnv = process.env): LocalProfile {
+  const baseURL = env.LOCAL_MODEL_BASE_URL || "http://127.0.0.1:18086/v1";
+  const url = new URL(baseURL);
+  if (!["127.0.0.1", "localhost", "[::1]"].includes(url.hostname) || url.username || url.password || url.search || url.hash)
+    throw new Error("Local model URL must be a loopback endpoint without credentials, query or fragment.");
+  const contextWindowTokens = Number(env.LOCAL_MODEL_CONTEXT_TOKENS || 262144);
+  if (!Number.isSafeInteger(contextWindowTokens) || contextWindowTokens < 8192) throw new Error("Invalid local context window.");
+  return {
+    name: "local", provider: "local", model: env.LOCAL_MODEL_NAME || "qwen38-local-256k",
+    baseURL, contextWindowTokens, corpusPath: env.LOCAL_CORPUS_PATH || "local/ebd-corpus.json",
+    maxOutputTokens: 8192, toolCallsPerResearcher: 8,
+    pricing: { inputPerM: () => 0, outputPerM: () => 0, perSearch: 0 },
+  };
+}
 
 export const PROFILES: Record<string, ModelProfile> = {
   haiku: {
@@ -87,13 +108,20 @@ export const PROFILES: Record<string, ModelProfile> = {
 };
 
 export function getProfile(name: string): ModelProfile {
+  if (name === "local") return localProfile();
   const profile = PROFILES[name];
-  if (!profile) throw new Error(`Unknown model profile "${name}". Known: ${Object.keys(PROFILES).join(", ")}`);
+  if (!profile) throw new Error(`Unknown model profile "${name}". Known: ${[...Object.keys(PROFILES), "local"].join(", ")}`);
   return profile;
 }
 
 /** A plain chat model for one role, without web tools. */
 export function createChatModel(profile: ModelProfile, callbacks?: Callbacks): BaseChatModel {
+  if (profile.provider === "local") {
+    return new ChatOpenAI({ model: profile.model, useResponsesApi: false,
+      apiKey: "local-no-key", configuration: { baseURL: profile.baseURL },
+      modelKwargs: { chat_template_kwargs: { enable_thinking: false } },
+      maxTokens: profile.maxOutputTokens, temperature: 0.2, maxRetries: 0, callbacks });
+  }
   if (profile.provider === "anthropic") {
     return new ChatAnthropic({
       model: profile.model,

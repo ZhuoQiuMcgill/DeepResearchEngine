@@ -20,6 +20,13 @@ export class UsageLedger {
 
   constructor(private readonly pricing: Pricing) {}
 
+  recordTools(role: string, u: { searches: number; pageReads: number }): void {
+    const r = (this.byRole[role] ??= { calls: 0, inputTokens: 0, outputTokens: 0, searches: 0, pageReads: 0, costUsd: 0 });
+    r.searches += u.searches;
+    r.pageReads += u.pageReads;
+    r.costUsd += u.searches * this.pricing.perSearch;
+  }
+
   record(role: string, u: { inputTokens: number; outputTokens: number; searches?: number; pageReads?: number }): void {
     const r = (this.byRole[role] ??= { calls: 0, inputTokens: 0, outputTokens: 0, searches: 0, pageReads: 0, costUsd: 0 });
     const searches = u.searches ?? 0;

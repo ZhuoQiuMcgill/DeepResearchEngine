@@ -34,6 +34,8 @@ report diagnostics across runs.
 - [docs/strategy-modules.md](docs/strategy-modules.md): how to write a strategy
   module such as EBD; start from `src/strategies/_template/`.
 - [docs/plan.md](docs/plan.md): exploration results and test rounds.
+- [Local model and Langfuse demo](docs/local-langfuse-demo.md): optional
+  `--model local`, downloaded-paper tools, self-hosted traces and timeline export.
 
 ## Layout
 
