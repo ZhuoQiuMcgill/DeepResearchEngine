@@ -91,3 +91,23 @@ central subject is corrected, not as publication-ready prose.
 Code checks: 40 controlled tests passed; typecheck and build passed. Controlled
 tests assess scheduling, context delivery, scope preservation and stopping;
 the above separate real-model/tool run assesses the resulting answer.
+
+## Required live strategy check
+
+`npm run check-strategy -- --strategy baseline --model local-web --task ebd
+--researchers 10` also completed successfully, with all eleven interface checks
+passing. Its separate run is `20261013-052311-baseline-local-web-b06a5d-a2b6`,
+trace `9a662ebc4504aa196979cf6c2f166206`, under ignored `local/checks/`.
+It ran two rounds/four researchers in 451164 ms, with thirteen searches and
+thirteen provider page-read attempts. Its final report also retained Zeng's
+Environment-Based Design rather than substituting the other acronym meaning.
+
+All researchers completed and there were no provider-read failure diagnostics.
+However, the three follow-up researchers collectively cited six URLs that
+their own tools had not returned (URLs carried in prior notes). The system
+recorded those per-researcher issues and marked 34 link occurrences in synthesis;
+34 is not a count of unique sources. Report URLs were all present somewhere in
+the run's research sources, so the interface check passed. This difference
+between run-wide source provenance and individual-node source provenance
+remains a limitation, not something hidden by the successful interface status.
+The viewer continues to show the primary rerun above; no report was overwritten.
