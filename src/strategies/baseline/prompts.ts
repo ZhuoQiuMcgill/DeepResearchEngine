@@ -36,7 +36,12 @@ Each assignment needs:
 Keep the scopes distinct so researchers do not duplicate each other's work: every fact the question needs belongs to exactly one assignment. Put cross-cutting bounds such as "current as of today" into each assignment's constraints instead of creating a separate assignment for them.`;
 
 const PLAN_HUMAN = `Research question:
-{question}`;
+{question}
+
+Prior-round context:
+{context}
+
+Do not assign a researcher to use another parallel researcher's future findings. Carry relevant prior-round source notes into all dependent assignments.`;
 
 export const planPrompt = ChatPromptTemplate.fromMessages([
   ["system", PLAN_SYSTEM],

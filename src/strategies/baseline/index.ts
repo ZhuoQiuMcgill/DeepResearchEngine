@@ -1,8 +1,9 @@
 /**
  * Baseline strategy module: the reference implementation of a strategy plug-in.
  * It follows the coordinator of Claude Code's deep-research skill:
- * decompose once, run researchers in parallel, optionally one extra round for
- * critical gaps, then hand every note to the writer.
+ * For definition questions, establish identity from sources first, then
+ * decompose using those notes. Other questions use parallel decomposition
+ * with one optional gap round. Both paths stop after at most two rounds.
  *
  * Like every strategy module it imports platform types from core/index.js only
  * and default-exports a StrategyModule.
@@ -19,6 +20,7 @@ import {
   type SynthesisInput,
 } from "../../core/index.js";
 import { gapPrompt, planPrompt } from "./prompts.js";
+import { groundedBriefs, identityBrief, needsIdentityRound } from "./scope.js";
 
 const BriefSchema = z.object({
   objective: z.string(),
@@ -60,6 +62,7 @@ type BaselineState = {
   question: string;
   interpretation: string;
   rounds: number;
+  identityFirst: boolean;
   notes: BaselineNote[];
   failures: { briefId: string; objective: string; failure: string }[];
 };
@@ -71,11 +74,19 @@ export class BaselineStrategy implements ResearchStrategy<BaselineState> {
 
   async init(input: { question: string }, ctx: StrategyContext): Promise<StrategyStep<BaselineState>> {
     const maxBriefs = Math.min(this.options.maxPerRound, ctx.budget.researchersRemaining);
+    const identityFirst = needsIdentityRound(input.question);
+    if (identityFirst) {
+      return {
+        state: { question: input.question, interpretation: "", rounds: 0, identityFirst, notes: [], failures: [] },
+        decision: { briefs: maxBriefs ? [identityBrief(input.question)] : [], stop: maxBriefs === 0,
+          rationale: "Resolve the exact named concept from sources before decomposing into field-specific parallel assignments." },
+      };
+    }
     const planner = planPrompt.pipe(ctx.model.withStructuredOutput(PlanSchema, { method: "jsonSchema", name: "research_plan" }));
-    const plan = await planner.invoke({ today: ctx.today, question: input.question, maxBriefs: String(maxBriefs) });
+    const plan = await planner.invoke({ today: ctx.today, question: input.question, maxBriefs: String(maxBriefs), context: "No prior source notes. Do not assume a field or depend on another parallel assignment." });
     return {
-      state: { question: input.question, interpretation: plan.interpretation.trim(), rounds: 0, notes: [], failures: [] },
-      decision: { briefs: plan.briefs, stop: false, rationale: plan.rationale },
+      state: { question: input.question, interpretation: plan.interpretation.trim(), rounds: 0, identityFirst, notes: [], failures: [] },
+      decision: { briefs: groundedBriefs(plan.briefs, input.question), stop: false, rationale: plan.rationale },
     };
   }
 
@@ -94,7 +105,7 @@ export class BaselineStrategy implements ResearchStrategy<BaselineState> {
           .map((r) => ({ briefId: r.brief.id, objective: r.brief.objective, failure: `${r.failure?.kind}: ${r.failure?.message ?? ""}`.slice(0, 300) })),
       ],
     };
-    // The skill allows exactly one optional follow-up round.
+    // Both paths retain the two-round limit; identity discovery consumes round one.
     if (next.rounds >= 2) {
       return { state: next, decision: { briefs: [], stop: true, rationale: "The single follow-up round is complete." } };
     }
@@ -109,27 +120,33 @@ export class BaselineStrategy implements ResearchStrategy<BaselineState> {
       )
       .join("\n\n");
     const maxBriefs = Math.min(this.options.maxPerRound, ctx.budget.researchersRemaining);
+    if (state.identityFirst) {
+      const planner = planPrompt.pipe(ctx.model.withStructuredOutput(PlanSchema, { method: "jsonSchema", name: "grounded_research_plan" }));
+      const plan = await planner.invoke({ today: ctx.today, question: state.question, summaries,
+        context: `The identity discovery round has completed. Use the following source notes to scope independent assignments, not your prior guesses. If identity is unresolved, target exact-name discovery instead of assuming a domain.\n${summaries}`,
+        maxBriefs: String(maxBriefs) });
+      return { state: next, decision: { briefs: groundedBriefs(plan.briefs, state.question, summaries),
+        stop: plan.briefs.length === 0, rationale: plan.rationale } };
+    }
     const checker = gapPrompt.pipe(ctx.model.withStructuredOutput(GapSchema, { method: "jsonSchema", name: "gap_check" }));
     const gap = await checker.invoke({ today: ctx.today, question: state.question, summaries, maxBriefs: String(maxBriefs) });
     return {
       state: next,
-      decision: { briefs: gap.briefs, stop: gap.briefs.length === 0, rationale: gap.rationale },
+      decision: { briefs: groundedBriefs(gap.briefs, state.question, summaries), stop: gap.briefs.length === 0, rationale: gap.rationale },
     };
   }
 
   async finalize(state: BaselineState): Promise<SynthesisInput> {
     return {
       material: state.notes.map((n) => ({ label: n.objective, notes: n.notes })),
-      ...(state.interpretation
-        ? { guidance: `The question was read as follows: ${state.interpretation} Mention this reading only where it changes the answer, and do not open the report with it.` }
-        : {}),
+      guidance: `Preserve the exact subject and any supplied acronym expansion in this question: ${state.question}\nDo not substitute a similarly named concept. If the notes fail to establish identity, say the identity remains unresolved. A bounded search cannot establish nonexistence or that the user's term is a misnomer. Exclude off-subject findings; distinguish related terms only when needed. ${state.interpretation ? `Provisional interpretation (subordinate to question and sources): ${state.interpretation}` : ""}`,
     };
   }
 }
 
 const baseline: StrategyModule = {
   name: "baseline",
-  description: "Deep-research coordinator: one decomposition, parallel researchers, at most one follow-up round for critical gaps.",
+  description: "Deep-research coordinator: source-first identity for definition questions, grounded parallel assignments, at most two rounds.",
   contractVersion: CONTRACT_VERSION,
   create: (options?: JsonValue) => new BaselineStrategy(OptionsSchema.parse(options ?? {})),
 };

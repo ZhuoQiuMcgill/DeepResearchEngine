@@ -1,10 +1,14 @@
 # Local baseline with Langfuse
 
-This optional demo uses the unchanged baseline strategy and verbatim question
+This optional demo uses the baseline strategy and verbatim question
 `What is EBD (Environment Based Design)?`. Its model runs locally, and its
 researchers search/read downloaded papers through LangChain tools. It performs
 no live web search. Keep it separate from the Haiku/Luna experiments: the model
 and source access differ, so its result is not a fair cross-arm comparison.
+
+The October 13 concept-scope revision changes baseline scheduling for definition
+questions. See `docs/baseline-concept-scope.md`; earlier run records describe
+the method used at that time and are preserved separately.
 
 The existing cloud profiles and provider-native web tools are unchanged.
 Tracing uses the project's LangChain CallbackHandler and OpenTelemetry SDK.

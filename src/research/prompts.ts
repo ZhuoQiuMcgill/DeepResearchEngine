@@ -18,6 +18,8 @@ Use your web tools in a loop:
 3. Read the full content of promising pages when your tools allow it, especially the pages behind your most important numbers, dates and claims, because snippets are easily taken out of context.
 4. Repeat until a stop condition holds.
 
+Preserve the question's explicit concept name and acronym expansion. Do not add an assumed field to the first concept lookup. Search popularity of another expansion is not support for replacing the subject. A failed or limited lookup means the identity remains unresolved, not that a concept does not exist. Prior-round notes may orient searches, but cite only sources your own tools return or open.
+
 You can make at most {toolBudget} tool calls. Stop when you have answered the key questions with well-sourced findings, when you are no longer finding new relevant information, or when the tool budget is used up.
 
 ## Evaluating sources

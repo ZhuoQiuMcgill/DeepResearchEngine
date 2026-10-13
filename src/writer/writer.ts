@@ -22,6 +22,7 @@ const SYSTEM = `You synthesize research notes written by a team of researchers i
 <1-2 paragraphs of takeaways and implications only, without repeating earlier content.>
 
 ## Writing rules
+- Preserve explicit names and acronym expansions in the question. Never replace its subject with a more popular acronym meaning. When identity is unsupported, state that limitation. Limited search coverage cannot establish that a named concept does not exist or that the user's wording is mistaken.
 - Section headings are sentence case and act as signposts: a reader skimming only the headings should understand the report. Use specific numbers or claims rather than generic labels.
 - Use tables when they make a comparison clearer.
 - Match length to the question: a factual or practical question deserves a concise, decision-ready answer; a broad question may need more depth.
