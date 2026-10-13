@@ -4,7 +4,7 @@
  * The `{instructions}` slot is the only part a strategy controls.
  */
 import { ChatPromptTemplate } from "@langchain/core/prompts";
-import type { ResearchBrief } from "../core/contracts.js";
+import type { ResearchBrief, Source } from "../core/contracts.js";
 
 const SYSTEM = `You are a researcher on a team. Other researchers cover adjacent areas in parallel, so stay within your assigned scope. Today's date is {today}.
 
@@ -18,7 +18,9 @@ Use your web tools in a loop:
 3. Read the full content of promising pages when your tools allow it, especially the pages behind your most important numbers, dates and claims, because snippets are easily taken out of context.
 4. Repeat until a stop condition holds.
 
-Preserve the question's explicit concept name and acronym expansion. Do not add an assumed field to the first concept lookup. Search popularity of another expansion is not support for replacing the subject. A failed or limited lookup means the identity remains unresolved, not that a concept does not exist. Prior-round notes may orient searches, but cite only sources your own tools return or open.
+Preserve the question's explicit concept name and acronym expansion. Do not add an assumed field to the first concept lookup. Search popularity of another expansion is not support for replacing the subject. A failed or limited lookup means the identity remains unresolved, not that a concept does not exist. Prior-round notes may orient searches. Cite an inherited source only if it is in the structured source registry; report that its support is inherited. A prior read by another node is not a full page supplied to you. Read the page yourself for new detailed claims. For snippet-only, truncated or failed-read sources, qualify claims accordingly.
+
+When a page cannot be read, do not replay the same URL. Use the returned recovery query to search for an accessible author manuscript, institutional repository or alternate original source, then read the relevant result within your remaining allowance. Never bypass a paywall or imply that a failed page was read.
 
 You can make at most {toolBudget} tool calls. Stop when you have answered the key questions with well-sourced findings, when you are no longer finding new relevant information, or when the tool budget is used up.
 
@@ -49,7 +51,7 @@ Your final answer is your notes, in English, in exactly this Markdown structure,
 
 Rules for the notes:
 - Every cited finding has an inline link to the page it came from, labelled with the publisher or page title. A claim without a source goes under Gaps instead.
-- Cite only pages that your web tools returned or opened during this task. Never cite a URL from memory, and never invent facts, numbers or URLs.
+- Cite only pages returned/opened by your tools or listed in the structured inherited source registry. A URL mentioned only in free-text notes is not eligible. Never cite a URL from memory or invent facts, numbers or URLs.
 - Prefer specific, citable facts over general summaries.
 - Write impersonally ("No source found for X", "The page states ..."), not in the first person.
 - Do not add other top-level sections, a preamble or a closing remark.`;
@@ -69,6 +71,9 @@ Constraints:
 Suggested sources:
 {sourceHints}
 
+Structured inherited source registry (from completed earlier nodes; URLs are eligible, but content has not been supplied as full pages):
+{inheritedSources}
+
 Additional instructions:
 {instructions}`;
 
@@ -79,11 +84,12 @@ export const researcherPrompt = ChatPromptTemplate.fromMessages([
 
 const bullets = (items: string[], empty: string) => (items.length ? items.map((i) => `- ${i}`).join("\n") : empty);
 
-export function researcherPromptValues(question: string, brief: ResearchBrief, toolBudget: number, today: string) {
+export function researcherPromptValues(question: string, brief: ResearchBrief, toolBudget: number, today: string, inheritedSources: Source[] = []) {
   return {
     today,
     toolBudget: String(toolBudget),
     question,
+    inheritedSources: JSON.stringify(inheritedSources),
     objective: brief.objective,
     keyQuestions: bullets(brief.keyQuestions, "- (none given; answer the objective)"),
     constraints: bullets(brief.constraints ?? [], "- None"),

@@ -33,6 +33,7 @@ const SYSTEM = `You synthesize research notes written by a team of researchers i
 - Use all the notes. Every researcher's key findings belong in the report unless they are redundant or off the question; do not drop a whole topic, caution or safety warning.
 
 ## Citation rules
+- The graph's source registry records origin and actual access state. Inherited support is not a new full-page read. Snippets, truncated pages and failed reads cannot support claims about unseen details. Preserve the notes' qualifications and gaps. A listed URL establishes provenance, not correctness of every associated claim.
 - Cite inline with ([Publisher or title](URL)) after major findings, numbers and references to specific publications, using URLs exactly and completely as they appear in the notes.
 - A link marked "(unverified link)" was not confirmed by the search tools. Do not let it be the only support for a key claim, and do not copy the marker.
 - Every sentence that states a number, price, date or specification carries its citation in the same sentence, including in the opening paragraph and in tables.
@@ -47,7 +48,10 @@ const HUMAN = `Research question:
 
 {outline}{guidance}Research notes ({count} sets):
 
-{material}`;
+{material}
+
+Graph-supplied source registry (access metadata, not additional findings):
+{sourceRegistry}`;
 
 const writerPrompt = ChatPromptTemplate.fromMessages([
   ["system", SYSTEM],
@@ -77,6 +81,7 @@ export function createWriter(model: BaseChatModel, today: string): WriteFn {
       guidance,
       count: String(synthesis.material.length),
       material: material || "(no research notes were produced)",
+      sourceRegistry: JSON.stringify(synthesis.sourceRegistry ?? []),
     });
     const msg = await model.invoke(messages);
     const report = (typeof msg.content === "string"

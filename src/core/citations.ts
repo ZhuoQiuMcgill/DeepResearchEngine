@@ -5,12 +5,11 @@
 import type { ResearchResult } from "./contracts.js";
 import { extractUrls, pageKey, urlKey } from "./urls.js";
 
-/** Report URLs that appear in no researcher's sources or notes. */
+/** Report URLs absent from recorded tool/inherited sources. Notes alone are not provenance. */
 export function unknownCitations(report: string, results: ResearchResult[]): string[] {
   const known = new Set<string>();
   for (const r of results) {
     for (const s of r.sources) known.add(pageKey(s.url));
-    for (const u of extractUrls(r.notes)) known.add(pageKey(u));
   }
   return extractUrls(report).filter((u) => !known.has(pageKey(u)));
 }

@@ -1,9 +1,35 @@
 import { describe, expect, it } from "vitest";
 import type { ResearchBrief, ResearchResult } from "../src/core/contracts.js";
+import type { Source } from "../src/core/contracts.js";
 import type { ResearchStrategy } from "../src/core/strategy.js";
 import { buildResearchGraph, initialState, type DecisionRecord } from "../src/graph/skeleton.js";
 
 const brief = (objective: string) => ({ objective, keyQuestions: ["q"] });
+
+it("relays only completed source records and does not taint a known URL across nodes", async () => {
+  const carried: Source[][] = [];
+  const real = "https://example.org/real", invented = "https://example.org/invented";
+  let written: any;
+  const strategy = scripted([["identity"], ["details"]]);
+  strategy.finalize = async () => ({ material: [{ label: "Identity", notes: `Finding [Real](${real})` }] });
+  const graph = buildResearchGraph({ strategy, strategyModel: {} as never,
+    research: async (_q, b, inherited = []) => {
+      carried.push(inherited);
+      const result = await fakeResearch().fn(_q, b);
+      return { ...result, notes: `Finding [Real](${real})`,
+        sources: b.round === 1 ? [{ url: real, cited: true, readState: "snippet" as const }] : [],
+        unlistedCitations: b.round === 1 ? [invented] : [real] };
+    },
+    write: async (_q, synthesis) => { written = synthesis; return { report: "done", diagnostics: [] }; },
+    limits: { researchersTotal: 3, toolCallsPerResearcher: 8 }, maxRounds: 3, concurrency: 1, runId: "test", today: "2026-10-13" });
+  await graph.invoke(initialState("Question"));
+  expect(carried[0]).toEqual([]);
+  expect(carried[1]).toEqual([{ url: real, cited: true, readState: "snippet", originBriefId: "r1-b1" }]);
+  expect(carried.flat().some(s => s.url === invented)).toBe(false);
+  expect(written.sourceRegistry[0].originBriefId).toBe("r1-b1");
+  expect(written.material[0].notes).toContain(real);
+  expect(written.material.some((m: any) => m.notes.includes("(unverified link)"))).toBe(false);
+});
 
 function fakeResearch(fail: Set<string> = new Set()) {
   const seen: ResearchBrief[] = [];

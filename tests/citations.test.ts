@@ -35,6 +35,10 @@ describe("citation diagnostics", () => {
   it("matches report URLs to sources across query parameters", () => {
     expect(unknownCitations("See https://pubmed.ncbi.nlm.nih.gov/22038497/ and https://x.org/y", [result("", ["https://pubmed.ncbi.nlm.nih.gov/22038497/?dopt=Abstract"])])).toEqual(["https://x.org/y"]);
   });
+  it("does not grant provenance to a URL merely because it occurs in notes", () => {
+    const url = "https://example.org/invented";
+    expect(unknownCitations(`Claim [X](${url})`, [result(`Claim [X](${url})`)])).toEqual([url]);
+  });
 
   it("marks links to pages the tools never reported", () => {
     const out = markUnverifiedLinks("A — [Meta](https://meta.com/q3?x=1). B — [Apple](https://apple.com/vp)", new Set([pageKey("https://meta.com/q3")]));

@@ -4,12 +4,13 @@ import { UsageLedger } from "../src/observability/usage.js";
 import { localProfile, getProfile } from "../src/config/models.js";
 import type { AdapterOutput } from "../src/research/adapters/types.js";
 import { TavilySearch } from "@langchain/tavily";
+import type { Source } from "../src/core/contracts.js";
 
-function setup(providers: WebProviders) {
+function setup(providers: WebProviders, inheritedSources: Source[] = []) {
   const out: AdapterOutput = { notes: "", sources: [], citedUrls: [], queries: [], inputTokens: 0,
     outputTokens: 0, searches: 0, pageReads: 0, diagnostics: [] };
   const ledger = new UsageLedger(localProfile({}).pricing);
-  const tools = createWebTools(out, { messages: [], ledger, role: "researcher", signal: AbortSignal.timeout(10000) }, providers);
+  const tools = createWebTools(out, { messages: [], ledger, role: "researcher", inheritedSources, signal: AbortSignal.timeout(10000) }, providers);
   return { out, ledger, tools };
 }
 describe("managed web tools", () => {
@@ -41,5 +42,39 @@ describe("managed web tools", () => {
       extract: { invoke: async () => ({ results: [] }) } });
     expect(await tools[0]!.invoke({ query: "EBD" })).toContain("no usable results");
     expect(out.sources).toEqual([]); expect(out.diagnostics).toHaveLength(1);
+  });
+  it("accepts a graph-supplied source with its origin but not an arbitrary URL from notes", async () => {
+    let reads = 0;
+    const { tools, out } = setup({ search: { invoke: async () => ({ results: [] }) },
+      extract: { invoke: async () => { reads++; return { results: [{ url: "https://example.org/original", raw_content: "Original content" }] }; } } },
+      [{ url: "https://example.org/original", title: "Original", cited: true, originBriefId: "r1-b1", readState: "snippet" }]);
+    expect(await tools[1]!.invoke({ url: "https://example.org/invented" })).toContain("Read only");
+    expect(await tools[1]!.invoke({ url: "https://example.org/original" })).toContain("Original content");
+    expect(reads).toBe(1);
+    expect(out.sources[0]?.originBriefId).toBe("r1-b1");
+    expect(out.sources.at(-1)?.readState).toBe("read");
+  });
+  it("records inaccessible pages once, suggests recovery and lets a different source succeed", async () => {
+    let reads = 0;
+    const { tools, out, ledger } = setup({
+      search: { invoke: async () => ({ results: [{ url: "https://example.org/blocked", title: "Named method" }, { url: "https://example.org/manuscript" }] }) },
+      extract: { invoke: async ({ urls }) => { reads++; if (urls[0]?.endsWith("blocked")) throw new Error("provider request error");
+        return { results: [{ url: urls[0], raw_content: "Accessible manuscript" }] }; } },
+    });
+    await tools[0]!.invoke({ query: "Named method" });
+    const failed = JSON.parse(await tools[1]!.invoke({ url: "https://example.org/blocked" }));
+    expect(failed.recoveryQuery).toContain("Named method");
+    expect(JSON.parse(await tools[1]!.invoke({ url: "https://example.org/blocked" })).retrySkipped).toBe(true);
+    expect(await tools[1]!.invoke({ url: "https://example.org/manuscript" })).toContain("Accessible manuscript");
+    expect(reads).toBe(2); expect(ledger.total().pageReads).toBe(2);
+    expect(out.diagnostics).toHaveLength(1);
+    expect(out.sources.find(s => s.url.endsWith("blocked"))?.readState).toBe("failed");
+  });
+  it("does not treat empty or unrelated extract content as a successful read", async () => {
+    const { tools, out } = setup({ search: { invoke: async () => ({ results: [{ url: "https://example.org/paper" }] }) },
+      extract: { invoke: async () => ({ results: [{ url: "https://example.org/other", raw_content: "Unrelated" }, { url: "https://example.org/paper", raw_content: "  " }] }) } });
+    await tools[0]!.invoke({ query: "paper" });
+    expect(JSON.parse(await tools[1]!.invoke({ url: "https://example.org/paper" })).status).toBe("unavailable");
+    expect(out.sources.some(s => s.url.endsWith("other"))).toBe(false);
   });
 });

@@ -28,6 +28,10 @@ export const SourceSchema = z.object({
   title: z.string().optional(),
   /** The URL appears in the notes text or in a provider citation. */
   cited: z.boolean(),
+  /** Earliest completed researcher that supplied an inherited source. */
+  originBriefId: z.string().optional(),
+  /** What the tools actually obtained, not a model's claim to have read it. */
+  readState: z.enum(["snippet", "read", "truncated", "failed"]).optional(),
 });
 export type Source = z.infer<typeof SourceSchema>;
 
@@ -76,6 +80,7 @@ export const SynthesisInputSchema = z.object({
     .describe("Research notes in the order the writer should consider them"),
   outline: z.array(z.string()).optional().describe("Optional section guidance"),
   guidance: z.string().optional().describe("Optional extra writer guidance"),
+  sourceRegistry: z.array(SourceSchema).optional().describe("Graph-supplied source access and origin metadata; never model-generated provenance"),
 });
 export type SynthesisInput = z.infer<typeof SynthesisInputSchema>;
 

@@ -13,6 +13,7 @@ import {
   type ResearchBriefInput,
   type ResearchResult,
   type SynthesisInput,
+  type Source,
 } from "../core/contracts.js";
 import type { JsonValue, ResearchStrategy, StrategyContext, StrategyStep } from "../core/strategy.js";
 import { markUnverifiedLinks, repairTruncatedUrls } from "../core/citations.js";
@@ -77,6 +78,7 @@ export type RunStateType = typeof RunState.State;
 interface ResearchTask {
   question: string;
   brief: ResearchBrief;
+  inheritedSources: Source[];
 }
 
 /** Limit concurrent researchers; the limit is an engineering setting only. */
@@ -168,7 +170,7 @@ export function buildResearchGraph(deps: SkeletonDeps) {
       { retryPolicy: { maxAttempts: 3 } },
     )
     .addNode("research", async (task: ResearchTask) => {
-      const result = await limit(() => deps.research(task.question, task.brief));
+      const result = await limit(() => deps.research(task.question, task.brief, task.inheritedSources));
       await hooks?.onResult?.(result);
       return { results: [result] };
     })
@@ -202,7 +204,10 @@ export function buildResearchGraph(deps: SkeletonDeps) {
           diagnostics.push(`${provenance.unmatched} of ${provenance.lines} material line(s) are not researcher notes lines, e.g. ${JSON.stringify(provenance.examples[0])}`);
         }
         // Shared data-quality annotation, the same for every strategy.
-        const unverified = new Set(state.results.flatMap((r) => r.unlistedCitations.map(pageKey)));
+        synthesis = { ...synthesis, sourceRegistry: state.results.filter(r => r.status === "ok")
+          .flatMap(r => r.sources.map(s => ({ ...s, originBriefId: s.originBriefId ?? r.brief.id }))) };
+        const listed = new Set(state.results.flatMap(r => r.sources.map(s => pageKey(s.url))));
+        const unverified = new Set(state.results.flatMap((r) => r.unlistedCitations.map(pageKey)).filter(key => !listed.has(key)));
         if (unverified.size) {
           let marked = 0;
           synthesis = {
@@ -239,7 +244,10 @@ export function buildResearchGraph(deps: SkeletonDeps) {
 
   function dispatch(state: RunStateType) {
     if (state.stopReason || state.pending.length === 0) return "finalize";
-    return state.pending.map((brief) => new Send("research", { question: state.question, brief } satisfies ResearchTask));
+    // Trust graph records, not URLs mentioned in notes or generated assignments.
+    const inheritedSources = state.results.filter(r => r.status === "ok" && r.brief.round < state.round)
+      .flatMap(r => r.sources.map(s => ({ ...s, originBriefId: s.originBriefId ?? r.brief.id })));
+    return state.pending.map((brief) => new Send("research", { question: state.question, brief, inheritedSources } satisfies ResearchTask));
   }
 
   return graph.compile();

@@ -23,15 +23,15 @@ export interface ResearcherDeps {
   today: string;
 }
 
-export type ResearchFn = (question: string, brief: ResearchBrief) => Promise<ResearchResult>;
+export type ResearchFn = (question: string, brief: ResearchBrief, inheritedSources?: Source[]) => Promise<ResearchResult>;
 
 export function createResearcher(deps: ResearcherDeps): ResearchFn {
-  return async (question, brief) => {
+  return async (question, brief, inheritedSources = []) => {
     const started = Date.now();
     const base = { brief, model: deps.profile.model, queries: [] as string[], sources: [] as Source[] };
     try {
       const messages = await researcherPrompt.formatMessages(
-        researcherPromptValues(question, brief, deps.profile.toolCallsPerResearcher, deps.today),
+        researcherPromptValues(question, brief, deps.profile.toolCallsPerResearcher, deps.today, inheritedSources),
       );
       const call = {
         messages,
@@ -39,6 +39,7 @@ export function createResearcher(deps: ResearcherDeps): ResearchFn {
         role: "researcher",
         callbacks: deps.callbacks,
         signal: AbortSignal.timeout(deps.timeoutMs),
+        inheritedSources,
       };
       const out: AdapterOutput =
         deps.profile.provider === "anthropic" ? await runAnthropic(deps.profile, call) :
@@ -49,7 +50,7 @@ export function createResearcher(deps: ResearcherDeps): ResearchFn {
         searches: out.searches,
         pageReads: out.pageReads,
       };
-      const { sources, unlisted } = mergeSources(out);
+      const { sources, unlisted } = mergeSources({ ...out, sources: [...inheritedSources, ...out.sources] });
       const diagnostics = [...out.diagnostics];
       if (unlisted.length) diagnostics.push(`${unlisted.length} cited URL(s) not reported by the provider's tools`);
       if (!out.notes) {
@@ -111,8 +112,10 @@ function mergeSources(out: AdapterOutput): { sources: Source[]; unlisted: string
     const prev = byKey.get(key);
     if (prev) {
       if (!prev.title && s.title) prev.title = s.title;
+      if (s.readState) prev.readState = s.readState;
+      if (!prev.originBriefId && s.originBriefId) prev.originBriefId = s.originBriefId;
     } else {
-      byKey.set(key, { url: s.url, ...(s.title ? { title: s.title } : {}), cited: citedPages.has(pageKey(s.url)) });
+      byKey.set(key, { ...s, cited: citedPages.has(pageKey(s.url)) });
     }
   }
   const providerPages = new Set(out.sources.map((s) => pageKey(s.url)));
