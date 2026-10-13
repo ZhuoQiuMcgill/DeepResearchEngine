@@ -19,7 +19,7 @@ do {
   const data = await r.json() as any;
   observations.push(...data.data);
   cursor = data.meta?.cursor ?? data.meta?.nextCursor;
-  if (data.data.length === 100 && !cursor) throw new Error("Cannot confirm complete pagination.");
+  // V2 ends on absent meta.cursor, including an exactly-full final page.
 } while (cursor);
 if (!observations.some(o => o.name === "write") || !observations.some(o => !o.parentObservationId))
   throw new Error("The completed root and write node have not been ingested yet; retry shortly.");

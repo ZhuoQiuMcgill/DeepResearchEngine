@@ -19,6 +19,11 @@ other same-round researchers' future output. Each researcher must obtain its
 own cited sources through the real tools; forwarded notes are orientation, not
 new tool provenance.
 
+The later source-relay revision adds a structured registry of actual prior-round
+tool sources, allowing explicit inherited support and page access while retaining
+origin and access state. Text-only URLs still do not establish provenance. See
+`docs/source-relay-and-read-recovery.md` and `docs/web-baseline-source-results.md`.
+
 Other questions retain initial parallel decomposition plus an optional gap
 round. Follow-up briefs also receive prior notes. Both paths retain the
 two-round limit and existing researcher/tool budgets. If no budget remains,
