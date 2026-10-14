@@ -20,6 +20,7 @@ const { values } = parseArgs({
     model: { type: "string", default: "haiku" },
     task: { type: "string", default: "ebd" },
     researchers: { type: "string", default: "6" },
+    concurrency: { type: "string", default: "4" },
   },
 });
 if (!values.strategy) {
@@ -49,7 +50,7 @@ if (loaded) {
       profile: values.model!,
       researchersTotal: Number(values.researchers),
       maxRounds: 8,
-      concurrency: 4,
+      concurrency: Number(values.concurrency),
       researcherTimeoutMs: 8 * 60_000,
       outDir: "local/checks",
     },
