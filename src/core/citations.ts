@@ -25,14 +25,19 @@ function units(text: string): string[] {
       if (line.trim().startsWith("|")) return [line];
       const cuts = new Set([...line.matchAll(/(?<=[.!?])\s+(?=[A-Z(*])/g)].map(m => m.index!));
       const quotes: string[] = [], parts: string[] = [];
-      let start = 0;
+      let start = 0, parentheses = 0, brackets = 0;
       for (let i = 0; i < line.length; i++) {
         const c = line[i];
         if (c === '"' && line[i - 1] !== "\\") {
           if (quotes.at(-1) === '"') quotes.pop(); else quotes.push('"');
         } else if (c === "“") quotes.push("”");
         else if (c === "”" && quotes.at(-1) === "”") quotes.pop();
-        if (cuts.has(i) && !quotes.length) { parts.push(line.slice(start, i)); start = i; }
+        if (!quotes.length) {
+          if (c === "(") parentheses++; else if (c === ")") parentheses = Math.max(0, parentheses - 1);
+          if (c === "[") brackets++; else if (c === "]") brackets = Math.max(0, brackets - 1);
+        }
+        const abbreviation = /\b(?:[A-Za-z]|Dr|Prof|Mr|Mrs|Ms|pp|Vol|No|al|vs)\.$/i.test(line.slice(Math.max(0, i - 16), i));
+        if (cuts.has(i) && !quotes.length && !parentheses && !brackets && !abbreviation) { parts.push(line.slice(start, i)); start = i; }
       }
       parts.push(line.slice(start));
       return parts;

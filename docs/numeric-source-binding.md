@@ -48,9 +48,13 @@ units, population, causality, or the original page's accuracy. Single-digit
 values remain outside the existing heuristic's coverage. Version-1 output
 contracts and all historical summary files are preserved.
 
-52 controlled tests passed, including reference-year false alarms, incorrect
+53 controlled tests passed, including reference-year false alarms, incorrect
 years, misused label/URL digits, unsupported decades, missing citations,
-quotation boundaries, bounded revision, citation-dropping attempts and invented
+quotation/abbreviation boundaries, bounded revision, citation-dropping attempts and invented
 replacement URLs. Modern bibliography-label years (1900–2099) are recognized.
 Typecheck/build also passed. A separate actual local-Qwen/Tavily baseline run
 assesses the final output and required strategy interface checks.
+
+The live result and separately recorded source-backed abbreviation restoration
+are documented in `docs/numeric-baseline-results.md`. Original model output is
+retained; finalization never silently overwrites historical run records.

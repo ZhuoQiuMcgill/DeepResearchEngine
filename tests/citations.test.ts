@@ -52,6 +52,11 @@ describe("citation diagnostics", () => {
     expect(citationBinding('The 2011 paper states "The count is 500. This is the result." [Paper](https://example.org/paper).', [result(notes)]).unbound).toBe(0);
     expect(citationBinding('The count is 900. This other result cites [Paper](https://example.org/paper).', [result(notes)]).unbound).toBe(1);
   });
+  it("preserves an abbreviated journal reference with its trailing citation", () => {
+    const notes = '- The 2004 paper appears in J. Design 8(4), pages 45–63 [Paper](https://example.org/paper).';
+    expect(citationBinding('The structure comes from the 2004 paper (J. Design 8(4), 45–63) [Paper](https://example.org/paper).', [result(notes)])).toMatchObject({ checked: 1, unbound: 0 });
+    expect(citationBinding('The 2004 paper appears in J. Design [Paper](https://example.org/paper).', [result(notes)])).toMatchObject({ checked: 1, unbound: 0 });
+  });
 
   it("matches report URLs to sources across query parameters", () => {
     expect(unknownCitations("See https://pubmed.ncbi.nlm.nih.gov/22038497/ and https://x.org/y", [result("", ["https://pubmed.ncbi.nlm.nih.gov/22038497/?dopt=Abstract"])])).toEqual(["https://x.org/y"]);
