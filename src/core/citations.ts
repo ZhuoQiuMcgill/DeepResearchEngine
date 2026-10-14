@@ -21,7 +21,22 @@ const normalize = (n: string) => n.replace(/,/g, "").replace(/\.0+$/, "");
 function units(text: string): string[] {
   return text
     .split(/\r?\n/)
-    .flatMap((line) => (line.trim().startsWith("|") ? [line] : line.split(/(?<=[.!?])\s+(?=[A-Z(*])/)))
+    .flatMap((line) => {
+      if (line.trim().startsWith("|")) return [line];
+      const cuts = new Set([...line.matchAll(/(?<=[.!?])\s+(?=[A-Z(*])/g)].map(m => m.index!));
+      const quotes: string[] = [], parts: string[] = [];
+      let start = 0;
+      for (let i = 0; i < line.length; i++) {
+        const c = line[i];
+        if (c === '"' && line[i - 1] !== "\\") {
+          if (quotes.at(-1) === '"') quotes.pop(); else quotes.push('"');
+        } else if (c === "“") quotes.push("”");
+        else if (c === "”" && quotes.at(-1) === "”") quotes.pop();
+        if (cuts.has(i) && !quotes.length) { parts.push(line.slice(start, i)); start = i; }
+      }
+      parts.push(line.slice(start));
+      return parts;
+    })
     .filter((u) => u.trim());
 }
 
@@ -31,7 +46,7 @@ function numbersIn(unit: string): string[] {
 }
 
 export interface BindingCheck {
-  /** Report units that carry at least one citation and at least one number. */
+  /** Report units carrying a checked number, including missing-citation units. */
   checked: number;
   /** Units with a number that no notes line citing the same URL contains. */
   unbound: number;
@@ -43,8 +58,9 @@ export interface BindingCheck {
  * in some notes line that cites one of the same URLs. A heuristic for
  * misattributed citations, not a proof of correctness.
  */
-export function citationBinding(report: string, results: ResearchResult[]): BindingCheck {
+export function citationBinding(report: string, results: Pick<ResearchResult, "notes">[]): BindingCheck {
   const linesByUrl = new Map<string, string[]>();
+  const publicationYears = new Map<string, Set<string>>();
   for (const r of results) {
     // Notes are compared by whole line: a bullet's numbers belong to the URL at its end.
     for (const line of r.notes.split(/\r?\n/)) {
@@ -52,16 +68,29 @@ export function citationBinding(report: string, results: ResearchResult[]): Bind
         const key = urlKey(u);
         linesByUrl.set(key, [...(linesByUrl.get(key) ?? []), line]);
       }
+      // A bibliographic label can state a publication year, but arbitrary
+      // numbers in labels/DOIs must not support numerical factual claims.
+      for (const link of line.matchAll(/\[([^\]]*)\]\((https?:\/\/[^\s]+?)\)/g)) {
+        const key = urlKey(link[2]!);
+        const years = publicationYears.get(key) ?? new Set<string>();
+        for (const year of link[1]!.matchAll(/\b(?:19|20)\d{2}\b/g)) years.add(year[0]);
+        publicationYears.set(key, years);
+      }
     }
   }
   const out: BindingCheck = { checked: 0, unbound: 0, examples: [] };
   for (const unit of units(report)) {
     const urls = extractUrls(unit);
     const nums = numbersIn(unit);
-    if (!urls.length || !nums.length) continue;
+    if (!nums.length) continue;
     out.checked += 1;
     const noteNumbers = new Set(urls.flatMap((u) => linesByUrl.get(urlKey(u)) ?? []).flatMap(numbersIn));
-    const missing = nums.filter((n) => !noteNumbers.has(n));
+    const prose = unit.replace(/\[[^\]]*\]\(https?:\/\/[^\s]+?\)/g, " ").replace(/[*_`]/g, "");
+    const missing = nums.filter((n) => {
+      if (noteNumbers.has(n)) return false;
+      const publicationDate = /^(19|20)\d{2}$/.test(n) && new RegExp(`\\b(?:${n}\\s+(?:paper|article|study|publication|thesis|report)|(?:paper|article|study|publication|thesis|report)(?:\\s+(?:was|published|dated|in|from|of))*\\s+${n})\\b`, "i").test(prose);
+      return !(publicationDate && urls.some(u => publicationYears.get(urlKey(u))?.has(n)));
+    });
     if (missing.length) {
       out.unbound += 1;
       if (out.examples.length < 8) out.examples.push({ text: unit.trim().slice(0, 240), missing });

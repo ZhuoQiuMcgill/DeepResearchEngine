@@ -31,6 +31,27 @@ describe("citation diagnostics", () => {
     expect(b.unbound).toBe(1);
     expect(b.examples[0]!.missing).toEqual(["515"]);
   });
+  it("recognizes a publication year in the matching bibliography label", () => {
+    const notes = '- Three activities — [ACM (Sun et al., 2011)](https://example.org/paper)';
+    expect(citationBinding('The 2011 paper describes three activities [ACM](https://example.org/paper).', [result(notes)]).unbound).toBe(0);
+    expect(citationBinding('The 2012 paper describes three activities [ACM](https://example.org/paper).', [result(notes)]).unbound).toBe(1);
+  });
+  it("does not use bibliographic years, identifier digits or arbitrary label numbers as factual quantities", () => {
+    const notes = '- Three activities — [ACM 2011, page 515](https://example.org/paper/9999)';
+    expect(citationBinding('The study enrolled 2011 participants [ACM](https://example.org/paper/9999).', [result(notes)]).unbound).toBe(1);
+    expect(citationBinding('The cost is 515 [ACM](https://example.org/paper/9999).', [result(notes)]).unbound).toBe(1);
+    expect(citationBinding('The cost is 9999 [ACM](https://example.org/paper/9999).', [result(notes)]).unbound).toBe(1);
+  });
+  it("keeps unsupported temporal inferences flagged and detects dropped citations", () => {
+    const notes = '- A precursor dates to 2004 — [Paper](https://example.org/paper)\n- Development began in the mid-2000s.';
+    expect(citationBinding('Development began in the mid-2000s [Paper](https://example.org/paper).', [result(notes)]).unbound).toBe(1);
+    expect(citationBinding('The precursor dates to 2004.', [result(notes)]).unbound).toBe(1);
+  });
+  it("keeps a multi-sentence quotation with its trailing citation without borrowing across unrelated sentences", () => {
+    const notes = '- A 2011 paper reports 500. A result — [Paper](https://example.org/paper)';
+    expect(citationBinding('The 2011 paper states "The count is 500. This is the result." [Paper](https://example.org/paper).', [result(notes)]).unbound).toBe(0);
+    expect(citationBinding('The count is 900. This other result cites [Paper](https://example.org/paper).', [result(notes)]).unbound).toBe(1);
+  });
 
   it("matches report URLs to sources across query parameters", () => {
     expect(unknownCitations("See https://pubmed.ncbi.nlm.nih.gov/22038497/ and https://x.org/y", [result("", ["https://pubmed.ncbi.nlm.nih.gov/22038497/?dopt=Abstract"])])).toEqual(["https://x.org/y"]);

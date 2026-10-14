@@ -6,6 +6,8 @@
 import { ChatPromptTemplate } from "@langchain/core/prompts";
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import type { SynthesisInput } from "../core/contracts.js";
+import { citationBinding } from "../core/citations.js";
+import { HumanMessage, type BaseMessage } from "@langchain/core/messages";
 
 const SYSTEM = `You synthesize research notes written by a team of researchers into a focused, well-structured report. Your top priority is a high-quality report that answers the research question as well and as completely as the notes allow. You do no research yourself: use only the notes you are given. Today's date is {today}.
 
@@ -38,6 +40,7 @@ const SYSTEM = `You synthesize research notes written by a team of researchers i
 - A link marked "(unverified link)" was not confirmed by the search tools. Do not let it be the only support for a key claim, and do not copy the marker.
 - Every sentence that states a number, price, date or specification carries its citation in the same sentence, including in the opening paragraph and in tables.
 - Each claim keeps the URL the notes give for that same claim. Never move a URL to a different claim, and never cite a page for a number it was not given for.
+- Keep each factual number or date attached to the notes line and URL that state it. Publication years explicitly present in that URL's bibliography label may identify the paper; they cannot establish when a method originated or support a numerical quantity. Do not turn specific dated publications into an approximate decade or a coinage date. If a temporal interpretation is essential, label it as an inference and give its exact dated premises with their own citations.
 - A specific finding, number or publication reference that has no source URL in the notes must not appear in the report. Five well-sourced claims beat twenty half-sourced ones.
 - Never invent URLs, facts or numbers.
 
@@ -65,6 +68,10 @@ export interface WriterOutput {
 
 export type WriteFn = (question: string, synthesis: SynthesisInput) => Promise<WriterOutput>;
 
+function reportText(msg: BaseMessage): string {
+  return (typeof msg.content === "string" ? msg.content : msg.content.filter(b => b.type === "text").map(b => b.text ?? "").join("")).trim();
+}
+
 export function createWriter(model: BaseChatModel, today: string): WriteFn {
   return async (question, synthesis) => {
     const outline = synthesis.outline?.length
@@ -83,12 +90,23 @@ export function createWriter(model: BaseChatModel, today: string): WriteFn {
       material: material || "(no research notes were produced)",
       sourceRegistry: JSON.stringify(synthesis.sourceRegistry ?? []),
     });
-    const msg = await model.invoke(messages);
-    const report = (typeof msg.content === "string"
-      ? msg.content
-      : (msg.content as { type: string; text?: string }[]).filter((b) => b.type === "text").map((b) => b.text ?? "").join("")
-    ).trim();
+    let msg = await model.invoke(messages);
+    let report = reportText(msg);
     const diagnostics: string[] = [];
+    const binding = citationBinding(report, synthesis.material);
+    if (binding.unbound && report) {
+      // One bounded, traced revision, using the same original source material.
+      // Never alter notes, add research, or suppress a remaining diagnostic.
+      diagnostics.push(`numeric citation revision attempted: ${binding.unbound} flagged unit(s)`);
+      const revised = await model.invoke([...messages, msg, new HumanMessage(
+        `Revise only the flagged numerical/date statements in the report above, preserving the rest of the answer. The source material is unchanged. Issues:\n${JSON.stringify(binding.examples)}\nUse the exact number/date and its matching source from a cited notes line. A bibliography label supports its paper's publication year, not a numerical result or method origin. If support is absent, remove the unsupported detail or state the gap. Do not invent facts, change sources, add approximate decades, or simply remove a citation while leaving its number. Output the complete revised Markdown report only.`,
+      )]);
+      const revisedReport = reportText(revised);
+      if (revisedReport) { msg = revised; report = revisedReport; }
+      else diagnostics.push("numeric revision returned empty text; initial report retained");
+      const after = citationBinding(report, synthesis.material);
+      if (after.unbound) diagnostics.push(`numeric citation issues remain after bounded revision: ${after.unbound} unit(s)`);
+    }
     const stop = (msg.response_metadata as { stop_reason?: string; finish_reason?: string; status?: string } | undefined) ?? {};
     if (stop.stop_reason === "max_tokens" || stop.finish_reason === "length" || stop.status === "incomplete") diagnostics.push("report output truncated");
     if (!report) diagnostics.push("writer returned an empty report");
