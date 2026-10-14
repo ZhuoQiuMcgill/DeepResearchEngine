@@ -27,12 +27,18 @@ should not be accepted simply because it shares a decade with source dates.
   into unsupported approximate decades or coinage dates.
 - If the generated report has flagged numerical/date units, the writer can
   make exactly one extra model call with the same original notes and source
-  registry. It revises only the affected statements, removing unsupported
-  detail or stating gaps rather than inventing support. Both draft and revision
-  are real traced generations; the extra usage is recorded normally.
-- The revised report is checked again. Remaining issues are retained in
-  diagnostics, not erased, and an empty revision leaves the initial report
-  intact. No extra research or hidden retrieval is introduced.
+  registry. It returns structured edits for indexed full statements, supplied
+  with exact source-specific candidate notes. Both draft and edits are real
+  traced generations; the extra usage is recorded normally.
+- Each replacement must have zero numeric-support issues and only registered
+  source URLs before it is accepted. Unsupported candidates are not published:
+  their original statement units are omitted, with original text and action
+  retained in the summary's edit audit. All unflagged prose is preserved. The
+  final report is checked again; any remaining issues are retained. No extra
+  research or hidden retrieval is introduced.
+- This strict source gate followed a real-model test where whole-report revision
+  repeated four unsupported statements. That intermediate run is preserved;
+  its successful execution was not counted as passing the numeric criterion.
 
 ## Limits
 
@@ -42,8 +48,9 @@ units, population, causality, or the original page's accuracy. Single-digit
 values remain outside the existing heuristic's coverage. Version-1 output
 contracts and all historical summary files are preserved.
 
-51 controlled tests passed, including reference-year false alarms, incorrect
+52 controlled tests passed, including reference-year false alarms, incorrect
 years, misused label/URL digits, unsupported decades, missing citations,
-quotation boundaries, bounded revision and citation-dropping attempts.
+quotation boundaries, bounded revision, citation-dropping attempts and invented
+replacement URLs. Modern bibliography-label years (1900–2099) are recognized.
 Typecheck/build also passed. A separate actual local-Qwen/Tavily baseline run
 assesses the final output and required strategy interface checks.

@@ -99,6 +99,26 @@ export function citationBinding(report: string, results: Pick<ResearchResult, "n
   return out;
 }
 
+/** Exact spans for editing, rather than truncated diagnostic examples. */
+export function numericBindingIssues(report: string, notes: Pick<ResearchResult, "notes">[]) {
+  let cursor = 0;
+  return units(report).flatMap(text => {
+    const start = report.indexOf(text, cursor);
+    cursor = start + text.length;
+    const check = citationBinding(text, notes);
+    return check.unbound ? [{ start, end: cursor, text, missing: check.examples.flatMap(e => e.missing) }] : [];
+  });
+}
+
+/** Source-specific support, retaining the exact notes line and bibliography metadata. */
+export function numericSupportLedger(notes: Pick<ResearchResult, "notes">[]) {
+  return notes.flatMap(note => note.notes.split(/\r?\n/).flatMap(text => extractUrls(text).map(url => ({
+    url, text, numbers: numbersIn(text),
+    publicationYears: [...text.matchAll(/\[([^\]]*)\]\((https?:\/\/[^\s]+?)\)/g)]
+      .filter(m => urlKey(m[2]!) === urlKey(url)).flatMap(m => [...m[1]!.matchAll(/\b(?:19|20)\d{2}\b/g)].map(y => y[0])),
+  }))));
+}
+
 const MD_LINK = /\[([^\]]*)\]\((https?:\/\/[^\s]+?)\)(?=$|[\s.,;:)\]])/g;
 
 /**

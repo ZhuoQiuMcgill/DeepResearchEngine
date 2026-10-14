@@ -12,8 +12,10 @@ it("uses one source-preserving revision to correct an unsupported number", async
   const inputs: any[] = [];
   const model = { invoke: async (messages: any) => {
     inputs.push(messages);
-    return new AIMessage(inputs.length === 1 ? "The cost is 900 [Source](https://example.org/paper)." : "The cost is 500 [Source](https://example.org/paper).");
-  } };
+    return new AIMessage("The cost is 900 [Source](https://example.org/paper).");
+  }, withStructuredOutput: () => ({ invoke: async (messages: any) => {
+    inputs.push(messages); return { edits: [{ index: 0, text: "The cost is 500 [Source](https://example.org/paper)." }] };
+  } }) };
   const out = await createWriter(model as never, "2026-10-14")("What is the cost?", {
     material: [{ label: "Costs", notes: "- The cost is 500 [Source](https://example.org/paper)." }],
   });
@@ -26,10 +28,25 @@ it("uses one source-preserving revision to correct an unsupported number", async
 
 it("cannot escape numerical support checks by dropping a citation and never loops", async () => {
   let calls = 0;
-  const model = { invoke: async () => new AIMessage(++calls === 1 ? "The cost is 900 [Source](https://example.org/paper)." : "The cost is 900.") };
+  const model = { invoke: async () => { calls++; return new AIMessage("The cost is 900 [Source](https://example.org/paper). Other useful information remains."); },
+    withStructuredOutput: () => ({ invoke: async () => { calls++; return { edits: [{ index: 0, text: "The cost is 900." }] }; } }) };
   const out = await createWriter(model as never, "2026-10-14")("What is the cost?", {
     material: [{ label: "Costs", notes: "- The cost is 500 [Source](https://example.org/paper)." }],
   });
   expect(calls).toBe(2);
-  expect(out.diagnostics).toContain("numeric citation issues remain after bounded revision: 1 unit(s)");
+  expect(out.report).not.toContain("900");
+  expect(out.report).toContain("Other useful information remains.");
+  expect(out.diagnostics).toContain("numeric source edits: 0 replaced, 1 omitted");
+});
+
+it("rejects a replacement citing an invented URL even when it contains no digits", async () => {
+  const model = { invoke: async () => new AIMessage("The cost is 900 [Paper](https://example.org/paper). The method remains useful."),
+    withStructuredOutput: () => ({ invoke: async () => ({ edits: [{ index: 0, text: "The price is unknown [Other](https://example.org/invented)." }] }) }) };
+  const out = await createWriter(model as never, "2026-10-14")("Question", {
+    material: [{ label: "Cost", notes: "- The cost is 500 [Paper](https://example.org/paper)." }],
+    sourceRegistry: [{ url: "https://example.org/paper", cited: true }],
+  });
+  expect(out.report).not.toContain("invented");
+  expect(out.report).toContain("The method remains useful.");
+  expect(out.diagnostics).toContain("numeric source edits: 0 replaced, 1 omitted");
 });

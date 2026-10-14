@@ -6,8 +6,10 @@
 import { ChatPromptTemplate } from "@langchain/core/prompts";
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import type { SynthesisInput } from "../core/contracts.js";
-import { citationBinding } from "../core/citations.js";
+import { citationBinding, numericBindingIssues, numericSupportLedger } from "../core/citations.js";
+import { extractUrls, pageKey } from "../core/urls.js";
 import { HumanMessage, type BaseMessage } from "@langchain/core/messages";
+import { z } from "zod";
 
 const SYSTEM = `You synthesize research notes written by a team of researchers into a focused, well-structured report. Your top priority is a high-quality report that answers the research question as well and as completely as the notes allow. You do no research yourself: use only the notes you are given. Today's date is {today}.
 
@@ -33,6 +35,7 @@ const SYSTEM = `You synthesize research notes written by a team of researchers i
 - The notes come from several researchers and may disagree on numbers, dates, prices or status. When they do, say so and give both sources; prefer the more authoritative or more recent source and say why. Never silently pick one.
 - Write about the evidence, not about a research process: you did no research, so never write "I", "we", "searched", "retrieved" or "was not checked", and never mention notes, researchers or this process. Rewrite any process statement in the notes as a statement about the evidence, e.g. "no official source states X".
 - Use all the notes. Every researcher's key findings belong in the report unless they are redundant or off the question; do not drop a whole topic, caution or safety warning.
+- Attribute authors and affiliations individually. Do not attach a coauthor's affiliation to the originator, or infer biography from a paper's combined author metadata. Omit incidental biographical details that the question does not need.
 
 ## Citation rules
 - The graph's source registry records origin and actual access state. Inherited support is not a new full-page read. Snippets, truncated pages and failed reads cannot support claims about unseen details. Preserve the notes' qualifications and gaps. A listed URL establishes provenance, not correctness of every associated claim.
@@ -72,6 +75,8 @@ function reportText(msg: BaseMessage): string {
   return (typeof msg.content === "string" ? msg.content : msg.content.filter(b => b.type === "text").map(b => b.text ?? "").join("")).trim();
 }
 
+const NumericEdits = z.object({ edits: z.array(z.object({ index: z.number().int().min(0), text: z.string() })) });
+
 export function createWriter(model: BaseChatModel, today: string): WriteFn {
   return async (question, synthesis) => {
     const outline = synthesis.outline?.length
@@ -90,7 +95,7 @@ export function createWriter(model: BaseChatModel, today: string): WriteFn {
       material: material || "(no research notes were produced)",
       sourceRegistry: JSON.stringify(synthesis.sourceRegistry ?? []),
     });
-    let msg = await model.invoke(messages);
+    const msg = await model.invoke(messages);
     let report = reportText(msg);
     const diagnostics: string[] = [];
     const binding = citationBinding(report, synthesis.material);
@@ -98,12 +103,33 @@ export function createWriter(model: BaseChatModel, today: string): WriteFn {
       // One bounded, traced revision, using the same original source material.
       // Never alter notes, add research, or suppress a remaining diagnostic.
       diagnostics.push(`numeric citation revision attempted: ${binding.unbound} flagged unit(s)`);
-      const revised = await model.invoke([...messages, msg, new HumanMessage(
-        `Revise only the flagged numerical/date statements in the report above, preserving the rest of the answer. The source material is unchanged. Issues:\n${JSON.stringify(binding.examples)}\nUse the exact number/date and its matching source from a cited notes line. A bibliography label supports its paper's publication year, not a numerical result or method origin. If support is absent, remove the unsupported detail or state the gap. Do not invent facts, change sources, add approximate decades, or simply remove a citation while leaving its number. Output the complete revised Markdown report only.`,
-      )]);
-      const revisedReport = reportText(revised);
-      if (revisedReport) { msg = revised; report = revisedReport; }
-      else diagnostics.push("numeric revision returned empty text; initial report retained");
+      const issues = numericBindingIssues(report, synthesis.material);
+      const ledger = numericSupportLedger(synthesis.material);
+      const eligible = new Set((synthesis.sourceRegistry?.map(s => s.url) ?? ledger.map(s => s.url)).map(pageKey));
+      let edits: z.infer<typeof NumericEdits>["edits"] = [];
+      try {
+        const repair = model.withStructuredOutput(NumericEdits, { method: "jsonSchema", name: "numeric_source_edits" });
+        const reply = await repair.invoke([...messages, msg, new HumanMessage(
+          `Return edits for ONLY these indexed statements; do not rewrite the whole report. Each statement has source-specific candidate notes below. Use their exact URLs to support each date/number separately, or remove an unnecessary unsupported date/detail. Years in bibliography labels support only the publication date of that paper. Do not preserve a numerical assertion without its citation, infer a decade or origin date, invent support, or add new facts. Return one replacement sentence/block per index, or empty text if no faithful sourced replacement is possible.\n${JSON.stringify(issues.map((issue, index) => ({ index, text: issue.text, missing: issue.missing, support: ledger.filter(l => eligible.has(pageKey(l.url)) && issue.missing.some(n => l.numbers.includes(n) || l.publicationYears.includes(n))) })))}`,
+        )]);
+        edits = reply.edits;
+      } catch {
+        diagnostics.push("numeric statement revision failed; strict source gate applied");
+      }
+      const audit: { before: string; after: string; action: string }[] = [];
+      for (let i = issues.length - 1; i >= 0; i--) {
+        const issue = issues[i]!;
+        const candidate = edits.find(e => e.index === i)?.text.trim() ?? "";
+        const accepted = !!candidate && citationBinding(candidate, synthesis.material).unbound === 0
+          && extractUrls(candidate).every(url => eligible.has(pageKey(url)));
+        // Do not publish an unsupported numerical statement merely because the
+        // model repeated it. Audit omitted units; keep all unaffected prose.
+        const replacement = accepted ? (issue.text.match(/^\s*/)?.[0] ?? "") + candidate : "";
+        report = report.slice(0, issue.start) + replacement + report.slice(issue.end);
+        audit.push({ before: issue.text.trim(), after: replacement, action: accepted ? "replaced" : "omitted" });
+      }
+      diagnostics.push(`numeric source edits: ${audit.filter(a => a.action === "replaced").length} replaced, ${audit.filter(a => a.action === "omitted").length} omitted`);
+      diagnostics.push(`numeric source edit audit: ${JSON.stringify(audit)}`);
       const after = citationBinding(report, synthesis.material);
       if (after.unbound) diagnostics.push(`numeric citation issues remain after bounded revision: ${after.unbound} unit(s)`);
     }
