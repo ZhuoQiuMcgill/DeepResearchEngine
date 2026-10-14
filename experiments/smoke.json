@@ -1,0 +1,9 @@
+{
+  "name": "smoke",
+  "description": "One question on both models; checks the whole platform end to end.",
+  "tasks": ["ebd"],
+  "strategies": ["baseline"],
+  "models": ["haiku", "luna"],
+  "budget": { "researchersTotal": 6 },
+  "parallelRuns": 2
+}

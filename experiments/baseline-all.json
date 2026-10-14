@@ -1,0 +1,9 @@
+{
+  "name": "baseline-all",
+  "description": "All test questions, baseline, both models.",
+  "tasks": ["ebd", "headset", "flight", "sleep"],
+  "strategies": ["baseline"],
+  "models": ["haiku", "luna"],
+  "budget": { "researchersTotal": 10 },
+  "parallelRuns": 3
+}

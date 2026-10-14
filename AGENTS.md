@@ -1,62 +1,70 @@
-# DeepResearch Engine implementation entry point
+# DeepResearch Engine
 
-The user ended cross-session development coordination. Development now happens
-in the current root chat and its in-chat subagents. Do not contact or dispatch
-work to the former module-team chats. Their reviewed documents remain design
-references, not active work assignments.
+Course project (Concordia INSE 691): a deep research agent system that compares
+an Environment-Based Design (EBD) orchestrator against a baseline orchestrator.
 
-The platform and formal `baseline@6` Workflow are delivered. Methods, Agent
-specifications, optional Hooks, application ownership and HTTP/CLI are separate
-modules. Current source, docs/team-start.md and
-docs/architecture/project-structure.md define the development boundaries;
-docs/research-acceptance.md records actual checks. EBD strategy and console work
-consume those interfaces and are outside this baseline delivery.
-The formal method composes focused planning, bounded acquisition/archived reads,
-parallel source distillation, gap-driven reads/search and draft/review stages.
-Pin method revision 6 explicitly; revisions 1–5 remain available. See
-docs/usage/baseline-parallel.md for the 20-source/two-round/256k Agent limits,
-module interfaces, saved-source access and independent quality status.
-Baseline 3–5 pin web.search revision 2. Baseline 6 pins web.search revision 3
-and both scholarly tools at revision 2 for complete discovery metadata.
-Query preparation and topic screening
-belong to workflows/components/search_policy.py and retrieval.py; HTTP/backends and URL decoding
-belong to engine/toolset. See docs/usage/tools.md and examples/live_search_check.py.
-All EBD experiments must preserve the user's exact original question:
-`What is EBD (Environment Based Design)?` Do not expand, translate or rephrase it.
-Agent-generated search queries are separate recorded data. Baselines 5–6 pin
-Planner 3, Distiller 1, Analyst 3, Writer 5 and Reviewer 4, require English
-output, and reject CJK narrative at publication. Report acceptance and
-ResearchRunView.quality are separate; execution success does not imply sufficient
-research. Do not rewrite historical saved requests or outputs.
+## Status
 
-Read `CONTRIBUTING.md`, `docs/team-start.md`,
-`docs/teams/consumer-contract-v1.md`, `docs/teams/platform-contract-v1.md`
-and the relevant current guide under `docs/usage/`. Acceptance evidence is in
-`docs/platform-acceptance.md` and `docs/consumer-acceptance.md`.
-Module designs under `docs/teams/designs/` are historical rationale; their old
-phase holds and proposed signatures do not override executable contracts.
-Root assigns exclusive source/test paths to subagents and owns shared
-contracts, integration, dependencies and Git.
+The project restarted on 2026-10-08. The earlier self-built platform (custom
+search, fetch, extraction and runtime, up to `baseline@13`) was a concept
+experiment. It is archived on branch `archive/concept-experiments`, tag
+`concept-experiments-final`. Use it as a record of lessons and design rationale,
+not as code to port. Its two main lessons:
+
+- Self-hosted open-source search returned results too poor to support research.
+- Building the implementation layer ourselves spent the schedule on tool
+  fidelity instead of the EBD arm.
+
+## Stack decisions
+
+- Both arms, baseline and EBD, are LangGraph.js graphs. Use LangChain.js for model and
+  tool integration and self-hosted Langfuse (Docker) for tracing, usage records
+  and prompt management, instead of custom infrastructure. Do not send traces to
+  hosted observability services.
+- Web search uses each model API's built-in search tool. Do not add
+  self-hosted search, fetching or content extraction.
+- Models: `gpt-6-luna` and `claude-haiku-5-5`. Each provider searches with its
+  own backend, so compare baseline and EBD within the same model.
+
+## Rules
+
+- Preserve each experiment question verbatim. Do not expand, translate or
+  rephrase it. The fixed EBD question is `What is EBD (Environment Based Design)?`.
+  Agent-generated search queries are separate recorded data.
+- Use TypeScript on Node.js 22 with npm. Python remains only for the
+  proposal build scripts under `docs/proposal/`.
+- Never expose values from `.env` in messages, documents, traces or
+  command output.
+- Only the root session edits the manifest/lockfile and performs Git writes.
+- Handoffs must run real models and tools. Controlled fault tests do not
+  replace live acceptance.
+- Use GPT-6.1-sol for execution subagents with concrete steps and fixed goals.
+  Use Astra (gpt-6-astra) for exploration subagents that investigate and reason.
+  This model routing is the user's explicit preference.
+
+## Ownership
 
 | Owner | Paths |
 | --- | --- |
-| Agent/runtime subagent | `src/deepresearch/engine/agent/`, `src/deepresearch/engine/providers/`, `tests/agent/`, `tests/providers/`, `docs/usage/agents.md` |
-| Toolset subagent | `src/deepresearch/engine/toolset/`, `tests/toolset/`, `docs/usage/tools.md` |
-| Storage subagent | `src/deepresearch/engine/storage/`, `tests/storage/`, `docs/usage/storage.md` |
-| Root | Engine contracts/Connections, research contracts, application/interfaces/bootstrap, examples, integration, environment, docs and Git; explicitly assign methods/catalog/extensions before parallel edits |
+| Platform (Zhuo, root session) | everything except the strategy modules below |
+| EBD team | `src/strategies/ebd/` only; follow `docs/strategy-modules.md` |
 
-The deprecated ebd namespace is isolated in src/ebd/__init__.py. New code uses
-canonical deepresearch.* imports. Methods use WorkflowContext and its port; only
-bootstrap registers concrete methods. Architecture tests enforce these boundaries.
-Pytest uses committed importlib mode; shared helpers use tests.<module> imports.
+Strategy modules import platform types only from `src/core/index.ts` and must
+pass `npm run check-strategy`. The strategy contract (`src/core/strategy.ts`,
+`src/core/contracts.ts`) only gains fields within version 1; changes go
+through the platform owner.
 
-Use uv and Python 3.11+. Only root edits the manifest/lockfile and performs Git
-writes. Subagents must not stage, commit, push, change branches or overwrite
-another owner's files. Request shared-interface changes through in-chat
-collaboration and continue independent work. Send only coordination needs and
-completed handoffs; no routine acknowledgments or check-ins.
+## Layout
 
-Handoffs must run real models/tools/storage. Controlled fault tests do not
-replace live acceptance. Never expose values from `local/.env` in messages,
-documents, traces or command output. Local vLLM Qwen is not deployed here;
-implement its configurable connector and retain explicitly pending live tests.
+- `src/platform/`: experiments, single runs, strategy loading, run records.
+- `src/module/`, `src/graph/`, `src/research/`, `src/writer/`: research module.
+- `src/core/`: contracts, strategy interface, shared helpers.
+- `src/strategies/<name>/`: strategy plug-ins (`baseline/` reference, `_template/` start).
+- `src/config/`: model profiles and test questions; `experiments/`: experiment specs.
+- `docs/design.md`, `docs/strategy-modules.md`, `docs/plan.md`: design, module guide, test log.
+- `docs/background/`: course slides.
+- `docs/proposal/`: proposal and design drafts.
+- `research/`: survey of open-source deep research systems (LangChain Open Deep
+  Research, GPT Researcher, Local Deep Research, MindSearch).
+- `.env`: API keys at the repository root, ignored by Git.
+- `local/`: machine-local run outputs, ignored by Git.

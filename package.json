@@ -1,0 +1,35 @@
+{
+  "name": "deepresearch-engine",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Baseline and EBD deep research orchestrators on LangGraph.js",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "research": "tsx src/cli/research.ts",
+    "experiment": "tsx src/cli/experiment.ts",
+    "check-strategy": "tsx src/cli/check-strategy.ts"
+  },
+  "dependencies": {
+    "@langchain/anthropic": "1.5.12",
+    "@langchain/core": "1.2.17",
+    "@langchain/langgraph": "1.4.21",
+    "@langchain/openai": "1.6.2",
+    "@langfuse/langchain": "5.13.1",
+    "@langfuse/otel": "5.13.1",
+    "@opentelemetry/sdk-node": "0.223.0",
+    "dotenv": "18.0.6",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "tsx": "4.23.15",
+    "typescript": "6.0.3",
+    "vitest": "5.0.3"
+  }
+}
