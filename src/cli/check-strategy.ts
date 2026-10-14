@@ -73,6 +73,7 @@ if (loaded) {
   const prov = summary.diagnostics.find((d) => /material line\(s\) are not researcher notes/.test(d));
   add(!prov, "material consists of researcher notes lines", prov);
   add(summary.citationCheck.unknownUrls.length === 0, "report cites only URLs from the research", summary.citationCheck.unknownUrls.join(" "), "WARN");
+  add(summary.citationCheck.binding.unbound === 0, "numerical statements retain source support", `${summary.citationCheck.binding.unbound} flagged unit(s)`);
   console.log(`\nRun record: ${summary.dir}  cost ≈ $${summary.costUsdEstimate.toFixed(3)}`);
 }
 
