@@ -139,7 +139,7 @@ export const EXAMPLES: WorkedExample[] = [
   {
     id: "E2",
     teaches:
-      "Underspecified request: purpose, criteria and place are not stated, but nothing key is missing: facts are searched and the rest gets a disclosed neutral default; relative time resolved from the run date; no assumptions to verify.",
+      "Underspecified request: purpose, criteria and place are not stated, but nothing key is missing: facts are searched and the rest gets a disclosed neutral default; relative time resolved from the run date; the main object is defined through the steps of its lifecycle; no assumptions to verify.",
     runDate: "2026-10-01",
     request: "Which electric car is best for cold winters these days?",
     analysis: {
@@ -182,9 +182,9 @@ export const EXAMPLES: WorkedExample[] = [
       questions: [
         {
           id: "Q1", object_ids: ["O2"], template: "T1", guideline: "G1",
-          text: "Which electric car models are on sale as of 2026-10-01, and for each, what are its price, battery capacity, rated driving range, cabin heating system and charging speed?",
+          text: "Which electric car models are on sale as of 2026-10-01, and for each, what does owning one involve at each step: buying (price and purchase incentives), charging (charging speed and the home or public charging it needs) and driving (battery capacity, rated driving range, cabin heating system)?",
           route: "search", need: "necessary", depends_on: [], verifies: [],
-          done_when: "For each model on the market: dated price and market, battery capacity, rated range, heating system (for example heat pump or resistive heater) and charging speed, from manufacturer data or independent reviews.",
+          done_when: "For each model on the market, by step of ownership: buying (dated price, market and purchase incentives), charging (charging speed, home or public charging needed) and driving (battery capacity, rated range, heating system such as a heat pump or resistive heater), from manufacturer data, official incentive pages or independent reviews.",
           source_hints: ["manufacturer specifications", "independent car reviews"],
         },
         {

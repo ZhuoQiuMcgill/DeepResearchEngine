@@ -21,6 +21,7 @@ const GUIDELINES_FOR: Record<string, string[]> = {
   T7: ["G7"],
 };
 const ROUTE_RANK = { search: 0, synthesis: 1 } as const;
+const BACK_REFERENCE = /\bQ\d+\b|\b(?:previous|earlier|first|second|preceding|above) (?:search )?questions?\b|\bthe ones identified\b/i;
 const DEPENDENCY_ROUTES = { search: ["search"], synthesis: ["search", "synthesis"] } as const;
 
 export type CheckContext = {
@@ -68,7 +69,17 @@ const CALENDAR = new Set(["january", "february", "march", "april", "may", "june"
 const PLACES = new Set(["europe", "asia", "africa", "america", "americas", "oceania", "north", "south", "east", "west", "middle",
   "latin", "central", "united", "states", "kingdom", "us", "usa", "uk", "china", "japan", "korea", "taiwan",
   "india", "canada", "germany", "france", "britain", "american", "asian", "african", "chinese", "japanese",
-  "korean", "taiwanese", "indian", "canadian", "german", "french", "british"]);
+  "korean", "taiwanese", "indian", "canadian", "german", "french", "british",
+  // Lab 3 (2026-10-19) flagged "Philippines" and "Russia": countries and their adjectives are places.
+  "european", "russia", "russian", "philippines", "filipino", "philippine", "mexico", "mexican", "brazil", "brazilian",
+  "argentina", "argentine", "chile", "chilean", "colombia", "colombian", "peru", "peruvian", "australia", "australian",
+  "zealand", "italy", "italian", "spain", "spanish", "portugal", "portuguese", "netherlands", "dutch", "belgium", "belgian",
+  "switzerland", "swiss", "austria", "austrian", "ireland", "irish", "england", "english", "scotland", "scottish",
+  "wales", "welsh", "sweden", "swedish", "norway", "norwegian", "denmark", "danish", "finland", "finnish", "poland",
+  "polish", "ukraine", "ukrainian", "turkey", "turkish", "greece", "greek", "israel", "israeli", "iran", "iranian",
+  "iraq", "iraqi", "egypt", "egyptian", "saudi", "arabia", "arabian", "emirates", "uae", "qatar", "singapore",
+  "singaporean", "malaysia", "malaysian", "indonesia", "indonesian", "thailand", "thai", "vietnam", "vietnamese",
+  "pakistan", "pakistani", "bangladesh", "nigeria", "nigerian", "kenya", "kenyan", "ethiopia", "morocco", "hong", "kong"]);
 const GENERIC = new Set(["i", "ai", "url", "pdf", "csv", "api", "corporation", "inc", "ltd", "company", "group", "b2b", "b2c",
   "fp8", "fp16", "fp32", "fp64", "int8", "tdp", "tco", "roi", "kpi", "gdp", "cpi", "ceo", "msrp", "usd",
   "eur", "gbp", "cad", "kb", "mb", "gb", "tb", "flops", "tflops", "pflops", "tops", "fps", "ghz", "mhz",
@@ -82,7 +93,7 @@ function acronymExpansions(text: string, acronyms: Set<string>): Set<string> {
     for (let j = i + 2; j <= Math.min(i + 6, ws.length); j++) {
       const run = ws.slice(i, j);
       if (run.every((w) => /^[A-Z]/.test(w)) && acronyms.has(run.map((w) => w[0]).join("").toUpperCase())) {
-        for (const w of run) found.add(norm(w));
+        for (const w of run) found.add(norm(w).replace(/'s?$/, "")); // "Union's" in "the European Union's"
       }
     }
   }
@@ -243,6 +254,14 @@ export function checkAnalysis(input: unknown, ctx: CheckContext): CheckResult {
     if (o.readings.length && o.status !== "needs_question") err("readings", `rom.objects[${i}]`, `${o.id}: an ambiguous term needs a question`);
   });
 
+  // Questions stand alone (Lab 3, 2026-10-19: 24 questions in 15 of 81 analyses said "identified in Q1"):
+  // a researcher sees only its own question, and the writer sees synthesis questions as the outline.
+  a.questions.forEach((q, i) => {
+    const text = q.route === "search" ? `${q.text} ${q.done_when}` : q.text;
+    const ref = BACK_REFERENCE.exec(text);
+    if (ref) err("question_not_self_contained", `questions[${i}]`, `${q.id} refers to another question (${JSON.stringify(ref[0])}); restate the subject in full: names, place and time`);
+  });
+
   // Questions: templates, routes, dependencies.
   const seen = new Set<string>();
   a.questions.forEach((q, i) => {
@@ -276,6 +295,14 @@ export function checkAnalysis(input: unknown, ctx: CheckContext): CheckResult {
     const covered = new Set(a.questions.flatMap((q) => q.object_ids));
     a.rom.objects.forEach((o, i) => {
       if (o.status === "needs_question" && !covered.has(o.id)) err("object_uncovered", `rom.objects[${i}]`, `${o.id} (${JSON.stringify(o.text)}) needs a question but no question covers it`);
+    });
+    // A verification question checks a claim; it does not define the objects in it (review of 2026-10-20).
+    const checked = new Set(a.questions.filter((q) => q.template === "T7").flatMap((q) => q.object_ids));
+    const defined = new Set(search.filter((q) => q.template !== "T7").flatMap((q) => q.object_ids));
+    a.rom.objects.forEach((o, i) => {
+      if (o.status === "needs_question" && o.role === "environment" && checked.has(o.id) && !defined.has(o.id)) {
+        err("object_only_verified", `rom.objects[${i}]`, `${o.id} (${JSON.stringify(o.text)}) is covered only by a verification question (T7); add it to a search question with a template from T1 to T6 that defines it (that question may also verify the claim)`);
+      }
     });
     const verified = new Set(search.flatMap((q) => q.verifies));
     a.assumptions.forEach((x, i) => {

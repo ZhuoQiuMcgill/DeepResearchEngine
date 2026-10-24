@@ -18,6 +18,23 @@ describe("request analysis checks", () => {
     }
   });
 
+  it("reject questions that point back to another question instead of restating it (Lab 3)", () => {
+    const back = clone();
+    back.questions[4]!.text = "What do the forecasters identified in Q3 expect for new-car prices in Canada in 2026?";
+    expect(codes(back)).toContain("question_not_self_contained");
+    const earlier = clone();
+    earlier.questions[4]!.done_when = "The 2026 range from each source found by the previous question.";
+    expect(codes(earlier)).toContain("question_not_self_contained");
+  });
+
+  it("accept country names and possessive acronym expansions as known names (Lab 3)", () => {
+    const named = clone();
+    named.questions[2]!.text += " Include forecasts that compare Canada with Russia, the Philippines and the European Union's members.";
+    const request = `${E1.request} Compare with the EU.`;
+    const out = checkAnalysis(named, { request, scan: scanRequest(request, E1.runDate) });
+    expect(out.errors.filter((e) => e.code === "names_not_in_request")).toEqual([]);
+  });
+
   it("reject quotes, references and routes that break the contract", () => {
     const quote = clone();
     quote.rom.objects[3]!.text = "tarifs";
@@ -39,6 +56,15 @@ describe("request analysis checks", () => {
     scope.status = "out_of_scope";
     scope.status_reason = "x";
     expect(codes(scope)).toContain("status");
+  });
+
+  it("reject an object covered only by a verification question (review of 2026-10-20)", () => {
+    // E1's "raise" is checked by Q4 (T7) and defined by Q6 (T4); without Q6 nothing defines it.
+    const onlyChecked = clone();
+    onlyChecked.questions[5]!.object_ids = ["O6"];
+    expect(codes(onlyChecked)).toContain("object_only_verified");
+    // A defining question that also verifies the claim is enough, as E1's Q1 does for "tariffs".
+    expect(codes(clone())).not.toContain("object_only_verified");
   });
 
   it("reject lengths and broken structure", () => {
