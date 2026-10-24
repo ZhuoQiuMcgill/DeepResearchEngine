@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>__TITLE__</title>
+<style>
+:root { --bg:#f7f7f5; --panel:#fff; --text:#1d1d1b; --muted:#6b6b66; --line:#e3e2dd; --accent:#2f5d9e; --ok:#2e7d4f; --warn:#a86b00; --bad:#b3261e; color-scheme: light; }
+@media (prefers-color-scheme: dark) { :root { --bg:#161615; --panel:#1f1f1d; --text:#ecebe6; --muted:#a3a29c; --line:#34332f; --accent:#8ab4f8; --ok:#6fcf97; --warn:#f2c94c; --bad:#f28b82; color-scheme: dark; } }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 1200px; margin: 0 auto; padding: 24px 16px; }
+h1 { font-size: 20px; margin: 0 0 4px; }
+p.sub { color: var(--muted); margin: 0 0 16px; }
+input { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--text); margin-bottom: 12px; font: inherit; }
+.wrap { overflow-x: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }
+table { border-collapse: collapse; width: 100%; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-weight: 600; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .03em; white-space: nowrap; }
+td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+tr:hover td { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.badge { display: inline-block; padding: 1px 7px; border-radius: 10px; font-size: 12px; border: 1px solid var(--line); white-space: nowrap; }
+.ok { color: var(--ok); } .bad { color: var(--bad); } .warn { color: var(--warn); }
+.q { max-width: 520px; }
+.muted { color: var(--muted); font-size: 12px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Research runs</h1>
+  <p class="sub">Run records from local/. Click a run to step through what each agent did.</p>
+  <input id="filter" placeholder="Filter by question, strategy, model or status" aria-label="Filter runs">
+  <div class="wrap"><table>
+    <thead><tr><th>Started</th><th>Question</th><th>Strategy</th><th>Model</th><th>Status</th><th>Stop</th><th class="num">Rounds</th><th class="num">Researchers</th><th class="num">Cost (USD)</th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table></div>
+</main>
+<script id="data" type="application/json">__DATA__</script>
+<script>
+const rows = JSON.parse(document.getElementById("data").textContent);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+function render(filter) {
+  const f = filter.toLowerCase();
+  document.getElementById("rows").innerHTML = rows
+    .filter((r) => !f || [r.question, r.label, r.model, r.status, r.stopReason, r.stopKind, r.dir].join(" ").toLowerCase().includes(f))
+    .map((r) => `<tr>
+      <td class="muted">${esc(r.at.replace("T", " ").slice(0, 16))}</td>
+      <td class="q"><a href="${encodeURIComponent(r.file)}">${esc(r.question)}</a><div class="muted">${esc(r.dir)}</div></td>
+      <td>${esc(r.label)}</td><td>${esc(r.model)}</td>
+      <td><span class="badge ${r.status === "ok" ? "ok" : "bad"}">${esc(r.status)}</span></td>
+      <td>${esc(r.stopReason)}${r.stopKind ? `<div class="muted">EBD: ${esc(r.stopKind)}</div>` : ""}</td>
+      <td class="num">${esc(r.rounds)}</td><td class="num">${esc(r.researchers)}</td>
+      <td class="num">${r.cost === null ? "" : r.cost.toFixed(3)}</td></tr>`)
+    .join("") || `<tr><td colspan="9" class="muted">No runs match.</td></tr>`;
+}
+document.getElementById("filter").addEventListener("input", (e) => render(e.target.value));
+render("");
+</script>
+</body>
+</html>

@@ -1,0 +1,475 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>__TITLE__</title>
+<style>
+:root {
+  --bg:#f7f7f5; --panel:#fff; --sunk:#f0efeb; --text:#1d1d1b; --muted:#6b6b66; --line:#e3e2dd;
+  --accent:#2f5d9e; --accent-bg:#e8eef8; --ok:#2e7d4f; --ok-bg:#e5f3ea; --warn:#8a5a00; --warn-bg:#fbf0d9;
+  --bad:#b3261e; --bad-bg:#fbe7e5; --new:#6a3fa0; --new-bg:#f1eafa; color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:#161615; --panel:#1f1f1d; --sunk:#262624; --text:#ecebe6; --muted:#a3a29c; --line:#34332f;
+    --accent:#8ab4f8; --accent-bg:#22314a; --ok:#6fcf97; --ok-bg:#1d3326; --warn:#f2c94c; --warn-bg:#3a3020;
+    --bad:#f28b82; --bad-bg:#3d2422; --new:#c9a7f5; --new-bg:#2f2540; color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+a { color: var(--accent); text-decoration: none; } a:hover { text-decoration: underline; }
+header { padding: 16px; border-bottom: 1px solid var(--line); background: var(--panel); }
+header .back { font-size: 12px; }
+header h1 { font-size: 18px; margin: 6px 0 8px; font-weight: 600; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-size: 12px; padding: 2px 8px; border-radius: 10px; background: var(--sunk); border: 1px solid var(--line); white-space: nowrap; }
+.layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 0; min-height: calc(100vh - 120px); }
+nav { border-right: 1px solid var(--line); background: var(--panel); padding: 8px; position: sticky; top: 0; align-self: start; max-height: 100vh; overflow-y: auto; }
+nav button { display: block; width: 100%; text-align: left; border: 0; background: none; color: var(--text); padding: 7px 10px; border-radius: 6px; font: inherit; cursor: pointer; }
+nav button:hover { background: var(--sunk); }
+nav button.active { background: var(--accent-bg); color: var(--accent); font-weight: 600; }
+nav .who { display: block; font-size: 11px; color: var(--muted); font-weight: 400; }
+nav .hint { font-size: 11px; color: var(--muted); padding: 8px 10px; }
+main { padding: 16px; min-width: 0; }
+section.card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; margin-bottom: 14px; }
+h2 { font-size: 16px; margin: 0 0 10px; }
+h3 { font-size: 14px; margin: 14px 0 8px; }
+.muted { color: var(--muted); font-size: 12px; }
+.pre { white-space: pre-wrap; word-break: break-word; }
+.mono { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 12px; }
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: 11px; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); font-weight: 600; white-space: nowrap; }
+td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.badge { display: inline-block; padding: 0 7px; border-radius: 10px; font-size: 12px; line-height: 20px; white-space: nowrap; border: 1px solid transparent; }
+.b-ok { background: var(--ok-bg); color: var(--ok); } .b-bad { background: var(--bad-bg); color: var(--bad); }
+.b-warn { background: var(--warn-bg); color: var(--warn); } .b-info { background: var(--accent-bg); color: var(--accent); }
+.b-new { background: var(--new-bg); color: var(--new); } .b-plain { background: var(--sunk); color: var(--muted); border-color: var(--line); }
+tr.changed td { background: color-mix(in srgb, var(--warn) 8%, transparent); }
+tr.added td { background: color-mix(in srgb, var(--new) 9%, transparent); }
+details { border: 1px solid var(--line); border-radius: 6px; margin: 8px 0; background: var(--panel); }
+details > summary { cursor: pointer; padding: 7px 10px; list-style: none; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+details > summary::-webkit-details-marker { display: none; }
+details > summary::before { content: "▸"; color: var(--muted); }
+details[open] > summary::before { content: "▾"; }
+details > .body { padding: 8px 12px 12px; border-top: 1px solid var(--line); }
+.box { background: var(--sunk); border-radius: 6px; padding: 8px 10px; max-height: 420px; overflow: auto; }
+.ev { cursor: pointer; font-family: ui-monospace, Consolas, monospace; font-size: 11px; padding: 0 5px; border-radius: 4px; background: var(--accent-bg); color: var(--accent); white-space: nowrap; border: 0; }
+.ev.gap { background: var(--warn-bg); color: var(--warn); }
+.notes .ln { padding: 1px 0; }
+.notes .h { font-weight: 600; margin-top: 8px; }
+.notes .h1 { font-size: 15px; } .notes .h2 { font-size: 14px; } .notes .h3 { font-size: 13px; color: var(--muted); }
+.notes .flash { background: color-mix(in srgb, var(--accent) 22%, transparent); border-radius: 4px; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
+.kv { display: grid; grid-template-columns: max-content 1fr; gap: 2px 12px; font-size: 13px; }
+.kv dt { color: var(--muted); } .kv dd { margin: 0; }
+ul.plain { margin: 4px 0; padding-left: 18px; }
+ul.events { margin: 0; padding-left: 18px; font-size: 13px; }
+ul.events li { margin: 2px 0; }
+.tree ul { list-style: none; padding-left: 18px; margin: 0; border-left: 1px dashed var(--line); }
+.tree > ul { padding-left: 0; border-left: 0; }
+.tree li { margin: 4px 0; }
+.checks li { margin: 3px 0; }
+#pop { position: fixed; right: 16px; bottom: 16px; width: min(460px, calc(100vw - 32px)); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 6px 24px rgba(0,0,0,.18); padding: 12px 14px; display: none; z-index: 10; max-height: 60vh; overflow: auto; }
+#pop .close { float: right; border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 16px; }
+@media (max-width: 760px) {
+  .layout { grid-template-columns: 1fr; }
+  nav { position: static; max-height: none; border-right: 0; border-bottom: 1px solid var(--line); display: flex; overflow-x: auto; gap: 4px; }
+  nav button { width: auto; white-space: nowrap; }
+  nav .hint { display: none; }
+}
+</style>
+</head>
+<body>
+<header id="head"></header>
+<div class="layout">
+  <nav id="nav" aria-label="Steps"></nav>
+  <main id="view"></main>
+</div>
+<div id="pop" role="dialog" aria-label="Evidence line"></div>
+<script id="data" type="application/json">__DATA__</script>
+<script>
+"use strict";
+const D = JSON.parse(document.getElementById("data").textContent);
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+const badge = (text, kind = "plain") => `<span class="badge b-${kind}">${esc(text)}</span>`;
+const fmt = (n) => (typeof n === "number" ? n.toLocaleString() : esc(n));
+const usd = (n) => (typeof n === "number" ? `$${n.toFixed(4)}` : "");
+const secs = (ms) => (typeof ms === "number" ? `${(ms / 1000).toFixed(1)}s` : "");
+
+/** Inline Markdown: links (http/https only), bold, code. Everything else is escaped. */
+function inline(text) {
+  let out = esc(text);
+  out = out.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+(?:\([^\s)]*\)[^\s)]*)*)\)/g, (_m, label, url) => `<a href="${url}" target="_blank" rel="noopener noreferrer">${label}</a>`);
+  out = out.replace(/(^|[\s(])(https?:\/\/[^\s<)]+)/g, (_m, pre, url) => `${pre}<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`);
+  out = out.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>").replace(/`([^`]+)`/g, "<code>$1</code>");
+  return out;
+}
+
+/** Markdown-lite for notes and reports, line by line; `tags` maps a raw line index to evidence badges. */
+function markdown(text, tags = {}, prefix = "") {
+  return `<div class="notes">${String(text ?? "").split(/\r?\n/).map((raw, i) => {
+    const line = raw.trim();
+    const id = prefix ? ` id="${prefix}-${i}"` : "";
+    const tag = tags[i] ? `${tags[i]} ` : "";
+    const h = /^(#{1,6})\s+(.*)$/.exec(line);
+    if (h) return `<div class="ln h h${Math.min(3, h[1].length)}"${id}>${tag}${inline(h[2])}</div>`;
+    if (!line) return `<div class="ln"${id}>&nbsp;</div>`;
+    const b = /^([-*+]|\d+[.)])\s+(.*)$/.exec(line);
+    if (b) return `<div class="ln"${id} style="padding-left:14px;text-indent:-10px">• ${tag}${inline(b[2])}</div>`;
+    return `<div class="ln"${id} style="${/^\s/.test(raw) ? "padding-left:14px" : ""}">${tag}${inline(line)}</div>`;
+  }).join("")}</div>`;
+}
+
+function json(value) {
+  return `<div class="box mono pre">${esc(JSON.stringify(value, null, 2))}</div>`;
+}
+
+function tryJson(text) {
+  try { return JSON.stringify(JSON.parse(text), null, 2); } catch { return text; }
+}
+
+// ------------------------------------------------------------------ data
+
+const decisions = D.events.filter((e) => e.type === "decision").map((e) => e.data);
+const resultEvents = D.events.filter((e) => e.type === "result").map((e) => e.data);
+const results = Object.values(D.results || {}).filter(Boolean).sort((a, b) => a.brief.round - b.brief.round || a.brief.id.localeCompare(b.brief.id, undefined, { numeric: true }));
+const isEbd = (s) => s && typeof s === "object" && Array.isArray(s.goals) && s.analysis;
+const finalState = [...decisions].reverse().map((d) => d.strategyState).find(isEbd) || null;
+const evidence = new Map((finalState?.evidence || []).map((e) => [e.id, e]));
+const summary = D.summary || {};
+
+function evBtn(id) {
+  const e = evidence.get(id);
+  return `<button class="ev ${e?.kind === "gap" ? "gap" : ""}" data-ev="${esc(id)}" title="${esc(e ? e.text.slice(0, 200) : "unknown evidence ID")}">${esc(id)}</button>`;
+}
+const evList = (ids) => (ids || []).map(evBtn).join(" ");
+
+// ------------------------------------------------------------------ steps
+
+const steps = [{ key: "overview", label: "Overview", who: "goal tree, verdicts, checks" }];
+decisions.forEach((d, i) => {
+  const state = d.strategyState;
+  const calls = isEbd(state) ? (state.step?.calls || []) : [];
+  const roles = [...new Set(calls.map((c) => c.role.replace("_", " ")))].join(", ");
+  steps.push({
+    key: `d${i}`, label: d.phase === "init" ? "Init: plan" : `Observe round ${d.round - 1}`,
+    who: `${roles || "strategy"} → ${d.stop ? "stop" : `${d.accepted.length} brief(s)`}`, decision: d, index: i,
+  });
+  const round = results.filter((r) => r.brief.round === d.round);
+  if (d.accepted.length && round.length) steps.push({ key: `r${d.round}`, label: `Researchers round ${d.round}`, who: `${round.length} researcher(s)`, round: d.round, results: round });
+});
+if (D.synthesis) steps.push({ key: "synthesis", label: "Writer input", who: "finalize → material, outline, guidance" });
+if (D.report) steps.push({ key: "report", label: "Report", who: "writer" });
+if (D.error) steps.push({ key: "error", label: "Error", who: "run failed" });
+
+// ------------------------------------------------------------------ header and checks
+
+function header() {
+  const s = summary;
+  const st = finalState?.stop;
+  const roles = Object.entries(s.usageByRole || {}).map(([r, u]) => `${r} ${usd(u.costUsd)}`).join(" · ");
+  $("head").innerHTML = `
+    <a class="back" href="index.html">← all runs</a>
+    <h1>${esc(D.question)}</h1>
+    <div class="chips">
+      <span class="chip">${esc(s.strategy?.label || D.config?.strategy?.name || "")}</span>
+      <span class="chip">${esc(s.profile || "")} ${esc(s.model ? `(${s.model})` : "")}</span>
+      <span class="chip">status ${esc(s.status || (D.error ? "error" : "incomplete"))}</span>
+      <span class="chip">stop ${esc(s.stopReason || "")}${st ? ` · EBD ${esc(st.kind)}` : ""}</span>
+      <span class="chip">${fmt(s.rounds ?? 0)} round(s)</span>
+      <span class="chip">researchers ${fmt(s.researchersUsed ?? "?")}/${fmt(s.researchersBudget ?? "?")}</span>
+      <span class="chip">searches ${fmt(s.searches ?? 0)} · reads ${fmt(s.pageReads ?? 0)}</span>
+      <span class="chip">${usd(s.costUsdEstimate)}${roles ? ` (${esc(roles)})` : ""}</span>
+      <span class="chip">${secs(s.durationMs)}</span>
+      <span class="chip mono">${esc(D.dir)}</span>
+    </div>`;
+}
+
+/** Things worth a human look, gathered from the platform's diagnostics and the strategy's own records. */
+function checks() {
+  const items = [];
+  const add = (level, text) => items.push({ level, text });
+  if (D.error) add("bad", `The run failed: ${D.error.split("\n")[0]}`);
+  for (const d of decisions) {
+    for (const x of d.invalid) add("bad", `Invalid brief in ${d.phase} (round ${d.round}): ${x.reason}`);
+    if (d.dropped.length) add("warn", `${d.dropped.length} brief(s) dropped for budget at round ${d.round} (unmet demand)`);
+    if (d.ignored.length) add("warn", `${d.ignored.length} brief(s) returned together with stop at round ${d.round}`);
+  }
+  for (const r of results) {
+    if (r.status === "failed") add("bad", `${r.brief.id} failed: ${r.failure?.kind}: ${r.failure?.message || ""}`);
+    for (const x of r.diagnostics || []) add("warn", `${r.brief.id}: ${x}`);
+    const said = (r.diagnostics || []).some((x) => /cited URL/i.test(x));
+    if ((r.unlistedCitations || []).length && !said) add("warn", `${r.brief.id}: ${r.unlistedCitations.length} cited URL(s) the search tools never reported (possible memory citations)`);
+  }
+  for (const x of D.synthesis?.diagnostics || []) add("warn", `Writer input: ${x}`);
+  // The run summary repeats researcher and writer-input diagnostics with a prefix; show only its own.
+  for (const x of summary.diagnostics || []) if (!/^(synthesis|r\d+-b\d+):/.test(x)) add("warn", `Platform: ${x}`);
+  const unknown = summary.citationCheck?.unknownUrls || [];
+  if (unknown.length) add("bad", `The report cites ${unknown.length} URL(s) not found in the research: ${unknown.slice(0, 3).join(" ")}`);
+  if (finalState) {
+    for (const p of finalState.problems || []) add("warn", p);
+    for (const g of finalState.goals.filter((x) => x.status === "answered")) if (!g.evidence.length) add("bad", `${g.id} is answered but cites no evidence`);
+    const brief = finalState.results.flatMap((r) => r.sections.filter((s) => s.mappedBy !== "id").map((s) => `${r.briefId} "${s.title.slice(0, 50)}" (${s.mappedBy})`));
+    if (brief.length) add("warn", `Sections without a [Qn] heading, mapped by ${brief.length > 3 ? `${brief.length} fallbacks` : brief.join("; ")} (live check X2)`);
+    const fallbacks = decisions.flatMap((d) => (isEbd(d.strategyState) ? d.strategyState.step.calls : [])).filter((c) => !c.accepted);
+    if (fallbacks.length) add("info", `${fallbacks.length} model call(s) were rejected by the code checks and retried or fell back; open their steps to see the errors`);
+  }
+  return items;
+}
+
+// ------------------------------------------------------------------ overview
+
+function goalStatusBadge(s) {
+  const kind = { answered: "ok", open: "info", conflicting: "warn", exhausted: "bad", disputed: "warn", moot: "plain" }[s] || "plain";
+  return badge(s, kind);
+}
+
+function verdictBadge(v) {
+  if (!v) return "";
+  return badge(v, v === "supported" ? "ok" : v === "contradicted" ? "bad" : "warn");
+}
+
+function goalTree(state) {
+  const goals = state.goals;
+  const parentOf = (g) => {
+    if (g.origin.type === "conflict") {
+      const c = state.conflicts.find((x) => x.id === g.origin.conflict);
+      return goals.find((x) => x.id === c?.about)?.id || null;
+    }
+    if (g.origin.type === "finding" || g.origin.type === "gap") {
+      const e = evidence.get(g.origin.evidence[0]);
+      return e?.goalIds[0] || null;
+    }
+    return null;
+  };
+  const children = new Map();
+  for (const g of goals) {
+    const p = parentOf(g);
+    children.set(p, [...(children.get(p) || []), g]);
+  }
+  const node = (g) => `<li>${goalStatusBadge(g.status)} <strong>${esc(g.id)}</strong> ${esc(g.text)}
+    <span class="muted">· ${esc(g.kind)} L${g.level} · ${esc(g.need)} · round ${g.createdRound}${g.settledRound ? `→${g.settledRound}` : ""}${g.origin.type !== "request" ? ` · from ${g.origin.type === "conflict" ? esc(g.origin.conflict) : g.origin.evidence.map(esc).join(", ")}` : ""}</span> ${verdictBadge(g.verdict)}
+    ${children.get(g.id) ? `<ul>${children.get(g.id).map(node).join("")}</ul>` : ""}</li>`;
+  return `<div class="tree"><ul>${(children.get(null) || []).map(node).join("")}</ul></div>`;
+}
+
+function overview() {
+  const items = checks();
+  const icon = { bad: "b-bad", warn: "b-warn", info: "b-info" };
+  let html = `<section class="card"><h2>Things to check</h2>${items.length
+    ? `<ul class="plain checks">${items.map((x) => `<li><span class="badge ${icon[x.level]}">${x.level === "bad" ? "problem" : x.level === "warn" ? "look" : "note"}</span> ${esc(x.text)}</li>`).join("")}</ul>`
+    : `<p class="muted">Nothing flagged: no failed researchers, invalid briefs, fallbacks or unknown citations.</p>`}</section>`;
+  if (!finalState) {
+    html += `<section class="card"><h2>Strategy</h2><p class="muted">This strategy's state has no EBD goal table. Each step shows its rationale, briefs and state.</p></section>`;
+    return html;
+  }
+  const s = finalState;
+  const a = s.analysis;
+  const verdicts = Object.fromEntries(a.assumptions.map((x) => {
+    const vs = s.goals.filter((g) => g.verifies.includes(x.id) && g.verdict && ["answered", "exhausted", "disputed", "moot"].includes(g.status)).map((g) => g.verdict);
+    return [x.id, vs.includes("contradicted") ? "contradicted" : vs.includes("unsettled") ? "unsettled" : vs.includes("supported") ? "supported" : null];
+  }));
+  html += `<section class="card"><h2>Stop</h2>${s.stop ? `<p>${badge(s.stop.kind, s.stop.kind === "complete" ? "ok" : s.stop.kind === "budget" ? "warn" : "info")} after round ${s.stop.round}: ${esc(s.stop.reason)}</p>` : `<p class="muted">No stop recorded by the strategy.</p>`}
+    <p class="muted">Platform stop reason: ${esc(summary.stopReason || "")}</p></section>`;
+  html += `<section class="card"><h2>Assumptions in the question</h2>${a.assumptions.length ? `<div class="tablewrap"><table><thead><tr><th>ID</th><th>Claim</th><th>Verdict</th><th>Checked by</th></tr></thead><tbody>${a.assumptions.map((x) => `<tr><td>${esc(x.id)}</td><td>${esc(x.claim)}</td><td>${verdictBadge(verdicts[x.id]) || badge("no verdict", "plain")}</td><td>${s.goals.filter((g) => g.verifies.includes(x.id)).map((g) => `${esc(g.id)} ${goalStatusBadge(g.status)} ${verdictBadge(g.verdict)}`).join("<br>")}</td></tr>`).join("")}</tbody></table></div>` : `<p class="muted">The request analysis found no assumptions.</p>`}</section>`;
+  html += `<section class="card"><h2>Goal tree</h2><p class="muted">Request goals at the top level; goals grown from a finding or a conflict sit under the goal whose evidence prompted them.</p>${goalTree(s)}
+    <h3>Tree metrics</h3><div class="grid2">${["byOrigin", "byDepth", "byStatus", "createdPerRound", "settledPerRound"].map((k) => `<div><div class="muted">${esc(k)}</div>${Object.entries(s.tree[k] || {}).map(([x, n]) => `${badge(`${x}: ${n}`)}`).join(" ")}</div>`).join("")}</div></section>`;
+  html += conflictTable(s, "Conflicts");
+  return html;
+}
+
+function conflictTable(s, title) {
+  if (!s.conflicts.length) return `<section class="card"><h2>${esc(title)}</h2><p class="muted">No conflicts recorded.</p></section>`;
+  return `<section class="card"><h2>${esc(title)}</h2><div class="tablewrap"><table><thead><tr><th>ID</th><th>Type</th><th>About</th><th>Statement</th><th>Side A</th><th>Side B</th><th>Status</th><th>Settle goal</th></tr></thead><tbody>${s.conflicts.map((c) => `<tr><td>${esc(c.id)}</td><td>${esc(c.type)}</td><td>${esc(c.about)}</td><td>${esc(c.statement)}${c.condition ? `<div class="muted">${esc(c.condition)}</div>` : ""}${c.settleBy ? `<div class="muted">settle by: ${esc(c.settleBy)}</div>` : ""}${c.claim ? `<div class="muted">decides the claim ${esc(c.claim)}</div>` : ""}</td><td>${evList(c.sideA)}</td><td>${c.sideB.map((x) => (evidence.has(x) ? evBtn(x) : esc(x))).join(" ")}</td><td>${badge(c.status, c.status === "settled" ? "ok" : c.status === "open" ? "info" : "warn")}<div class="muted">round ${c.createdRound}${c.settledRound ? `→${c.settledRound}` : ""}</div></td><td>${esc(c.settleGoal || "")}</td></tr>`).join("")}</tbody></table></div></section>`;
+}
+
+// ------------------------------------------------------------------ decisions
+
+function callsSection(calls) {
+  if (!calls.length) return "";
+  return `<section class="card"><h2>Model calls in this step</h2>${calls.map((c, i) => `<details${c.accepted ? "" : " open"}><summary>${badge(c.role.replace("_", " "), "info")} attempt ${c.attempt} ${c.accepted ? badge("accepted", "ok") : badge("rejected", "bad")}
+      <span class="muted">${fmt(c.inputTokens)} in · ${fmt(c.outputTokens)} out · ${secs(c.ms)}</span>${c.errors.length ? ` <span class="muted">${c.errors.length} error(s)</span>` : ""}</summary>
+      <div class="body">
+        ${c.errors.length ? `<h3>Errors found by the code checks</h3><ol>${c.errors.map((e) => `<li><span class="mono">${esc(e.code)}</span> ${esc(e.path)}: ${esc(e.message)}</li>`).join("")}</ol>` : ""}
+        ${c.warnings.length ? `<h3>Warnings</h3><ul class="plain">${c.warnings.map((e) => `<li><span class="mono">${esc(e.code)}</span> ${esc(e.path)}: ${esc(e.message)}</li>`).join("")}</ul>` : ""}
+        <h3>Input sent to the model</h3><div class="box mono pre">${esc(c.input)}</div>
+        <h3>Reply</h3><div class="box mono pre">${esc(tryJson(c.reply))}</div>
+      </div></details>`).join("")}</section>`;
+}
+
+function goalTable(state, prev) {
+  const before = new Map((prev?.goals || []).map((g) => [g.id, g]));
+  const rows = state.goals.map((g) => {
+    const p = before.get(g.id);
+    const cls = prev && !p ? "added" : p && (p.status !== g.status || p.attempts !== g.attempts || p.partsMet !== g.partsMet) ? "changed" : "";
+    const status = p && p.status !== g.status ? `${goalStatusBadge(p.status)} → ${goalStatusBadge(g.status)}` : goalStatusBadge(g.status);
+    return `<tr class="${cls}"><td><strong>${esc(g.id)}</strong>${cls === "added" ? `<br>${badge("new", "new")}` : ""}</td>
+      <td>${esc(g.text)}<div class="muted">done when: ${esc(g.doneWhen)}</div>${g.missing.length ? `<div class="muted">missing: ${esc(g.missing.join("; "))}</div>` : ""}${g.retryNote ? `<div class="muted">next attempt: ${esc(g.retryNote)}</div>` : ""}</td>
+      <td>${esc(g.kind)}<div class="muted">L${g.level} · ${esc(g.need)}</div></td>
+      <td>${esc(g.dependsOn.join(", "))}${g.waitingOn ? `<div class="muted">waits on ${esc(g.waitingOn)}</div>` : ""}</td>
+      <td>${status} ${verdictBadge(g.verdict)}</td>
+      <td class="num">${g.partsTotal ? `${g.partsMet}/${g.partsTotal}` : ""}</td>
+      <td class="num">${g.attempts}${g.servedRounds.length ? `<div class="muted">r${g.servedRounds.join(",")}</div>` : ""}</td>
+      <td>${evList(g.evidence)}</td>
+      <td class="muted">${g.origin.type}${g.origin.type === "conflict" ? ` ${esc(g.origin.conflict)}` : g.origin.evidence ? ` ${g.origin.evidence.map(esc).join(", ")}` : ""} · d${g.depth}</td></tr>`;
+  });
+  return `<div class="tablewrap"><table><thead><tr><th>Goal</th><th>Question</th><th>Kind</th><th>Depends on</th><th>Status</th><th class="num">Parts</th><th class="num">Tries</th><th>Evidence</th><th>Origin</th></tr></thead><tbody>${rows.join("")}</tbody></table></div>
+    <p class="muted">${prev ? "Purple rows are new in this step; yellow rows changed status, attempts or parts met." : ""}</p>`;
+}
+
+function briefCard(b, note = "") {
+  return `<details><summary>${badge(b.id || "dropped", b.id ? "info" : "warn")} <strong>${esc(b.tag || "")}</strong> ${esc(b.objective)} ${note}</summary><div class="body">
+    <dl class="kv">
+      <dt>Key questions</dt><dd>${(b.keyQuestions || []).map((q) => `<div>${esc(q)}</div>`).join("")}</dd>
+      <dt>Constraints</dt><dd>${(b.constraints || []).map((q) => `<div>${esc(q)}</div>`).join("") || "<span class='muted'>none</span>"}</dd>
+      <dt>Source hints</dt><dd>${esc((b.sourceHints || []).join("; ")) || "<span class='muted'>none</span>"}</dd>
+      <dt>Priority</dt><dd>${esc(b.priority ?? "")}</dd>
+    </dl>
+    ${b.instructions ? `<h3>Instructions to the researcher</h3><div class="box pre">${esc(b.instructions)}</div>` : ""}
+  </div></details>`;
+}
+
+function analysisView(a) {
+  const f = a.frame;
+  const objects = new Map(a.rom.objects.map((o) => [o.id, o]));
+  return `<section class="card"><h2>Request analysis</h2>
+    <p><strong>Restated:</strong> ${esc(a.restated_request)} ${badge(a.status, a.status === "ok" ? "ok" : "warn")}</p>
+    <div class="grid2">${["purpose", "time_frame", "place"].map((k) => `<div><div class="muted">${k.replace("_", " ")} (${esc(f[k].basis)})</div>${esc(f[k].value ?? "unknown")}${f[k].evidence.length ? `<div class="muted">"${f[k].evidence.map(esc).join('", "')}"</div>` : ""}</div>`).join("")}</div>
+    ${a.client_directives.length ? `<h3>Client directives</h3><ul class="plain">${a.client_directives.map((d) => `<li>${badge(d.kind)} ${esc(d.text)}</li>`).join("")}</ul>` : ""}
+    ${a.flags.length ? `<h3>Flags</h3><ul class="plain">${a.flags.map((d) => `<li>${badge(d.type, "warn")} ${esc(d.detail)}</li>`).join("")}</ul>` : ""}
+    <details><summary>ROM: ${a.rom.objects.length} objects, ${a.rom.relations.length} relations</summary><div class="body tablewrap">
+      <table><thead><tr><th>ID</th><th>Text</th><th>Role</th><th>Status</th><th>Meaning</th></tr></thead><tbody>${a.rom.objects.map((o) => `<tr><td>${esc(o.id)}${a.rom.central_object_ids.includes(o.id) ? " ★" : ""}</td><td>${esc(o.text)}</td><td>${esc(o.role)}</td><td>${esc(o.status)}</td><td>${esc(o.meaning)}${o.readings.length ? `<div class="muted">readings: ${o.readings.map(esc).join(" | ")}</div>` : ""}</td></tr>`).join("")}</tbody></table>
+      <h3>Relations</h3><table><thead><tr><th>ID</th><th>Type</th><th>From</th><th>To</th><th>Via</th><th>Stance</th></tr></thead><tbody>${a.rom.relations.map((r) => `<tr><td>${esc(r.id)}</td><td>${esc(r.type)}</td><td>${esc(objects.get(r.from)?.text ?? r.from)}</td><td>${esc(objects.get(r.to)?.text ?? r.to)}</td><td>${esc(r.via ?? "")}</td><td>${esc(r.stance)}</td></tr>`).join("")}</tbody></table>
+    </div></details>
+    <h3>Questions</h3><div class="tablewrap"><table><thead><tr><th>ID</th><th>Question</th><th>Route</th><th>Template</th><th>Depends on</th><th>Verifies</th></tr></thead><tbody>${a.questions.map((q) => `<tr><td>${esc(q.id)}</td><td>${esc(q.text)}<div class="muted">done when: ${esc(q.done_when)}</div></td><td>${badge(q.route, q.route === "search" ? "info" : "plain")}<div class="muted">${esc(q.need)}</div></td><td>${esc(q.template)}/${esc(q.guideline)}</td><td>${esc(q.depends_on.join(", "))}</td><td>${esc(q.verifies.join(", "))}</td></tr>`).join("")}</tbody></table></div>
+  </section>`;
+}
+
+function decisionView(step) {
+  const d = step.decision;
+  const state = d.strategyState;
+  const prev = step.index > 0 ? decisions[step.index - 1].strategyState : null;
+  let html = `<section class="card"><h2>${esc(step.label)} ${d.stop ? badge("stop", "warn") : badge(`${d.accepted.length} brief(s) for round ${d.round}`, "info")}</h2>
+    <p class="muted">Researcher budget before this decision: ${fmt(d.budgetBefore)} · ${esc(d.at)}</p>
+    <h3>Rationale (recorded with the decision)</h3><div class="box pre">${esc(d.rationale)}</div></section>`;
+  if (isEbd(state)) {
+    html += callsSection(state.step?.calls || []);
+    if ((state.step?.events || []).length) html += `<section class="card"><h2>What the code did</h2><ul class="events">${state.step.events.map((e) => `<li>${esc(e).replace(/\b(r\d+-b\d+-[fg]\d+)\b/g, (m) => evBtn(m))}</li>`).join("")}</ul></section>`;
+    if (d.phase === "init") html += analysisView(state.analysis);
+    html += `<section class="card"><h2>Goal table after this step</h2>${goalTable(state, isEbd(prev) ? prev : null)}</section>`;
+    if (state.conflicts.length) html += conflictTable(state, "Conflicts after this step");
+    if ((state.objectsFound || []).length) html += `<section class="card"><h2>Objects found in the evidence</h2><ul class="plain">${state.objectsFound.map((o) => `<li><strong>${esc(o.id)}</strong> ${esc(o.text)} <span class="muted">attached to ${esc(o.parent)}, quote "${esc(o.quote)}" from</span> ${evBtn(o.evidence)}</li>`).join("")}</ul></section>`;
+  }
+  html += `<section class="card"><h2>Briefs</h2>${d.accepted.map((b) => briefCard(b)).join("") || `<p class="muted">No briefs accepted.</p>`}
+    ${d.dropped.length ? `<h3>Dropped for budget</h3>${d.dropped.map((b) => briefCard(b, badge("dropped", "warn"))).join("")}` : ""}
+    ${d.invalid.length ? `<h3>Invalid</h3>${d.invalid.map((x) => `<div class="box mono pre">${esc(x.reason)}\n${esc(JSON.stringify(x.brief, null, 2))}</div>`).join("")}` : ""}
+    ${d.ignored.length ? `<h3>Ignored (returned with stop)</h3>${d.ignored.map((b) => briefCard(b)).join("")}` : ""}</section>`;
+  if (!isEbd(state)) html += `<section class="card"><h2>Strategy state after this step</h2>${json(state)}</section>`;
+  return html;
+}
+
+// ------------------------------------------------------------------ research rounds
+
+function researchView(step) {
+  return `<section class="card"><h2>${esc(step.label)}</h2><p class="muted">Each researcher made its own web searches and page reads with the provider's tools, then wrote notes with one section per key question. Evidence IDs are the ones the conflict checker and round analyst cite.</p></section>` +
+    step.results.map((r) => {
+      const ev = [...evidence.values()].filter((e) => e.briefId === r.brief.id);
+      const tags = {};
+      for (const e of ev) tags[e.lines[0]] = evBtn(e.id);
+      const rec = finalState?.results.find((x) => x.briefId === r.brief.id);
+      const mapping = rec?.sections.length ? `<h3>Sections mapped to goals</h3><ul class="plain">${rec.sections.map((s) => `<li>${esc(s.title || "(untitled)")} → <strong>${esc(s.goalIds.join(", "))}</strong> ${badge(`by ${s.mappedBy}`, s.mappedBy === "id" ? "ok" : "warn")}</li>`).join("")}</ul>` : "";
+      const u = r.usage || {};
+      return `<section class="card" id="res-${esc(r.brief.id)}"><h2>${badge(r.brief.id, "info")} ${esc(r.brief.objective)} ${r.status === "ok" ? badge("ok", "ok") : badge(`failed: ${r.failure?.kind}`, "bad")}</h2>
+        <p class="muted">${fmt(u.searches)} searches · ${fmt(u.pageReads)} page reads · ${fmt(u.inputTokens)} in / ${fmt(u.outputTokens)} out tokens · ${secs(r.durationMs)} · goals ${esc(r.brief.tag || "")}</p>
+        ${briefCard(r.brief, '<span class="muted">brief</span>')}
+        ${(r.diagnostics || []).length ? `<ul class="plain">${r.diagnostics.map((x) => `<li>${badge("diagnostic", "warn")} ${esc(x)}</li>`).join("")}</ul>` : ""}
+        <details><summary>Search queries (${(r.queries || []).length})</summary><div class="body"><ul class="plain">${(r.queries || []).map((q) => `<li>${esc(q)}</li>`).join("")}</ul></div></details>
+        <details><summary>Sources reported by the tools (${(r.sources || []).length}, ${(r.sources || []).filter((s) => s.cited).length} cited)</summary><div class="body"><ul class="plain">${(r.sources || []).map((s) => `<li>${s.cited ? badge("cited", "ok") : badge("not cited")} <a href="${/^https?:/.test(s.url) ? esc(s.url) : "#"}" target="_blank" rel="noopener noreferrer">${esc(s.title || s.url)}</a></li>`).join("")}</ul>${(r.unlistedCitations || []).length ? `<h3>Cited but never reported by the tools</h3><ul class="plain">${r.unlistedCitations.map((x) => `<li class="mono">${esc(x)}</li>`).join("")}</ul>` : ""}</div></details>
+        ${mapping}
+        <h3>Notes</h3>${r.status === "ok" ? markdown(r.notes, tags, `n-${r.brief.id}`) : `<p class="muted">${esc(r.failure?.message || "")}</p>`}
+      </section>`;
+    }).join("");
+}
+
+// ------------------------------------------------------------------ writer input and report
+
+function synthesisView() {
+  const s = D.synthesis.synthesis || {};
+  return `<section class="card"><h2>Writer input</h2><p class="muted">What the strategy's finalize step handed to the shared writer: material must be whole researcher-notes lines; the strategy's own analysis goes into the outline and guidance.</p>
+      ${(D.synthesis.diagnostics || []).length ? `<ul class="plain">${D.synthesis.diagnostics.map((x) => `<li>${badge("diagnostic", "warn")} ${esc(x)}</li>`).join("")}</ul>` : ""}
+      <h3>Outline</h3>${(s.outline || []).length ? `<ol>${s.outline.map((o) => `<li>${esc(o)}</li>`).join("")}</ol>` : `<p class="muted">none</p>`}
+      <h3>Guidance</h3>${s.guidance ? `<div class="box pre">${esc(s.guidance)}</div>` : `<p class="muted">none</p>`}</section>
+    <section class="card"><h2>Material (${(s.material || []).length} item(s))</h2>${(s.material || []).map((m) => `<details><summary>${esc(m.label)} <span class="muted">${m.notes.split("\n").length} lines</span></summary><div class="body">${markdown(m.notes)}</div></details>`).join("")}</section>`;
+}
+
+function reportView() {
+  const unknown = summary.citationCheck?.unknownUrls || [];
+  return `<section class="card"><h2>Report</h2>${unknown.length ? `<p>${badge(`${unknown.length} cited URL(s) not found in the research`, "bad")}</p>` : ""}${markdown(D.report)}</section>`;
+}
+
+// ------------------------------------------------------------------ navigation and evidence pop-up
+
+function show(key) {
+  const step = steps.find((s) => s.key === key) || steps[0];
+  document.querySelectorAll("nav button").forEach((b) => b.classList.toggle("active", b.dataset.key === step.key));
+  const v = $("view");
+  if (step.key === "overview") v.innerHTML = overview();
+  else if (step.decision) v.innerHTML = decisionView(step);
+  else if (step.results) v.innerHTML = researchView(step);
+  else if (step.key === "synthesis") v.innerHTML = synthesisView();
+  else if (step.key === "report") v.innerHTML = reportView();
+  else if (step.key === "error") v.innerHTML = `<section class="card"><h2>Error</h2><div class="box mono pre">${esc(D.error)}</div></section>`;
+  if (location.hash.slice(1) !== step.key) history.replaceState(null, "", `#${step.key}`);
+  window.scrollTo(0, 0);
+}
+
+function popEvidence(id) {
+  const e = evidence.get(id);
+  const pop = $("pop");
+  if (!e) {
+    pop.innerHTML = `<button class="close" aria-label="Close">×</button><strong>${esc(id)}</strong><p class="muted">Not found in the final state.</p>`;
+  } else {
+    const goals = finalState.goals.filter((g) => e.goalIds.includes(g.id));
+    pop.innerHTML = `<button class="close" aria-label="Close">×</button>
+      <div>${badge(e.kind, e.kind === "gap" ? "warn" : "info")} <strong class="mono">${esc(e.id)}</strong> <span class="muted">round ${e.round}, brief ${esc(e.briefId)}</span></div>
+      <p>${inline(e.text)}</p>
+      <dl class="kv"><dt>Goals</dt><dd>${goals.map((g) => `${esc(g.id)} ${esc(g.text.slice(0, 120))}`).join("<br>") || esc(e.goalIds.join(", "))}</dd>
+      <dt>Hosts</dt><dd>${esc(e.hosts.join(", ")) || "<span class='muted'>no link</span>"}</dd></dl>
+      <p><a href="#" data-goto="${esc(e.briefId)}" data-line="${e.lines[0]}">Show it in the researcher's notes</a></p>`;
+  }
+  pop.style.display = "block";
+}
+
+document.addEventListener("click", (ev) => {
+  const t = ev.target.closest("[data-ev],[data-goto],#pop .close,nav button");
+  if (!t) return;
+  if (t.matches("nav button")) return show(t.dataset.key);
+  if (t.matches("#pop .close")) { $("pop").style.display = "none"; return; }
+  ev.preventDefault();
+  if (t.dataset.ev) return popEvidence(t.dataset.ev);
+  if (t.dataset.goto) {
+    const round = Number(/^r(\d+)/.exec(t.dataset.goto)?.[1]);
+    show(`r${round}`);
+    const el = document.getElementById(`n-${t.dataset.goto}-${t.dataset.line}`);
+    if (el) { el.scrollIntoView({ block: "center" }); el.classList.add("flash"); setTimeout(() => el.classList.remove("flash"), 2500); }
+  }
+});
+
+document.addEventListener("keydown", (ev) => {
+  if (ev.target.closest("input,textarea") || !["ArrowLeft", "ArrowRight"].includes(ev.key)) return;
+  const i = steps.findIndex((s) => s.key === location.hash.slice(1));
+  const next = steps[Math.max(0, Math.min(steps.length - 1, (i < 0 ? 0 : i) + (ev.key === "ArrowRight" ? 1 : -1)))];
+  show(next.key);
+});
+
+header();
+$("nav").innerHTML = steps.map((s) => `<button data-key="${s.key}">${esc(s.label)}<span class="who">${esc(s.who)}</span></button>`).join("") + `<div class="hint">← → keys step through the run. Click an evidence ID to see its line.</div>`;
+show(location.hash.slice(1) || "overview");
+</script>
+</body>
+</html>
