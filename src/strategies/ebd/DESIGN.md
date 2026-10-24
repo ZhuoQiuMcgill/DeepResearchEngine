@@ -1,8 +1,10 @@
 # EBD strategy design: building EBD research behaviour on the LangGraph platform
 
-Behaviour design (Haoxi Li). **Draft for team review.** Built so far: the request
-analysis (section 5) and a v0 strategy in which `init` runs it and the research stops
-after one round. The loop (sections 6–12) is not built yet.
+Behaviour design (Haoxi Li). **Draft for team review.** Built: the request analysis
+(section 5) and the loop (sections 6–12), tested offline with a fake model through the
+real skeleton and live on Haiku (section 16.1). The defaults of the open decisions in
+section 18 are built in as options, pending the team's confirmation. A run viewer for
+checking runs step by step is in `viewer/`.
 
 - 2026-10-07: first draft, written for the Python platform's planned `ebd@1` method.
 - 2026-10-14: retargeted to the TypeScript platform on main (`d24a40d`, strategy
@@ -20,6 +22,18 @@ after one round. The loop (sections 6–12) is not built yet.
   - source preferences go to every brief;
   - the report format goes to the writer;
   - scope limits and other directives go to both.
+- 2026-10-20: the loop is built (phases 1 and 3, section 16). Changes found while
+  building and in the first live runs are marked "2026-10-20" in sections 5.4 and
+  9–13.
+- 2026-10-20: review of the flight runs (section 5.6). An environment object is
+  defined through the steps of its lifecycle and what each step involves, a
+  verification question no longer replaces a defining question, and the round analyst
+  asks about steps the evidence reveals (section 10.2).
+- 2026-10-21: review of the GPU rerun (section 16.1). Necessary request goals keep a
+  first-try reserve of researchers (section 7); the writer gets a length rule and the
+  planned contents of each section (section 12); questions cover the main cases of
+  what the client did not state (sections 5.6 and 10.2); a settle goal checks a claim
+  only when the disagreement decides it (section 9).
 
 ## 1. Summary
 
@@ -264,6 +278,16 @@ Problems are recorded in the state, so they appear in `events.jsonl`.
 - Length limits: question and `done_when` 400 characters; meaning, claim, quote and
   directive 300; at most 30 objects, 20 questions and 10 objects per question.
 - New for rev 2: every never-drop span is covered (section 5.5).
+- 2026-10-20, from Lab 3: every question stands alone. A search question's text and
+  `done_when`, and a synthesis question's text, may not point to another question ("Q1",
+  "the previous question", "the ones identified"). In the Lab 3 batch, 24 questions in
+  15 of 81 analyses did. The places list also gained the countries Lab 3 flagged
+  falsely (Philippines, Russia), and possessive acronym expansions ("the European
+  Union's") count as known.
+- 2026-10-20, from the review of the flight runs (section 5.6): an environment object
+  that a verification question (T7) covers also needs a search question with a
+  template from T1 to T6 (`object_only_verified`). That question may verify the claim
+  as well.
 
 ### 5.5 Decomposition without spaCy
 
@@ -292,6 +316,62 @@ Compare:
 - object and question counts;
 - concept-set stability across repetitions (Jaccard);
 - output tokens.
+
+### 5.6 Question templates and guidelines
+
+Each question uses one template, which names the part of the request's object model it
+asks about, and one guideline, which says what a sufficient answer contains (its
+`done_when`). The full text is in `request/prompt.ts`, Step 5.
+
+| Template | Used for | Question form | Guideline | Goal kind (section 6.3) |
+|---|---|---|---|---|
+| T1 | A noun with no modifier | What/Who is N? | G1 | define |
+| T2 | A noun with an adjective | What is A N? | G1 | define |
+| T3 | A noun that narrows another noun | What is A? What is A N? | G1 | define |
+| T4 | A verb with its subject and object | What do you mean by V? How/Why/When/Where does N1 V N2? | G6, G5, G3, G4 | relate |
+| T5 | A verb with an adverb | What do you mean by V A? Why/When/Where does N1 V A N2? | G6, G5, G3, G4 | relate |
+| T6 | A verb missing its subject or object | What/Who V N? N1 V what? | G2 | define |
+| T7 | A claim the request makes or presupposes | Is it true that N1 V N2? | G7 | verify |
+
+Any question that verifies an assumption becomes a verify goal, whatever its template.
+
+| Guideline | A sufficient answer contains |
+|---|---|
+| G1 What/Who is N | For the product, its purpose and coverage. For an environment object, the lifecycle events that matter for the client's purpose and, for each, the environment it involves: natural, built (physical and digital: documents, data, laws, software), economic (costs, prices, time), social (people, organisations). Otherwise, components and attributes. |
+| G2 What/Who V N | The components and attributes of the missing participant |
+| G3 When | A time or a triggering event |
+| G4 Where | A place or a situation |
+| G5 Why | The purpose or the cause |
+| G6 What do you mean by V / How | The activities included in V-ing (the mechanism); for an activity someone carries out, its steps from start to finish, each with its environment as in G1. If a participant is the product, the question goes to synthesis. |
+| G7 Verification | Whether the evidence supports, contradicts or does not settle the claim, each source's finding with its date and scope, and the disagreements |
+
+Changed 2026-10-20, after a review of the four live flight runs ("How do I flight from
+GuangZhou to Montreal?", section 16.1):
+- Only run 1 asked what the connections and the arrival in Canada require; its report
+  has a visa and transit section. The other three stopped at routes, airlines, times
+  and booking, and their reports say nothing or almost nothing about entry rules.
+- The loop could not add the topic later. A new goal must start from a line in the
+  notes and serve a goal or a synthesis question of the plan (section 10.2). In run 2
+  the notes mentioned clearing immigration on a self-transfer, but no goal or
+  synthesis question needed it. In run 3 the synthesis question did, but no note
+  mentioned it. Run 4 had neither.
+- G1 (b) read "the events and dates in its existence", which suits an entity's history
+  but not an activity. It now names the steps of an activity and ties the events to
+  the client's purpose; G6 (a) gets the same for a verb.
+- In run 4 the only search question about "flight" was the check that a flight exists
+  (T7), which asks for no lifecycle at all. Step 5 now says that a verification
+  question does not define its objects, and code enforces it (section 5.4).
+- Worked example E2 defines the electric car through the steps of owning one (buying,
+  charging, driving), because the examples' defining questions were attribute lists
+  and the flight analyses wrote the same shape.
+- The examples in the prompts avoid travel, so the prompts do not carry the answer to
+  a test task.
+
+Changed 2026-10-21: Step 5 adds that when the answer to a search question depends on
+something the client did not state (who the client is, their budget, their dates), the
+question and its `done_when` cover the main cases and name them, as Step 1's neutral
+default requires. In the flight rerun the analysis disclosed the unstated nationality
+only in its synthesis question, and the research then followed one nationality.
 
 ## 6. Goals and priority
 
@@ -375,6 +455,21 @@ packing turns the top goals into briefs.
   primary object, at most `questionsPerBrief` goals per brief (default 3) and at most
   `maxPerRound` briefs per round (default 4, the platform's concurrency). With 12
   tool calls per researcher, three goals get about four calls each.
+- **First-try reserve (`reserveFirstTries`, D-E; built 2026-10-21).** A necessary
+  request goal that has never been served keeps a claim on the budget. The strategy
+  holds one researcher for each brief such goals will need (goals about the same object
+  share a brief), including goals still waiting for their dependencies. A brief made
+  only of goals added during the run (settle goals, and goals grown from findings or
+  gaps) is served only from researchers beyond that reserve; otherwise it waits, and
+  its slot goes to the next ranked goals. Two kinds of brief are never held back: one
+  that contains a request goal (first try or retry), and one that contains a settle
+  goal a request goal is waiting for. Without that exception, the goals that depend on
+  them could never become ready. A held-back goal packed into a brief that goes anyway
+  still goes, since it costs nothing extra. If holding back would leave no brief at
+  all, the reserve is released for that round rather than ending the run with
+  researchers left. The rationale names what was held back ("Held back for first
+  tries: Q8 (2 researcher(s) kept for Q3, Q4)"). In the GPU rerun of 2026-10-21 (section
+  16.1), settle goals took the slots before the "use" and "cost" goals had a first try.
 - **`objective`:** the goal's text for a one-goal brief. Otherwise "Answer the key
   questions below about <object>".
 - **`keyQuestions`:** `[Q7] <goal text>`. A re-served partial goal appends "Still
@@ -407,7 +502,8 @@ packing turns the top goals into briefs.
 
 - **Mapping:**
   - parse each `ok` result with `parseNotes`;
-  - match a section to its goal by the `[Qn]` prefix;
+  - match a section to its goal by the `[Qn]` prefix, or by a bare `Qn` that opens the
+    heading (live check X2, section 16.1: Haiku often writes `Q4: …` or drops the ID);
   - otherwise by key-question order;
   - otherwise attach it to all goals of the brief.
 - **Evidence lines:** every Cited Findings bullet and every Gaps bullet gets an ID
@@ -462,6 +558,33 @@ Effects:
 With `conflicts: false`, the round analyst still sees the evidence, but no conflict
 records or settle goals are made. This is the H1 ablation.
 
+Built 2026-10-20 (`rounds/conflicts.ts`):
+- A settle goal checks a claim only when the conflict checker says the disagreement
+  decides it (field `claim`; for `evidence_vs_assumption`, the assumption in side_b); a
+  disagreement about a detail leaves the claim's verdict to the goals that check it.
+  When a settle goal ends, it changes the verdict of the goal waiting for it only if it
+  judged the claim itself. Changed 2026-10-21: settle goals had taken over the claim of
+  the goal they settle, so in the first flight run settle goals about flight times
+  carried verdicts on "a flight connects GuangZhou and Montreal".
+- A conflict is about a fact (a value, a date, an event, whether something exists).
+  Differing opinions of reviewers, small numeric differences and listings of different
+  options are not conflicts (test round 2, section 16.1).
+- A `source_vs_source` conflict whose two sides rest on the same host is rejected by
+  code: two parts of one page are not two sources (test round 1).
+- Settle goals obey the limits of new goals (section 10.2): `maxDepth`,
+  `maxNewGoalsPerRound` (shared with proposals) and `maxOpenGoals`. Only an open or
+  answered necessary goal gets one, a goal has at most one open settle goal, and a
+  settle goal gets none of its own. Any other `source_vs_source` or
+  `evidence_vs_assumption` conflict is recorded as disputed at once, and the writer
+  presents both sides. Without these limits, test round 1 grew 15 settle goals from the
+  evidence of earlier settle goals until the budget ran out.
+- A goal judged "conflicting" whose conflict is disputed (it could get no settle goal)
+  becomes disputed itself (test round 3).
+- A finding that a goal asks for is not off_target. The first live run (the EBD
+  question) marked as off_target the lines that listed other expansions of "EBD",
+  which the goal had asked for. The prompt now says so, and section 12 keeps any
+  off_target line that a goal cites as its own evidence.
+
 ## 10. Round analysis: done, new goals, moot
 
 ### 10.1 When a goal is done
@@ -483,6 +606,26 @@ records or settle goals are made. This is the H1 ablation.
 Sufficiency judged per question against the retrieved text works (Joren et al. 2025:
 93% accuracy for a strong model). The citation check and the evidence floor guard
 against weaker models.
+
+Built 2026-10-20 (`rounds/analyst.ts`):
+- Code rejects:
+  - a judgment whose met part cites no finding, or cites a gap line;
+  - "answered" with unmet parts;
+  - a goal with a claim but no verdict.
+- The floor applies to:
+  - verification and settle goals;
+  - `G3` (when) goals;
+  - goals whose `done_when` asks for numbers, prices, dates or rates.
+- A goal judged "conflicting" without a conflict record is treated as partial.
+- "As of <run date>" or "the latest available evidence" is met by the most recent
+  evidence the sources give; it does not require a capture date (test round 2: the
+  analyst demanded capture dates and proposed goals that asked only for them).
+- The trigger words for the floor no longer include "when", which matched ordinary
+  prose in `done_when` (test round 1).
+- The fallback after a failed retry repairs judgments instead of dropping them, as
+  step 5 of section 5.3 says: evidence IDs that are not findings are dropped, a met
+  part left without evidence becomes unmet, and the outcome is recomputed from the
+  parts, never above what the analyst said.
 
 ### 10.2 New goals
 
@@ -509,6 +652,20 @@ Code accepts a proposal only if all of these hold:
 
 New objects enter the ROM only with a verbatim quote from a finding line.
 
+Built 2026-10-20 (section 5.6): a part or life-cycle event includes a step that the
+findings reveal and no goal covers, for example a finding that a product must be
+imported, which brings in import rules, duties and delivery time. The round analyst
+asks what the step requires, kind by kind as in G1, and proposes it when the step
+could change the answer to a synthesis question, even if that question does not name
+the step. The finding that reveals the step is what prompted it, so the code rules
+above are unchanged.
+
+Built 2026-10-21: a new goal keeps the client's scope. The round analyst does not narrow
+it to one case of something the client did not state (one region, one customer group,
+one budget) because a finding describes that case; it asks for the main cases, or for
+the case the request implies. In the flight rerun of 2026-10-20 the transit goals were
+written for a Chinese passport holder because the first researcher had assumed one.
+
 Updates also remove work, as EBD's recomposition does (Zeng 2015, p. 14): when an
 assumption is contradicted, the goals that rely on it become moot. Restating changes
 goals only; the question itself stays verbatim (AGENTS.md).
@@ -530,6 +687,12 @@ Code checks after every round; the first rule that applies ends the research.
 - After **complete**, at most one more round serves completing goals, if
   `extraRound` is on and a researcher is left.
 - The stop kind is also kept in the state (`stop.kind`, `stop.round`).
+- Built 2026-10-20 (`goals.ts`):
+  - a round in which every researcher failed is not "saturated", because nothing was
+    searched;
+  - an assumption whose verification goals all became moot does not block
+    "complete";
+  - when no goal is ready, the run stops as saturated.
 
 Basis:
 - **Complete** is EBD's own end. It runs "until no more undesired conflicts exist"
@@ -553,17 +716,32 @@ Basis:
   A goal that feeds several synthesis questions appears once.
 - Each item has `label` = the goal text, and `notes` = an own heading plus the whole
   lines of the goal's sections (Takeaway, Cited Findings, Inferences, Gaps).
-- `off_target` lines are removed.
+- `off_target` lines are removed, unless a goal cites them as its evidence
+  (2026-10-20, section 9).
 - Unmapped sections and results go last under "Further findings", so no on-topic
   evidence is dropped. The writer prompt says to use all notes.
 
 **`outline`:** the synthesis questions in order, plus "Where the sources disagree"
-when a conflict is disputed. At most 5 items, matching the writer's 3–5 sections.
+when a conflict is disputed and the client sets no length limit. At most 5 items,
+matching the writer's 3–5 sections.
 
 **`guidance`:** plain sentences, with no claims of its own beyond the analysis.
 - **Client directives.** The report format, scope limits and other directives, each
   with the client's own words. Source preferences have already reached the
   researchers (section 7).
+- **Length limit (built 2026-10-21).** When a report-format directive mentions pages,
+  paragraphs, sentences or a word count, or asks for something short, brief or
+  concise: "The client limits the length ("<client's words>"). This comes before
+  everything below: answer the question first, give each disagreement and each gap at
+  most one sentence, and leave out detail the client did not ask for." Each disputed
+  disagreement then reads "Give both sides in one sentence, with their sources", and
+  the outline has no separate disagreement section. The GPU rerun's "one-page summary"
+  ran to about 1,470 words while the guidance asked for both sides of seven
+  disagreements.
+- **Planned contents (built 2026-10-21).** "What each part of the report must
+  contain, as planned": each synthesis question with its `done_when`. It carries the
+  defaults the analysis asked the report to state, such as an unstated nationality;
+  before, the writer saw only the synthesis questions' text.
 - **Assumption verdicts.** A contradicted premise: "The question presupposes that
   <claim>. The evidence contradicts this; say so plainly early in the report." An
   unsettled one is stated as not established. This is the H1 lever.
@@ -572,7 +750,10 @@ when a conflict is disputed. At most 5 items, matching the writer's 3–5 sectio
 - **Off-target referents.** Exclude them, or distinguish the terms only where needed.
 - **Defaults and evidence status.** The frame defaults, only where they change the
   answer, as the baseline does with its interpretation. Exhausted necessary goals, as
-  evidence status: "no reliable source states …".
+  evidence status: "no reliable source states …". Built 2026-10-20: a goal with some
+  parts met is "only partly established", with its missing parts, so the writer still
+  uses its notes (test round 1 told the writer that no source settled goals with 71
+  findings). Internal evidence and conflict IDs are removed from the guidance.
 - **No meta text.** Never open the report with the guidance, and never mention the
   research process.
 
@@ -590,7 +771,10 @@ Strict zod options, all with defaults, chosen per experiment spec:
 | `maxAttempts` | 2 | Attempts before a goal is exhausted |
 | `evidenceFloor` | 2 | Independent hosts for verification goals, numbers and dates |
 | `extraRound` | true | One round of completing goals after "complete" |
-| `rom` | `"concept"` | `"word"` re-enables the rev 1.3 word-level ROM, if the A/B test needs it |
+| `premiseFirst` | true | L-7: a request's verification goal is served in round 1 even when the analysis made it wait for definition goals |
+| `reserveFirstTries` | true | D-E: keep researchers for necessary request goals not yet served; briefs made only of goals added during the run use the rest (section 7) |
+| `init` | `"fixed"` | D-F: `"agent"` runs the request analyst as a tool-using agent |
+| `rom` | `"concept"` | Not built. `"word"` would re-enable the rev 1.3 word-level ROM if the A/B test needs it |
 
 Example spec entry:
 
@@ -631,14 +815,22 @@ src/strategies/ebd/
   options.ts          OptionsSchema (strict zod)
   state.ts            EbdState and its parts (types, not interfaces: JsonValue)
   llm.ts              structured-call helper with validation and one feedback retry
-  request/            prompt (instructions + examples as TS constants), schema, checks
-  rounds/             evidence mapping and indexing, conflict checker, round analyst
-  goals.ts            readiness, levels, tie-breaks, reserve slot, acceptance, stop rules
+  request/            prompt (instructions + examples as TS constants), schema, checks,
+                      fixed and agent modes
+  rounds/evidence.ts  mapping notes to goals and indexing evidence lines (section 8)
+  rounds/conflicts.ts conflict checker: prompt, schema, checks, effects (section 9)
+  rounds/analyst.ts   round analyst: judgments, evidence floor, proposals (section 10)
+  goals.ts            readiness, levels, tie-breaks, reserve slot, moot, stop rules, tree metrics
   briefs.ts           packing goals into briefs
   synthesis.ts        material, outline, guidance
-  *.test.ts           unit tests (vitest picks them up from src/)
+  viewer/             run viewer: static pages to check a run step by step (viewer/README.md)
+  *.test.ts           unit tests and the fake-model skeleton test (strategy.test.ts)
   DESIGN.md           this document
 ```
+
+Every step records its model calls (input, reply, check errors, tokens) and its code
+actions in `state.step`, which is replaced at each step. The platform writes the state
+into `events.jsonl` after every step, so each decision record shows its own work.
 
 - **Pure code is unit-tested:** goal ranking, packing, stop rules, evidence mapping,
   projection and the request checks.
@@ -653,11 +845,107 @@ src/strategies/ebd/
 | Phase | Work | Needs API keys | Done when |
 |---|---|---|---|
 | 0 | Merge main into `behaviour-design`; offline probes (section 2.3) | no | Done 2026-10-14: typecheck and 29 tests pass |
-| 1 | Scaffold from `_template`; options, state, goals, briefs, stop rules, synthesis; fake-model skeleton test | no | `npm test` passes; the module loads; the skeleton test passes the provenance check |
+| 1 | Scaffold from `_template`; options, state, goals, briefs, stop rules, synthesis; fake-model skeleton test | no | Done 2026-10-20: `npm test` passes; the skeleton test passes the provenance check |
 | 2 | Request analysis rev 2: prompt, schema, checks, helper, converted examples; offline tests on recorded replies | X1 | Both models produce valid analyses for the 4 tasks and the Lab 2 cases; A/B test (section 5.5) |
-| 3 | `observe`: mapping and indexing, conflict checker, round analyst, update rules | X2, X3 | Researchers keep `[Qn]` headings (X2); both calls work on replayed notes (X3) |
+| 3 | `observe`: mapping and indexing, conflict checker, round analyst, update rules | X2, X3 | Built 2026-10-20 and tested offline; first live runs in section 16.1 |
 | 4 | `check-strategy` on both models; test rounds as in `docs/plan.md` P7 (classify each problem; fix non-model ones; rerun all 4 tasks) | yes | Two rounds without new non-model problems |
 | 5 | Experiments: baseline vs EBD vs ablations, both models, repeats, planted-conflict tasks as explicit questions in the spec | yes | Records ready for blind judging |
+
+### 16.1 Live test rounds (2026-10-20)
+
+`npm run check-strategy -- --strategy ebd --model haiku --task <task>`, which gives 6
+researchers (experiments give 10). Every run passed every required check. Each round
+fixed the problems the previous one showed. The problems are classified as in
+`docs/plan.md` P7.
+
+| Round | Task | Researchers | Stop | Cost (USD) | What the run showed |
+|---|---|---|---|---|---|
+| 1 | ebd | 1 | complete | 0.04 | Lines listing other expansions of "EBD", which the goal asked for, were marked off_target and left out of the material |
+| 1 | headset | 6 | budget | 0.52 | Three settle goals for small price differences, one of them two parts of one article; a judgment lost in a fallback; the guidance said no source settled goals with 71 findings |
+| 1 | flight | 6 | budget | 0.38 | Conflict cascade: 17 conflicts and 15 settle goals, down to depth 3 |
+| 2 | headset | 6 | budget | 0.52 | Reviewers' opinions recorded as conflicts; the analyst demanded capture dates |
+| 2 | flight | 3 | complete | 0.29 | As designed; internal IDs reached the guidance |
+| 3 | headset | 2 | complete | 0.15 | As designed; the extra round served one completing goal |
+| 3 | flight | 5 | budget | 0.50 | A settle goal got a settle goal of its own |
+| 3 | ebd | 5 | complete | 0.28 | A settle goal for an exhausted goal; the request check rejected "Q1" in a question and the retry fixed it |
+| 4 | flight | 3 | complete | 0.20 | As designed: one settle goal, answered; two later disagreements disputed; one extra round |
+| 4 | ebd | 4 | complete | 0.33 | No new non-model problem; Haiku sent arrays as JSON text and left out `proposals`, which the retry or the repair absorbed |
+| 5 | ebd | 3 | complete | 0.17 | After the review changes of section 5.6: analysis accepted on the first attempt; no regression |
+| 5 | flight | 5 | complete | 0.48 | After the review changes: the plan asks for the trip's steps, entry documents included; the round analyst raised transit-visa goals for the connecting hubs it found; the report covers the Canadian visa, transit by hub and arrival. New: the research assumed a Chinese passport holder and the report does not say so; no premise was recorded |
+| 5 | Lab 3 P3 (GPU comparison) | 6 | budget | 0.55 | Rerun of the 2026-10-19 v0 run, question unchanged. The "use" goal (Q3) never reached a researcher and the cost goal (Q4) got one in the last round: both waited for the flagship goal, which needed two rounds, and settle goals took 3 of the 4 slots left. The report is about 1,470 words although the client asked for one page. The writer cited one URL the research did not report (warning) |
+| 6 | flight | 6 | budget | 0.53 | After the four changes of 2026-10-21: the steps question asks for the main entry cases (visa, eTA, visa-exempt) and the report states both kinds of traveller; the nonstop-flights dispute checked no claim. The steps question waited for the flights question and got its only try in round 3. One new goal (never served) was still written for a Chinese passport holder |
+| 6 | Lab 3 P3 (GPU comparison) | 6 | budget | 0.48 | After the four changes: the length rule applied (11 one-sentence disagreements, no disagreement section in the outline, 848 words against 1,470); the dispute over whether AMD has a flagship checked A1, the benchmark disputes checked no claim; the reserve held back two settle goals in round 3. Cost and use still never reached a researcher: all three first tries waited for the flagship goal, which waited two rounds for its settle goal |
+
+| Problem | Kind | Fix |
+|---|---|---|
+| Settle goals without limits; settle goals for settle goals and for exhausted goals | orchestration | `settleBlock` (section 9) |
+| Conflicts over small differences, two parts of one page, opinions | instruction, plus a code rule for one host | Checker prompt; same-host rule (section 9) |
+| Off-target lines that the goal asked for were left out | instruction and orchestration | Section 9; kept when cited (section 12) |
+| `Q4: …` headings mapped by order | parsing | `headingGoals` (section 8) |
+| The fallback dropped whole judgments | orchestration | Repair per part (section 10.1) |
+| Floor triggered by "when" | orchestration | Trigger words (section 10.1) |
+| Capture dates demanded | instruction | Currency rule (section 10.1) |
+| Guidance wording and internal IDs | instruction | Section 12 |
+| Schema slips (an array sent as JSON text, a missing field, an unknown enum value), gap lines cited as evidence | model | Caught by the checks and absorbed by the retry or the repair. After round 4, JSON text is decoded and a missing `proposals` counts as none, which saves those retries |
+| The writer cited a URL the research did not report (round 1 flight, a warning) | writer (platform) | For the platform owner |
+
+Live check X2 (headings): Haiku kept the goal ID in most sections but often wrote `Q4:`
+instead of `[Q4]`, and sometimes dropped it. With the bare-ID rule, rounds 2–4 mapped
+32 of 39 sections by ID, 5 by key-question order and 2 to their brief's only goal. All
+7 others were in one-goal briefs, so no section went to the wrong goal. Briefs with
+several goals still depend on the ID.
+
+X3: both new calls work on live notes. Their tools are not strict, so Anthropic's
+grammar limit does not apply.
+
+Total cost of the four rounds: about $3.20. Phase 4 needs two rounds in a row
+without a new non-model problem; round 4 is the first. The next round should cover all
+four tasks and Luna (needs `OPENAI_API_KEY`).
+
+Open after these rounds:
+- Completing goals grown from findings use spare slots while a necessary goal is still
+  open (section 6.3, level 4). With 6 researchers, the flight run in round 3 left a
+  necessary settle goal unserved. A budget reserve for necessary goals is a candidate
+  threshold (D-E).
+- The analyst still asks for primary sources (an airline's own timetable) that the
+  web search cannot reach, so some goals end exhausted at 4 of 5 parts. Whether that is
+  strictness or correct caution is for the judged experiments to show.
+- Round 5, flight: the client's nationality is not stated, but the first researcher
+  wrote the entry rules for Chinese citizens and the new transit goals followed that
+  finding. The synthesis question's `done_when` asked to state this default, but the
+  writer receives only the synthesis questions' text (`buildOutline`), not their
+  `done_when`, so the report presents one nationality's rules without saying so.
+  Built 2026-10-21: planned contents in the guidance (section 12), main cases in search
+  questions (section 5.6) and in new goals (section 10.2).
+- Round 5, flight: the analysis recorded no assumption, where all four earlier flight
+  analyses recorded "a flight connects GuangZhou and Montreal". One run; to watch.
+- `plain()` leaves a comma where it removes an ID at the end of a parenthesis
+  ("(snapshots are from mismatched dates,)").
+- Round 5, GPU comparison: a necessary request goal that has never been served can lose
+  every remaining slot to settle goals, which are level 1 whatever their disagreement is
+  about (here the ship date of a next-generation product and a consumer card's margin
+  over its predecessor). A reserve of one researcher per unserved necessary request
+  goal would have served Q3 and Q4 in round 3. This extends the reserve question above
+  (D-E). Built 2026-10-21: the first-try reserve (section 7). The completing-goal case
+  of round 3 above stays open.
+- Round 5, GPU comparison: the client's "one-page summary" reached the writer as a
+  report-format directive, but the guidance also asked it to present both sides of
+  seven disagreements, and the report ran to about 1,470 words. Built 2026-10-21: the
+  length rule (section 12).
+- A settle goal takes over the claim of the goal it settles even when the disagreement
+  is about a detail (flight times, airline lists), so its verdict badge refers to that
+  claim. If such a goal ended without a verdict, the claim would count as unsettled
+  overall. No run so far. Built 2026-10-21: the conflict checker names the claim a
+  disagreement decides (section 9).
+- Round 6: a goal waits until every goal it depends on is settled (section 6.2), and a
+  defining goal often needs two rounds or a settle goal first. In the GPU rerun the
+  performance, cost and use goals all waited for the flagship goal, which waited two
+  rounds for the settle goal on whether AMD has a flagship; with 6 researchers, cost
+  and use were never served, and the first-try reserve could only keep one researcher
+  for them. In the flight rerun the steps question got its only try in the last round.
+  Candidate fix, for review: a goal is ready once each goal it depends on has findings,
+  and the first try of a necessary request goal ranks before retries and before settle
+  goals that decide no claim.
 
 The live explorations:
 - **X1:** the request schema through `withStructuredOutput` on both models: Luna
@@ -696,10 +984,11 @@ No `.env` exists on this machine yet. Copy `.env.example` to `.env` and fill
 |---|---|---|
 | D-A | Client route and `needs_clarification` in rev 2 | **Decided 2026-10-19: removed** (section 5.2) |
 | D-B | Concept-level or word-level ROM | Concept-level plus the never-drop check; word level as an ablation only if needed |
-| D-C | Goals per brief | Up to 3, grouped by object |
-| D-D | Conflict checker as its own call before the round analyst, or merged | Its own call, so H1 is attributable and ablatable |
-| D-E | Thresholds | Defaults in section 13, tuned on development tasks only |
-| D-F | Init mode: one call with a code retry (`fixed`), or the analyst as a tool-using agent (`agent`) | Lab 3 evidence (Haiku, 81 runs, 2026-10-19): equal final acceptance and case checks; agent costs 1.7–2× the input tokens. Default `fixed`; keep `agent` as an option (both are in `src/strategies/ebd/request/`) |
+| D-C | Goals per brief | Up to 3, grouped by object. **Built as the default** (`questionsPerBrief: 3`), pending confirmation |
+| D-D | Conflict checker as its own call before the round analyst, or merged | Its own call, so H1 is attributable and ablatable. **Built this way**, pending confirmation |
+| D-E | Thresholds | Defaults in section 13, tuned on development tasks only. **Built as the defaults**, pending confirmation. The first-try reserve (section 7) was approved on 2026-10-21 |
+| D-F | Init mode: one call with a code retry (`fixed`), or the analyst as a tool-using agent (`agent`) | Lab 3 evidence (Haiku, 81 runs, 2026-10-19): equal final acceptance and case checks; agent costs 1.7–2× the input tokens. Default `fixed`; keep `agent` as an option (both are in `src/strategies/ebd/request/`). **Built this way**, pending confirmation |
+| L-7 | When the premise check runs, if the analysis made it wait for definition goals | Round 1, so a refuted premise can make other goals moot early. **Built as the default** (`premiseFirst: true`), pending confirmation |
 | D2 (team) | The fixed EBD question has no planted conflicts, so H1 needs the planted-conflict tasks | Keep the four tasks for development; add the nine proposal tasks as explicit questions in experiment specs |
 | D5 (team) | Calendar | If W1 is the week of 2026-09-21, scope freezes the week of 2026-10-26 |
 
