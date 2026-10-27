@@ -238,6 +238,7 @@ export function runRoundAnalyst(model: BaseChatModel, state: EbdState, round: nu
     tool: { name: ANALYST_TOOL, description: "Submit the judgments of the served goals and any new goals the evidence calls for.", schema: RoundApiSchema },
     check: (args) => checkRound(args, state, served),
     fallback: (last) => repairRound(last, state, served),
+    lists: { ids: ["evidence", "prompted_by", "leads_to"], texts: ["missing", "source_hints"] },
   });
 }
 
@@ -373,6 +374,33 @@ function similar(a: string, b: string): boolean {
   return shared / Math.max(1, new Set([...x, ...y]).size) >= 0.7;
 }
 
+const STOPWORDS = new Set(
+  "a an and are as at be by can did do does for from has have how in is it its of on or that the their these this those to was were what when where which who why will with".split(" "),
+);
+
+/** Content words, singular: "dates" and "date" count as one. */
+function contentWords(text: string): Set<string> {
+  return new Set((text.toLowerCase().match(/[a-z0-9]+/g) ?? []).filter((w) => !STOPWORDS.has(w)).map((w) => (w.length > 3 ? w.replace(/s$/, "") : w)));
+}
+
+/** Shared content words over all content words of both texts. */
+function overlap(a: string, b: string): number {
+  const x = contentWords(a);
+  const y = contentWords(b);
+  return [...x].filter((w) => y.has(w)).length / Math.max(1, new Set([...x, ...y]).size);
+}
+
+/** The share of `part`'s content words that `text` contains. */
+function coverage(part: string, text: string): number {
+  const x = contentWords(part);
+  const y = contentWords(text);
+  return [...x].filter((w) => y.has(w)).length / Math.max(1, x.size);
+}
+
+function sameSet(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every((x) => b.includes(x));
+}
+
 /**
  * Accept or reject each proposal (section 10.2). Accepted proposals become goals
  * served from the next round. Returns the new goals; rejections are logged.
@@ -394,6 +422,10 @@ export function acceptProposals(state: EbdState, reply: RoundReply | null, round
     const prompts = p.prompted_by.filter((id) => byEvidence.has(id) || state.conflicts.some((c) => c.id === id));
     if (!prompts.length) return reject("cites no existing evidence or conflict");
     if (!objects.has(p.object_id)) return reject(`unknown object ${p.object_id}`);
+    // The request analysis never searches the product (the answer the client asks for); new goals follow
+    // the same rule (Lab 4 flight run: two goals attached to "How").
+    const product = state.analysis.rom.objects.find((o) => o.id === p.object_id && o.role === "product");
+    if (product) return reject(`attaches to "${product.text}", the answer the client asks for, not a thing to research`);
     const leads = p.leads_to.filter((id) => necessary.has(id) || synthesis.has(id));
     if (!leads.length) return reject("leads to no necessary goal or synthesis question");
     if (!p.text.trim() || p.text.length > 400 || !p.done_when.trim() || p.done_when.length > 400) return reject("text or done_when empty or longer than 400 characters");
@@ -401,6 +433,8 @@ export function acceptProposals(state: EbdState, reply: RoundReply | null, round
     const depth = 1 + Math.max(0, ...parents.map((id) => state.goals.find((g) => g.id === id)?.depth ?? 0));
     if (depth > options.maxDepth) return reject(`depth ${depth} exceeds maxDepth ${options.maxDepth}`);
     let objectIds = [p.object_id];
+    // A new object enters the object model only with the goal it came with.
+    let found: EbdState["objectsFound"][number] | null = null;
     if (p.new_object.trim()) {
       const quoteFound = prompts.some((id) => byEvidence.get(id)?.kind === "finding" && byEvidence.get(id)!.text.toLowerCase().includes(p.new_object_quote.trim().toLowerCase()));
       if (!p.new_object_quote.trim() || !quoteFound) return reject("a new object needs a quote copied exactly from a prompting finding");
@@ -410,12 +444,21 @@ export function acceptProposals(state: EbdState, reply: RoundReply | null, round
         const used = [...state.analysis.rom.objects, ...state.objectsFound].map((o) => Number(o.id.slice(1)) || 0);
         const id = `O${Math.max(0, ...used) + 1}`;
         const evidenceId = prompts.find((x) => byEvidence.get(x)?.text.toLowerCase().includes(p.new_object_quote.trim().toLowerCase()))!;
-        state.objectsFound.push({ id, text: p.new_object.trim(), parent: p.object_id, quote: p.new_object_quote.trim(), evidence: evidenceId, round });
+        found = { id, text: p.new_object.trim(), parent: p.object_id, quote: p.new_object_quote.trim(), evidence: evidenceId, round };
         objectIds = [id, p.object_id];
       }
     }
-    const duplicate = state.goals.find((g) => (g.template === p.template && g.objectIds[0] === objectIds[0]) || similar(g.text, p.text));
+    // Same type and objects is a duplicate only if the questions also overlap: "commissioning dates",
+    // "development history" and "total cost" of one telescope are three questions (Lab 4, 2026-10-26).
+    const duplicate = state.goals.find(
+      (g) => similar(g.text, p.text) || (g.template === p.template && sameSet(g.objectIds, objectIds) && overlap(g.text, p.text) >= 0.45),
+    );
     if (duplicate) return reject(`duplicates ${duplicate.id}`);
+    // A part a retried goal still misses is already asked for by its retry.
+    for (const g of state.goals.filter((x) => x.servedRounds.includes(round) && !isSettled(x))) {
+      const part = g.missing.find((m) => coverage(m, p.text) >= 0.75);
+      if (part) return reject(`re-asks "${part.slice(0, 80)}", which ${g.id} still looks for in its retry`);
+    }
     if (createdThisRound(state, round) >= options.maxNewGoalsPerRound) return reject(`quota of ${options.maxNewGoalsPerRound} new goals per round reached (settle goals included)`);
     if (state.goals.filter((g) => !isSettled(g)).length >= options.maxOpenGoals) return reject(`${options.maxOpenGoals} open goals reached`);
     const kind = byEvidence.get(prompts[0]!)?.kind;
@@ -433,6 +476,7 @@ export function acceptProposals(state: EbdState, reply: RoundReply | null, round
       leadsTo: leads,
       createdRound: round + 1,
     });
+    if (found) state.objectsFound.push(found);
     state.goals.push(goal);
     added.push(goal);
     log(`${goal.id} created (${goal.kind}, ${goal.need}, depth ${depth}) from ${prompts.join(", ")}: ${goal.text.slice(0, 160)}`);

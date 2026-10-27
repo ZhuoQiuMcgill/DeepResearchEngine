@@ -51,6 +51,9 @@ export function hostsIn(text: string): string[] {
   return [...new Set(urlsIn(text).map(hostOf).filter((h): h is string => Boolean(h)))];
 }
 
+/** A line that is only bold text, optionally ending with a colon: "**After launch**", "**Prices:**". */
+const SUBHEADING = /^(\*\*|__)[^*_]+?:?(\*\*|__):?$/;
+
 type RawSection = { title: string; start: number; end: number; takeaway: string[]; items: { kind: "finding" | "gap"; lines: number[] }[] };
 
 /** Sections with raw line ranges and their finding and gap bullets. */
@@ -89,6 +92,12 @@ export function splitNotes(notes: string): RawSection[] {
       return;
     }
     if (part === "inferences") return;
+    // A bold line on its own is a sub-heading inside the list (Lab 4, 2026-10-26: Haiku grouped
+    // its findings under "**Launch (who, when, vehicle)**"). It is neither a finding nor part of one.
+    if (SUBHEADING.test(line)) {
+      item = undefined;
+      return;
+    }
     const kind = part === "findings" ? "finding" : "gap";
     if (/^([-*+]|\d+[.)])\s+/.test(line)) {
       item = { kind, lines: [i] };

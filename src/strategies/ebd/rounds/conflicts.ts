@@ -175,6 +175,7 @@ export function runConflictChecker(model: BaseChatModel, state: EbdState, fresh:
     tool: { name: CONFLICT_TOOL, description: "Submit the conflicts found in this round's evidence (an empty list if none).", schema: ConflictsApiSchema },
     check: (args) => checkConflicts(args, state, fresh),
     fallback: (last, errors) => validConflicts(last, errors),
+    lists: { ids: ["side_a", "side_b"], texts: [] },
   });
 }
 

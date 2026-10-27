@@ -208,29 +208,65 @@ export function requeueOrExhaust(goal: Goal, round: number, maxAttempts: number,
 }
 
 /** Verdict on each assumption, from the settled goals' verdicts on it: contradicted wins over unsettled, which wins over supported. */
-export function assumptionVerdicts(state: Pick<EbdState, "analysis" | "goals">): Record<string, Verdict | null> {
+export function assumptionVerdicts(state: Pick<EbdState, "analysis" | "goals">, settledOnly = true): Record<string, Verdict | null> {
   const out: Record<string, Verdict | null> = {};
   for (const x of state.analysis.assumptions) {
-    const verdicts = state.goals.filter((g) => isSettled(g) && g.verdicts[x.id]).map((g) => g.verdicts[x.id]!);
+    const verdicts = state.goals.filter((g) => (!settledOnly || isSettled(g)) && g.verdicts[x.id]).map((g) => g.verdicts[x.id]!);
     out[x.id] = verdicts.includes("contradicted") ? "contradicted" : verdicts.includes("unsettled") ? "unsettled" : verdicts.includes("supported") ? "supported" : null;
   }
   return out;
 }
 
 /**
- * Section 10.2: when an assumption is contradicted, the goals that rely on it
- * (that depend, directly or through other goals, on a goal verifying it) become moot.
+ * The objects a contradicted assumption refutes: those of its relations, except the relations
+ * and objects that a supported assumption shares. "NASA launched the telescope in 2018" is
+ * contradicted while "NASA launched the telescope" holds, so only "2018" is refuted (Lab 4,
+ * 2026-10-26). Settled goals' verdicts by default; briefs also use the latest judgments.
+ */
+export function refutedObjects(state: Pick<EbdState, "analysis" | "goals">, verdicts = assumptionVerdicts(state)): Set<string> {
+  const a = state.analysis;
+  const relations = new Map(a.rom.relations.map((r) => [r.id, r]));
+  const ends = (ids: string[]) => ids.flatMap((id) => (relations.has(id) ? [relations.get(id)!.from, relations.get(id)!.to] : []));
+  const held = new Set(a.assumptions.filter((x) => verdicts[x.id] === "supported").flatMap((x) => x.relation_ids));
+  const heldObjects = new Set(ends([...held]));
+  const refuted = new Set<string>();
+  for (const x of a.assumptions.filter((y) => verdicts[y.id] === "contradicted")) {
+    for (const o of ends(x.relation_ids.filter((id) => !held.has(id)))) if (!heldObjects.has(o)) refuted.add(o);
+  }
+  return refuted;
+}
+
+/**
+ * Section 10.2: when an assumption is contradicted, the goals that rely on it become moot.
+ * A goal relies on it when it depends, directly or through other goals, on a goal whose
+ * claims were all contradicted. When that goal also checked a claim that held, only the
+ * dependents about a refuted object rely on it: in the Lab 4 telescope run, the question
+ * about NASA's purposes was dropped although only the year was wrong.
  */
 export function mootDependents(state: EbdState, round: number): string[] {
-  const contradicted = new Set(Object.entries(assumptionVerdicts(state)).filter(([, v]) => v === "contradicted").map(([id]) => id));
+  const verdicts = assumptionVerdicts(state);
+  const contradicted = new Set(Object.entries(verdicts).filter(([, v]) => v === "contradicted").map(([id]) => id));
   if (!contradicted.size) return [];
-  const roots = new Set(state.goals.filter((g) => g.verifies.some((v) => contradicted.has(v))).map((g) => g.id));
+  const checking = state.goals.filter((g) => g.verifies.some((v) => contradicted.has(v)));
+  const whole = new Set(checking.filter((g) => g.verifies.every((v) => contradicted.has(v))).map((g) => g.id));
+  const partly = new Set(checking.filter((g) => !whole.has(g.id)).map((g) => g.id));
+  const refuted = refutedObjects(state);
+  const roots = new Set([...whole, ...partly]);
   const relies = new Set<string>();
+  // Goals that depend, directly or through other goals, on a goal that checked a claim that held too.
+  const below = new Set<string>();
   for (let changed = true; changed; ) {
     changed = false;
     for (const g of state.goals) {
-      if (roots.has(g.id) || relies.has(g.id)) continue;
-      if (g.dependsOn.some((d) => roots.has(d) || relies.has(d))) {
+      if (roots.has(g.id)) continue;
+      if (!below.has(g.id) && g.dependsOn.some((d) => partly.has(d) || below.has(d))) {
+        below.add(g.id);
+        changed = true;
+      }
+      if (relies.has(g.id)) continue;
+      const onWhole = g.dependsOn.some((d) => whole.has(d) || relies.has(d));
+      const onRefuted = below.has(g.id) && g.objectIds.some((o) => refuted.has(o));
+      if (onWhole || onRefuted) {
         relies.add(g.id);
         changed = true;
       }

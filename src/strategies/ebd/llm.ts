@@ -34,7 +34,11 @@ export type StructuredCall<T> = {
   fallback: (last: T, errors: Issue[]) => T | null;
   /** Replies checked in total, the first included. */
   maxAttempts?: number;
+  /** List fields that may come back as one string: ID lists are split, text lists wrapped. */
+  lists?: ListFields;
 };
+
+export type ListFields = { ids: readonly string[]; texts: readonly string[] };
 
 export type CallOutcome<T> = { value: T | null; accepted: boolean; fallback: boolean; calls: CallRecord[] };
 
@@ -90,6 +94,32 @@ export function decodeNested(args: unknown, path = ""): { value: unknown; decode
   return { value: args, decoded: [] };
 }
 
+/**
+ * Turn a string sent where the schema expects a list into a list: `"side_b": "A2"` becomes
+ * `["A2"]`, and an ID list sent as "r1-b1-f6, r1-b1-f8" is split. In the Lab 4 telescope run
+ * (2026-10-26) one such string cost a retry that resent the whole input. Returns the paths changed.
+ */
+export function wrapLists(args: unknown, fields: ListFields, path = ""): { value: unknown; wrapped: string[] } {
+  if (Array.isArray(args)) {
+    const items = args.map((x, i) => wrapLists(x, fields, `${path}[${i}]`));
+    return { value: items.map((x) => x.value), wrapped: items.flatMap((x) => x.wrapped) };
+  }
+  if (!args || typeof args !== "object") return { value: args, wrapped: [] };
+  const wrapped: string[] = [];
+  const entries = Object.entries(args).map(([k, v]) => {
+    const at = path ? `${path}.${k}` : k;
+    if (typeof v === "string" && (fields.ids.includes(k) || fields.texts.includes(k))) {
+      wrapped.push(at);
+      const list = fields.ids.includes(k) ? v.split(/[\s,;]+/) : [v];
+      return [k, list.map((s) => s.trim()).filter(Boolean)] as const;
+    }
+    const inner = wrapLists(v, fields, at);
+    wrapped.push(...inner.wrapped);
+    return [k, inner.value] as const;
+  });
+  return { value: Object.fromEntries(entries), wrapped };
+}
+
 export async function structuredCall<T>(call: StructuredCall<T>): Promise<CallOutcome<T>> {
   const maxAttempts = call.maxAttempts ?? 2;
   const model = call.model.bindTools!([submitTool(call.tool.name, call.tool.description, call.tool.schema)]) as Runnable<BaseMessage[], AIMessage>;
@@ -103,11 +133,15 @@ export async function structuredCall<T>(call: StructuredCall<T>): Promise<CallOu
     const ai = await model.invoke([system, new HumanMessage(message)]);
     const toolCall = (ai.tool_calls ?? []).find((c) => c.name === call.tool.name);
     const decoded = toolCall ? decodeNested(toolCall.args) : { value: null, decoded: [] };
+    const listed = toolCall && call.lists ? wrapLists(decoded.value, call.lists) : { value: decoded.value, wrapped: [] };
     const checked: Checked<T> = toolCall
-      ? call.check(decoded.value)
+      ? call.check(listed.value)
       : { value: null, errors: [{ code: "no_reply", path: "", message: `the reply did not call ${call.tool.name}` }], warnings: [] };
     if (decoded.decoded.length) {
       checked.warnings = [...checked.warnings, { code: "decoded_json_text", path: decoded.decoded.join(", "), message: "a value sent as JSON text was decoded" }];
+    }
+    if (listed.wrapped.length) {
+      checked.warnings = [...checked.warnings, { code: "wrapped_list", path: listed.wrapped.join(", "), message: "a single value sent where a list is expected was made a list" }];
     }
     if (checked.value !== null) last = checked;
     const accepted = checked.value !== null && checked.errors.length === 0;

@@ -6,7 +6,7 @@
  */
 import type { ResearchBriefInput } from "../../core/index.js";
 import type { Analysis } from "./request/index.js";
-import { longestWaiting, type Ranked } from "./goals.js";
+import { assumptionVerdicts, longestWaiting, refutedObjects, type Ranked } from "./goals.js";
 import type { EbdOptions } from "./options.js";
 import type { Conflict, EbdState, Goal } from "./state.js";
 
@@ -106,10 +106,18 @@ export function selectWithReserve(
   }
 }
 
-function frameConstraints(a: Analysis): string[] {
+/**
+ * Time frame and place. A field taken from the request's words is left out when all those words
+ * name a refuted date: in the Lab 4 telescope run the false launch year ("in 2018") still reached
+ * later briefs as "Time frame (explicit): 2018". A frame built from other words too is kept.
+ */
+function frameConstraints(a: Analysis, refutedDates: string[]): string[] {
   const out: string[] = [];
   for (const [label, f] of [["Time frame", a.frame.time_frame], ["Place", a.frame.place]] as const) {
-    if (f.value !== null && f.basis !== "unknown") out.push(`${label} (${f.basis}): ${f.value}`);
+    if (f.value === null || f.basis === "unknown") continue;
+    const refuted = f.basis === "explicit" && f.evidence.length > 0 && f.evidence.every((q) => refutedDates.some((t) => q.toLowerCase().includes(t.toLowerCase())));
+    if (refuted) continue;
+    out.push(`${label} (${f.basis}): ${f.value}`);
   }
   return out;
 }
@@ -177,7 +185,9 @@ function claimOf(goal: Goal, a: Analysis): string {
 export function briefFor(group: Group, position: number, state: EbdState): ResearchBriefInput {
   const a = state.analysis;
   const goals = group.goals;
-  const objectText = a.rom.objects.find((o) => o.id === group.key)?.text ?? group.key;
+  const objectText = [...a.rom.objects, ...state.objectsFound].find((o) => o.id === group.key)?.text ?? group.key;
+  // Only refuted dates: a contradicted claim also refutes its context objects (a place, a product) only loosely.
+  const refutedDates = [...refutedObjects(state, assumptionVerdicts(state, false))].flatMap((id) => a.rom.objects.find((o) => o.id === id && o.kind === "number_or_date")?.text ?? []);
   const level = Math.min(...goals.map((g) => g.level));
   const hints = [...new Set(goals.flatMap((g) => g.sourceHints))];
   if (goals.some((g) => g.kind === "verify" || g.kind === "settle")) hints.push(PRIMARY_SOURCES);
@@ -197,7 +207,7 @@ export function briefFor(group: Group, position: number, state: EbdState): Resea
   return {
     objective: goals.length === 1 ? goals[0]!.text : `Answer the key questions below about "${objectText}".`,
     keyQuestions: goals.map((g) => `[${g.id}] ${g.text}${g.missing.length && g.attempts > 0 ? ` Still missing: ${g.missing.join("; ")}` : ""}`),
-    constraints: [...frameConstraints(a), ...readingConstraints(a, goals.flatMap((g) => g.objectIds)), ...defaultConstraints(a), ...directiveLines(a, "researchers")],
+    constraints: [...frameConstraints(a, refutedDates), ...readingConstraints(a, goals.flatMap((g) => g.objectIds)), ...defaultConstraints(a), ...directiveLines(a, "researchers")],
     sourceHints: [...new Set(hints)].slice(0, 5),
     instructions: instructions.join("\n"),
     priority: 100 - 10 * level - position,

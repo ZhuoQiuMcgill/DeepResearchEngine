@@ -3,12 +3,12 @@ import { AIMessage, type BaseMessage } from "@langchain/core/messages";
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import type { ResearchBrief, ResearchResult } from "../../core/index.js";
 import { briefFor, directiveLines, pack, selectGroups, selectWithReserve } from "./briefs.js";
-import { assumptionVerdicts, goalsFromAnalysis, isComplete, isReady, isSaturated, levelOf, mootDependents, rankReady, treeMetrics } from "./goals.js";
-import { decodeNested, structuredCall } from "./llm.js";
+import { assumptionVerdicts, goalsFromAnalysis, isComplete, isReady, isSaturated, levelOf, mootDependents, rankReady, refutedObjects, treeMetrics } from "./goals.js";
+import { decodeNested, structuredCall, wrapLists } from "./llm.js";
 import { parseOptions } from "./options.js";
 import type { Analysis } from "./request/index.js";
 import { EXAMPLES } from "./request/examples.js";
-import { analystMessage, applyJudgments, checkRound, repairRound, RoundApiSchema } from "./rounds/analyst.js";
+import { acceptProposals, analystMessage, applyJudgments, checkRound, repairRound, RoundApiSchema } from "./rounds/analyst.js";
 import { applyConflicts, checkConflicts, settleBlock, settlePriority } from "./rounds/conflicts.js";
 import { headingGoals, hostsIn, readResult, splitNotes } from "./rounds/evidence.js";
 import type { EbdState } from "./state.js";
@@ -89,6 +89,14 @@ describe("reading results (section 8)", () => {
     expect(readResult(result("Q1", "", "r1-b1", "failed")).evidence).toEqual([]);
     expect(hostsIn("see [x](https://a.org/p_(x)) and https://b.org/q")).toEqual(["a.org", "b.org"]);
   });
+
+  it("treats a bold line inside a findings list as a sub-heading, not a finding or part of one (Lab 4)", () => {
+    const notes = ["## [Q1] q", "### Cited Findings", "**Launch (who, when)**", "- Launched in 2021 — [NASA](https://nasa.gov/a)", "**After launch:**", "- Arrived at L2 — [ESA](https://esa.int/b)", "  in January 2022."].join("\n");
+    const { evidence } = readResult(result("Q1", notes));
+    expect(evidence.map((e) => e.id)).toEqual(["r1-b1-f1", "r1-b1-f2"]);
+    expect(evidence.some((e) => /Launch \(who|After launch/.test(e.text))).toBe(false);
+    expect(evidence[1]!.text).toContain("in January 2022");
+  });
 });
 
 describe("goals and order (section 6)", () => {
@@ -115,6 +123,25 @@ describe("goals and order (section 6)", () => {
     const q4 = s.goals.find((g) => g.id === "Q4")!;
     Object.assign(q4, { status: "answered", verdicts: { A3: "contradicted" }, settledRound: 1 });
     expect(mootDependents(s, 1)).toEqual(["Q6"]);
+  });
+
+  it("when the checking goal's other claim held, makes moot only the dependents about what was refuted (Lab 4)", () => {
+    const setUp = () => {
+      const s = stateOf();
+      const goal = (id: string) => s.goals.find((g) => g.id === id)!;
+      // Q1 checks "the US imposed tariffs in 2025" (A1, held) and "new-car prices in Canada rose" (A2, contradicted).
+      Object.assign(goal("Q1"), { verifies: ["A1", "A2"], status: "answered", verdicts: { A1: "supported", A2: "contradicted" }, settledRound: 1 });
+      goal("Q2").verifies = [];
+      return { s, goal };
+    };
+    const first = setUp();
+    expect([...refutedObjects(first.s)].sort()).toEqual(["O5", "O6", "O7"]);
+    // Q4 is about "raise", which A2 refutes; Q6 depends on Q4.
+    expect(mootDependents(first.s, 1)).toEqual(["Q4", "Q6"]);
+    // About the tariffs only, Q4 stays; Q6, about "raise" and below Q1 through Q4, is still moot.
+    const second = setUp();
+    second.goal("Q4").objectIds = ["O4"];
+    expect(mootDependents(second.s, 1)).toEqual(["Q6"]);
   });
 
   it("is complete only when necessary goals, assumptions and conflicts are all settled", () => {
@@ -196,6 +223,24 @@ describe("briefs (section 7)", () => {
     expect(brief.constraints).toContain('Client source preference: Use only official statistics. (client\'s words: "official statistics only")');
     expect(brief.constraints!.some((c) => c.startsWith("Client report format"))).toBe(false);
     expect(directiveLines(s.analysis, "writer")).toEqual(['Client report format: A one-page briefing. (client\'s words: "one-page")', "Client scope limit: Leave out used cars."]);
+  });
+
+  it("leaves out a time frame taken only from a refuted date (Lab 4)", () => {
+    const s = stateOf();
+    const q1 = s.goals.find((g) => g.id === "Q1")!;
+    q1.verdicts = { A1: "contradicted" };
+    const timeFrame = () => briefFor({ key: "O4", goals: [q1] }, 0, s).constraints!.some((c) => c.startsWith("Time frame"));
+    // E1's time frame also rests on "in 2026", so it stays.
+    expect(timeFrame()).toBe(true);
+    s.analysis.frame.time_frame = { value: "2025, the year named in the request.", basis: "explicit", evidence: ["in 2025"] };
+    expect(timeFrame()).toBe(false);
+  });
+
+  it("names an object found in the notes in a multi-goal objective", () => {
+    const s = stateOf();
+    s.objectsFound.push({ id: "O14", text: "Bank of Canada outlook", parent: "O9", quote: "q", evidence: "r1-b1-f1", round: 1 });
+    const brief = briefFor({ key: "O14", goals: s.goals.slice(0, 2) }, 0, s);
+    expect(brief.objective).toBe('Answer the key questions below about "Bank of Canada outlook".');
   });
 });
 
@@ -380,6 +425,32 @@ describe("conflict checker and round analyst checks (sections 9 and 10)", () => 
   });
 });
 
+describe("new goals (section 10.2)", () => {
+  it("rejects goals on the question word and re-asks of a retried goal, but not different questions of one type (Lab 4)", () => {
+    const s = stateOf();
+    const { record, evidence } = readResult(result("Q2,Q1", NOTES));
+    s.results.push(record);
+    s.evidence.push(...evidence);
+    Object.assign(s.goals.find((g) => g.id === "Q1")!, { attempts: 1, servedRounds: [1], missing: ["the tariff rates on car parts"] });
+    const base = { template: "T3" as const, need: "completing" as const, object_id: "O4", new_object: "", new_object_quote: "", prompted_by: ["r1-b1-f3"], leads_to: ["Q1"], done_when: "d", source_hints: [] };
+    const proposals = [
+      { ...base, text: "How were the 2025 US tariffs on Canadian goods enforced at the border, and by which agency?" },
+      { ...base, text: "Which legal authority did the US use for the 2025 tariffs, and was it challenged in court?" },
+      { ...base, text: "What were the tariff rates on car parts?" },
+      { ...base, object_id: "O1", text: "Why did the tariffs raise prices?" },
+    ];
+    const log: string[] = [];
+    const added = acceptProposals(s, { judgments: [], proposals }, 1, options, (l) => log.push(l));
+    expect(added.map((g) => g.text)).toEqual([proposals[0]!.text, proposals[1]!.text]);
+    expect(log.join("\n")).toContain('re-asks "the tariff rates on car parts", which Q1 still looks for');
+    expect(log.join("\n")).toContain('attaches to "Why"');
+    // A near-identical question of the same type and object is still a duplicate.
+    const again = acceptProposals(s, { judgments: [], proposals: [{ ...base, text: "Which legal authority did the US use for its 2025 tariffs, and was that challenged in court?" }] }, 1, options, (l) => log.push(l));
+    expect(again).toEqual([]);
+    expect(log.at(-1)).toContain(`duplicates ${added[1]!.id}`);
+  });
+});
+
 describe("structured-call helper (section 5.3)", () => {
   function scripted(replies: unknown[]) {
     const seen: BaseMessage[][] = [];
@@ -408,6 +479,22 @@ describe("structured-call helper (section 5.3)", () => {
       value: { judgments: [{ goal_id: "Q1" }], note: "[Q1] text", n: 2 },
       decoded: ["judgments"],
     });
+  });
+
+  it("makes a single value a list where the schema expects one, splitting ID lists (Lab 4)", () => {
+    expect(wrapLists({ conflicts: [{ side_a: "r1-b1-f6, r1-b1-f8", side_b: "A2", statement: "s" }] }, { ids: ["side_a", "side_b"], texts: [] })).toEqual({
+      value: { conflicts: [{ side_a: ["r1-b1-f6", "r1-b1-f8"], side_b: ["A2"], statement: "s" }] },
+      wrapped: ["conflicts[0].side_a", "conflicts[0].side_b"],
+    });
+    expect(wrapLists({ missing: "the dates, by month" }, { ids: [], texts: ["missing"] }).value).toEqual({ missing: ["the dates, by month"] });
+  });
+
+  it("accepts a reply with a wrapped list without a retry", async () => {
+    const { model } = scripted([{ judgments: [{ goal_id: "Q1", parts: [], outcome: "partial", verdicts: [], missing: "x" }], proposals: [] }]);
+    const out = await structuredCall({ model, role: "round_analyst", system: "s", message: "m", tool: { name: "submit_round_analysis", description: "d", schema: RoundApiSchema }, check, fallback: (v) => v, lists: { ids: [], texts: ["missing"] } });
+    expect(out).toMatchObject({ accepted: true, value: { judgments: [{ missing: ["x"] }] } });
+    expect(out.calls).toHaveLength(1);
+    expect(out.calls[0]!.warnings.map((w) => w.code)).toEqual(["wrapped_list"]);
   });
 
   it("retries once with the previous reply and the numbered errors", async () => {
