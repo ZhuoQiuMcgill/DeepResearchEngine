@@ -34,6 +34,28 @@ checking runs step by step is in `viewer/`.
   planned contents of each section (section 12); questions cover the main cases of
   what the client did not state (sections 5.6 and 10.2); a settle goal checks a claim
   only when the disagreement decides it (section 9).
+- 2026-10-26: review of the Lab 4 runs (section 16.1).
+  - The round analyst gives a verdict on each claim a goal checks (section 10.1).
+  - An `evidence_vs_assumption` conflict gets no settle goal when a goal served in the
+    same round already checks its claim on the same findings (section 9).
+  - A settle goal is completing unless it decides a claim or a goal waits for it
+    (sections 9 and 11).
+  - The writer gets a short note when the request is out of scope (section 12).
+- 2026-10-26, evening: code fixes from the review of the reruns. None changes a prompt.
+  - Moot rule (section 10.2): when the goal that checked a contradicted claim also
+    confirmed another claim, only the dependents about a refuted object are moot. In
+    the telescope run the goal on NASA's purposes was dropped although only the year
+    was wrong, so the report never said why NASA launched the telescope.
+  - A time frame taken only from a refuted date is left out of later briefs (section 7).
+  - A bold line inside a findings list is a sub-heading, not a finding or part of one
+    (section 8).
+  - New goals (section 10.2): a goal on the question word (a product object) is
+    rejected; same template and objects is a duplicate only when the texts also
+    overlap; a goal that asks for a part a retried goal still misses is rejected; a
+    new object enters the ROM only with an accepted goal.
+  - A single value sent where a list is expected is made a list instead of costing a
+    retry (section 5.3).
+  - A multi-goal brief names an object found in the notes by its text (section 7).
 
 ## 1. Summary
 
@@ -548,9 +570,9 @@ The code rule decided in design v0.1 stays: a conflict without valid evidence on
 sides is not recorded.
 
 Effects:
-- **`source_vs_source` and `evidence_vs_assumption`:** create one level-1 settle goal
-  with `settle_by` in its instructions. If that fails, the conflict becomes
-  `disputed`.
+- **`source_vs_source` and `evidence_vs_assumption`:** create one settle goal with
+  `settle_by` in its instructions, at level 1 while it is necessary (2026-10-26, below).
+  If that fails, the conflict becomes `disputed`.
 - **`off_target`:** the finding lines are excluded from the material and named in
   the guidance.
 - **`time_dependent`:** settled at once with the condition ("as of …").
@@ -585,6 +607,34 @@ Built 2026-10-20 (`rounds/conflicts.ts`):
   which the goal had asked for. The prompt now says so, and section 12 keeps any
   off_target line that a goal cites as its own evidence.
 
+Built 2026-10-26, after the Lab 4 runs (section 16.1):
+- **No settle goal for a claim already being checked.** An `evidence_vs_assumption`
+  conflict gets no settle goal when a goal served in the same round verifies its claim
+  and the contradicting findings are that goal's own (`checkedThisRound`).
+  - The round analyst judges that goal next, on those findings, so a settle goal would
+    only repeat the check.
+  - The conflict is settled, with that goal as its `settleGoal`, and the guidance points
+    the writer to that goal's notes.
+  - In the false-premise test (JWST "launched in 2018"), such a settle goal took 2 of 5
+    researchers and a third round to re-prove a launch year that the verification goal
+    had already contradicted.
+  - A disagreement between sources keeps its settle goal, which gives the researcher
+    both sides and what would settle them.
+- **Settle goals are necessary only when they matter (`settlePriority`).** A settle goal
+  is necessary while its disagreement decides a claim, or while a goal waits for it
+  because the round analyst judged that goal "conflicting". Otherwise it is completing
+  (level 4).
+  - Code sets this after every round's judgments, so a later "conflicting" judgment
+    makes the settle goal necessary again.
+  - A completing settle goal is served after the necessary goals, from spare
+    researchers, and its open conflict does not block "complete" (section 11). If it is
+    never served, the writer presents both sides.
+  - In the flight test, a settle goal on the fastest itinerary's duration decided no
+    claim, and the analyst had judged its goal partial, not conflicting. It still ranked
+    at level 1, took shares of two researchers and ended not found. Meanwhile the only
+    necessary new goal, on transit visas, got a third of one researcher in the last
+    round.
+
 ## 10. Round analysis: done, new goals, moot
 
 ### 10.1 When a goal is done
@@ -611,7 +661,7 @@ Built 2026-10-20 (`rounds/analyst.ts`):
 - Code rejects:
   - a judgment whose met part cites no finding, or cites a gap line;
   - "answered" with unmet parts;
-  - a goal with a claim but no verdict.
+  - an answered goal with a claim that has no verdict (per claim since 2026-10-26).
 - The floor applies to:
   - verification and settle goals;
   - `G3` (when) goals;
@@ -626,6 +676,15 @@ Built 2026-10-20 (`rounds/analyst.ts`):
   step 5 of section 5.3 says: evidence IDs that are not findings are dropped, a met
   part left without evidence becomes unmet, and the outcome is recomputed from the
   parts, never above what the analyst said.
+
+Built 2026-10-26 (Lab 4 review): one verdict per claim.
+- A goal that checks several claims gets a verdict on each (`verdicts`, by assumption
+  ID). The claims of one goal are independent: one can hold while another does not.
+- The fallback keeps the verdicts on the goal's own claims; an answered goal left
+  without a verdict on one of its claims becomes partial.
+- Before, one verdict per goal was copied to every claim it checked. So in the
+  false-premise test "NASA launched the James Webb Space Telescope" was marked
+  contradicted together with "in 2018".
 
 ### 10.2 New goals
 
@@ -645,8 +704,13 @@ Code accepts a proposal only if all of these hold:
 - it cites the finding, gap or conflict that prompted it;
 - it attaches to an existing object, and leads to a necessary goal or a synthesis
   question;
-- it does not duplicate an open or settled goal (same objects and template, or
-  near-identical text);
+- it does not duplicate an open or settled goal: near-identical text, or the same
+  template and objects with overlapping text (built 2026-10-26: the same template and
+  object alone rejected three different questions about one telescope);
+- it does not ask for a part that a goal re-served this round still misses, since the
+  retry asks for it (built 2026-10-26);
+- it does not attach to a product object, the answer the client asks for (built
+  2026-10-26, as in the request analysis);
 - it is at most `maxDepth` derivation steps from the request (default 2);
 - the quota allows it: `maxNewGoalsPerRound` (4) and `maxOpenGoals` (20).
 
@@ -667,7 +731,11 @@ the case the request implies. In the flight rerun of 2026-10-20 the transit goal
 written for a Chinese passport holder because the first researcher had assumed one.
 
 Updates also remove work, as EBD's recomposition does (Zeng 2015, p. 14): when an
-assumption is contradicted, the goals that rely on it become moot. Restating changes
+assumption is contradicted, the goals that rely on it become moot. Built 2026-10-26: a
+goal relies on it when it depends on a goal whose claims were all contradicted. When that
+goal also confirmed a claim, only the dependents about a refuted object are moot: an
+object of the contradicted claim's relations that no supported claim shares ("2018" in
+"NASA launched the telescope in 2018", when "NASA launched the telescope" holds). Restating changes
 goals only; the question itself stays verbatim (AGENTS.md).
 
 STORM (Shao et al. 2024) found that questions drawn from retrieved answers reach far
@@ -693,6 +761,8 @@ Code checks after every round; the first rule that applies ends the research.
   - an assumption whose verification goals all became moot does not block
     "complete";
   - when no goal is ready, the run stops as saturated.
+- Built 2026-10-26: an open conflict whose settle goal is completing (section 9) does
+  not block "complete".
 
 Basis:
 - **Complete** is EBD's own end. It runs "until no more undesired conflicts exist"
@@ -745,8 +815,9 @@ matching the writer's 3–5 sections.
 - **Assumption verdicts.** A contradicted premise: "The question presupposes that
   <claim>. The evidence contradicts this; say so plainly early in the report." An
   unsettled one is stated as not established. This is the H1 lever.
-- **Conflicts.** For a settled conflict, which side holds and why. For a disputed one,
-  both sides with their sources.
+- **Conflicts.** For a settled conflict, which side holds and why, from the notes of
+  its settle goal or of the goal that checked its claim in the same round (section 9).
+  For a disputed one, both sides with their sources.
 - **Off-target referents.** Exclude them, or distinguish the terms only where needed.
 - **Defaults and evidence status.** The frame defaults, only where they change the
   answer, as the baseline does with its interpretation. Exhausted necessary goals, as
@@ -756,6 +827,11 @@ matching the writer's 3–5 sections.
   findings). Internal evidence and conflict IDs are removed from the guidance.
 - **No meta text.** Never open the report with the guidance, and never mention the
   research process.
+- **Out of scope (built 2026-10-26).** The guidance is only: "Nothing was researched:
+  <reason>. Write only the title and one paragraph of at most four sentences: why the
+  question cannot be answered yet and what the client could provide. Add no other
+  sections and no general advice." In the Lab 4 missing-file test, the writer's usual
+  3–5 sections turned empty material into 334 words of generic advice.
 
 ## 13. Options and ablations
 
@@ -875,6 +951,8 @@ fixed the problems the previous one showed. The problems are classified as in
 | 5 | Lab 3 P3 (GPU comparison) | 6 | budget | 0.55 | Rerun of the 2026-10-19 v0 run, question unchanged. The "use" goal (Q3) never reached a researcher and the cost goal (Q4) got one in the last round: both waited for the flagship goal, which needed two rounds, and settle goals took 3 of the 4 slots left. The report is about 1,470 words although the client asked for one page. The writer cited one URL the research did not report (warning) |
 | 6 | flight | 6 | budget | 0.53 | After the four changes of 2026-10-21: the steps question asks for the main entry cases (visa, eTA, visa-exempt) and the report states both kinds of traveller; the nonstop-flights dispute checked no claim. The steps question waited for the flights question and got its only try in round 3. One new goal (never served) was still written for a Chinese passport holder |
 | 6 | Lab 3 P3 (GPU comparison) | 6 | budget | 0.48 | After the four changes: the length rule applied (11 one-sentence disagreements, no disagreement section in the outline, 848 words against 1,470); the dispute over whether AMD has a flagship checked A1, the benchmark disputes checked no claim; the reserve held back two settle goals in round 3. Cost and use still never reached a researcher: all three first tries waited for the flagship goal, which waited two rounds for its settle goal |
+| 7 | Lab 4 T1–T4 (agent init; `local/lab4/rerun-1026`) | 3, 6, 6, 4 | complete, complete, budget, complete | 0.31–0.59 | After the four changes of 2026-10-26 morning: per-claim verdicts (A1 supported, A2 contradicted on the telescope), no settle goal for an already-checked claim, completing settle goals. Problems: the purposes goal was moot although only the year was wrong (the report never said why NASA launched it; the baseline's did); sub-headings indexed as findings; the duplicate rule rejected 8 of 20 proposals; disagreement sections took 25–40% of the reports |
+| 8 | Lab 4 T1–T4 (agent init; `local/lab4/rerun-1027a`) | 2, 6, 6, 6 | complete, complete, budget, budget | 0.08–0.61 | After the evening code fixes: the purposes goal was kept and researched, and the report opens with the correct date and NASA's science purpose; new-goal checks rejected a goal on "How" and two re-asks. Open: when a settle goal ends disputed, the goal waiting for it stays "conflicting" (flight run), so its claim gets no final verdict; disagreement sections still 19–29% (writer change awaiting review) |
 
 | Problem | Kind | Fix |
 |---|---|---|
@@ -920,7 +998,7 @@ Open after these rounds:
 - Round 5, flight: the analysis recorded no assumption, where all four earlier flight
   analyses recorded "a flight connects GuangZhou and Montreal". One run; to watch.
 - `plain()` leaves a comma where it removes an ID at the end of a parenthesis
-  ("(snapshots are from mismatched dates,)").
+  ("(snapshots are from mismatched dates,)"). Fixed 2026-10-26.
 - Round 5, GPU comparison: a necessary request goal that has never been served can lose
   every remaining slot to settle goals, which are level 1 whatever their disagreement is
   about (here the ship date of a next-generation product and a consumer card's margin
