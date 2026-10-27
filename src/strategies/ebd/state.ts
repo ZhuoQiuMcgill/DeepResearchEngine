@@ -51,8 +51,12 @@ export type Goal = {
   partsTotal: number;
   /** Evidence line IDs that support the judgment. */
   evidence: string[];
-  /** For verification goals: what the evidence says about the claim. */
-  verdict: Verdict | null;
+  /**
+   * For goals that check claims: what the evidence says about each claim, by assumption ID.
+   * One goal can check several claims that differ (Lab 4, 2026-10-26: "NASA launched the
+   * telescope" holds while "in 2018" does not), so each claim has its own verdict.
+   */
+  verdicts: Record<string, Verdict>;
   /** For settle goals: the conflict they settle. */
   settles: string | null;
   /** For a conflicting goal: the settle goal it waits for. */
@@ -119,6 +123,7 @@ export type Conflict = {
   status: "open" | "settled" | "disputed";
   createdRound: number;
   settledRound: number | null;
+  /** The goal whose notes settle it: its settle goal, or the goal that already checked its claim in the same round (section 9). */
   settleGoal: string | null;
 };
 

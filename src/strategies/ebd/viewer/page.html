@@ -229,9 +229,20 @@ function goalStatusBadge(s) {
   return badge(s, kind);
 }
 
-function verdictBadge(v) {
+function verdictBadge(v, claim) {
   if (!v) return "";
-  return badge(v, v === "supported" ? "ok" : v === "contradicted" ? "bad" : "warn");
+  return badge(claim ? `${claim} ${v}` : v, v === "supported" ? "ok" : v === "contradicted" ? "bad" : "warn");
+}
+
+// A goal's verdict on each claim it checks. Runs before 2026-10-26 kept one verdict per goal for all its claims.
+function goalVerdicts(g) {
+  if (g.verdicts) return g.verdicts;
+  return g.verdict ? Object.fromEntries(g.verifies.map((c) => [c, g.verdict])) : {};
+}
+
+function claimBadges(g) {
+  if (!g.verdicts && g.verdict && !g.verifies.length) return verdictBadge(g.verdict);
+  return Object.entries(goalVerdicts(g)).map(([c, v]) => verdictBadge(v, c)).join(" ");
 }
 
 function goalTree(state) {
@@ -253,7 +264,7 @@ function goalTree(state) {
     children.set(p, [...(children.get(p) || []), g]);
   }
   const node = (g) => `<li>${goalStatusBadge(g.status)} <strong>${esc(g.id)}</strong> ${esc(g.text)}
-    <span class="muted">· ${esc(g.kind)} L${g.level} · ${esc(g.need)} · round ${g.createdRound}${g.settledRound ? `→${g.settledRound}` : ""}${g.origin.type !== "request" ? ` · from ${g.origin.type === "conflict" ? esc(g.origin.conflict) : g.origin.evidence.map(esc).join(", ")}` : ""}</span> ${verdictBadge(g.verdict)}
+    <span class="muted">· ${esc(g.kind)} L${g.level} · ${esc(g.need)} · round ${g.createdRound}${g.settledRound ? `→${g.settledRound}` : ""}${g.origin.type !== "request" ? ` · from ${g.origin.type === "conflict" ? esc(g.origin.conflict) : g.origin.evidence.map(esc).join(", ")}` : ""}</span> ${claimBadges(g)}
     ${children.get(g.id) ? `<ul>${children.get(g.id).map(node).join("")}</ul>` : ""}</li>`;
   return `<div class="tree"><ul>${(children.get(null) || []).map(node).join("")}</ul></div>`;
 }
@@ -271,12 +282,12 @@ function overview() {
   const s = finalState;
   const a = s.analysis;
   const verdicts = Object.fromEntries(a.assumptions.map((x) => {
-    const vs = s.goals.filter((g) => g.verifies.includes(x.id) && g.verdict && ["answered", "exhausted", "disputed", "moot"].includes(g.status)).map((g) => g.verdict);
+    const vs = s.goals.filter((g) => goalVerdicts(g)[x.id] && ["answered", "exhausted", "disputed", "moot"].includes(g.status)).map((g) => goalVerdicts(g)[x.id]);
     return [x.id, vs.includes("contradicted") ? "contradicted" : vs.includes("unsettled") ? "unsettled" : vs.includes("supported") ? "supported" : null];
   }));
   html += `<section class="card"><h2>Stop</h2>${s.stop ? `<p>${badge(s.stop.kind, s.stop.kind === "complete" ? "ok" : s.stop.kind === "budget" ? "warn" : "info")} after round ${s.stop.round}: ${esc(s.stop.reason)}</p>` : `<p class="muted">No stop recorded by the strategy.</p>`}
     <p class="muted">Platform stop reason: ${esc(summary.stopReason || "")}</p></section>`;
-  html += `<section class="card"><h2>Assumptions in the question</h2>${a.assumptions.length ? `<div class="tablewrap"><table><thead><tr><th>ID</th><th>Claim</th><th>Verdict</th><th>Checked by</th></tr></thead><tbody>${a.assumptions.map((x) => `<tr><td>${esc(x.id)}</td><td>${esc(x.claim)}</td><td>${verdictBadge(verdicts[x.id]) || badge("no verdict", "plain")}</td><td>${s.goals.filter((g) => g.verifies.includes(x.id)).map((g) => `${esc(g.id)} ${goalStatusBadge(g.status)} ${verdictBadge(g.verdict)}`).join("<br>")}</td></tr>`).join("")}</tbody></table></div>` : `<p class="muted">The request analysis found no assumptions.</p>`}</section>`;
+  html += `<section class="card"><h2>Assumptions in the question</h2>${a.assumptions.length ? `<div class="tablewrap"><table><thead><tr><th>ID</th><th>Claim</th><th>Verdict</th><th>Checked by</th></tr></thead><tbody>${a.assumptions.map((x) => `<tr><td>${esc(x.id)}</td><td>${esc(x.claim)}</td><td>${verdictBadge(verdicts[x.id]) || badge("no verdict", "plain")}</td><td>${s.goals.filter((g) => g.verifies.includes(x.id)).map((g) => `${esc(g.id)} ${goalStatusBadge(g.status)} ${verdictBadge(goalVerdicts(g)[x.id])}`).join("<br>")}</td></tr>`).join("")}</tbody></table></div>` : `<p class="muted">The request analysis found no assumptions.</p>`}</section>`;
   html += `<section class="card"><h2>Goal tree</h2><p class="muted">Request goals at the top level; goals grown from a finding or a conflict sit under the goal whose evidence prompted them.</p>${goalTree(s)}
     <h3>Tree metrics</h3><div class="grid2">${["byOrigin", "byDepth", "byStatus", "createdPerRound", "settledPerRound"].map((k) => `<div><div class="muted">${esc(k)}</div>${Object.entries(s.tree[k] || {}).map(([x, n]) => `${badge(`${x}: ${n}`)}`).join(" ")}</div>`).join("")}</div></section>`;
   html += conflictTable(s, "Conflicts");
@@ -312,7 +323,7 @@ function goalTable(state, prev) {
       <td>${esc(g.text)}<div class="muted">done when: ${esc(g.doneWhen)}</div>${g.missing.length ? `<div class="muted">missing: ${esc(g.missing.join("; "))}</div>` : ""}${g.retryNote ? `<div class="muted">next attempt: ${esc(g.retryNote)}</div>` : ""}</td>
       <td>${esc(g.kind)}<div class="muted">L${g.level} · ${esc(g.need)}</div></td>
       <td>${esc(g.dependsOn.join(", "))}${g.waitingOn ? `<div class="muted">waits on ${esc(g.waitingOn)}</div>` : ""}</td>
-      <td>${status} ${verdictBadge(g.verdict)}</td>
+      <td>${status} ${claimBadges(g)}</td>
       <td class="num">${g.partsTotal ? `${g.partsMet}/${g.partsTotal}` : ""}</td>
       <td class="num">${g.attempts}${g.servedRounds.length ? `<div class="muted">r${g.servedRounds.join(",")}</div>` : ""}</td>
       <td>${evList(g.evidence)}</td>

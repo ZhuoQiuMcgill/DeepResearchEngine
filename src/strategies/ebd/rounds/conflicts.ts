@@ -7,7 +7,7 @@
 import { z } from "zod";
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import type { Issue } from "../request/index.js";
-import { newGoal, nextGoalId } from "../goals.js";
+import { levelOf, newGoal, nextGoalId } from "../goals.js";
 import type { EbdOptions } from "../options.js";
 import { structuredCall, zodIssues, type CallOutcome, type Checked } from "../llm.js";
 import { CONFLICT_TYPES, isSettled, type Conflict, type EbdState, type EvidenceLine, type Goal } from "../state.js";
@@ -202,21 +202,40 @@ export function settleBlock(state: EbdState, about: Goal | undefined, options: S
   return null;
 }
 
-/**
- * Record the conflicts and apply their effects (section 9). Mutates the state.
- * - source_vs_source and evidence_vs_assumption: one level-1 settle goal, within
- *   the limits of settleBlock; otherwise the conflict is disputed at once, and the
- *   writer presents both sides. The settle goal checks a claim only when the
- *   disagreement decides it (`claimOf`);
- * - off_target, evidence_vs_frame and time_dependent: settled at once; the
- *   writer input handles them (section 12).
- */
 /** The assumption a conflict decides: side_b of evidence_vs_assumption, the checker's claim for source_vs_source, otherwise none. */
 export function claimOf(c: ConflictItem): string | null {
   if (c.type === "evidence_vs_assumption") return c.side_b[0] ?? null;
   return c.type === "source_vs_source" && c.claim ? c.claim : null;
 }
 
+/**
+ * The goal that already checks the claim of an evidence_vs_assumption conflict on the same
+ * findings in this round, or null (Lab 4 review, 2026-10-26). The round analyst judges that goal
+ * next, on those findings, so a settle goal would only repeat the check: in the false-premise
+ * test one spent 2 of 5 researchers re-proving a launch year the verification goal had already
+ * contradicted. A disagreement between sources keeps its settle goal, which hands the researcher
+ * both sides and what would settle them.
+ */
+export function checkedThisRound(state: EbdState, c: ConflictItem, round: number): Goal | null {
+  const claim = c.type === "evidence_vs_assumption" ? claimOf(c) : null;
+  if (!claim) return null;
+  const served = new Set(state.results.filter((r) => r.round === round && r.status === "ok").flatMap((r) => r.goalIds));
+  const onLines = new Set(c.side_a.flatMap((id) => state.evidence.find((e) => e.id === id)?.goalIds ?? []));
+  const checking = state.goals.filter((g) => served.has(g.id) && !isSettled(g) && g.verifies.includes(claim) && onLines.has(g.id));
+  return checking.find((g) => g.id === c.about) ?? checking[0] ?? null;
+}
+
+/**
+ * Record the conflicts and apply their effects (section 9). Mutates the state.
+ * - source_vs_source and evidence_vs_assumption: one settle goal, within the
+ *   limits of settleBlock; otherwise the conflict is disputed at once, and the
+ *   writer presents both sides. The settle goal checks a claim only when the
+ *   disagreement decides it (`claimOf`). An evidence_vs_assumption conflict whose
+ *   claim a goal served this round already checks on the same findings gets no
+ *   settle goal: it is settled, and that goal's notes show which account holds;
+ * - off_target, evidence_vs_frame and time_dependent: settled at once; the
+ *   writer input handles them (section 12).
+ */
 export function applyConflicts(state: EbdState, reply: ConflictsReply, round: number, options: SettleLimits, log: (line: string) => void): Conflict[] {
   const added: Conflict[] = [];
   for (const c of reply.conflicts) {
@@ -239,6 +258,14 @@ export function applyConflicts(state: EbdState, reply: ConflictsReply, round: nu
     state.conflicts.push(conflict);
     added.push(conflict);
     if (c.type === "source_vs_source" || c.type === "evidence_vs_assumption") {
+      const checking = checkedThisRound(state, c, round);
+      if (checking) {
+        conflict.status = "settled";
+        conflict.settledRound = round;
+        conflict.settleGoal = checking.id;
+        log(`${conflict.id} (${c.type}) about ${c.about}: no settle goal, because ${checking.id} checks ${conflict.claim} on these findings and is judged in this round`);
+        continue;
+      }
       const about = state.goals.find((g) => g.id === c.about);
       const blocked = settleBlock(state, about, options, round);
       if (blocked || !about) {
@@ -272,4 +299,26 @@ export function applyConflicts(state: EbdState, reply: ConflictsReply, round: nu
     }
   }
   return added;
+}
+
+/**
+ * Which settle goals are necessary (Lab 4 review, 2026-10-26), run after the judgments of
+ * every round. A settle goal is necessary while its disagreement decides a claim, or while a
+ * goal waits for it because the round analyst judged that goal conflicting. Otherwise the
+ * disagreement is about a detail the goal can be answered without (in the flight test, the
+ * fastest itinerary's duration), so the settle goal is completing: it is served after the
+ * necessary goals, from spare researchers, and its conflict does not hold up the stop. If it is
+ * never served, the writer presents both sides.
+ */
+export function settlePriority(state: EbdState, log: (line: string) => void): void {
+  for (const goal of state.goals) {
+    if (!goal.settles || isSettled(goal)) continue;
+    const decides = state.conflicts.find((c) => c.id === goal.settles)?.claim ?? null;
+    const awaited = state.goals.some((w) => w.waitingOn === goal.id && w.status === "conflicting");
+    const need = decides || awaited ? "necessary" : "completing";
+    if (goal.need === need) continue;
+    goal.need = need;
+    goal.level = levelOf(goal.kind, need);
+    log(`${goal.id}: ${need}, because ${decides ? `it decides ${decides}` : awaited ? "a goal waits for it" : "it decides no claim and no goal waits for it"}`);
+  }
 }

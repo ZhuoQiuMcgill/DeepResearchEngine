@@ -125,12 +125,15 @@ export function buildOutline(state: EbdState): string[] {
 /**
  * Text for the writer without internal IDs, which mean nothing outside the strategy:
  * evidence IDs ("r2-b1-f3") anywhere, and conflict IDs ("C4") inside a parenthesis
- * of IDs only, so that names such as "C300" survive.
+ * of IDs only, so that names such as "C300" survive. A comma left before a closing
+ * parenthesis, or a space after an opening one, goes with the ID.
  */
 export function plain(text: string): string {
   return text
     .replace(/\s*\((?:\s*(?:r\d+-b\d+-[fg]\d+|C\d+)\s*[,;]?)+\)/g, "")
     .replace(/\s*\br\d+-b\d+-[fg]\d+\b,?/g, "")
+    .replace(/\s*[,;]\s*\)/g, ")")
+    .replace(/\(\s+/g, "(")
     .replace(/\s{2,}/g, " ")
     .trim();
 }
@@ -142,7 +145,11 @@ function hostsOf(state: EbdState, ids: string[]): string {
 
 export function buildGuidance(state: EbdState): string {
   const a = state.analysis;
-  if (a.status === "out_of_scope") return `Nothing was researched: ${a.status_reason ?? "the request is out of scope"}`;
+  if (a.status === "out_of_scope") {
+    // Lab 4 review (2026-10-26): with no material, the writer's usual 3–5 sections became generic advice.
+    const reason = a.status_reason?.trim() || "the request is out of scope";
+    return `Nothing was researched: ${reason}${/[.!?]$/.test(reason) ? "" : "."} Write only the title and one paragraph of at most four sentences: why the question cannot be answered yet and what the client could provide. Add no other sections and no general advice.`;
+  }
   const out: string[] = [];
 
   const directives = directiveLines(a, "writer");

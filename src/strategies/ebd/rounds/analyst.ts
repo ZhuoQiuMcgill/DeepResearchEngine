@@ -1,8 +1,8 @@
 /**
  * The round analyst (design section 10): one model call per round. For each
  * goal served in the round it splits done_when into parts and marks each part
- * met or not, citing evidence line IDs; for verification goals it gives the
- * verdict on the claim. It may propose new goals, each citing the line that
+ * met or not, citing evidence line IDs; for goals that check claims it gives a
+ * verdict on each claim. It may propose new goals, each citing the line that
  * prompted it. Code applies the evidence floor, settles goals, accepts or
  * rejects proposals and makes goals moot. The model never decides whether the
  * research as a whole is sufficient (section 11).
@@ -10,7 +10,7 @@
 import { z } from "zod";
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import { GUIDELINES, TEMPLATES, type Issue } from "../request/index.js";
-import { assumptionVerdicts, judgesClaim, newGoal, nextGoalId, requeueOrExhaust, settle, synthesisQuestions } from "../goals.js";
+import { assumptionVerdicts, newGoal, nextGoalId, requeueOrExhaust, settle, synthesisQuestions } from "../goals.js";
 import { structuredCall, zodIssues, type CallOutcome, type Checked } from "../llm.js";
 import type { EbdOptions } from "../options.js";
 import { isSettled, type EbdState, type EvidenceLine, type Goal } from "../state.js";
@@ -30,7 +30,9 @@ export const RoundApiSchema = z.object({
         }),
       ),
       outcome: z.enum(["answered", "partial", "not_found", "conflicting"]),
-      verdict: z.enum(["supported", "contradicted", "unsettled", "not_applicable"]).describe("Verification goals: what the evidence says about the claim. Other goals: not_applicable"),
+      verdicts: z
+        .array(z.object({ claim_id: z.string(), verdict: z.enum(["supported", "contradicted", "unsettled"]) }))
+        .describe("One entry per claim to verify (A…); empty for a goal without claims"),
       missing: z.array(z.string()).describe("The parts still missing; empty when answered"),
     }),
   ),
@@ -66,7 +68,7 @@ Evidence lines have IDs: r2-b1-f3 is a cited finding, r2-b1-g1 is a gap the rese
   - partial: some parts are met, some are not;
   - not_found: no part is met;
   - conflicting: the findings for this goal disagree and a conflict about it is listed under <conflicts>.
-- verdict, for a goal with a "Claim to verify": supported if findings state the claim holds; contradicted if findings state it does not hold; unsettled if the findings do not decide it or disagree. For a goal without a claim: not_applicable.
+- verdicts, for a goal with "Claims to verify": one entry per claim, each judged on its own: supported if findings state the claim holds; contradicted if findings state it does not hold; unsettled if the findings do not decide it or disagree. The claims of one goal are independent: one can hold while another does not. For a goal without claims: an empty list.
 - missing: the unmet parts in a few words each, so the next researcher knows what to look for. Empty when answered.
 
 ## Proposals: new goals (EBD: each answer is analysed as new objects and relations, which raise new questions)
@@ -97,7 +99,7 @@ export function analystMessage(state: EbdState, round: number, served: Goal[], o
       `### ${g.id} (kind ${g.kind}, ${g.need}, attempt ${g.attempts})`,
       `Question: ${g.text}`,
       `done_when: ${g.doneWhen}`,
-      ...(claims(g).length ? [`Claim to verify: ${claims(g).join(" | ")}`] : []),
+      ...(claims(g).length ? ["Claims to verify:", ...claims(g).map((c) => `- ${c}`)] : []),
       ...(g.settles ? [`Settles conflict ${g.settles}`] : []),
       ...(g.missing.length ? [`Missing after the last attempt: ${g.missing.join("; ")}`] : []),
       "Evidence:",
@@ -119,11 +121,22 @@ export function analystMessage(state: EbdState, round: number, served: Goal[], o
   ].join("\n");
 }
 
+/**
+ * Missing lists count as empty: a reply without proposals proposes nothing (live test round 4:
+ * Haiku left the field out), and a judgment without verdicts judges no claim, which the checks
+ * reject only for an answered goal that has claims.
+ */
+function withDefaults(args: unknown): unknown {
+  if (!args || typeof args !== "object" || Array.isArray(args)) return args;
+  const out: Record<string, unknown> = { ...args };
+  if (!("proposals" in out)) out.proposals = [];
+  if (Array.isArray(out.judgments)) out.judgments = out.judgments.map((j) => (j && typeof j === "object" && !Array.isArray(j) && !("verdicts" in j) ? { ...j, verdicts: [] } : j));
+  return out;
+}
+
 /** Code checks (section 10.1). Judgment errors are retried; proposals are accepted or rejected later by acceptProposals. */
 export function checkRound(args: unknown, state: EbdState, served: Goal[]): Checked<RoundReply> {
-  // A reply without proposals proposes nothing (live test round 4: Haiku left the field out).
-  const input = args && typeof args === "object" && !Array.isArray(args) && !("proposals" in args) ? { ...args, proposals: [] } : args;
-  const parsed = RoundApiSchema.safeParse(input);
+  const parsed = RoundApiSchema.safeParse(withDefaults(args));
   if (!parsed.success) return { value: null, errors: zodIssues(parsed.error), warnings: [] };
   const reply = parsed.data;
   const errors: Issue[] = [];
@@ -155,8 +168,15 @@ export function checkRound(args: unknown, state: EbdState, served: Goal[]): Chec
     if (j.outcome === "partial" && (met === 0 || met === j.parts.length)) err("partial needs some parts met and some not");
     if (j.outcome === "not_found" && met > 0) err("not_found cannot have met parts");
     if (j.outcome !== "answered" && !j.missing.length) err("missing: name the unmet parts");
-    if (judgesClaim(goal) && j.outcome === "answered" && j.verdict === "not_applicable") err("a goal with a claim to verify needs a verdict: supported, contradicted or unsettled");
-    if (!judgesClaim(goal) && j.verdict !== "not_applicable") err(`${goal.id} has no claim to verify; its verdict is not_applicable`);
+    const judgedClaims = new Set<string>();
+    j.verdicts.forEach((v, k) => {
+      if (!goal.verifies.includes(v.claim_id)) {
+        err(`verdicts[${k}]: ${v.claim_id} is not a claim of ${goal.id}; ${goal.verifies.length ? `its claims are ${goal.verifies.join(", ")}` : "it has no claims, so verdicts is []"}`);
+      } else if (judgedClaims.has(v.claim_id)) err(`verdicts[${k}]: ${v.claim_id} is judged twice`);
+      judgedClaims.add(v.claim_id);
+    });
+    const unjudged = goal.verifies.filter((c) => !judgedClaims.has(c));
+    if (j.outcome === "answered" && unjudged.length) err(`a goal with claims to verify needs a verdict on each (supported, contradicted or unsettled); missing: ${unjudged.join(", ")}`);
   });
   for (const id of servedIds) if (!judged.has(id)) errors.push({ code: "judgment_missing", path: "judgments", message: `no judgment for ${id}` });
 
@@ -194,14 +214,17 @@ export function repairRound(reply: RoundReply, state: EbdState, served: Goal[]):
     const computed = met === parts.length ? "answered" : met > 0 ? "partial" : "not_found";
     let outcome: RoundReply["judgments"][number]["outcome"] =
       j.outcome === "conflicting" ? "conflicting" : OUTCOME_RANK[computed] < OUTCOME_RANK[j.outcome] ? computed : j.outcome;
-    const verdict = judgesClaim(goal) ? j.verdict : "not_applicable";
+    // Keep the first verdict on each of the goal's own claims.
+    const verdicts: RoundReply["judgments"][number]["verdicts"] = [];
+    for (const v of j.verdicts) if (goal.verifies.includes(v.claim_id) && !verdicts.some((x) => x.claim_id === v.claim_id)) verdicts.push(v);
     const missing = [...j.missing];
-    if (judgesClaim(goal) && outcome === "answered" && verdict === "not_applicable") {
+    const unjudged = goal.verifies.filter((c) => !verdicts.some((v) => v.claim_id === c));
+    if (outcome === "answered" && unjudged.length) {
       outcome = "partial";
-      missing.push("a verdict on the claim");
+      missing.push(`a verdict on ${unjudged.join(", ")}`);
     }
     if (outcome !== "answered" && !missing.length) missing.push(...parts.filter((p) => !p.met).map((p) => p.part));
-    judgments.push({ goal_id: j.goal_id, parts, outcome, verdict, missing });
+    judgments.push({ goal_id: j.goal_id, parts, outcome, verdicts, missing });
   }
   return { judgments, proposals: reply.proposals };
 }
@@ -265,7 +288,7 @@ export function applyJudgments(state: EbdState, reply: RoundReply | null, served
         log(`${goal.id}: answered, but the evidence floor needs ${options.evidenceFloor} independent hosts and found ${hosts} → partial`);
       }
     }
-    if (judgesClaim(goal) && j.verdict !== "not_applicable") goal.verdict = j.verdict;
+    for (const v of j.verdicts) if (goal.verifies.includes(v.claim_id)) goal.verdicts[v.claim_id] = v.verdict;
 
     if (outcome === "conflicting") {
       const conflict = state.conflicts.find((c) => c.status === "open" && c.settleGoal && (c.about === goal.id || goal.objectIds.includes(c.about)));
@@ -293,7 +316,7 @@ export function applyJudgments(state: EbdState, reply: RoundReply | null, served
       settle(goal, "answered", round);
       goal.retryNote = null;
       out.settled.push(goal.id);
-      log(`${goal.id}: answered (${goal.partsMet}/${goal.partsTotal} parts${goal.verdict ? `, claim ${goal.verdict}` : ""})`);
+      log(`${goal.id}: answered (${goal.partsMet}/${goal.partsTotal} parts${claimText(goal)})`);
       resolveSettle(state, goal, "answered", round, log);
       continue;
     }
@@ -322,12 +345,21 @@ function resolveSettle(state: EbdState, goal: Goal, how: "answered" | "exhausted
   for (const waiting of state.goals.filter((g) => g.waitingOn === goal.id && g.status === "conflicting")) {
     settle(waiting, how === "answered" ? "answered" : "disputed", round);
     waiting.evidence = [...new Set([...waiting.evidence, ...goal.evidence])];
-    // The settled account replaces the verdict given while the sources disagreed, but only when the
-    // disagreement decided the claim; a settle goal about a detail leaves the verdict as judged (section 9).
-    if (judgesClaim(waiting) && judgesClaim(goal)) waiting.verdict = how === "answered" ? (goal.verdict ?? waiting.verdict) : "unsettled";
+    // The settled account replaces the verdict given while the sources disagreed, but only on the claim
+    // the disagreement decided; a settle goal about a detail leaves the verdicts as judged (section 9).
+    for (const claim of goal.verifies.filter((c) => waiting.verifies.includes(c))) {
+      const verdict = how === "answered" ? (goal.verdicts[claim] ?? waiting.verdicts[claim]) : "unsettled";
+      if (verdict) waiting.verdicts[claim] = verdict;
+    }
     log(`${waiting.id}: ${waiting.status} after ${goal.id}`);
   }
   log(`${conflict.id}: ${conflict.status}`);
+}
+
+/** ", claims A1 supported, A2 contradicted" for the log; empty for a goal without verdicts. */
+function claimText(goal: Goal): string {
+  const entries = Object.entries(goal.verdicts);
+  return entries.length ? `, ${entries.length > 1 ? "claims" : "claim"} ${entries.map(([c, v]) => `${c} ${v}`).join(", ")}` : "";
 }
 
 function words(text: string): Set<string> {

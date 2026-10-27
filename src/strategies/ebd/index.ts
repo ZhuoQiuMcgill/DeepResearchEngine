@@ -4,7 +4,7 @@
  * - init: request analysis (fixed or agent mode) → goal table → rank → pack briefs.
  * - observe, once per round: map notes to goals and index evidence lines →
  *   conflict checker → round analyst → settle goals, accept new goals, make goals
- *   moot → stop rules → rank → pack briefs.
+ *   moot, set which settle goals are necessary → stop rules → rank → pack briefs.
  * - finalize: material grouped by goal, outline from the synthesis questions,
  *   guidance with the assumption verdicts and conflicts.
  *
@@ -28,7 +28,7 @@ import { goalsFromAnalysis, isComplete, isSaturated, mootDependents, rankReady, 
 import { parseOptions, type EbdOptions } from "./options.js";
 import { requestMessage, runAgentAnalysis, runFixedAnalysis, type AnalysisOutcome } from "./request/index.js";
 import { acceptProposals, applyJudgments, runRoundAnalyst, servedGoals, verdictSummary } from "./rounds/analyst.js";
-import { applyConflicts, runConflictChecker } from "./rounds/conflicts.js";
+import { applyConflicts, runConflictChecker, settlePriority } from "./rounds/conflicts.js";
 import { readResult } from "./rounds/evidence.js";
 import { isSettled, type CallRecord, type EbdState, type EvidenceLine, type StepLog } from "./state.js";
 import { buildSynthesis } from "./synthesis.js";
@@ -186,6 +186,8 @@ class EbdStrategy implements ResearchStrategy<EbdState> {
     }
     const mooted = mootDependents(state, round);
     if (mooted.length) log(`moot after a contradicted premise: ${mooted.join(", ")}`);
+    // Section 9: a settle goal stays necessary only while it decides a claim or a goal waits for it.
+    settlePriority(state, log);
     const newSettle = state.goals.filter((g) => !before.has(g.id) && g.settles && g.need === "necessary").length;
     progress.newNecessary += newSettle;
     state.tree = treeMetrics(state.goals);

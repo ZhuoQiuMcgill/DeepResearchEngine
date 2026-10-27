@@ -94,18 +94,18 @@ function round(message: string) {
   const goals = block(message, "served_goals").split(/\n(?=### )/);
   const judgments = goals.map((g) => {
     const id = /^### (Q\d+)/.exec(g)![1]!;
-    const claim = g.includes("Claim to verify");
+    const claims = [...g.matchAll(/^- (A\d+): /gm)].map((m) => m[1]!);
     const findings = lines(g).filter((l) => l.id.includes("-f"));
     const latest = findings.filter((l) => l.id.startsWith(`r${Math.max(...findings.map((f) => Number(/^r(\d+)/.exec(f.id)![1])))}-`));
     if (id === "Q2" && g.includes("attempt 1")) {
-      return { goal_id: id, parts: [{ part: "the index change", met: false, evidence: [] }], outcome: "conflicting", verdict: "unsettled", missing: ["which index value is right"] };
+      return { goal_id: id, parts: [{ part: "the index change", met: false, evidence: [] }], outcome: "conflicting", verdicts: claims.map((c) => ({ claim_id: c, verdict: "unsettled" })), missing: ["which index value is right"] };
     }
     if (id === "Q3" && g.includes("attempt 1")) {
       return {
         goal_id: id,
         parts: [{ part: "who publishes forecasts", met: true, evidence: [findings[0]!.id] }, { part: "the full list", met: false, evidence: [] }],
         outcome: "partial",
-        verdict: "not_applicable",
+        verdicts: [],
         missing: ["the full list of forecasters"],
       };
     }
@@ -114,7 +114,7 @@ function round(message: string) {
       goal_id: id,
       parts: [{ part: "the answer", met: true, evidence: latest.map((l) => l.id) }],
       outcome: "answered",
-      verdict: claim ? (contradicted ? "contradicted" : "supported") : "not_applicable",
+      verdicts: claims.map((c) => ({ claim_id: c, verdict: contradicted ? "contradicted" : "supported" })),
       missing: [],
     };
   });
@@ -181,10 +181,10 @@ describe("ebd strategy through the skeleton", () => {
     const c1 = state.conflicts.find((c) => c.type === "source_vs_source")!;
     expect(c1).toMatchObject({ status: "settled", about: "Q2" });
     expect(goal(c1.settleGoal!)).toMatchObject({ kind: "settle", level: 1, status: "answered", verifies: ["A2"] });
-    expect(goal("Q2")).toMatchObject({ status: "answered", verdict: "supported" });
+    expect(goal("Q2")).toMatchObject({ status: "answered", verdicts: { A2: "supported" } });
 
     // The contradicted premise (A3, checked by Q4) made Q6, which relies on it, moot.
-    expect(goal("Q4")).toMatchObject({ status: "answered", verdict: "contradicted" });
+    expect(goal("Q4")).toMatchObject({ status: "answered", verdicts: { A3: "contradicted" } });
     expect(goal("Q6").status).toBe("moot");
 
     // The new term grew one goal at depth 1, served before Q5, which waited for Q2 and Q3.

@@ -18,10 +18,10 @@ export function kindOf(template: string, verifies: string[], settles: string | n
 
 const KIND_ORDER: Record<GoalKind, number> = { settle: 0, verify: 0, define: 1, relate: 2 };
 
-/** Level 1–4 (section 6.3). Completing goals are level 4 whatever their kind. */
+/** Level 1–4 (section 6.3). Completing goals are level 4 whatever their kind, settle goals included (section 9). */
 export function levelOf(kind: GoalKind, need: Goal["need"]): number {
-  if (kind === "settle") return 1;
   if (need === "completing") return 4;
+  if (kind === "settle") return 1;
   return 1 + KIND_ORDER[kind];
 }
 
@@ -69,7 +69,7 @@ export function newGoal(fields: {
     partsMet: 0,
     partsTotal: 0,
     evidence: [],
-    verdict: null,
+    verdicts: {},
     settles: fields.settles ?? null,
     waitingOn: null,
     retryNote: null,
@@ -186,11 +186,6 @@ export function longestWaiting(ranked: Ranked[]): Goal | null {
 
 // ---------------------------------------------------------------- settling
 
-/** Does the goal judge a client claim? Verification goals, and settle goals that inherit the claim of the goal they settle. */
-export function judgesClaim(goal: Goal): boolean {
-  return goal.kind === "verify" || goal.verifies.length > 0;
-}
-
 export function settle(goal: Goal, status: Goal["status"], round: number): void {
   goal.status = status;
   goal.settledRound = isSettledStatus(status) ? round : null;
@@ -200,11 +195,11 @@ function isSettledStatus(status: Goal["status"]): boolean {
   return status === "answered" || status === "exhausted" || status === "disputed" || status === "moot";
 }
 
-/** A failed or unproductive attempt: re-queue, or exhaust after maxAttempts (section 10.1). */
+/** A failed or unproductive attempt: re-queue, or exhaust after maxAttempts; an exhausted goal's unjudged claims are unsettled (section 10.1). */
 export function requeueOrExhaust(goal: Goal, round: number, maxAttempts: number, note: string | null): "requeued" | "exhausted" {
   if (goal.attempts >= maxAttempts) {
     settle(goal, "exhausted", round);
-    if (judgesClaim(goal) && goal.verdict === null) goal.verdict = "unsettled";
+    for (const claim of goal.verifies) goal.verdicts[claim] ??= "unsettled";
     return "exhausted";
   }
   goal.status = "open";
@@ -212,11 +207,11 @@ export function requeueOrExhaust(goal: Goal, round: number, maxAttempts: number,
   return "requeued";
 }
 
-/** Verdict on each assumption: contradicted wins over unsettled, which wins over supported. */
+/** Verdict on each assumption, from the settled goals' verdicts on it: contradicted wins over unsettled, which wins over supported. */
 export function assumptionVerdicts(state: Pick<EbdState, "analysis" | "goals">): Record<string, Verdict | null> {
   const out: Record<string, Verdict | null> = {};
   for (const x of state.analysis.assumptions) {
-    const verdicts = state.goals.filter((g) => g.verifies.includes(x.id) && g.verdict && isSettled(g)).map((g) => g.verdict!);
+    const verdicts = state.goals.filter((g) => isSettled(g) && g.verdicts[x.id]).map((g) => g.verdicts[x.id]!);
     out[x.id] = verdicts.includes("contradicted") ? "contradicted" : verdicts.includes("unsettled") ? "unsettled" : verdicts.includes("supported") ? "supported" : null;
   }
   return out;
@@ -266,7 +261,9 @@ export function isComplete(state: EbdState): { complete: boolean; reason: string
   const unjudged = state.analysis.assumptions
     .filter((x) => verdicts[x.id] === null && state.goals.some((g) => g.verifies.includes(x.id) && !isSettled(g)))
     .map((x) => x.id);
-  const conflicts = state.conflicts.filter((c) => c.status === "open" && onNecessary(c, state.goals));
+  // A disagreement whose settle goal is completing decides no claim and holds up no goal (section 9); if the run stops first, the writer presents both sides.
+  const completingSettle = new Set(state.goals.filter((g) => g.settles && g.need === "completing").map((g) => g.id));
+  const conflicts = state.conflicts.filter((c) => c.status === "open" && onNecessary(c, state.goals) && !(c.settleGoal && completingSettle.has(c.settleGoal)));
   const parts = [
     open.length ? `necessary goals open: ${open.map((g) => g.id).join(", ")}` : "",
     unjudged.length ? `assumptions without a verdict: ${unjudged.join(", ")}` : "",
