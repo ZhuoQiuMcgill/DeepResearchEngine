@@ -233,7 +233,7 @@ export function checkedThisRound(state: EbdState, c: ConflictItem, round: number
  *   writer presents both sides. The settle goal checks a claim only when the
  *   disagreement decides it (`claimOf`). An evidence_vs_assumption conflict whose
  *   claim a goal served this round already checks on the same findings gets no
- *   settle goal: it is settled, and that goal's notes show which account holds;
+ *   settle goal yet: it waits for that goal's verdict (`resolveClaimChecks`);
  * - off_target, evidence_vs_frame and time_dependent: settled at once; the
  *   writer input handles them (section 12).
  */
@@ -255,44 +255,18 @@ export function applyConflicts(state: EbdState, reply: ConflictsReply, round: nu
       createdRound: round,
       settledRound: null,
       settleGoal: null,
+      checkedBy: null,
     };
     state.conflicts.push(conflict);
     added.push(conflict);
     if (c.type === "source_vs_source" || c.type === "evidence_vs_assumption") {
       const checking = checkedThisRound(state, c, round);
       if (checking) {
-        conflict.status = "settled";
-        conflict.settledRound = round;
-        conflict.settleGoal = checking.id;
-        log(`${conflict.id} (${c.type}) about ${c.about}: no settle goal, because ${checking.id} checks ${conflict.claim} on these findings and is judged in this round`);
+        conflict.checkedBy = checking.id;
+        log(`${conflict.id} (${c.type}) about ${c.about}: no settle goal yet, because ${checking.id} checks ${conflict.claim} on these findings and is judged in this round`);
         continue;
       }
-      const about = state.goals.find((g) => g.id === c.about);
-      const blocked = settleBlock(state, about, options, round);
-      if (blocked || !about) {
-        conflict.status = "disputed";
-        conflict.settledRound = round;
-        log(`${conflict.id} (${c.type}) about ${c.about}: disputed without a settle goal, because ${blocked}`);
-        continue;
-      }
-      const goal = newGoal({
-        id: nextGoalId(state),
-        text: `Which account is correct, and under what conditions? ${c.statement}`,
-        objectIds: about.objectIds,
-        template: "T7",
-        guideline: "G7",
-        need: about.need,
-        verifies: conflict.claim ? [conflict.claim] : [],
-        doneWhen: c.settle_by,
-        origin: { type: "conflict", conflict: conflict.id },
-        depth: about.depth + 1,
-        leadsTo: [about.id],
-        createdRound: round + 1,
-        settles: conflict.id,
-      });
-      state.goals.push(goal);
-      conflict.settleGoal = goal.id;
-      log(`${conflict.id} (${c.type}) about ${c.about}: settle goal ${goal.id} created`);
+      openSettleGoal(state, conflict, options, round, log);
     } else {
       conflict.status = "settled";
       conflict.settledRound = round;
@@ -300,6 +274,59 @@ export function applyConflicts(state: EbdState, reply: ConflictsReply, round: nu
     }
   }
   return added;
+}
+
+/** Give a disagreement its settle goal, or dispute it when settleBlock forbids one. */
+function openSettleGoal(state: EbdState, conflict: Conflict, options: SettleLimits, round: number, log: (line: string) => void): void {
+  const about = state.goals.find((g) => g.id === conflict.about);
+  const blocked = settleBlock(state, about, options, round);
+  if (blocked || !about) {
+    conflict.status = "disputed";
+    conflict.settledRound = round;
+    log(`${conflict.id} (${conflict.type}) about ${conflict.about}: disputed without a settle goal, because ${blocked}`);
+    return;
+  }
+  const goal = newGoal({
+    id: nextGoalId(state),
+    text: `Which account is correct, and under what conditions? ${conflict.statement}`,
+    objectIds: about.objectIds,
+    template: "T7",
+    guideline: "G7",
+    need: about.need,
+    verifies: conflict.claim ? [conflict.claim] : [],
+    doneWhen: conflict.settleBy,
+    origin: { type: "conflict", conflict: conflict.id },
+    depth: about.depth + 1,
+    leadsTo: [about.id],
+    createdRound: round + 1,
+    settles: conflict.id,
+  });
+  state.goals.push(goal);
+  conflict.settleGoal = goal.id;
+  log(`${conflict.id} (${conflict.type}) about ${conflict.about}: settle goal ${goal.id} created`);
+}
+
+/**
+ * After the round analyst (Lab 5 review, change 2): a conflict that waited for a goal's verdict
+ * on its claim is settled only when the verdict is supported or contradicted; that goal's notes
+ * then show which account holds. Unsettled, or no verdict, leaves a real disagreement, which is
+ * handled like any other: a settle goal within the limits, or disputed.
+ */
+export function resolveClaimChecks(state: EbdState, round: number, options: SettleLimits, log: (line: string) => void): void {
+  for (const conflict of state.conflicts) {
+    if (conflict.status !== "open" || !conflict.checkedBy || conflict.settleGoal) continue;
+    const goal = state.goals.find((g) => g.id === conflict.checkedBy);
+    const verdict = conflict.claim ? goal?.verdicts[conflict.claim] : undefined;
+    if (verdict === "supported" || verdict === "contradicted") {
+      conflict.status = "settled";
+      conflict.settledRound = round;
+      conflict.settleGoal = conflict.checkedBy;
+      log(`${conflict.id}: settled by ${conflict.checkedBy}, which judged ${conflict.claim} ${verdict}`);
+      continue;
+    }
+    log(`${conflict.id}: ${conflict.checkedBy} left ${conflict.claim} ${verdict ?? "without a verdict"}, so the disagreement stays open`);
+    openSettleGoal(state, conflict, options, round, log);
+  }
 }
 
 /**

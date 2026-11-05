@@ -49,6 +49,13 @@ export type Goal = {
   missing: string[];
   partsMet: number;
   partsTotal: number;
+  /**
+   * Parts met so far, kept with the findings that met them (Lab 5 review, change 1). Later
+   * rounds judge only the missing parts, so a part met in round 1 is not judged unmet in round 2.
+   */
+  metParts: { part: string; evidence: string[]; round: number }[];
+  /** Attempts whose researcher failed (Lab 5 review, change 8). */
+  failedAttempts: number;
   /** Evidence line IDs that support the judgment. */
   evidence: string[];
   /**
@@ -125,6 +132,12 @@ export type Conflict = {
   settledRound: number | null;
   /** The goal whose notes settle it: its settle goal, or the goal that already checked its claim in the same round (section 9). */
   settleGoal: string | null;
+  /**
+   * A goal served this round that checks the conflict's claim on the same findings. The conflict
+   * stays open until the round analyst's verdict on that claim: supported or contradicted settles
+   * it; unsettled makes it an ordinary disagreement (Lab 5 review, change 2).
+   */
+  checkedBy: string | null;
 };
 
 /** An object the evidence introduced (section 10.2): it enters the ROM only with a verbatim quote from a finding line. */

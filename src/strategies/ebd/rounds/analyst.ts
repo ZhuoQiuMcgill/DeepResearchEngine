@@ -61,7 +61,7 @@ export const ANALYST_SYSTEM = `You are the round analyst of a research team that
 Evidence lines have IDs: r2-b1-f3 is a cited finding, r2-b1-g1 is a gap the researcher reported. Conflicts have IDs C1, C2, …. Cite IDs only.
 
 ## Judgments: one per goal listed under <served_goals>
-- parts: split done_when into its parts (usually 2–5). For each part, met is true only if a cited finding states it; list those finding IDs in evidence. A gap line never meets a part. Inferences, general knowledge and your own reasoning never meet a part.
+- parts: split done_when into its parts (usually 2–5). When a goal lists "Parts already met", those parts stay met: list only the parts under "Judge only these parts", and give the outcome on them alone (answered when all of them are met). For each part, met is true only if a cited finding states it; list those finding IDs in evidence. A gap line never meets a part. Inferences, general knowledge and your own reasoning never meet a part.
 - Currency: "as of <run date>" or "the latest available evidence" is met by the most recent evidence the sources give, such as a current official page or the latest dated report. It does not require a page's capture date or a source dated on the run date.
 - outcome:
   - answered: every part is met;
@@ -101,7 +101,15 @@ export function analystMessage(state: EbdState, round: number, served: Goal[], o
       `done_when: ${g.doneWhen}`,
       ...(claims(g).length ? ["Claims to verify:", ...claims(g).map((c) => `- ${c}`)] : []),
       ...(g.settles ? [`Settles conflict ${g.settles}`] : []),
-      ...(g.missing.length ? [`Missing after the last attempt: ${g.missing.join("; ")}`] : []),
+      ...(g.metParts.length
+        ? [
+            "Parts already met (kept from earlier rounds; do not judge them again):",
+            ...g.metParts.map((p) => `- ${p.part} [${p.evidence.join(", ")}]`),
+            `Judge only these parts: ${g.missing.join("; ") || "(none recorded; judge what done_when still needs)"}`,
+          ]
+        : g.missing.length
+          ? [`Missing after the last attempt: ${g.missing.join("; ")}`]
+          : []),
       "Evidence:",
       ...(lines.length ? lines.map(evidenceLine) : ["(none: the researcher reported nothing for this goal)"]),
     ].join("\n");
@@ -275,8 +283,12 @@ export function applyJudgments(state: EbdState, reply: RoundReply | null, served
     }
     const metParts = j.parts.filter((p) => p.met);
     const cited = [...new Set(metParts.flatMap((p) => p.evidence))];
-    goal.partsTotal = j.parts.length;
-    goal.partsMet = metParts.length;
+    // Lab 5 review, change 1: parts met in earlier rounds stay met; this judgment covers the rest.
+    // A conflicting judgment locks nothing, because its findings disagree.
+    const kept = goal.metParts.length;
+    if (j.outcome !== "conflicting") goal.metParts.push(...metParts.map((p) => ({ part: p.part, evidence: p.evidence, round })));
+    goal.partsTotal = kept + j.parts.length;
+    goal.partsMet = kept + metParts.length;
     goal.evidence = [...new Set([...goal.evidence, ...cited])];
     goal.missing = j.missing;
     let outcome = j.outcome;
@@ -291,8 +303,18 @@ export function applyJudgments(state: EbdState, reply: RoundReply | null, served
     }
     for (const v of j.verdicts) if (goal.verifies.includes(v.claim_id)) goal.verdicts[v.claim_id] = v.verdict;
 
+    // A settle goal whose sources still disagree ends disputed, and so do its conflict and the goal
+    // waiting for it: a settle goal gets no settle goal of its own (settleBlock). Before this, it could
+    // find its own conflict below and wait on itself, leaving the waiting goal "conflicting" for good.
+    if (outcome === "conflicting" && goal.settles) {
+      settle(goal, "disputed", round);
+      out.settled.push(goal.id);
+      log(`${goal.id}: its sources still disagree → disputed`);
+      resolveSettle(state, goal, "exhausted", round, log);
+      continue;
+    }
     if (outcome === "conflicting") {
-      const conflict = state.conflicts.find((c) => c.status === "open" && c.settleGoal && (c.about === goal.id || goal.objectIds.includes(c.about)));
+      const conflict = state.conflicts.find((c) => c.status === "open" && c.settleGoal && c.settleGoal !== goal.id && (c.about === goal.id || goal.objectIds.includes(c.about)));
       if (conflict) {
         goal.status = "conflicting";
         goal.waitingOn = conflict.settleGoal;

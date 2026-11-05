@@ -23,12 +23,12 @@ import {
   type StrategyStep,
   type SynthesisInput,
 } from "../../core/index.js";
-import { briefFor, selectWithReserve } from "./briefs.js";
-import { goalsFromAnalysis, isComplete, isSaturated, mootDependents, rankReady, requeueOrExhaust, treeMetrics, type RoundProgress } from "./goals.js";
+import { briefFor, selectWithReserve, spread } from "./briefs.js";
+import { goalsFromAnalysis, isComplete, isSaturated, mootDependents, rankReady, releaseWaiting, requeueOrExhaust, treeMetrics, type RoundProgress } from "./goals.js";
 import { parseOptions, type EbdOptions } from "./options.js";
 import { requestMessage, runAgentAnalysis, runFixedAnalysis, type AnalysisOutcome } from "./request/index.js";
 import { acceptProposals, applyJudgments, runRoundAnalyst, servedGoals, verdictSummary } from "./rounds/analyst.js";
-import { applyConflicts, runConflictChecker, settlePriority } from "./rounds/conflicts.js";
+import { applyConflicts, resolveClaimChecks, runConflictChecker, settlePriority } from "./rounds/conflicts.js";
 import { readResult } from "./rounds/evidence.js";
 import { isSettled, type CallRecord, type EbdState, type EvidenceLine, type StepLog } from "./state.js";
 import { buildSynthesis } from "./synthesis.js";
@@ -66,6 +66,13 @@ export function analysisCalls(out: AnalysisOutcome, question: string, today: str
     }
   }
   return calls;
+}
+
+/** r1-b2 before r1-b10: round, then brief number. */
+export function byBrief(a: string, b: string): number {
+  const n = (id: string) => (id.match(/\d+/g) ?? []).map(Number);
+  const [x, y] = [n(a), n(b)];
+  return (x[0] ?? 0) - (y[0] ?? 0) || (x[1] ?? 0) - (y[1] ?? 0) || a.localeCompare(b);
 }
 
 function emptyStep(phase: StepLog["phase"], round: number): StepLog {
@@ -116,8 +123,10 @@ class EbdStrategy implements ResearchStrategy<EbdState> {
     return this.plan(state, ctx, intro, null);
   }
 
-  async observe(previous: EbdState, results: ResearchResult[], ctx: StrategyContext): Promise<StrategyStep<EbdState>> {
+  async observe(previous: EbdState, arrived: ResearchResult[], ctx: StrategyContext): Promise<StrategyStep<EbdState>> {
     const state = structuredClone(previous);
+    // Lab 5 review, change 4: the agents read the results in brief order, never in arrival order.
+    const results = [...arrived].sort((a, b) => byBrief(a.brief.id, b.brief.id));
     const round = ctx.round - 1;
     const step = emptyStep("observe", round);
     state.step = step;
@@ -140,11 +149,12 @@ class EbdStrategy implements ResearchStrategy<EbdState> {
         const g = state.goals.find((x) => x.id === id);
         if (!g) continue;
         g.attempts += 1;
+        if (record.status === "failed") g.failedAttempts += 1;
         g.servedRounds.push(round);
       }
     }
     state.roundsObserved = round;
-    const allFailed = results.length > 0 && results.every((r) => r.status === "failed");
+    const anyFailed = results.some((r) => r.status === "failed");
     const failedOnly = new Set(results.filter((r) => r.status === "failed").flatMap((r) => readResult(r).record.goalIds));
     for (const r of results.filter((x) => x.status === "ok")) for (const id of readResult(r).record.goalIds) failedOnly.delete(id);
     const settledNow: string[] = [];
@@ -154,6 +164,7 @@ class EbdStrategy implements ResearchStrategy<EbdState> {
       const how = requeueOrExhaust(g, round, this.options.maxAttempts, null);
       if (how === "exhausted" && g.need === "necessary") settledNow.push(g.id);
       log(`${id}: researcher failed → ${how}`);
+      if (how === "exhausted" && g.failedAttempts >= g.attempts) state.problems.push(`round ${round}: ${id} ran out of attempts because its researchers failed`);
     }
 
     // Section 9: conflicts, before the round analyst.
@@ -168,7 +179,7 @@ class EbdStrategy implements ResearchStrategy<EbdState> {
 
     // Section 10: judgments and new goals.
     const served = servedGoals(state, round).filter((g) => !isSettled(g) && !failedOnly.has(g.id));
-    let progress: RoundProgress = { settled: settledNow, advanced: [], newConflicts, newNecessary: 0, allFailed };
+    let progress: RoundProgress = { settled: settledNow, advanced: [], newConflicts, newNecessary: 0, anyFailed };
     if (served.length) {
       const judged = await runRoundAnalyst(ctx.model, state, round, served, this.options);
       step.calls.push(...judged.calls);
@@ -184,6 +195,8 @@ class EbdStrategy implements ResearchStrategy<EbdState> {
         newNecessary: added.filter((g) => g.need === "necessary").length,
       };
     }
+    if (this.options.conflicts) resolveClaimChecks(state, round, this.options, log);
+    for (const line of releaseWaiting(state, round)) log(line);
     const mooted = mootDependents(state, round);
     if (mooted.length) log(`moot after a contradicted premise: ${mooted.join(", ")}`);
     // Section 9: a settle goal stays necessary only while it decides a claim or a goal waits for it.
@@ -237,7 +250,12 @@ class EbdStrategy implements ResearchStrategy<EbdState> {
     }
     if (!ranked.length) return done("saturated", "no goal is ready to serve");
 
-    const { groups, reserve, held, reservedFor, researchersKept, released } = selectWithReserve(ranked, state, ctx.budget.researchersRemaining, this.options);
+    const selection = selectWithReserve(ranked, state, ctx.budget.researchersRemaining, this.options);
+    const { reserve, held, reservedFor, researchersKept, released } = selection;
+    // Lab 5 review, change 3: researchers that would sit idle this round take goals out of shared briefs.
+    const slots = Math.min(this.options.maxPerRound, ctx.budget.researchersRemaining - researchersKept);
+    const groups = this.options.spread ? spread(selection.groups, slots) : selection.groups;
+    if (groups.length > selection.groups.length) log(`spread over ${groups.length} brief(s) instead of ${selection.groups.length}: researchers would otherwise sit idle`);
     const briefs = groups.map((g, i) => briefFor(g, i, state));
     const decision: Decision = { briefs, stop: false, rationale: "" };
     const served = groups.flatMap((g) => g.goals);

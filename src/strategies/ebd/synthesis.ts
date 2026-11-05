@@ -7,7 +7,7 @@
  */
 import type { SynthesisInput } from "../../core/index.js";
 import { directiveLines } from "./briefs.js";
-import { assumptionVerdicts, synthesisQuestions } from "./goals.js";
+import { assumptionVerdicts, endedByFailures, synthesisQuestions } from "./goals.js";
 import type { Analysis } from "./request/index.js";
 import type { EbdState, Goal } from "./state.js";
 
@@ -203,12 +203,18 @@ export function buildGuidance(state: EbdState): string {
 
   // Evidence status of necessary goals the research could not complete. A goal with some parts met is
   // partly established: the writer uses its notes and says only what they leave open.
-  const unfinished = state.goals.filter((g) => g.need === "necessary" && (g.status === "exhausted" || g.status === "disputed") && !g.settles);
+  // Lab 5 review, change 8: a goal ended only by researcher failures is a failure, not an absence of sources.
+  const failed = state.goals.filter((g) => g.need === "necessary" && !g.settles && endedByFailures(g));
+  const unfinished = state.goals.filter((g) => g.need === "necessary" && (g.status === "exhausted" || g.status === "disputed") && !g.settles && !failed.includes(g));
   const none = unfinished.filter((g) => g.partsMet === 0);
   const partly = unfinished.filter((g) => g.partsMet > 0);
   if (none.length) out.push(`No reliable source was found for these; say so where relevant instead of guessing:\n${none.map((g) => `- ${g.text}`).join("\n")}`);
   if (partly.length) {
     out.push(`These were only partly established. Use their notes, and where the report covers them, say what the evidence does not establish:\n${partly.map((g) => `- ${plain(g.text)}${g.missing.length ? ` Not established: ${g.missing.map(plain).join("; ")}` : ""}`).join("\n")}`);
+  }
+
+  if (failed.length) {
+    out.push(`These questions could not be researched because of technical failures, not for lack of sources. Do not claim that no source exists; where relevant, say only that the report does not cover them:\n${failed.map((g) => `- ${plain(g.text)}`).join("\n")}`);
   }
 
   const moot = state.goals.filter((g) => g.status === "moot");

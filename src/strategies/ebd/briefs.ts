@@ -49,6 +49,24 @@ export function selectGroups(ranked: Ranked[], options: Pick<EbdOptions, "maxPer
   return { groups, reserve: null };
 }
 
+/**
+ * Lab 5 review, change 3: when fewer briefs than free researchers were packed, split shared
+ * briefs, the lowest-ranked goal of the largest brief first, until every free researcher has a
+ * brief or every brief has one goal. In the Lab 4 flight run, rounds 1 and 2 sent one researcher
+ * each, with every ready goal in one brief, although four could run. `slots` is the number of
+ * researchers this round may use: the round limit and the budget less the first-try reserve.
+ */
+export function spread(groups: Group[], slots: number): Group[] {
+  const out = groups.map((g) => ({ key: g.key, goals: [...g.goals] }));
+  while (out.length < slots) {
+    const largest = out.reduce<Group | null>((best, g) => (g.goals.length > 1 && (!best || g.goals.length > best.goals.length) ? g : best), null);
+    if (!largest) break;
+    const goal = largest.goals.pop()!;
+    out.push({ key: keyOf(goal), goals: [goal] });
+  }
+  return out;
+}
+
 /** A necessary request goal that has never been served. */
 export function isFirstTry(goal: Goal): boolean {
   return goal.origin.type === "request" && goal.need === "necessary" && goal.status === "open" && goal.attempts === 0;

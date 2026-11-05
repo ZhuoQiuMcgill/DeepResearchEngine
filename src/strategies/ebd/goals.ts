@@ -68,6 +68,8 @@ export function newGoal(fields: {
     missing: [],
     partsMet: 0,
     partsTotal: 0,
+    metParts: [],
+    failedAttempts: 0,
     evidence: [],
     verdicts: {},
     settles: fields.settles ?? null,
@@ -309,11 +311,45 @@ export function isComplete(state: EbdState): { complete: boolean; reason: string
 }
 
 /** Progress a round made on necessary goals: settled or with more parts met. */
-export type RoundProgress = { settled: string[]; advanced: string[]; newConflicts: number; newNecessary: number; allFailed: boolean };
+export type RoundProgress = { settled: string[]; advanced: string[]; newConflicts: number; newNecessary: number; anyFailed: boolean };
 
-/** Section 11, "saturated": no necessary goal settled or advanced, no new conflict and no new necessary goal. Rounds where every researcher failed do not count. */
+/**
+ * Section 11, "saturated": no necessary goal settled or advanced, no new conflict and no new
+ * necessary goal. A round in which any researcher failed never counts: its goals wait for a
+ * retry, so the round says nothing about what the web holds (Lab 5 review, change 8).
+ */
 export function isSaturated(p: RoundProgress): boolean {
-  return !p.allFailed && p.settled.length === 0 && p.advanced.length === 0 && p.newConflicts === 0 && p.newNecessary === 0;
+  return !p.anyFailed && p.settled.length === 0 && p.advanced.length === 0 && p.newConflicts === 0 && p.newNecessary === 0;
+}
+
+/** A goal that ran out of attempts only because its researchers failed: a failure, not an absence of sources. */
+export function endedByFailures(goal: Goal): boolean {
+  return goal.status === "exhausted" && goal.attempts > 0 && goal.failedAttempts >= goal.attempts;
+}
+
+/**
+ * A conflicting goal whose settle goal has settled settles with it: answered when the settle goal
+ * answered, disputed otherwise. A safety net for every path that settles a settle goal, so no goal
+ * stays "conflicting" behind a settle goal that will never be served again (Lab 4 flight run).
+ */
+export function releaseWaiting(state: Pick<EbdState, "goals">, round: number): string[] {
+  const out: string[] = [];
+  const byId = new Map(state.goals.map((g) => [g.id, g]));
+  for (const g of state.goals) {
+    if (g.status !== "conflicting" || !g.waitingOn) continue;
+    const settleGoal = byId.get(g.waitingOn);
+    if (settleGoal && !isSettled(settleGoal)) continue;
+    const how = settleGoal?.status === "answered" ? "answered" : "disputed";
+    settle(g, how, round);
+    if (settleGoal) g.evidence = [...new Set([...g.evidence, ...settleGoal.evidence])];
+    // As in resolveSettle: only the claim the disagreement decided changes.
+    for (const claim of (settleGoal?.verifies ?? []).filter((c) => g.verifies.includes(c))) {
+      const verdict = how === "answered" ? (settleGoal!.verdicts[claim] ?? g.verdicts[claim]) : "unsettled";
+      if (verdict) g.verdicts[claim] = verdict;
+    }
+    out.push(`${g.id}: ${how} after ${g.waitingOn} ${settleGoal ? `ended ${settleGoal.status}` : "was missing"}`);
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------- tree metrics (H-9)

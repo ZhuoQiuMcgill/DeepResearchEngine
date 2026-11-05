@@ -2,8 +2,8 @@
  * EBD options (design section 13). Every option has a default, so an experiment
  * spec names only what it changes, e.g. { "conflicts": false } for the H1 ablation.
  *
- * Defaults follow the recommendations in design section 18 (D-C, D-E, D-F, L-7).
- * They are provisional until the team confirms them; each stays switchable here.
+ * Defaults follow design section 18 (D-C, D-E, D-F, L-7), confirmed on 2026-11-05.
+ * Each stays switchable here for ablations.
  */
 import { z } from "zod";
 
@@ -39,6 +39,8 @@ export const OptionsSchema = z
      * never been served; briefs made only of goals added during the run use the rest.
      */
     reserveFirstTries: z.boolean().default(true),
+    /** Lab 5 review, change 3: split shared briefs when researchers would otherwise sit idle this round. */
+    spread: z.boolean().default(true),
   })
   .strict();
 
