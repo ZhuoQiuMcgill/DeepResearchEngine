@@ -1,0 +1,16 @@
+{
+  "name": "compare",
+  "description": "Baseline vs EBD within each model. Ceiling of 6 researchers for every arm (the baseline's largest plan); ebd-matched gets the researchers the baseline used on the same task, model and repeat; two EBD ablations (no conflict checker, no goal growth). Add baseline-router and routed-review once they are on main. Coverage checklists: experiments/checklists.md.",
+  "tasks": ["ebd", "headset", "flight", "sleep"],
+  "strategies": [
+    "baseline",
+    "ebd",
+    { "name": "ebd", "label": "ebd-matched", "matchResearchersTo": "baseline" },
+    { "name": "ebd", "label": "ebd-no-conflicts", "options": { "conflicts": false } },
+    { "name": "ebd", "label": "ebd-static", "options": { "newGoals": false } }
+  ],
+  "models": ["haiku", "luna"],
+  "repeats": 3,
+  "budget": { "researchersTotal": 6 },
+  "parallelRuns": 2
+}

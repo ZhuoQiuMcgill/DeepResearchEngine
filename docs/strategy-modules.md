@@ -140,7 +140,7 @@ costs roughly $0.20–0.50 on Haiku and $0.03–0.40 on Luna. Single runs write 
 
 | File | Contents |
 | --- | --- |
-| `config.json` | Everything that defines the run, including strategy options and model settings |
+| `config.json` | Everything that defines the run, including strategy options, model settings and the code version (`code`: commit, branch, and whether tracked files had uncommitted changes) |
 | `events.jsonl` | Every decision (rationale, accepted, dropped and invalid briefs, your state after the step) and every researcher result summary |
 | `results/<briefId>.md` / `.json` | Each researcher's notes and full result |
 | `synthesis.json` | What the writer received, with platform diagnostics |
@@ -167,6 +167,19 @@ labels to compare configurations of the same strategy:
   "budget": { "researchersTotal": 10 }
 }
 ```
+
+A matched-spend control gives one entry the researchers another entry actually
+used on the same task, model and repeat, so a quality difference does not come
+from search volume alone. The matched entry must come after the one it names;
+its runs record `matchedTo` and `matchedRun` in their tags:
+
+```json
+{ "name": "ebd", "label": "ebd-matched", "matchResearchersTo": "baseline" }
+```
+
+`experiments/compare.json` is the comparison spec (all arms, ceiling 6, the
+matched control and the EBD ablations); `experiments/checklists.md` holds the
+coverage checklists for judging it.
 
 ## Reading the baseline
 
