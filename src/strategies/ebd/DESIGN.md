@@ -1128,7 +1128,18 @@ exists, or that the two headsets are real products; the run was recorded as comp
 and the writer still followed the section plan, writing 431 and 773 words with no
 evidence. Fixed the same day: such claims keep no verdict, the stop is
 `researcher_failures` (section 11), and the writer gets a short note with no outline
-(section 12).
+(section 12). Rerun on commit `b3a18d2`: the run stopped as `researcher_failures`, the
+writer received only the short note, and the report was 57 words saying that the research
+could not be carried out and should be run again. With a 60-second limit every
+researcher finished, so a run in which only some researchers fail has not occurred live;
+its rules are covered by unit tests.
+
+Settings checked live on commit `63578c7` (check-strategy, every required check
+passed): the tool-using request analyst on the EBD question ($0.20; it grew a goal on
+what conflict identification and solution generation involve); no conflict checker on
+the false-premise question ($0.31; the check of the question's claims alone made the
+report open with the correct launch date); no new goals on the headset question
+($0.41).
 
 Live check X2 (headings): Haiku kept the goal ID in most sections but often wrote `Q4:`
 instead of `[Q4]`, and sometimes dropped it. With the bare-ID rule, rounds 2–4 mapped
@@ -1227,6 +1238,11 @@ No `.env` exists on this machine yet. Copy `.env.example` to `.env` and fill
 - **P7.** Merge `routed-review` (with `baseline-router`) into main, so the comparison
   can include the stronger non-EBD arm. `behaviour-design` then merges main, and the two
   labels are added to `experiments/compare.json`.
+- **P8 (writer).** The writer twice wrote `xuebei.sjtu.edu.cn` for the reported
+  `xuebao.sjtu.edu.cn` (2026-11-05, two EBD-question runs), so the citation check flagged
+  an unknown URL. The repair after writing completes only cut-off URLs; matching an
+  unknown URL to the one known URL that differs from it by a letter or two would repair
+  this kind of typo too.
 
 ## 18. Open decisions
 

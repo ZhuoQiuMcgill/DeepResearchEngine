@@ -113,10 +113,12 @@ gap the researcher reported is `r2-b1-g1`.
 
 ## Known limits
 
-- Tested live on Claude Haiku 5.5 only: on 2026-11-05, 15 runs with contract checks
-  all passed, and two runs with failing researchers ended as described above. GPT-6
-  Luna is checked offline only (`providers.test.ts`); run `check-strategy` with
-  `--model luna` once an OpenAI key is available.
+- Tested live on Claude Haiku 5.5 only. On 2026-11-05, 18 runs with contract checks
+  all passed, covering the four test questions, a false-premise question and the
+  `init`, `conflicts` and `newGoals` settings; runs in which every researcher failed
+  ended as described above. A run in which only some researchers fail has not occurred
+  live. GPT-6 Luna is checked offline only (`providers.test.ts`); run `check-strategy`
+  with `--model luna` once an OpenAI key is available.
 - The round analyst asks for dated, primary sources. When the web search cannot reach
   them, necessary goals end partly answered, and the report says what is not
   established.
