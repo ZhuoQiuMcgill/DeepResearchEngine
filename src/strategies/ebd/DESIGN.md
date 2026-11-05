@@ -86,6 +86,9 @@ decisions of section 18 are decided. A run viewer for checking runs step by step
     checklist's environment-kind labels into a goal (section 5.6).
   - Splitting completing goals into their own briefs keeps a researcher for each
     necessary retry (section 7).
+- 2026-11-05, evening: completeness. Live failure tests fixed how failed researchers are
+  reported (sections 8, 11 and 12); EBD's model calls are tested offline through the
+  OpenAI adapter; a user guide is in `README.md`.
 
 ## 1. Summary
 
@@ -605,7 +608,9 @@ packing turns the top goals into briefs.
 - **Failures:** a failed researcher counts as an attempt for each of its goals. The
   goal is re-queued, or exhausted after `maxAttempts`; it is not marked "not found",
   because nothing was searched. Since 2026-11-05 failed attempts are counted, and a goal
-  whose attempts all failed is reported as a failure (section 12).
+  whose attempts all failed is reported as a failure (section 12). Its claims keep no
+  verdict, since nothing checked them: in the live failure test (section 16.1) the old
+  "unsettled" made the writer say that the evidence does not establish that EBD exists.
 
 ## 9. Conflicts
 
@@ -852,6 +857,7 @@ Code checks after every round; the first rule that applies ends the research.
 | Saturated | The round settled or advanced no necessary goal, and produced no new conflict or necessary goal | `stop: true` | `strategy-stop` |
 | Budget | `researchersRemaining` is 0 | The briefs EBD still wants, with `stop: false` | `budget-exhausted`, with the unmet demand recorded as `dropped` |
 | Safety cap | 8 rounds | – | `max-rounds` |
+| Researcher failures (built 2026-11-05) | As complete, but a necessary goal ended only because its researchers failed | `stop: true` | `strategy-stop`; the state records `researcher_failures`, so such a run never counts as complete |
 
 - After **complete**, at most one more round serves completing goals, if
   `extraRound` is on and a researcher is left.
@@ -940,6 +946,13 @@ matching the writer's 3–5 sections.
   question cannot be answered yet and what the client could provide. Add no other
   sections and no general advice." In the Lab 4 missing-file test, the writer's usual
   3–5 sections turned empty material into 334 words of generic advice.
+- **Nothing researched (built 2026-11-05).** When every researcher of the run failed,
+  the guidance is only: "Nothing could be researched: every researcher failed for
+  technical reasons, so there is no evidence. Write only the title and one paragraph of
+  at most four sentences: say that the research could not be carried out, so the
+  question is not answered, and that it should be run again. Do not answer from general
+  knowledge, and do not judge the question's premises." There is no outline. In the live
+  failure test the usual plan gave 431 and 773 words with no evidence behind them.
 
 ## 13. Options and ablations
 
@@ -1019,7 +1032,9 @@ src/strategies/ebd/
   briefs.ts           packing goals into briefs
   synthesis.ts        material, outline, guidance
   viewer/             run viewer: static pages to check a run step by step (viewer/README.md)
-  *.test.ts           unit tests and the fake-model skeleton test (strategy.test.ts)
+  *.test.ts           unit tests, the fake-model skeleton test (strategy.test.ts), and EBD's
+                      model calls through the OpenAI adapter offline (providers.test.ts)
+  README.md           user guide: running a question, settings, stops, reading a run
   DESIGN.md           this document
 ```
 
@@ -1102,9 +1117,18 @@ Open after round 11 (2026-11-05), recorded rather than fixed:
   search does not reach (round 11: the flight goal at 3 of 6 parts, the headset goal at 5
   of 11, the sleep goal at 1 of 4). Whether this is strictness or correct caution is for
   the judged comparison to show (open since round 3).
-- Researcher failures (Lab 5 review, change 8) have not occurred in a live run; the rules
-  are covered by unit tests only.
-- Not run on Luna: there is no OpenAI key on this machine.
+- Not run on Luna: there is no OpenAI key on this machine. EBD's model calls through
+  the OpenAI adapter are tested offline (`providers.test.ts`).
+
+Live failure tests (2026-11-05, `local/accept-1105/failures`): experiment specs with a
+researcher time limit of 10 and 30 seconds, so that real researchers fail mid-search.
+In both runs every researcher failed, and three faults showed: the question's claims
+were marked unsettled, so the writer said the evidence does not establish that EBD
+exists, or that the two headsets are real products; the run was recorded as complete;
+and the writer still followed the section plan, writing 431 and 773 words with no
+evidence. Fixed the same day: such claims keep no verdict, the stop is
+`researcher_failures` (section 11), and the writer gets a short note with no outline
+(section 12).
 
 Live check X2 (headings): Haiku kept the goal ID in most sections but often wrote `Q4:`
 instead of `[Q4]`, and sometimes dropped it. With the bare-ID rule, rounds 2–4 mapped
