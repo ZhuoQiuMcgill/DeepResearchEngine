@@ -75,6 +75,19 @@ ul.events li { margin: 2px 0; }
 .checks li { margin: 3px 0; }
 #pop { position: fixed; right: 16px; bottom: 16px; width: min(460px, calc(100vw - 32px)); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 6px 24px rgba(0,0,0,.18); padding: 12px 14px; display: none; z-index: 10; max-height: 60vh; overflow: auto; }
 #pop .close { float: right; border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 16px; }
+/* Langfuse trace: a timeline of LangGraph steps (spans) and the model calls (generations) under them. */
+.wf-row { display: grid; grid-template-columns: minmax(150px, 280px) minmax(0, 1fr) 56px; gap: 10px; align-items: center; font-size: 12px; }
+.wf-row .lbl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wf-row.gen { padding: 1px 0; } .wf-row.gen .lbl { padding-left: 16px; color: var(--muted); }
+.wf-row .num { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+details.wf { margin: 3px 0; } details.wf > summary { padding: 4px 8px; }
+details.wf > summary.wf-row { display: grid; } details.wf > summary.wf-row::before { content: none; }
+.wf-track { position: relative; height: 14px; background: var(--sunk); border-radius: 3px; }
+.wf-bar { position: absolute; top: 2px; height: 10px; border-radius: 3px; min-width: 2px; background: var(--accent); }
+.wf-bar.k-research { background: var(--new); } .wf-bar.k-write, .wf-bar.k-finalize { background: var(--warn); }
+.wf-bar.gen { top: 4px; height: 6px; background: var(--ok); }
+.wf-axis { display: grid; grid-template-columns: minmax(150px, 280px) minmax(0, 1fr) 56px; gap: 10px; font-size: 11px; color: var(--muted); padding: 0 8px; }
+.wf-axis .ticks { display: flex; justify-content: space-between; }
 @media (max-width: 760px) {
   .layout { grid-template-columns: 1fr; }
   nav { position: static; max-height: none; border-right: 0; border-bottom: 1px solid var(--line); display: flex; overflow-x: auto; gap: 4px; }
@@ -149,9 +162,132 @@ function evBtn(id) {
 }
 const evList = (ids) => (ids || []).map(evBtn).join(" ");
 
+// ------------------------------------------------------------------ Langfuse trace
+// When tracing is on, the platform hands LangChain's Langfuse callback handler to the LangGraph run,
+// so the self-hosted Langfuse records every graph step as a span and every LangChain model call as
+// a generation. build.ts fetches the run's observations (traces.ts) and embeds them as D.trace.
+
+const trace = D.trace && Array.isArray(D.trace.observations) && D.trace.observations.length ? D.trace : null;
+const OBS = trace ? trace.observations : [];
+const obsById = new Map(OBS.map((o) => [o.id, o]));
+const byStart = (a, b) => a.startTime.localeCompare(b.startTime);
+const kids = new Map();
+for (const o of OBS) {
+  const p = o.parentObservationId && obsById.has(o.parentObservationId) ? o.parentObservationId : null;
+  kids.set(p, [...(kids.get(p) || []), o]);
+}
+const NODE_NAMES = ["plan", "research", "observe", "finalize", "write"];
+const ROLE_OF_NODE = { plan: "strategy", observe: "strategy", finalize: "strategy", research: "researcher", write: "writer" };
+const isNode = (o) => o.type !== "GENERATION" && NODE_NAMES.includes(o.name);
+const nodeSpans = OBS.filter(isNode).sort(byStart);
+const generations = OBS.filter((o) => o.type === "GENERATION").sort(byStart);
+const t0 = OBS.length ? Math.min(...OBS.map((o) => Date.parse(o.startTime))) : 0;
+const t1 = OBS.length ? Math.max(...OBS.map((o) => Date.parse(o.endTime || o.startTime))) : 0;
+const msOf = (o) => (o.endTime ? Date.parse(o.endTime) - Date.parse(o.startTime) : null);
+const tokIn = (o) => Number(o.usageDetails?.input ?? o.inputUsage ?? 0);
+const tokOut = (o) => Number(o.usageDetails?.output ?? o.outputUsage ?? 0);
+const kTok = (n) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
+const metaOf = (o) => { if (o.metadata && typeof o.metadata === "object") return o.metadata; try { return JSON.parse(o.metadata || "{}"); } catch { return {}; } };
+
+/** The LangGraph step a model call ran in. */
+function nodeOf(o) {
+  for (let x = o; x; x = x.parentObservationId ? obsById.get(x.parentObservationId) : null) if (isNode(x)) return x;
+  return null;
+}
+const roleOf = (g) => ROLE_OF_NODE[nodeOf(g)?.name] || "other";
+
+/** Every observation below a span, in start order. */
+function under(span) {
+  const out = [];
+  const stack = [...(kids.get(span.id) || [])];
+  while (stack.length) { const x = stack.pop(); out.push(x); stack.push(...(kids.get(x.id) || [])); }
+  return out.sort(byStart);
+}
+/** The brief a research step served, read from the step's traced input. */
+const briefOf = (span) => /"id"\s*:\s*"(r\d+-b\d+)"/.exec(span?.input || "")?.[1] || null;
+
+function lfUrl(o) {
+  if (!trace?.projectId) return null;
+  const base = `${trace.baseUrl}/project/${encodeURIComponent(trace.projectId)}`;
+  return o ? `${base}/traces/${encodeURIComponent(o.traceId)}?observation=${encodeURIComponent(o.id)}` : `${base}/sessions/${encodeURIComponent(trace.sessionId)}`;
+}
+function lfLink(o, text = "open in Langfuse ↗") {
+  const u = lfUrl(o);
+  return u ? `<a href="${esc(u)}" target="_blank" rel="noopener noreferrer">${esc(text)}</a>` : "";
+}
+
+/** The trace spans of one viewer step: the LangGraph node that ran it. */
+function stepSpans(step) {
+  if (!trace) return [];
+  const named = (n) => nodeSpans.filter((o) => o.name === n);
+  if (step.decision) return step.index === 0 ? named("plan") : named("observe").slice(step.index - 1, step.index);
+  if (step.results) {
+    const ids = new Set(step.results.map((r) => r.brief.id));
+    return named("research").filter((o) => ids.has(briefOf(o)));
+  }
+  if (step.key === "synthesis") return named("finalize");
+  if (step.key === "report") return named("write");
+  return [];
+}
+
+/** One step's model calls as Langfuse traced them; EBD's own call records name each one's role. */
+function traceCard(step) {
+  const spans = stepSpans(step);
+  if (!spans.length) return "";
+  const gens = spans.flatMap(under).filter((o) => o.type === "GENERATION").sort(byStart);
+  const calls = step.decision && isEbd(step.decision.strategyState) ? step.decision.strategyState.step?.calls || [] : [];
+  const label = (g, i) => (step.results ? `researcher ${briefOf(nodeOf(g)) || ""}` : calls.length === gens.length ? `${calls[i].role.replace("_", " ")} · attempt ${calls[i].attempt}` : g.name);
+  const sum = (f) => gens.reduce((n, g) => n + f(g), 0);
+  return `<section class="card"><h2>Langfuse trace of this step</h2>
+    <p class="muted">Traced by LangChain's callback handler: the LangGraph node ${spans.map((s) => `<span class="mono">${esc(s.name)}</span>`).join(", ")} with ${gens.length} model call(s), ${kTok(sum(tokIn))} input and ${kTok(sum(tokOut))} output tokens. ${lfLink(spans[0])}</p>
+    ${gens.length ? `<div class="tablewrap"><table><thead><tr><th>Call</th><th>Model</th><th class="num">Starts at</th><th class="num">Latency</th><th class="num">Input tokens</th><th class="num">Output tokens</th><th>Langfuse</th></tr></thead><tbody>
+    ${gens.map((g, i) => `<tr><td>${esc(label(g, i))}</td><td>${esc(g.model || "")}</td><td class="num">${secs(Date.parse(g.startTime) - t0)}</td><td class="num">${typeof g.latency === "number" ? `${g.latency.toFixed(1)}s` : secs(msOf(g))}</td><td class="num">${fmt(tokIn(g))}</td><td class="num">${fmt(tokOut(g))}</td><td>${lfLink(g, "open ↗")}</td></tr>`).join("")}
+    </tbody></table></div>
+    ${gens.map((g, i) => `<details><summary>${esc(label(g, i))} <span class="muted">input and output as traced (cut; full text in Langfuse)</span></summary><div class="body"><h3>Input</h3><div class="box mono pre">${esc(tryJson(g.input || ""))}</div><h3>Output</h3><div class="box mono pre">${esc(tryJson(g.output || ""))}</div></div></details>`).join("")}` : ""}
+  </section>`;
+}
+
+/** The whole run as Langfuse traced it: a check against the run record and a timeline. */
+function traceView() {
+  const rec = summary.usageByRole || {};
+  const roleRows = ["strategy", "researcher", "writer"].map((r) => {
+    const gs = generations.filter((g) => roleOf(g) === r);
+    const lf = { calls: gs.length, inT: gs.reduce((n, g) => n + tokIn(g), 0), outT: gs.reduce((n, g) => n + tokOut(g), 0) };
+    const rr = rec[r] || null;
+    const same = rr && rr.calls === lf.calls && rr.inputTokens === lf.inT && rr.outputTokens === lf.outT;
+    return `<tr><td>${esc(r)}</td><td class="num">${fmt(lf.calls)}</td><td class="num">${rr ? fmt(rr.calls) : "–"}</td><td class="num">${fmt(lf.inT)} / ${fmt(lf.outT)}</td><td class="num">${rr ? `${fmt(rr.inputTokens)} / ${fmt(rr.outputTokens)}` : "–"}</td><td class="num">${rr ? usd(rr.costUsd) : "–"}</td><td>${rr ? badge(same ? "match" : "differs", same ? "ok" : "warn") : badge("no record")}</td></tr>`;
+  }).join("");
+  const span = Math.max(1, t1 - t0);
+  const bar = (o, cls) => {
+    const left = ((Date.parse(o.startTime) - t0) / span) * 100;
+    const width = Math.max(0.4, ((msOf(o) ?? 0) / span) * 100);
+    return `<div class="wf-track"><div class="wf-bar ${cls}" style="left:${left.toFixed(2)}%;width:${Math.min(100 - left, width).toFixed(2)}%"></div></div>`;
+  };
+  const observes = nodeSpans.filter((o) => o.name === "observe");
+  const nodeLabel = (s) => (s.name === "research" ? `research ${briefOf(s) || ""}` : s.name === "observe" ? `observe round ${observes.indexOf(s) + 1}` : s.name);
+  const timeline = nodeSpans.map((s) => {
+    const gs = under(s).filter((o) => o.type === "GENERATION");
+    return `<details class="wf"><summary class="wf-row"><span class="lbl">${esc(nodeLabel(s))} <span class="muted">· ${gs.length} call(s)</span></span>${bar(s, `k-${s.name}`)}<span class="num">${secs(msOf(s))}</span></summary><div class="body">
+      ${gs.map((g) => `<div class="wf-row gen"><span class="lbl" title="${esc(g.model || "")}">${esc(g.model || g.name)} · ${kTok(tokIn(g))} in / ${kTok(tokOut(g))} out</span>${bar(g, "gen")}<span class="num">${secs(msOf(g))}</span></div>`).join("") || `<p class="muted">No model call in this step.</p>`}
+      <p class="muted">LangGraph step ${esc(metaOf(s).langgraph_step ?? "?")} · ${lfLink(s)}</p></div></details>`;
+  }).join("");
+  const ticks = [0, 0.25, 0.5, 0.75, 1].map((f) => `<span>${secs(f * span)}</span>`).join("");
+  const priced = generations.some((g) => typeof g.totalCost === "number" && g.totalCost > 0);
+  const errors = OBS.filter((o) => o.level === "ERROR");
+  return `<section class="card"><h2>Langfuse trace</h2>
+      <p>The platform passed LangChain's Langfuse callback handler to this LangGraph run. The team's self-hosted Langfuse recorded <strong>${fmt(OBS.length)}</strong> observations in ${new Set(OBS.map((o) => o.traceId)).size} trace(s): <strong>${fmt(nodeSpans.length)}</strong> graph steps and <strong>${fmt(generations.length)}</strong> model calls, over ${secs(span)}. ${lfLink(null, "Open the run's session in Langfuse ↗")}</p>
+      <p class="muted">Langfuse knows the structure of the run (steps, calls, prompts, tokens, latency). The other pages add what only EBD's records know: goals, evidence, disagreements and verdicts. Trace copy fetched ${esc((trace.fetchedAt || "").replace("T", " ").slice(0, 19))} UTC from ${esc(trace.baseUrl)}.${priced ? "" : " Langfuse has no price for this model, so costs come from the run record."}</p>
+      ${errors.length ? `<p>${badge(`${errors.length} observation(s) at level ERROR`, "bad")} ${errors.slice(0, 3).map((o) => esc(o.name)).join(", ")}</p>` : ""}</section>
+    <section class="card"><h2>Langfuse against the run record</h2><p class="muted">Both count LangChain's model-call callbacks: the run record through the platform's usage ledger, Langfuse through its handler. Equal numbers mean the trace is complete.</p>
+      <div class="tablewrap"><table><thead><tr><th>Role</th><th class="num">Calls in Langfuse</th><th class="num">Calls in record</th><th class="num">Tokens in / out (Langfuse)</th><th class="num">Tokens in / out (record)</th><th class="num">Cost (record)</th><th></th></tr></thead><tbody>${roleRows}</tbody></table></div></section>
+    <section class="card"><h2>Timeline</h2><p class="muted">One row per LangGraph step, in start order; open a row for its model calls. Researchers of one round run in parallel.</p>
+      <div class="wf-axis"><span></span><span class="ticks">${ticks}</span><span></span></div>${timeline}</section>`;
+}
+
 // ------------------------------------------------------------------ steps
 
 const steps = [{ key: "overview", label: "Overview", who: "goal tree, verdicts, checks" }];
+if (trace) steps.push({ key: "trace", label: "Langfuse trace", who: `${generations.length} model calls in ${nodeSpans.length} graph steps` });
 decisions.forEach((d, i) => {
   const state = d.strategyState;
   const calls = isEbd(state) ? (state.step?.calls || []) : [];
@@ -186,6 +322,7 @@ function header() {
       <span class="chip">searches ${fmt(s.searches ?? 0)} · reads ${fmt(s.pageReads ?? 0)}</span>
       <span class="chip">${usd(s.costUsdEstimate)}${roles ? ` (${esc(roles)})` : ""}</span>
       <span class="chip">${secs(s.durationMs)}</span>
+      ${trace ? `<a class="chip" href="#trace">Langfuse trace · ${generations.length} model calls</a>` : ""}
       <span class="chip mono">${esc(D.dir)}</span>
     </div>`;
 }
@@ -218,6 +355,16 @@ function checks() {
     if (brief.length) add("warn", `Sections without a [Qn] heading, mapped by ${brief.length > 3 ? `${brief.length} fallbacks` : brief.join("; ")} (live check X2)`);
     const fallbacks = decisions.flatMap((d) => (isEbd(d.strategyState) ? d.strategyState.step.calls : [])).filter((c) => !c.accepted);
     if (fallbacks.length) add("info", `${fallbacks.length} model call(s) were rejected by the code checks and retried or fell back; open their steps to see the errors`);
+  }
+  if (trace) {
+    // The record and the trace count the same LangChain callbacks; a difference means Langfuse lost spans.
+    const rec = summary.usageByRole || {};
+    for (const r of ["strategy", "researcher", "writer"]) {
+      const lf = generations.filter((g) => roleOf(g) === r).length;
+      if (rec[r] && rec[r].calls !== lf) add("warn", `Langfuse traced ${lf} ${r} model call(s), but the run record counts ${rec[r].calls}: the trace may be incomplete`);
+    }
+    const errors = OBS.filter((o) => o.level === "ERROR");
+    if (errors.length) add("bad", `${errors.length} traced step(s) or call(s) ended in an error: ${errors.slice(0, 3).map((o) => `${o.name}${o.statusMessage ? `: ${o.statusMessage.slice(0, 100)}` : ""}`).join("; ")}`);
   }
   return items;
 }
@@ -381,7 +528,7 @@ function decisionView(step) {
     ${d.invalid.length ? `<h3>Invalid</h3>${d.invalid.map((x) => `<div class="box mono pre">${esc(x.reason)}\n${esc(JSON.stringify(x.brief, null, 2))}</div>`).join("")}` : ""}
     ${d.ignored.length ? `<h3>Ignored (returned with stop)</h3>${d.ignored.map((b) => briefCard(b)).join("")}` : ""}</section>`;
   if (!isEbd(state)) html += `<section class="card"><h2>Strategy state after this step</h2>${json(state)}</section>`;
-  return html;
+  return html + traceCard(step);
 }
 
 // ------------------------------------------------------------------ research rounds
@@ -404,7 +551,7 @@ function researchView(step) {
         ${mapping}
         <h3>Notes</h3>${r.status === "ok" ? markdown(r.notes, tags, `n-${r.brief.id}`) : `<p class="muted">${esc(r.failure?.message || "")}</p>`}
       </section>`;
-    }).join("");
+    }).join("") + traceCard(step);
 }
 
 // ------------------------------------------------------------------ writer input and report
@@ -415,12 +562,12 @@ function synthesisView() {
       ${(D.synthesis.diagnostics || []).length ? `<ul class="plain">${D.synthesis.diagnostics.map((x) => `<li>${badge("diagnostic", "warn")} ${esc(x)}</li>`).join("")}</ul>` : ""}
       <h3>Outline</h3>${(s.outline || []).length ? `<ol>${s.outline.map((o) => `<li>${esc(o)}</li>`).join("")}</ol>` : `<p class="muted">none</p>`}
       <h3>Guidance</h3>${s.guidance ? `<div class="box pre">${esc(s.guidance)}</div>` : `<p class="muted">none</p>`}</section>
-    <section class="card"><h2>Material (${(s.material || []).length} item(s))</h2>${(s.material || []).map((m) => `<details><summary>${esc(m.label)} <span class="muted">${m.notes.split("\n").length} lines</span></summary><div class="body">${markdown(m.notes)}</div></details>`).join("")}</section>`;
+    <section class="card"><h2>Material (${(s.material || []).length} item(s))</h2>${(s.material || []).map((m) => `<details><summary>${esc(m.label)} <span class="muted">${m.notes.split("\n").length} lines</span></summary><div class="body">${markdown(m.notes)}</div></details>`).join("")}</section>` + traceCard({ key: "synthesis" });
 }
 
 function reportView() {
   const unknown = summary.citationCheck?.unknownUrls || [];
-  return `<section class="card"><h2>Report</h2>${unknown.length ? `<p>${badge(`${unknown.length} cited URL(s) not found in the research`, "bad")}</p>` : ""}${markdown(D.report)}</section>`;
+  return `<section class="card"><h2>Report</h2>${unknown.length ? `<p>${badge(`${unknown.length} cited URL(s) not found in the research`, "bad")}</p>` : ""}${markdown(D.report)}</section>` + traceCard({ key: "report" });
 }
 
 // ------------------------------------------------------------------ navigation and evidence pop-up
@@ -430,6 +577,7 @@ function show(key) {
   document.querySelectorAll("nav button").forEach((b) => b.classList.toggle("active", b.dataset.key === step.key));
   const v = $("view");
   if (step.key === "overview") v.innerHTML = overview();
+  else if (step.key === "trace") v.innerHTML = traceView();
   else if (step.decision) v.innerHTML = decisionView(step);
   else if (step.results) v.innerHTML = researchView(step);
   else if (step.key === "synthesis") v.innerHTML = synthesisView();
@@ -477,6 +625,9 @@ document.addEventListener("keydown", (ev) => {
   const next = steps[Math.max(0, Math.min(steps.length - 1, (i < 0 ? 0 : i) + (ev.key === "ArrowRight" ? 1 : -1)))];
   show(next.key);
 });
+
+// Links to #step (the Langfuse chip in the header) switch the step.
+window.addEventListener("hashchange", () => show(location.hash.slice(1)));
 
 header();
 $("nav").innerHTML = steps.map((s) => `<button data-key="${s.key}">${esc(s.label)}<span class="who">${esc(s.who)}</span></button>`).join("") + `<div class="hint">← → keys step through the run. Click an evidence ID to see its line.</div>`;

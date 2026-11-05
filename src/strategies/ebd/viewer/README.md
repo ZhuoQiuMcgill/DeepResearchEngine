@@ -12,6 +12,43 @@ The pages are written to `local/viewer/`. Open `local/viewer/index.html` in a
 browser. The pages are self-contained and need no network. Rebuild them after
 new runs.
 
+## Langfuse traces
+
+When the root `.env` sets `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY` and
+`LANGFUSE_BASE_URL`, the platform traces every run to the team's self-hosted
+Langfuse (`deploy/langfuse/README.md`). LangChain's Langfuse callback handler is
+passed to the LangGraph run, so each graph step (plan, research, observe,
+finalize, write) becomes a span and each LangChain model call a generation, with
+the run ID as the Langfuse session.
+
+The build then reads each finished run's trace back through Langfuse's public API
+(`GET /api/public/v2/observations`: the run's trace is found by session, and its
+observations are read by trace ID) and caches a copy in `local/viewer/traces/`
+(`traces.ts`). Inputs and outputs are cut to 6,000 characters in the copy; the
+full text stays in Langfuse.
+
+```
+npx tsx src/strategies/ebd/viewer/build.ts --refresh-traces   # fetch every trace again
+npx tsx src/strategies/ebd/viewer/build.ts --no-traces        # build without Langfuse
+```
+
+A traced run gets:
+- a **Langfuse trace** page: the number of graph steps and model calls; a check of
+  Langfuse against the run record per role (strategy, researcher, writer), where
+  equal calls and tokens mean the trace is complete; and a timeline of the graph
+  steps with the model calls under each;
+- on each step page, a **Langfuse trace of this step** panel: the step's model
+  calls with model, start time, latency and tokens, each labelled with EBD's own
+  record of the call (for example "round analyst · attempt 2"), the traced input
+  and output, and a link to the observation in Langfuse;
+- in **Things to check**, a warning when Langfuse and the run record disagree, or
+  when a traced step or call ended in an error;
+- a **Langfuse** column in the run list.
+
+Langfuse shows the generic structure of a run: steps, calls, prompts, tokens and
+latency. The other pages show what only EBD's records hold: goals, evidence,
+disagreements and verdicts. Runs made without tracing have no trace pages.
+
 ## What each page shows
 
 | Step | Content |

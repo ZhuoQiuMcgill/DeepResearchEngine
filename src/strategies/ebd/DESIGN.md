@@ -1031,7 +1031,9 @@ src/strategies/ebd/
   goals.ts            readiness, levels, tie-breaks, reserve slot, moot, stop rules, tree metrics
   briefs.ts           packing goals into briefs
   synthesis.ts        material, outline, guidance
-  viewer/             run viewer: static pages to check a run step by step (viewer/README.md)
+  viewer/             run viewer: static pages to check a run step by step (viewer/README.md);
+                      traces.ts adds each run's Langfuse trace (LangChain callbacks, read back
+                      through Langfuse's public API)
   *.test.ts           unit tests, the fake-model skeleton test (strategy.test.ts), and EBD's
                       model calls through the OpenAI adapter offline (providers.test.ts)
   README.md           user guide: running a question, settings, stops, reading a run

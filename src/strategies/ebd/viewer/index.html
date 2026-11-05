@@ -33,7 +33,7 @@ a:hover { text-decoration: underline; }
   <p class="sub">Run records from local/. Click a run to step through what each agent did.</p>
   <input id="filter" placeholder="Filter by question, strategy, model or status" aria-label="Filter runs">
   <div class="wrap"><table>
-    <thead><tr><th>Started</th><th>Question</th><th>Strategy</th><th>Model</th><th>Status</th><th>Stop</th><th class="num">Rounds</th><th class="num">Researchers</th><th class="num">Cost (USD)</th></tr></thead>
+    <thead><tr><th>Started</th><th>Question</th><th>Strategy</th><th>Model</th><th>Status</th><th>Stop</th><th class="num">Rounds</th><th class="num">Researchers</th><th class="num">Cost (USD)</th><th>Langfuse</th></tr></thead>
     <tbody id="rows"></tbody>
   </table></div>
 </main>
@@ -52,8 +52,9 @@ function render(filter) {
       <td><span class="badge ${r.status === "ok" ? "ok" : "bad"}">${esc(r.status)}</span></td>
       <td>${esc(r.stopReason)}${r.stopKind ? `<div class="muted">EBD: ${esc(r.stopKind)}</div>` : ""}</td>
       <td class="num">${esc(r.rounds)}</td><td class="num">${esc(r.researchers)}</td>
-      <td class="num">${r.cost === null ? "" : r.cost.toFixed(3)}</td></tr>`)
-    .join("") || `<tr><td colspan="9" class="muted">No runs match.</td></tr>`;
+      <td class="num">${r.cost === null ? "" : r.cost.toFixed(3)}</td>
+      <td>${r.traced === null || r.traced === undefined ? "" : `<a href="${encodeURIComponent(r.file)}#trace">${esc(r.traced)} calls</a>`}</td></tr>`)
+    .join("") || `<tr><td colspan="10" class="muted">No runs match.</td></tr>`;
 }
 document.getElementById("filter").addEventListener("input", (e) => render(e.target.value));
 render("");

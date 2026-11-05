@@ -4,11 +4,15 @@
  * its code actions, the goal table and its changes, the briefs, each
  * researcher's notes with evidence IDs, the writer's input and the report.
  *
- *   npx tsx src/strategies/ebd/viewer/build.ts [run dir or folder of runs ...]
+ *   npx tsx src/strategies/ebd/viewer/build.ts [run dir or folder of runs ...] [--refresh-traces] [--no-traces]
  *
  * Without arguments it reads local/runs, local/checks and local/experiments.
  * It writes local/viewer/index.html and one page per run. The pages are
  * self-contained (no network); open them in a browser.
+ *
+ * When the LANGFUSE_* variables are set (root .env), it first fetches each finished
+ * run's Langfuse trace and caches it under local/viewer/traces/ (traces.ts); the
+ * pages then show the trace beside EBD's own records.
  *
  * A development tool: the strategy never imports it, and it only reads the
  * run records the platform writes (docs/strategy-modules.md, "Running and testing").
@@ -16,6 +20,8 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import "dotenv/config";
+import { readTrace, syncTraces } from "./traces.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const OUT = resolve("local/viewer");
@@ -86,6 +92,7 @@ export function loadRun(dir: string) {
     synthesis: readJson(join(dir, "synthesis.json")),
     report: readText(join(dir, "report.md")),
     error: readText(join(dir, "error.txt")),
+    trace: readTrace(basename(dir)),
   };
 }
 
@@ -114,6 +121,8 @@ type IndexRow = {
   researchers: string;
   cost: number | null;
   at: string;
+  /** Model calls in the run's cached Langfuse trace, or null without one. */
+  traced: number | null;
 };
 
 export function build(roots: string[]): { pages: number; index: string } {
@@ -141,6 +150,7 @@ export function build(roots: string[]): { pages: number; index: string } {
       researchers: s.researchersUsed !== undefined ? `${s.researchersUsed}/${s.researchersBudget}` : "",
       cost: typeof s.costUsdEstimate === "number" ? s.costUsdEstimate : null,
       at: run.events[0]?.at ?? "",
+      traced: run.trace ? run.trace.observations.filter((o) => o.type === "GENERATION").length : null,
     });
   }
   rows.sort((a, b) => b.at.localeCompare(a.at));
@@ -151,6 +161,18 @@ export function build(roots: string[]): { pages: number; index: string } {
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
-  const { pages, index } = build(args.length ? args : DEFAULT_ROOTS);
+  const flags = new Set(args.filter((a) => a.startsWith("--")));
+  const roots = args.filter((a) => !a.startsWith("--"));
+  const chosen = roots.length ? roots : DEFAULT_ROOTS;
+  if (!flags.has("--no-traces")) {
+    const runs = findRuns(chosen).map((dir) => ({ runId: basename(dir), dir }));
+    const t = await syncTraces(runs, { refresh: flags.has("--refresh-traces"), log: (l) => console.log(l) });
+    console.log(
+      t.enabled
+        ? `Langfuse traces: ${t.fetched} fetched, ${t.cached} already cached, ${t.none} run(s) without a trace${t.failed ? `, ${t.failed} failed` : ""}`
+        : "Langfuse traces: off (set LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY and LANGFUSE_BASE_URL in .env to add them)",
+    );
+  }
+  const { pages, index } = build(chosen);
   console.log(`${pages} run page(s) written. Open ${index}`);
 }

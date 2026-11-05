@@ -93,8 +93,11 @@ npx tsx src/strategies/ebd/viewer/build.ts
 
 It shows every step: the plan, each researcher's brief and notes, each model call with
 its exact input and reply, what the code decided, the goal table, the disagreements,
-what the writer received and the report. [viewer/README.md](viewer/README.md) lists the
-pages and how to verify a run.
+what the writer received and the report. With the `LANGFUSE_*` keys set, runs are also
+traced to the team's self-hosted Langfuse, and the viewer adds each run's trace: a
+timeline of the graph steps and model calls, the calls of each step with their latency
+and tokens, a check that the trace matches the run record, and links into Langfuse.
+[viewer/README.md](viewer/README.md) lists the pages and how to verify a run.
 
 The files of a run record:
 
