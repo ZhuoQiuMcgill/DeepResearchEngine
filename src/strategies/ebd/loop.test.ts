@@ -177,8 +177,8 @@ describe("briefs (section 7)", () => {
     const one = [{ key: "O4", goals: [q1!, q2!, q3!] }, { key: "O7", goals: [q4!] }];
     const ids = (gs: ReturnType<typeof spread>) => gs.map((g) => g.goals.map((x) => x.id).join(","));
     // Four free researchers: the shared brief gives up its lowest-ranked goals, one per researcher.
-    expect(ids(spread(one, 4))).toEqual([`${q1!.id}`, `${q4!.id}`, `${q3!.id}`, `${q2!.id}`]);
-    expect(ids(spread(one, 3))).toEqual([`${q1!.id},${q2!.id}`, `${q4!.id}`, `${q3!.id}`]);
+    expect(ids(spread(one, 4))).toEqual([q1!.id, q4!.id, q3!.id, q2!.id]);
+    expect(ids(spread(one, 3))).toEqual([`${q1!.id},${q2!.id}`, q4!.id, q3!.id]);
     // No free researcher, or nothing left to split: unchanged.
     expect(ids(spread(one, 2))).toEqual(ids(one));
     expect(ids(spread([{ key: "O7", goals: [q4!] }], 4))).toEqual([q4!.id]);
@@ -471,6 +471,16 @@ describe("conflict checker and round analyst checks (sections 9 and 10)", () => 
     expect(q2.evidence).toEqual(["r1-b1-f1", "r1-b1-f2"]);
   });
 
+  it("does not count a kept part twice when the analyst lists it again", () => {
+    const { s } = withEvidence();
+    const q2 = s.goals.find((g) => g.id === "Q2")!;
+    Object.assign(q2, { attempts: 2, metParts: [{ part: "The measure", evidence: ["r1-b1-f1"], round: 1 }], missing: ["regional data"] });
+    const parts = [{ part: "the measure.", met: true, evidence: ["r1-b1-f1"] }, { part: "regional data", met: false, evidence: [] }];
+    applyJudgments(s, { judgments: [{ goal_id: "Q2", parts, outcome: "partial", verdicts: [], missing: ["regional data"] }], proposals: [] }, [q2], 2, options, () => {});
+    expect(q2).toMatchObject({ partsMet: 1, partsTotal: 2 });
+    expect(q2.metParts).toHaveLength(1);
+  });
+
   it("reports a goal ended only by researcher failures as a failure, not as sources not found (Lab 5 review, change 8)", () => {
     const s = stateOf();
     const [q1, q2] = s.goals;
@@ -545,11 +555,25 @@ describe("new goals (section 10.2)", () => {
     const added = acceptProposals(s, { judgments: [], proposals }, 1, options, (l) => log.push(l));
     expect(added.map((g) => g.text)).toEqual([proposals[0]!.text, proposals[1]!.text]);
     expect(log.join("\n")).toContain('re-asks "the tariff rates on car parts", which Q1 still looks for');
-    expect(log.join("\n")).toContain('attaches to "Why"');
+    // A goal on the answer object that restates the final answer is still rejected (live round of 2026-11-05).
+    expect(log.join("\n")).toContain('asks for the final answer (Q7), attached to "Why"');
     // A near-identical question of the same type and object is still a duplicate.
     const again = acceptProposals(s, { judgments: [], proposals: [{ ...base, text: "Which legal authority did the US use for its 2025 tariffs, and was that challenged in court?" }] }, 1, options, (l) => log.push(l));
     expect(again).toEqual([]);
     expect(log.at(-1)).toContain(`duplicates ${added[1]!.id}`);
+  });
+
+  it("moves a research question attached to the answer object to the object of the goal that prompted it (live round of 2026-11-05)", () => {
+    const s = stateOf();
+    const { record, evidence } = readResult(result("Q2,Q1", NOTES));
+    s.results.push(record);
+    s.evidence.push(...evidence);
+    // r1-b1-f3 is a finding of Q1, whose object is O4 "tariffs"; O1 "Why" is the answer the client asks for.
+    const proposal = { template: "T3" as const, need: "necessary" as const, object_id: "O1", new_object: "", new_object_quote: "", prompted_by: ["r1-b1-f3"], leads_to: ["Q1"], done_when: "d", source_hints: [], text: "What share of Canadian new-car sales are vehicles assembled in the US?" };
+    const log: string[] = [];
+    const added = acceptProposals(s, { judgments: [], proposals: [proposal] }, 1, options, (l) => log.push(l));
+    expect(added.map((g) => g.objectIds)).toEqual([["O4"]]);
+    expect(log[0]).toContain('moved from "Why" (the answer the client asks for) to O4');
   });
 });
 

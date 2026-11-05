@@ -1,10 +1,10 @@
 # EBD strategy design: building EBD research behaviour on the LangGraph platform
 
-Behaviour design (Haoxi Li). **Draft for team review.** Built: the request analysis
-(section 5) and the loop (sections 6–12), tested offline with a fake model through the
-real skeleton and live on Haiku (section 16.1). The defaults of the open decisions in
-section 18 are built in as options, pending the team's confirmation. A run viewer for
-checking runs step by step is in `viewer/`.
+Behaviour design (Haoxi Li). **Final for the comparison with the baseline (2026-11-05).**
+Built: the request analysis (section 5) and the loop (sections 6–12), tested offline with
+a fake model through the real skeleton and live on Haiku (section 16.1). The open
+decisions of section 18 are decided. A run viewer for checking runs step by step is in
+`viewer/`. Not yet run on Luna (no OpenAI key on this machine).
 
 - 2026-10-07: first draft, written for the Python platform's planned `ebd@1` method.
 - 2026-10-14: retargeted to the TypeScript platform on main (`d24a40d`, strategy
@@ -56,6 +56,24 @@ checking runs step by step is in `viewer/`.
   - A single value sent where a list is expected is made a list instead of costing a
     retry (section 5.3).
   - A multi-goal brief names an object found in the notes by its text (section 7).
+- 2026-11-05: the planned changes of the Lab 4 design review (Lab 5), and the system
+  finalised for the comparison.
+  - Parts of a goal met in earlier rounds are kept with their findings; later rounds
+    judge only the missing parts (section 10.1).
+  - A conflict whose claim a goal checks in the same round is settled only by a
+    supported or contradicted verdict; otherwise it is handled like any other
+    disagreement (section 9).
+  - Ready goals are split over more briefs when researchers would otherwise sit idle
+    (section 7).
+  - Each round's results are read in brief order (section 8).
+  - A round with a failed researcher is never saturated, and a goal ended only by
+    failures is reported as a failure (sections 11 and 12).
+  - Fixed: a settle goal judged "conflicting" waited on itself and left the goal
+    waiting for it "conflicting" for good (section 9).
+  - Decided: D-C, D-D, D-E, D-F and L-7 as built; the comparison spec with a ceiling
+    of 6 and a matched-spend control (sections 14 and 18). Platform drafts for the
+    owner's review: the code version in run records and the matched control (section 17).
+  - The Python request-analyst bundle is removed from the tree (section 5.1).
 
 ## 1. Summary
 
@@ -231,8 +249,8 @@ branch came from which finding, which is the growth that H3 and H-9 measure.
 - Instructions, four worked examples and the output schema were committed in
   `43dc249` under
   `src/deepresearch/agent_catalog/resources/ebd.request_analyst/1/`.
-- That path belongs to the deleted Python platform. Recover it with
-  `git show 43dc249:<path>`.
+- That path belonged to the deleted Python platform and was removed from the tree on
+  2026-11-05. Recover it with `git show 43dc249:<path>`.
 - The lab sources and test runs stay in the git-ignored `labs/lab2/`.
 - `platform_check.py` and `build_bundle.py` import the deleted platform, and
   `run_tests.py` and `build_submission.py` import `platform_check`. Run them from a
@@ -477,6 +495,17 @@ packing turns the top goals into briefs.
   primary object, at most `questionsPerBrief` goals per brief (default 3) and at most
   `maxPerRound` briefs per round (default 4, the platform's concurrency). With 12
   tool calls per researcher, three goals get about four calls each.
+- **Spreading (`spread`, built 2026-11-05).** When packing leaves researchers idle this
+  round, shared briefs are split: the lowest-ranked goal of the largest brief gets its
+  own brief, one at a time, until every free researcher has a brief or every brief has
+  one goal. Free researchers are `maxPerRound`, or the remaining budget less the
+  first-try reserve if smaller. In the Lab 4 flight run, rounds 1 and 2 sent one
+  researcher each, with every ready goal about the flight in one brief, although four
+  could run (Lab 5 review, change 3). Completing goals are split off too: limiting the
+  split to necessary goals was tried after live round 9 and dropped, because in that
+  round the split-off premise check of the flight run found the disagreement over nonstop
+  flights, the split-off app-ecosystem goal of the headset run covered a checklist item,
+  and no necessary goal went short.
 - **First-try reserve (`reserveFirstTries`, D-E; built 2026-10-21).** A necessary
   request goal that has never been served keeps a claim on the budget. The strategy
   holds one researcher for each brief such goals will need (goals about the same object
@@ -537,9 +566,14 @@ packing turns the top goals into briefs.
   different hosts. Strategy code may import only `src/core/index.ts`, which does not
   export `extractUrls`/`pageKey` (request P1). Until that is added, a local Markdown
   link extractor is used.
+- **Order (built 2026-11-05):** the round's results are sorted by brief ID before
+  anything reads them, so the conflict checker and the round analyst see the findings
+  in the same order whatever order the researchers finished in. Code decisions never
+  depended on arrival order (Lab 5 review, change 4).
 - **Failures:** a failed researcher counts as an attempt for each of its goals. The
   goal is re-queued, or exhausted after `maxAttempts`; it is not marked "not found",
-  because nothing was searched.
+  because nothing was searched. Since 2026-11-05 failed attempts are counted, and a goal
+  whose attempts all failed is reported as a failure (section 12).
 
 ## 9. Conflicts
 
@@ -613,8 +647,13 @@ Built 2026-10-26, after the Lab 4 runs (section 16.1):
   and the contradicting findings are that goal's own (`checkedThisRound`).
   - The round analyst judges that goal next, on those findings, so a settle goal would
     only repeat the check.
-  - The conflict is settled, with that goal as its `settleGoal`, and the guidance points
-    the writer to that goal's notes.
+  - Changed 2026-11-05 (Lab 5 review, change 2): the conflict waits for that goal's
+    verdict (`checkedBy`). A supported or contradicted verdict settles it, with that
+    goal as its `settleGoal`, and the guidance points the writer to that goal's notes.
+    An unsettled verdict, or none, leaves a real disagreement: it gets a settle goal
+    within the limits, or is disputed. Before, the conflict was settled at once, so with
+    an unsettled verdict the writer was told both that the claim is not established and
+    that the notes show which side holds.
   - In the false-premise test (JWST "launched in 2018"), such a settle goal took 2 of 5
     researchers and a third round to re-prove a launch year that the verification goal
     had already contradicted.
@@ -634,6 +673,13 @@ Built 2026-10-26, after the Lab 4 runs (section 16.1):
     at level 1, took shares of two researchers and ended not found. Meanwhile the only
     necessary new goal, on transit visas, got a third of one researcher in the last
     round.
+
+Fixed 2026-11-05: a settle goal judged "conflicting" is disputed, and so are its
+conflict and the goal waiting for it. Before, it looked for an open conflict on its
+objects, found its own, and waited on itself; the goal waiting for it stayed
+"conflicting" and its claim never got a final verdict (Lab 4 flight run). As a safety
+net, after every round a conflicting goal whose settle goal has settled settles too:
+answered if the settle goal was answered, disputed otherwise (`releaseWaiting`).
 
 ## 10. Round analysis: done, new goals, moot
 
@@ -686,6 +732,16 @@ Built 2026-10-26 (Lab 4 review): one verdict per claim.
   false-premise test "NASA launched the James Webb Space Telescope" was marked
   contradicted together with "in 2018".
 
+Built 2026-11-05 (Lab 5 review, change 1): met parts are kept.
+- Each part judged met is stored with its findings and round (`metParts`). The message
+  for a retried goal lists them under "Parts already met (kept from earlier rounds; do
+  not judge them again)" and asks to judge only the missing parts; the outcome is
+  judged on those parts alone.
+- `partsMet` and `partsTotal` count the kept parts too. A "conflicting" judgment locks
+  nothing, because its findings disagree.
+- Before, every round judged every part again: in the Lab 4 EBD run, "each source's
+  name, date and scope" was met in round 1 and judged unmet in round 2.
+
 ### 10.2 New goals
 
 Wang & Zeng (2009, Step 4) analyse each answer "as new ROM diagrams" merged into the
@@ -709,8 +765,14 @@ Code accepts a proposal only if all of these hold:
   object alone rejected three different questions about one telescope);
 - it does not ask for a part that a goal re-served this round still misses, since the
   retry asks for it (built 2026-10-26);
-- it does not attach to a product object, the answer the client asks for (built
-  2026-10-26, as in the request analysis);
+- it does not ask for the final answer. A goal attached to a product object (the answer
+  the client asks for) is rejected when its text restates a synthesis question
+  (near-identical, at least 0.45 of their content words shared, or at least 0.75 of its
+  own content words in the synthesis question); otherwise it moves to the object of the
+  goal whose evidence prompted it. Built 2026-10-26 as an outright rejection, as in the
+  request analysis; changed 2026-11-05 after live round 9, in which the flight run lost
+  its necessary transit and visa goals only because the question has no object for them
+  but "How";
 - it is at most `maxDepth` derivation steps from the request (default 2);
 - the quota allows it: `maxNewGoalsPerRound` (4) and `maxOpenGoals` (20).
 
@@ -723,6 +785,13 @@ asks what the step requires, kind by kind as in G1, and proposes it when the ste
 could change the answer to a synthesis question, even if that question does not name
 the step. The finding that reveals the step is what prompted it, so the code rules
 above are unchanged.
+
+Built 2026-11-05 (live round 9): this also covers a main part or step that the findings
+only name. When findings list an object's main parts or steps but none says what one of
+them involves, the round analyst proposes a goal for it if a synthesis question needs it
+explained, even when the part of a goal that asks for the list is met. The EBD question's
+run named EBD's three activities but explained only environment analysis, and no goal was
+proposed, so it failed the growth criterion (section 14), as Lab 4's T1 had.
 
 Built 2026-10-21: a new goal keeps the client's scope. The round analyst does not narrow
 it to one case of something the client did not state (one region, one customer group,
@@ -756,8 +825,9 @@ Code checks after every round; the first rule that applies ends the research.
   `extraRound` is on and a researcher is left.
 - The stop kind is also kept in the state (`stop.kind`, `stop.round`).
 - Built 2026-10-20 (`goals.ts`):
-  - a round in which every researcher failed is not "saturated", because nothing was
-    searched;
+  - a round in which a researcher failed is not "saturated", because its goals wait for
+    a retry (2026-11-05, Lab 5 review, change 8; before, only a round in which every
+    researcher failed);
   - an assumption whose verification goals all became moot does not block
     "complete";
   - when no goal is ready, the run stops as saturated.
@@ -817,14 +887,20 @@ matching the writer's 3–5 sections.
   unsettled one is stated as not established. This is the H1 lever.
 - **Conflicts.** For a settled conflict, which side holds and why, from the notes of
   its settle goal or of the goal that checked its claim in the same round (section 9).
-  For a disputed one, both sides with their sources.
+  For a disputed one, both sides with their sources, in at most two sentences (built
+  2026-11-05: in live round 9, disagreements took 42% of the sleep report and 23% of the
+  flight report; with a client length limit, one sentence, as before).
 - **Off-target referents.** Exclude them, or distinguish the terms only where needed.
 - **Defaults and evidence status.** The frame defaults, only where they change the
   answer, as the baseline does with its interpretation. Exhausted necessary goals, as
   evidence status: "no reliable source states …". Built 2026-10-20: a goal with some
   parts met is "only partly established", with its missing parts, so the writer still
   uses its notes (test round 1 told the writer that no source settled goals with 71
-  findings). Internal evidence and conflict IDs are removed from the guidance.
+  findings). Built 2026-11-05: a necessary goal whose attempts all failed is not "no
+  reliable source": "These questions could not be researched because of technical
+  failures, not for lack of sources. Do not claim that no source exists; where relevant,
+  say only that the report does not cover them." Internal evidence and conflict IDs are
+  removed from the guidance.
 - **No meta text.** Never open the report with the guidance, and never mention the
   research process.
 - **Out of scope (built 2026-10-26).** The guidance is only: "Nothing was researched:
@@ -849,6 +925,7 @@ Strict zod options, all with defaults, chosen per experiment spec:
 | `extraRound` | true | One round of completing goals after "complete" |
 | `premiseFirst` | true | L-7: a request's verification goal is served in round 1 even when the analysis made it wait for definition goals |
 | `reserveFirstTries` | true | D-E: keep researchers for necessary request goals not yet served; briefs made only of goals added during the run use the rest (section 7) |
+| `spread` | true | Split shared briefs when researchers would otherwise sit idle (section 7) |
 | `init` | `"fixed"` | D-F: `"agent"` runs the request analyst as a tool-using agent |
 | `rom` | `"concept"` | Not built. `"word"` would re-enable the rev 1.3 word-level ROM if the A/B test needs it |
 
@@ -875,13 +952,23 @@ This makes the hypotheses measurable from the records.
 | H4 larger gain on the smaller model | Same metrics per model profile. The proposal's local model now depends on the local-Qwen work on `codex/langfuse-baseline`. |
 | H-9 tree metrics | Goals created per round, depth, origin type, outcomes |
 
-Fairness:
-- Both arms get the same `researchersTotal`, and it is a ceiling. The baseline usually
-  uses about 3 researchers, and EBD will usually use more.
-- `docs/design.md` §8 already says to compare quality together with the researchers
-  and searches used.
-- A matched-usage comparison (EBD at the baseline's mean usage) would separate the
-  strategy's choices from sheer search volume.
+Fairness (decided 2026-11-05; Lab 5 review, change 6):
+- All arms run from one spec on one commit, `experiments/compare.json`, and every run
+  record names its commit.
+- Ceiling of 6 researchers for every arm. It is the baseline's largest plan and its
+  per-round cap, which it never exceeded (Lab 4 questions: 3, 4, 3, 3).
+- Matched-spend control `ebd-matched`: EBD with the researchers the baseline used on the
+  same task, model and repeat, so a quality difference cannot come from search volume
+  alone.
+- Reported with quality: researchers, searches, page reads and strategy model calls
+  (`docs/design.md` §8).
+- Web results cannot be frozen, so the arms of one task run in the same session, with
+  repeats, and each run records its queries and sources.
+- Coverage is scored on checklists written before the runs
+  (`experiments/checklists.md`). An item counts only if the report states it with a
+  supporting citation, judged blind.
+- Goal growth (H-9) passes when every main part the findings name has a goal and is
+  explained in the report (Lab 5 review, change 5; criterion in the same file).
 
 ## 15. Module layout and tests
 
@@ -1055,6 +1142,15 @@ No `.env` exists on this machine yet. Copy `.env.example` to `.env` and fill
   
   If it lands, EBD's later rounds benefit from inherited sources, and the baseline
   becomes stronger on the EBD question. Agree on the version before the test rounds.
+- **P5 (drafted 2026-11-05).** The code version in every run record: `config.json` and
+  `summary.json` carry the commit, the branch and whether tracked files had uncommitted
+  changes (`src/platform/version.ts`).
+- **P6 (drafted 2026-11-05).** The matched-spend control: `matchResearchersTo` in a
+  spec's strategy entry, `experiments/compare.json` and the coverage checklists
+  (`experiments/checklists.md`).
+- **P7.** Merge `routed-review` (with `baseline-router`) into main, so the comparison
+  can include the stronger non-EBD arm. `behaviour-design` then merges main, and the two
+  labels are added to `experiments/compare.json`.
 
 ## 18. Open decisions
 
@@ -1062,11 +1158,12 @@ No `.env` exists on this machine yet. Copy `.env.example` to `.env` and fill
 |---|---|---|
 | D-A | Client route and `needs_clarification` in rev 2 | **Decided 2026-10-19: removed** (section 5.2) |
 | D-B | Concept-level or word-level ROM | Concept-level plus the never-drop check; word level as an ablation only if needed |
-| D-C | Goals per brief | Up to 3, grouped by object. **Built as the default** (`questionsPerBrief: 3`), pending confirmation |
-| D-D | Conflict checker as its own call before the round analyst, or merged | Its own call, so H1 is attributable and ablatable. **Built this way**, pending confirmation |
-| D-E | Thresholds | Defaults in section 13, tuned on development tasks only. **Built as the defaults**, pending confirmation. The first-try reserve (section 7) was approved on 2026-10-21 |
-| D-F | Init mode: one call with a code retry (`fixed`), or the analyst as a tool-using agent (`agent`) | Lab 3 evidence (Haiku, 81 runs, 2026-10-19): equal final acceptance and case checks; agent costs 1.7–2× the input tokens. Default `fixed`; keep `agent` as an option (both are in `src/strategies/ebd/request/`). **Built this way**, pending confirmation |
-| L-7 | When the premise check runs, if the analysis made it wait for definition goals | Round 1, so a refuted premise can make other goals moot early. **Built as the default** (`premiseFirst: true`), pending confirmation |
+| D-C | Goals per brief | **Decided 2026-11-05:** up to 3, grouped by object (`questionsPerBrief: 3`), split when researchers would sit idle (`spread`) |
+| D-D | Conflict checker as its own call before the round analyst, or merged | **Decided 2026-11-05:** its own call, so H1 is attributable and ablatable |
+| D-E | Thresholds | **Decided 2026-11-05:** the defaults in section 13, tuned on development tasks only, with the first-try reserve (approved 2026-10-21) |
+| D-F | Init mode: one call with a code retry (`fixed`), or the analyst as a tool-using agent (`agent`) | **Decided 2026-11-05:** `fixed`. Lab 3 evidence (Haiku, 81 runs, 2026-10-19): equal final acceptance and case checks; agent costs 1.7–2× the input tokens. `agent` stays an option |
+| L-7 | When the premise check runs, if the analysis made it wait for definition goals | **Decided 2026-11-05:** round 1 (`premiseFirst: true`), so a refuted premise can make other goals moot early |
+| D3 | Budget matching between the arms | **Decided 2026-11-05:** one spec, ceiling 6, matched-spend control (section 14) |
 | D2 (team) | The fixed EBD question has no planted conflicts, so H1 needs the planted-conflict tasks | Keep the four tasks for development; add the nine proposal tasks as explicit questions in experiment specs |
 | D5 (team) | Calendar | If W1 is the week of 2026-09-21, scope freezes the week of 2026-10-26 |
 

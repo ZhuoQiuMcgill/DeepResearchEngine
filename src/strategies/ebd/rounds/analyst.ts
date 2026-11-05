@@ -74,7 +74,7 @@ Evidence lines have IDs: r2-b1-f3 is a cited finding, r2-b1-g1 is a gap the rese
 ## Proposals: new goals (EBD: each answer is analysed as new objects and relations, which raise new questions)
 Propose a goal only when the evidence shows the research needs it:
 - a term that a necessary goal needs but that is not yet defined (for example, which products are "the current flagships" once a finding names them): template T1, the term as new_object, copied exactly from the prompting finding as new_object_quote;
-- a part or life-cycle event of an object that a synthesis question depends on: T1 or T3. This includes a step that the findings reveal and no goal covers; for example, a finding that a product must be imported brings in import rules, duties and delivery time. Ask what the step requires, checking the same kinds as the request analysis: natural; built, physical and digital (documents, data, laws, software); economic (costs, prices, time); social (people and organisations). Propose such a goal when the step could change the answer to a synthesis question, even if that question does not name the step; the finding that reveals the step is what prompted it;
+- a part or life-cycle event of an object that a synthesis question depends on: T1 or T3. This includes a step that the findings reveal and no goal covers; for example, a finding that a product must be imported brings in import rules, duties and delivery time. It also includes a main part or step that the findings only name: when findings list an object's main parts or steps but none says what one of them involves, propose a goal for that one if a synthesis question needs it explained, even when the part of a goal that asks for the list is met (for example, findings name a vaccine trial's three phases but describe only the first). Ask what the step requires, checking the same kinds as the request analysis: natural; built, physical and digital (documents, data, laws, software); economic (costs, prices, time); social (people and organisations). Propose such a goal when the step could change the answer to a synthesis question, even if that question does not name the step; the finding that reveals the step is what prompted it;
 - a relation the findings state but leave unverified or contested: T7.
 Each proposal attaches to an existing object (object_id), cites what prompted it (prompted_by), and serves a necessary goal or a synthesis question (leads_to). Write the question so that a researcher who sees only it can act: full names, place and time. Keep the client's scope: do not narrow a new goal to one case of something the client did not state (one region, one customer group, one budget) because a finding describes that case; ask for the main cases, or for the case the request itself implies. Do not propose a goal that repeats an existing goal, asks for the final answer itself, merely re-asks a partial goal (partial goals are re-served automatically), or only asks for a date or a capture of a value already found. Propose at most the number given in <limits>; return [] when nothing is needed.
 
@@ -281,13 +281,16 @@ export function applyJudgments(state: EbdState, reply: RoundReply | null, served
       log(`${goal.id}: no valid judgment, treated as partial → ${r}`);
       continue;
     }
-    const metParts = j.parts.filter((p) => p.met);
-    const cited = [...new Set(metParts.flatMap((p) => p.evidence))];
     // Lab 5 review, change 1: parts met in earlier rounds stay met; this judgment covers the rest.
-    // A conflicting judgment locks nothing, because its findings disagree.
+    // A kept part the analyst lists again is not counted twice. A conflicting judgment locks
+    // nothing, because its findings disagree.
+    const keptText = new Set(goal.metParts.map((p) => partKey(p.part)));
+    const judgedParts = j.parts.filter((p) => !keptText.has(partKey(p.part)));
+    const metParts = judgedParts.filter((p) => p.met);
+    const cited = [...new Set(j.parts.filter((p) => p.met).flatMap((p) => p.evidence))];
     const kept = goal.metParts.length;
     if (j.outcome !== "conflicting") goal.metParts.push(...metParts.map((p) => ({ part: p.part, evidence: p.evidence, round })));
-    goal.partsTotal = kept + j.parts.length;
+    goal.partsTotal = kept + judgedParts.length;
     goal.partsMet = kept + metParts.length;
     goal.evidence = [...new Set([...goal.evidence, ...cited])];
     goal.missing = j.missing;
@@ -379,6 +382,11 @@ function resolveSettle(state: EbdState, goal: Goal, how: "answered" | "exhausted
   log(`${conflict.id}: ${conflict.status}`);
 }
 
+/** A part's text for comparison: lower case, words only. */
+function partKey(text: string): string {
+  return text.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
 /** ", claims A1 supported, A2 contradicted" for the log; empty for a goal without verdicts. */
 function claimText(goal: Goal): string {
   const entries = Object.entries(goal.verdicts);
@@ -444,30 +452,46 @@ export function acceptProposals(state: EbdState, reply: RoundReply | null, round
     const prompts = p.prompted_by.filter((id) => byEvidence.has(id) || state.conflicts.some((c) => c.id === id));
     if (!prompts.length) return reject("cites no existing evidence or conflict");
     if (!objects.has(p.object_id)) return reject(`unknown object ${p.object_id}`);
-    // The request analysis never searches the product (the answer the client asks for); new goals follow
-    // the same rule (Lab 4 flight run: two goals attached to "How").
+    // The request analysis never searches the product (the answer the client asks for), and neither do
+    // new goals (Lab 4 flight run: two goals attached to "How"). Since the live round of 2026-11-05 the
+    // test is what the goal asks, not where it is attached: in the flight run the transit and visa
+    // goals were attached to "How" only because the question has no object for them, and were lost.
+    // A goal that asks for the final answer is rejected; any other moves to the object of the goal
+    // whose evidence prompted it.
+    let objectId = p.object_id;
     const product = state.analysis.rom.objects.find((o) => o.id === p.object_id && o.role === "product");
-    if (product) return reject(`attaches to "${product.text}", the answer the client asks for, not a thing to research`);
+    if (product) {
+      // Near-identical, sharing most content words, or adding almost nothing to a synthesis question:
+      // "Why did the tariffs raise prices?" restates a longer synthesis question in a few of its words.
+      const answer = synthesisQuestions(state.analysis).find((q) => similar(q.text, p.text) || overlap(q.text, p.text) >= 0.45 || coverage(p.text, q.text) >= 0.75);
+      if (answer) return reject(`asks for the final answer (${answer.id}), attached to "${product.text}", the answer the client asks for`);
+      const products = new Set(state.analysis.rom.objects.filter((o) => o.role === "product").map((o) => o.id));
+      const prompting = prompts.flatMap((id) => byEvidence.get(id)?.goalIds ?? [state.conflicts.find((c) => c.id === id)?.about ?? ""]);
+      const target = prompting.flatMap((id) => state.goals.find((g) => g.id === id)?.objectIds ?? []).find((o) => !products.has(o));
+      if (!target) return reject(`attaches to "${product.text}", the answer the client asks for, and the goals that prompted it have no other object`);
+      log(`proposal ${i + 1}: moved from "${product.text}" (the answer the client asks for) to ${target}, an object of the goal whose evidence prompted it`);
+      objectId = target;
+    }
     const leads = p.leads_to.filter((id) => necessary.has(id) || synthesis.has(id));
     if (!leads.length) return reject("leads to no necessary goal or synthesis question");
     if (!p.text.trim() || p.text.length > 400 || !p.done_when.trim() || p.done_when.length > 400) return reject("text or done_when empty or longer than 400 characters");
     const parents = prompts.flatMap((id) => byEvidence.get(id)?.goalIds ?? [state.conflicts.find((c) => c.id === id)?.about ?? ""]);
     const depth = 1 + Math.max(0, ...parents.map((id) => state.goals.find((g) => g.id === id)?.depth ?? 0));
     if (depth > options.maxDepth) return reject(`depth ${depth} exceeds maxDepth ${options.maxDepth}`);
-    let objectIds = [p.object_id];
+    let objectIds = [objectId];
     // A new object enters the object model only with the goal it came with.
     let found: EbdState["objectsFound"][number] | null = null;
     if (p.new_object.trim()) {
       const quoteFound = prompts.some((id) => byEvidence.get(id)?.kind === "finding" && byEvidence.get(id)!.text.toLowerCase().includes(p.new_object_quote.trim().toLowerCase()));
       if (!p.new_object_quote.trim() || !quoteFound) return reject("a new object needs a quote copied exactly from a prompting finding");
       const existing = state.objectsFound.find((o) => o.text.toLowerCase() === p.new_object.trim().toLowerCase());
-      if (existing) objectIds = [existing.id, p.object_id];
+      if (existing) objectIds = [existing.id, objectId];
       else {
         const used = [...state.analysis.rom.objects, ...state.objectsFound].map((o) => Number(o.id.slice(1)) || 0);
         const id = `O${Math.max(0, ...used) + 1}`;
         const evidenceId = prompts.find((x) => byEvidence.get(x)?.text.toLowerCase().includes(p.new_object_quote.trim().toLowerCase()))!;
-        found = { id, text: p.new_object.trim(), parent: p.object_id, quote: p.new_object_quote.trim(), evidence: evidenceId, round };
-        objectIds = [id, p.object_id];
+        found = { id, text: p.new_object.trim(), parent: objectId, quote: p.new_object_quote.trim(), evidence: evidenceId, round };
+        objectIds = [id, objectId];
       }
     }
     // Same type and objects is a duplicate only if the questions also overlap: "commissioning dates",

@@ -189,7 +189,7 @@ export function buildGuidance(state: EbdState): string {
           const sources = hostsOf(state, [...c.sideA, ...c.sideB]);
           return limit
             ? `- The sources disagree: ${plain(c.statement)} Give both sides in one sentence, with their sources${sources}.`
-            : `- The sources disagree: ${plain(c.statement)} Present both sides with their sources${sources} under "${DISAGREEMENT_SECTION}" or where it arises.`;
+            : `- The sources disagree: ${plain(c.statement)} Give both sides with their sources${sources} in at most two sentences, under "${DISAGREEMENT_SECTION}" or where it arises.`;
         }
         return `- The sources disagreed (${plain(c.statement)}); the notes for "${plain(state.goals.find((g) => g.id === c.settleGoal)?.text ?? "")}" show which account holds and why.`;
     }

@@ -265,9 +265,17 @@ class EbdStrategy implements ResearchStrategy<EbdState> {
     });
     const waiting = ranked.filter((r) => !served.includes(r.goal)).map((r) => r.goal.id);
     // With nothing reserved, held goals lost to briefs that carry request goals (GPU rerun, 2026-10-21).
-    const heldWhy = researchersKept ? `${researchersKept} researcher(s) kept for ${reservedFor.map((g) => g.id).join(", ")}` : "the researchers left go to briefs with request goals";
-    const heldNote = held.length ? `Held back for first tries: ${held.map((g) => g.id).join(", ")} (${heldWhy}).` : "";
-    if (held.length) log(`held back for first tries: ${held.map((g) => g.id).join(", ")}; ${heldWhy}`);
+    // Without a researcher kept, the held goals simply did not fit in the budget (live round of 2026-11-05:
+    // the rationale called a goal beyond the last researcher "held back for first tries").
+    const protectedFirst = groups.some((g) => g.goals.some((x) => x.origin.type === "request"));
+    const heldWhy = researchersKept
+      ? `${researchersKept} researcher(s) kept for ${reservedFor.map((g) => g.id).join(", ")}`
+      : protectedFirst
+        ? "the researchers left go to briefs with request goals"
+        : "no researcher is left for them this round";
+    const heldLabel = researchersKept || protectedFirst ? "Held back for first tries" : "Not served for lack of researchers";
+    const heldNote = held.length ? `${heldLabel}: ${held.map((g) => g.id).join(", ")} (${heldWhy}).` : "";
+    if (held.length) log(`${heldLabel.toLowerCase()}: ${held.map((g) => g.id).join(", ")}; ${heldWhy}`);
     if (released) log("first-try reserve released: no other brief can be served this round");
     const budgetNote = ctx.budget.researchersRemaining === 0 ? "No researcher budget is left; these briefs record the unmet demand." : "";
     if (ctx.budget.researchersRemaining === 0) {

@@ -55,6 +55,11 @@ export function selectGroups(ranked: Ranked[], options: Pick<EbdOptions, "maxPer
  * brief or every brief has one goal. In the Lab 4 flight run, rounds 1 and 2 sent one researcher
  * each, with every ready goal in one brief, although four could run. `slots` is the number of
  * researchers this round may use: the round limit and the budget less the first-try reserve.
+ *
+ * Completing goals are split off too. Restricting the split to necessary goals was tried and
+ * dropped after the live round of 2026-11-05: in the flight run the split-off premise check
+ * (a completing goal) found the disagreement over nonstop flights, and in the headset run the
+ * split-off app-ecosystem goal covered a checklist item; no necessary goal went short in either.
  */
 export function spread(groups: Group[], slots: number): Group[] {
   const out = groups.map((g) => ({ key: g.key, goals: [...g.goals] }));
