@@ -296,7 +296,7 @@ function overview() {
 
 function conflictTable(s, title) {
   if (!s.conflicts.length) return `<section class="card"><h2>${esc(title)}</h2><p class="muted">No conflicts recorded.</p></section>`;
-  return `<section class="card"><h2>${esc(title)}</h2><div class="tablewrap"><table><thead><tr><th>ID</th><th>Type</th><th>About</th><th>Statement</th><th>Side A</th><th>Side B</th><th>Status</th><th>Settle goal</th></tr></thead><tbody>${s.conflicts.map((c) => `<tr><td>${esc(c.id)}</td><td>${esc(c.type)}</td><td>${esc(c.about)}</td><td>${esc(c.statement)}${c.condition ? `<div class="muted">${esc(c.condition)}</div>` : ""}${c.settleBy ? `<div class="muted">settle by: ${esc(c.settleBy)}</div>` : ""}${c.claim ? `<div class="muted">decides the claim ${esc(c.claim)}</div>` : ""}</td><td>${evList(c.sideA)}</td><td>${c.sideB.map((x) => (evidence.has(x) ? evBtn(x) : esc(x))).join(" ")}</td><td>${badge(c.status, c.status === "settled" ? "ok" : c.status === "open" ? "info" : "warn")}<div class="muted">round ${c.createdRound}${c.settledRound ? `→${c.settledRound}` : ""}</div></td><td>${esc(c.settleGoal || "")}</td></tr>`).join("")}</tbody></table></div></section>`;
+  return `<section class="card"><h2>${esc(title)}</h2><div class="tablewrap"><table><thead><tr><th>ID</th><th>Type</th><th>About</th><th>Statement</th><th>Side A</th><th>Side B</th><th>Status</th><th>Settle goal</th></tr></thead><tbody>${s.conflicts.map((c) => `<tr><td>${esc(c.id)}</td><td>${esc(c.type)}</td><td>${esc(c.about)}</td><td>${esc(c.statement)}${c.condition ? `<div class="muted">${esc(c.condition)}</div>` : ""}${c.settleBy ? `<div class="muted">settle by: ${esc(c.settleBy)}</div>` : ""}${c.claim ? `<div class="muted">decides the claim ${esc(c.claim)}</div>` : ""}</td><td>${evList(c.sideA)}</td><td>${c.sideB.map((x) => (evidence.has(x) ? evBtn(x) : esc(x))).join(" ")}</td><td>${badge(c.status, c.status === "settled" ? "ok" : c.status === "open" ? "info" : "warn")}<div class="muted">round ${c.createdRound}${c.settledRound ? `→${c.settledRound}` : ""}</div></td><td>${esc(c.settleGoal || "")}${c.checkedBy && !c.settleGoal ? `<div class="muted">waits for the verdict of ${esc(c.checkedBy)}</div>` : c.checkedBy ? `<div class="muted">checked by ${esc(c.checkedBy)}</div>` : ""}</td></tr>`).join("")}</tbody></table></div></section>`;
 }
 
 // ------------------------------------------------------------------ decisions
@@ -320,12 +320,12 @@ function goalTable(state, prev) {
     const cls = prev && !p ? "added" : p && (p.status !== g.status || p.attempts !== g.attempts || p.partsMet !== g.partsMet) ? "changed" : "";
     const status = p && p.status !== g.status ? `${goalStatusBadge(p.status)} → ${goalStatusBadge(g.status)}` : goalStatusBadge(g.status);
     return `<tr class="${cls}"><td><strong>${esc(g.id)}</strong>${cls === "added" ? `<br>${badge("new", "new")}` : ""}</td>
-      <td>${esc(g.text)}<div class="muted">done when: ${esc(g.doneWhen)}</div>${g.missing.length ? `<div class="muted">missing: ${esc(g.missing.join("; "))}</div>` : ""}${g.retryNote ? `<div class="muted">next attempt: ${esc(g.retryNote)}</div>` : ""}</td>
+      <td>${esc(g.text)}<div class="muted">done when: ${esc(g.doneWhen)}</div>${(g.metParts || []).length ? `<div class="muted">kept: ${g.metParts.map((m) => `${esc(m.part)} (r${m.round})`).join("; ")}</div>` : ""}${g.missing.length ? `<div class="muted">missing: ${esc(g.missing.join("; "))}</div>` : ""}${g.retryNote ? `<div class="muted">next attempt: ${esc(g.retryNote)}</div>` : ""}</td>
       <td>${esc(g.kind)}<div class="muted">L${g.level} · ${esc(g.need)}</div></td>
       <td>${esc(g.dependsOn.join(", "))}${g.waitingOn ? `<div class="muted">waits on ${esc(g.waitingOn)}</div>` : ""}</td>
       <td>${status} ${claimBadges(g)}</td>
       <td class="num">${g.partsTotal ? `${g.partsMet}/${g.partsTotal}` : ""}</td>
-      <td class="num">${g.attempts}${g.servedRounds.length ? `<div class="muted">r${g.servedRounds.join(",")}</div>` : ""}</td>
+      <td class="num">${g.attempts}${g.failedAttempts ? `<div class="muted">${g.failedAttempts} failed</div>` : ""}${g.servedRounds.length ? `<div class="muted">r${g.servedRounds.join(",")}</div>` : ""}</td>
       <td>${evList(g.evidence)}</td>
       <td class="muted">${g.origin.type}${g.origin.type === "conflict" ? ` ${esc(g.origin.conflict)}` : g.origin.evidence ? ` ${g.origin.evidence.map(esc).join(", ")}` : ""} · d${g.depth}</td></tr>`;
   });
