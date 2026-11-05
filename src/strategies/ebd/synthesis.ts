@@ -115,7 +115,13 @@ export function buildMaterial(state: EbdState): SynthesisInput["material"] {
   return material;
 }
 
+/** Every researcher of the run failed, so there is no evidence at all (live failure test, 2026-11-05). */
+export function nothingResearched(state: EbdState): boolean {
+  return state.results.length > 0 && state.results.every((r) => r.status === "failed");
+}
+
 export function buildOutline(state: EbdState): string[] {
+  if (nothingResearched(state)) return [];
   // Under a length limit, disagreements go where they arise, one sentence each.
   const disputed = state.conflicts.some((c) => c.status === "disputed") && !lengthLimit(state.analysis);
   const questions = synthesisQuestions(state.analysis).map((q) => q.text);
@@ -149,6 +155,10 @@ export function buildGuidance(state: EbdState): string {
     // Lab 4 review (2026-10-26): with no material, the writer's usual 3–5 sections became generic advice.
     const reason = a.status_reason?.trim() || "the request is out of scope";
     return `Nothing was researched: ${reason}${/[.!?]$/.test(reason) ? "" : "."} Write only the title and one paragraph of at most four sentences: why the question cannot be answered yet and what the client could provide. Add no other sections and no general advice.`;
+  }
+  // Live failure test (2026-11-05): with every researcher failed, the usual plan gave 431–773 words of nothing.
+  if (nothingResearched(state)) {
+    return "Nothing could be researched: every researcher failed for technical reasons, so there is no evidence. Write only the title and one paragraph of at most four sentences: say that the research could not be carried out, so the question is not answered, and that it should be run again. Do not answer from general knowledge, and do not judge the question's premises.";
   }
   const out: string[] = [];
 

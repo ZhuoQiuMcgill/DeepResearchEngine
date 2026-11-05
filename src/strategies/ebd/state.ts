@@ -153,7 +153,8 @@ export type FoundObject = {
   round: number;
 };
 
-export type StopKind = "complete" | "saturated" | "budget" | "out_of_scope";
+/** researcher_failures: every necessary goal is settled, but some ended only because their researchers failed. */
+export type StopKind = "complete" | "saturated" | "budget" | "out_of_scope" | "researcher_failures";
 
 /** One model call of a strategy step, kept for the run viewer and for audits. */
 export type CallRecord = {

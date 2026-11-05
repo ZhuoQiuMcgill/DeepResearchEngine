@@ -227,6 +227,34 @@ describe("ebd strategy through the skeleton", () => {
     expect(state.objectsFound).toEqual([]);
   });
 
+  it("reports a run whose researchers all failed as researcher failures, with its claims unchecked (live failure test, 2026-11-05)", async () => {
+    const { model } = fakeModel();
+    let synthesis: { outline?: string[]; guidance?: string } | undefined;
+    const failing = async (q: string, brief: ResearchBrief): Promise<ResearchResult> => ({ ...(await research(q, brief)), status: "failed", notes: "", failure: { kind: "timeout", message: "timed out" } });
+    const graph = buildResearchGraph({
+      strategy: ebd.create({}),
+      strategyModel: model,
+      research: failing,
+      write: async (_q, s) => ((synthesis = s), { report: "r", diagnostics: [] }),
+      limits: { researchersTotal: 30, toolCallsPerResearcher: 12 },
+      maxRounds: 8,
+      concurrency: 4,
+      runId: "t",
+      today: E1.runDate,
+    });
+    const final = await graph.invoke(initialState(E1.request), { recursionLimit: 100 });
+    const state = final.strategyState as EbdState;
+    expect(state.stop?.kind).toBe("researcher_failures");
+    const tried = state.goals.filter((g) => g.attempts > 0);
+    expect(tried.length).toBeGreaterThan(0);
+    expect(tried.every((g) => g.status === "exhausted" && g.failedAttempts === g.attempts)).toBe(true);
+    // Nothing was checked, so no claim has a verdict, and the writer gets only the short note, with no section plan.
+    expect(state.goals.every((g) => Object.keys(g.verdicts).length === 0)).toBe(true);
+    expect(synthesis!.guidance).toMatch(/^Nothing could be researched: every researcher failed for technical reasons/);
+    expect(synthesis!.guidance).not.toContain("The evidence does not establish this");
+    expect(synthesis!.outline).toBeUndefined();
+  });
+
   it("records the unmet demand when the budget runs out", async () => {
     const { model } = fakeModel();
     const graph = buildResearchGraph({

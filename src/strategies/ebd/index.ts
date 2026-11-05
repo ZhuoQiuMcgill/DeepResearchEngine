@@ -24,7 +24,7 @@ import {
   type SynthesisInput,
 } from "../../core/index.js";
 import { briefFor, selectWithReserve, spread } from "./briefs.js";
-import { goalsFromAnalysis, isComplete, isSaturated, mootDependents, rankReady, releaseWaiting, requeueOrExhaust, treeMetrics, type RoundProgress } from "./goals.js";
+import { endedByFailures, goalsFromAnalysis, isComplete, isSaturated, mootDependents, rankReady, releaseWaiting, requeueOrExhaust, treeMetrics, type RoundProgress } from "./goals.js";
 import { parseOptions, type EbdOptions } from "./options.js";
 import { requestMessage, runAgentAnalysis, runFixedAnalysis, type AnalysisOutcome } from "./request/index.js";
 import { acceptProposals, applyJudgments, runRoundAnalyst, servedGoals, verdictSummary } from "./rounds/analyst.js";
@@ -222,8 +222,17 @@ class EbdStrategy implements ResearchStrategy<EbdState> {
   /** Section 11 stop rules, then sections 6 and 7: rank the ready goals and pack them into briefs. */
   private plan(state: EbdState, ctx: StrategyContext, lines: string[], progress: RoundProgress | null): StrategyStep<EbdState> {
     const log = (line: string) => state.step.events.push(line);
-    const done = (kind: "complete" | "saturated", reason: string): StrategyStep<EbdState> => {
-      state.stop = state.stop?.kind === kind ? state.stop : { kind, round: state.roundsObserved, reason };
+    // A necessary goal that ended only through researcher failures was never researched, so the run
+    // is not complete on EBD's own terms (live failure test, 2026-11-05).
+    const stopOf = (stopKind: "complete" | "saturated", stopReason: string): NonNullable<EbdState["stop"]> => {
+      const failed = state.goals.filter((g) => g.need === "necessary" && endedByFailures(g)).map((g) => g.id);
+      if (stopKind !== "complete" || !failed.length) return { kind: stopKind, round: state.roundsObserved, reason: stopReason };
+      return { kind: "researcher_failures", round: state.roundsObserved, reason: `every necessary goal is settled, but ${failed.join(", ")} ended only because their researchers failed` };
+    };
+    const done = (stopKind: "complete" | "saturated", stopReason: string): StrategyStep<EbdState> => {
+      const next = stopOf(stopKind, stopReason);
+      const { kind, reason } = next;
+      state.stop = state.stop?.kind === kind ? state.stop : next;
       log(`stop: ${kind} (${reason})`);
       return { state, decision: { briefs: [], stop: true, rationale: [...lines, `Stop: ${kind}. ${reason}.`].join("\n") } };
     };
@@ -235,7 +244,7 @@ class EbdStrategy implements ResearchStrategy<EbdState> {
         const completing = ranked.filter((r) => r.goal.need === "completing");
         if (this.options.extraRound && !state.extraRoundServed && completing.length && ctx.budget.researchersRemaining > 0) {
           state.extraRoundServed = true;
-          state.stop = { kind: "complete", round: state.roundsObserved, reason: complete.reason };
+          state.stop = stopOf("complete", complete.reason);
           log("complete; one extra round serves completing goals");
           ranked = completing;
           lines = [...lines, "Complete: every necessary goal is settled. One extra round serves completing goals."];

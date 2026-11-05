@@ -3,7 +3,7 @@ import { AIMessage, type BaseMessage } from "@langchain/core/messages";
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import type { ResearchBrief, ResearchResult } from "../../core/index.js";
 import { briefFor, directiveLines, pack, selectGroups, selectWithReserve, spread } from "./briefs.js";
-import { assumptionVerdicts, endedByFailures, goalsFromAnalysis, isComplete, isReady, isSaturated, levelOf, mootDependents, rankReady, refutedObjects, releaseWaiting, treeMetrics } from "./goals.js";
+import { assumptionVerdicts, endedByFailures, goalsFromAnalysis, isComplete, isReady, isSaturated, levelOf, mootDependents, rankReady, refutedObjects, releaseWaiting, requeueOrExhaust, treeMetrics } from "./goals.js";
 import { byBrief } from "./index.js";
 import { decodeNested, structuredCall, wrapLists } from "./llm.js";
 import { parseOptions } from "./options.js";
@@ -512,6 +512,20 @@ describe("conflict checker and round analyst checks (sections 9 and 10)", () => 
     expect(guidance).toContain(`No reliable source was found for these; say so where relevant instead of guessing:
 - ${q2!.text}`);
     expect(guidance.split("No reliable source")[1]!.split("\n\n")[0]).not.toContain(q1!.text);
+  });
+
+  it("leaves a claim unjudged when every attempt to check it failed (live failure test, 2026-11-05)", () => {
+    const s = stateOf();
+    const q1 = s.goals.find((g) => g.verifies.length)!;
+    const claim = q1.verifies[0]!;
+    Object.assign(q1, { attempts: 2, failedAttempts: 2 });
+    expect(requeueOrExhaust(q1, 2, 2, null)).toBe("exhausted");
+    expect(q1.verdicts).toEqual({});
+    expect(buildGuidance(s)).toContain("This could not be checked; do not present it as established.");
+    // One attempt that reached the sources leaves the claim unsettled, as before.
+    Object.assign(q1, { status: "open", attempts: 2, failedAttempts: 1, verdicts: {} });
+    requeueOrExhaust(q1, 2, 2, null);
+    expect(q1.verdicts).toEqual({ [claim]: "unsettled" });
   });
 
   it("keeps the valid parts of a judgment when the retry fails too", () => {

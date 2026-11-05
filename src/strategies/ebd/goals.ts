@@ -197,11 +197,16 @@ function isSettledStatus(status: Goal["status"]): boolean {
   return status === "answered" || status === "exhausted" || status === "disputed" || status === "moot";
 }
 
-/** A failed or unproductive attempt: re-queue, or exhaust after maxAttempts; an exhausted goal's unjudged claims are unsettled (section 10.1). */
+/**
+ * A failed or unproductive attempt: re-queue, or exhaust after maxAttempts. An exhausted goal's
+ * unjudged claims are unsettled (section 10.1), unless every attempt failed: then nothing was
+ * checked, and the claims keep no verdict (live failure test, 2026-11-05: "unsettled" made the
+ * writer say the evidence does not establish that EBD exists).
+ */
 export function requeueOrExhaust(goal: Goal, round: number, maxAttempts: number, note: string | null): "requeued" | "exhausted" {
   if (goal.attempts >= maxAttempts) {
     settle(goal, "exhausted", round);
-    for (const claim of goal.verifies) goal.verdicts[claim] ??= "unsettled";
+    if (goal.failedAttempts < goal.attempts) for (const claim of goal.verifies) goal.verdicts[claim] ??= "unsettled";
     return "exhausted";
   }
   goal.status = "open";
