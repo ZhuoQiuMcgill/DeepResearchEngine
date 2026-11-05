@@ -13,6 +13,7 @@ import { startTracing } from "../observability/langfuse.js";
 import { UsageLedger } from "../observability/usage.js";
 import { RunRecorder } from "./recorder.js";
 import { createStrategy } from "./strategies.js";
+import { codeVersion, type CodeVersion } from "./version.js";
 
 export interface StrategySelection {
   /** Strategy directory name under src/strategies/. */
@@ -48,6 +49,8 @@ export interface RunSummary {
   profile: string;
   model: string;
   tags: Record<string, string | number>;
+  /** The commit the run used (Lab 5 review): reports are tied to their code. */
+  code: CodeVersion;
   stopReason?: string;
   rounds: number;
   researchersUsed: number;
@@ -80,7 +83,8 @@ export async function runOne(spec: RunSpec, log: (line: string) => void = () => 
   const runId = makeRunId(label, profile.name, spec.question);
   const recorder = new RunRecorder(spec.outDir, runId);
   const today = new Date().toISOString().slice(0, 10);
-  await recorder.init({ ...spec, profile: profileRecord(profile), today }, spec.question);
+  const code = codeVersion();
+  await recorder.init({ ...spec, profile: profileRecord(profile), today, code }, spec.question);
   const ledger = new UsageLedger(profile.pricing);
   const started = Date.now();
 
@@ -141,6 +145,7 @@ export async function runOne(spec: RunSpec, log: (line: string) => void = () => 
     profile: profile.name,
     model: profile.model,
     tags: spec.tags ?? {},
+    code,
     ...(out.stopReason ? { stopReason: out.stopReason } : {}),
     rounds: Math.max(0, ...out.results.map((r) => r.brief.round)),
     researchersUsed: out.researchersUsed,
