@@ -74,6 +74,18 @@ decisions of section 18 are decided. A run viewer for checking runs step by step
     of 6 and a matched-spend control (sections 14 and 18). Platform drafts for the
     owner's review: the code version in run records and the matched control (section 17).
   - The Python request-analyst bundle is removed from the tree (section 5.1).
+- 2026-11-05, afternoon: fixes from live rounds 9 and 10 on Haiku (section 16.1), with the
+  texts approved by the behaviour design lead.
+  - The round analyst may propose a goal for a main part or step the findings only name
+    (section 10.2).
+  - A new goal attached to the answer object moves to the object of the goal that
+    prompted it, and is rejected only when it restates a synthesis question
+    (section 10.2).
+  - Each disagreement gets at most two sentences in the report (section 12).
+  - G1 (b), the request analysis rule for defining an object, no longer lets the
+    checklist's environment-kind labels into a goal (section 5.6).
+  - Splitting completing goals into their own briefs keeps a researcher for each
+    necessary retry (section 7).
 
 ## 1. Summary
 
@@ -413,6 +425,17 @@ question and its `done_when` cover the main cases and name them, as Step 1's neu
 default requires. In the flight rerun the analysis disclosed the unstated nationality
 only in its synthesis question, and the research then followed one nationality.
 
+Changed 2026-11-05 (live round 10): G1 (b) asked `done_when` to name, for each event, "the
+kinds that matter". On the EBD question, whose subject is a theory of environment kinds,
+the analysis copied the checklist's labels into a goal: "for each the environment kinds it
+covers (natural, built, digital, economic, social)". The researcher wrote that the client
+mentioned these categories, and the report told the client that "the client's digital,
+economic and social categories do not appear in the framework". The labels reached the
+analysis in 3 of 10 runs of the EBD question and the report once. G1 (b) now asks for what
+to find in the object's own terms (the fees, documents and people involved at each step)
+and says that the kind names are labels for the check, never to be listed in a question or
+`done_when`. The worked examples already wrote `done_when` this way.
+
 ## 6. Goals and priority
 
 The goal table holds one row per search goal:
@@ -501,11 +524,20 @@ packing turns the top goals into briefs.
   one goal. Free researchers are `maxPerRound`, or the remaining budget less the
   first-try reserve if smaller. In the Lab 4 flight run, rounds 1 and 2 sent one
   researcher each, with every ready goal about the flight in one brief, although four
-  could run (Lab 5 review, change 3). Completing goals are split off too: limiting the
-  split to necessary goals was tried after live round 9 and dropped, because in that
-  round the split-off premise check of the flight run found the disagreement over nonstop
-  flights, the split-off app-ecosystem goal of the headset run covered a checklist item,
-  and no necessary goal went short.
+  could run (Lab 5 review, change 3). Two kinds of split, in this order (changed after
+  live round 10):
+  - a necessary goal leaves a brief that keeps another necessary goal, whenever a
+    researcher is free;
+  - any other split leaves a brief of completing goals only, and is made only while, after
+    this round, one researcher stays for each necessary goal served in it, in case it
+    needs a retry.
+
+  In round 9 such completing splits helped: the flight run's premise check found the
+  disagreement over nonstop flights, and the headset run's app-ecosystem goal covered a
+  checklist item, with researchers to spare. In round 10 they took the last researchers:
+  two necessary headset goals (intended use and audience; passthrough quality) got no
+  retry, and the flight run's necessary goal on transit at Toronto was never served. The
+  guard keeps every split of round 9 and blocks both of round 10.
 - **First-try reserve (`reserveFirstTries`, D-E; built 2026-10-21).** A necessary
   request goal that has never been served keeps a claim on the budget. The strategy
   holds one researcher for each brief such goals will need (goals about the same object
@@ -1040,6 +1072,8 @@ fixed the problems the previous one showed. The problems are classified as in
 | 6 | Lab 3 P3 (GPU comparison) | 6 | budget | 0.48 | After the four changes: the length rule applied (11 one-sentence disagreements, no disagreement section in the outline, 848 words against 1,470); the dispute over whether AMD has a flagship checked A1, the benchmark disputes checked no claim; the reserve held back two settle goals in round 3. Cost and use still never reached a researcher: all three first tries waited for the flagship goal, which waited two rounds for its settle goal |
 | 7 | Lab 4 T1–T4 (agent init; `local/lab4/rerun-1026`) | 3, 6, 6, 4 | complete, complete, budget, complete | 0.31–0.59 | After the four changes of 2026-10-26 morning: per-claim verdicts (A1 supported, A2 contradicted on the telescope), no settle goal for an already-checked claim, completing settle goals. Problems: the purposes goal was moot although only the year was wrong (the report never said why NASA launched it; the baseline's did); sub-headings indexed as findings; the duplicate rule rejected 8 of 20 proposals; disagreement sections took 25–40% of the reports |
 | 8 | Lab 4 T1–T4 (agent init; `local/lab4/rerun-1027a`) | 2, 6, 6, 6 | complete, complete, budget, budget | 0.08–0.61 | After the evening code fixes: the purposes goal was kept and researched, and the report opens with the correct date and NASA's science purpose; new-goal checks rejected a goal on "How" and two re-asks. Open: when a settle goal ends disputed, the goal waiting for it stays "conflicting" (flight run), so its claim gets no final verdict; disagreement sections still 19–29% (writer change awaiting review) |
+| 9 | ebd, headset, flight, sleep (check-strategy, commit `3325ece`, `local/accept-1105`); matched pair on ebd | 1, 6, 5, 6; baseline 3 and ebd-matched 3 of 3 | complete ×4; matched: budget | 0.05–0.53; $1.65 in total | After the Lab 5 review changes. Every required check passed. The matched control gave EBD the 3 researchers the baseline used, and every record names its commit. Spreading served the ready goals in parallel in three runs; kept parts were used in three (headset Q2 ended 5/6 with five kept parts). Problems: the EBD run named EBD's three activities and explained one, and proposed no goal (growth criterion failed); the flight run lost its necessary transit and visa goals to the answer-object rule; disagreements took 42% of the sleep report; the writer mistyped one host (`xuebei` for `xuebao`), a platform warning |
+| 10 | ebd ×2, headset, flight, sleep (check-strategy, commit `0b6087c`, `local/accept-1105/r10`) | 3, 3, 6, 6, 6 | complete, complete, budget, budget, complete | 0.16–0.68; $2.02 in total | After the round-9 fixes. Every required check passed. Growth on the EBD question: one run's notes explained all three activities; in the other the round analyst proposed a goal on what each activity involves, and the report explains each one with its inputs, outputs and tools. The headset run moved a necessary goal (intended use and audience) off the answer object instead of rejecting it. Each disagreement became one compact table row, but the sleep run had 14, still 40% of its report. Problems: the analysis copied its checklist of environment kinds into an EBD goal, and the report told the client that "the client's" categories were not in EBD (section 5.6); completing splits took the last researchers in the headset and flight runs (section 7); the analyst exhausted necessary goals for want of dated or primary sources (open, below) |
 
 | Problem | Kind | Fix |
 |---|---|---|
@@ -1053,6 +1087,13 @@ fixed the problems the previous one showed. The problems are classified as in
 | Guidance wording and internal IDs | instruction | Section 12 |
 | Schema slips (an array sent as JSON text, a missing field, an unknown enum value), gap lines cited as evidence | model | Caught by the checks and absorbed by the retry or the repair. After round 4, JSON text is decoded and a missing `proposals` counts as none, which saves those retries |
 | The writer cited a URL the research did not report (round 1 flight, a warning) | writer (platform) | For the platform owner |
+| A main part the findings only named got no goal (round 9, ebd) | instruction | Round analyst prompt (section 10.2) |
+| Necessary new goals rejected because they were attached to the answer object (round 9, flight) | orchestration | Moved to the prompting goal's object; rejected only when they restate a synthesis question (section 10.2) |
+| Disagreements took 23–42% of reports (round 9, flight and sleep) | instruction | At most two sentences each (section 12) |
+| New goals written for one nationality the client did not state (round 9, flight) | model | Recorded; the round analyst prompt already forbids it |
+| The checklist's environment-kind labels copied into a goal and reported as the client's categories (round 10, ebd) | instruction | G1 (b) asks for the object's own terms and forbids the labels (section 5.6) |
+| Completing goals split into their own briefs took researchers that necessary retries and a new necessary goal needed (round 10, headset and flight) | orchestration | Budget guard on the split (section 7) |
+| Many disagreements on an evidence-heavy question: 14 table rows, 40% of the sleep report (round 10) | model and question | Recorded: each row follows the two-sentence rule, and several rows correct a source's error |
 
 Live check X2 (headings): Haiku kept the goal ID in most sections but often wrote `Q4:`
 instead of `[Q4]`, and sometimes dropped it. With the bare-ID rule, rounds 2–4 mapped

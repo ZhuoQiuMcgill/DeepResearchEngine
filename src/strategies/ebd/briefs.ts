@@ -56,14 +56,29 @@ export function selectGroups(ranked: Ranked[], options: Pick<EbdOptions, "maxPer
  * each, with every ready goal in one brief, although four could run. `slots` is the number of
  * researchers this round may use: the round limit and the budget less the first-try reserve.
  *
- * Completing goals are split off too. Restricting the split to necessary goals was tried and
- * dropped after the live round of 2026-11-05: in the flight run the split-off premise check
- * (a completing goal) found the disagreement over nonstop flights, and in the headset run the
- * split-off app-ecosystem goal covered a checklist item; no necessary goal went short in either.
+ * Two kinds of split, in this order:
+ * - a necessary goal leaves a brief that keeps another necessary goal (the brief with the most
+ *   necessary goals gives up its lowest-ranked one); this is always worth a researcher;
+ * - any other split leaves a brief of completing goals only. It is made only while, after this
+ *   round, one researcher stays for each necessary goal served this round, in case it needs a
+ *   retry. `free` is the researchers this round and later, less the first-try reserve.
+ * Live rounds of 2026-11-05: in round 9 such splits found the disagreement over nonstop flights
+ * and covered the headset's app ecosystem with researchers to spare; in round 10 they took the
+ * last researchers, so two necessary headset goals got no retry and a necessary transit goal of
+ * the flight run was never served.
  */
-export function spread(groups: Group[], slots: number): Group[] {
+export function spread(groups: Group[], slots: number, free: number = slots): Group[] {
   const out = groups.map((g) => ({ key: g.key, goals: [...g.goals] }));
+  const necessary = (g: Group) => g.goals.filter((x) => x.need === "necessary").length;
   while (out.length < slots) {
+    const from = out.reduce<Group | null>((best, g) => (necessary(g) > 1 && (!best || necessary(g) > necessary(best)) ? g : best), null);
+    if (!from) break;
+    const goal = from.goals.filter((x) => x.need === "necessary").at(-1)!;
+    from.goals.splice(from.goals.indexOf(goal), 1);
+    out.push({ key: keyOf(goal), goals: [goal] });
+  }
+  const retries = out.reduce((n, g) => n + necessary(g), 0);
+  while (out.length < slots && free - (out.length + 1) >= retries) {
     const largest = out.reduce<Group | null>((best, g) => (g.goals.length > 1 && (!best || g.goals.length > best.goals.length) ? g : best), null);
     if (!largest) break;
     const goal = largest.goals.pop()!;

@@ -186,6 +186,25 @@ describe("briefs (section 7)", () => {
     expect(one[0]!.goals).toHaveLength(3);
   });
 
+  it("splits off completing goals only while a researcher stays for each necessary retry (live round 10)", () => {
+    const s = stateOf();
+    const [q1, q2, q3, q4, q5] = s.goals;
+    for (const g of [q1!, q2!]) g.need = "necessary";
+    for (const g of [q3!, q4!, q5!]) g.need = "completing";
+    const ids = (gs: ReturnType<typeof spread>) => gs.map((g) => g.goals.map((x) => x.id).join(","));
+    // Flight, round 2 of live round 10: two briefs, each one necessary goal with completing goals, 4 researchers left.
+    const flight = [{ key: "O1", goals: [q1!, q3!] }, { key: "O2", goals: [q2!, q4!] }];
+    expect(ids(spread(flight, 4, 4))).toEqual(ids(flight));
+    // With researchers to spare after the retries, the completing goals get their own briefs.
+    expect(ids(spread(flight, 4, 5))).toEqual([q1!.id, `${q2!.id},${q4!.id}`, q3!.id]);
+    expect(ids(spread(flight, 4, 6))).toEqual([q1!.id, q2!.id, q3!.id, q4!.id]);
+    // A necessary goal always leaves a brief that keeps another one.
+    const shared = [{ key: "O1", goals: [q1!, q2!, q5!] }];
+    expect(ids(spread(shared, 4, 3))).toEqual([`${q1!.id},${q5!.id}`, q2!.id]);
+    // Round 9's flight: one necessary goal and the completing premise check, 6 researchers left.
+    expect(ids(spread([{ key: "O2", goals: [q1!, q3!] }], 4, 6))).toEqual([q1!.id, q3!.id]);
+  });
+
   it("orders results by brief, not by arrival (Lab 5 review, change 4)", () => {
     expect(["r2-b10", "r2-b2", "r1-b3", "r2-b1"].sort(byBrief)).toEqual(["r1-b3", "r2-b1", "r2-b2", "r2-b10"]);
   });

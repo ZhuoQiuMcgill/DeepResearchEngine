@@ -253,8 +253,9 @@ class EbdStrategy implements ResearchStrategy<EbdState> {
     const selection = selectWithReserve(ranked, state, ctx.budget.researchersRemaining, this.options);
     const { reserve, held, reservedFor, researchersKept, released } = selection;
     // Lab 5 review, change 3: researchers that would sit idle this round take goals out of shared briefs.
-    const slots = Math.min(this.options.maxPerRound, ctx.budget.researchersRemaining - researchersKept);
-    const groups = this.options.spread ? spread(selection.groups, slots) : selection.groups;
+    const free = ctx.budget.researchersRemaining - researchersKept;
+    const slots = Math.min(this.options.maxPerRound, free);
+    const groups = this.options.spread ? spread(selection.groups, slots, free) : selection.groups;
     if (groups.length > selection.groups.length) log(`spread over ${groups.length} brief(s) instead of ${selection.groups.length}: researchers would otherwise sit idle`);
     const briefs = groups.map((g, i) => briefFor(g, i, state));
     const decision: Decision = { briefs, stop: false, rationale: "" };
