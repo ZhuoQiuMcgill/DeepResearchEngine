@@ -24,9 +24,19 @@ export const ExperimentSpecSchema = z
     tasks: z
       .array(z.union([z.string(), z.object({ id: z.string(), question: z.string().min(1) })]))
       .min(1),
-    /** Strategy directory names, or { name, options, label } for configured variants. */
+    /**
+     * Strategy directory names, or { name, options, label } for configured variants.
+     * `matchResearchersTo` names another entry's label: this entry then gets, as its
+     * researcher budget, the researchers that entry used on the same task, model and
+     * repeat (a matched-spend control; Lab 5 review). The named entry must come first.
+     */
     strategies: z
-      .array(z.union([z.string(), z.object({ name: z.string(), options: JsonSchema.optional(), label: z.string().optional() })]))
+      .array(
+        z.union([
+          z.string(),
+          z.object({ name: z.string(), options: JsonSchema.optional(), label: z.string().optional(), matchResearchersTo: z.string().optional() }),
+        ]),
+      )
       .min(1),
     /** Model profile names from src/config/models.ts. */
     models: z.array(z.string()).min(1),
@@ -46,7 +56,7 @@ export type ExperimentSpec = z.input<typeof ExperimentSpecSchema>;
 interface Job {
   taskId: string;
   question: string;
-  strategy: { name: string; options?: JsonValue; label: string };
+  strategy: { name: string; options?: JsonValue; label: string; matchResearchersTo?: string };
   model: string;
   repeat: number;
 }
@@ -65,6 +75,13 @@ export function planJobs(raw: ExperimentSpec): { spec: z.infer<typeof Experiment
   for (const s of strategies) if (!available.has(s.name)) throw new Error(`Unknown strategy "${s.name}". Available: ${[...available].join(", ")}`);
   const labels = strategies.map((s) => s.label);
   if (new Set(labels).size !== labels.length) throw new Error("Each strategy configuration needs a distinct label");
+  strategies.forEach((s, i) => {
+    if (!s.matchResearchersTo) return;
+    const ref = labels.indexOf(s.matchResearchersTo);
+    if (ref < 0) throw new Error(`"${s.label}" matches unknown label "${s.matchResearchersTo}"`);
+    if (ref >= i) throw new Error(`"${s.label}" must come after "${s.matchResearchersTo}", which it matches`);
+    if (strategies[ref]!.matchResearchersTo) throw new Error(`"${s.label}" matches "${s.matchResearchersTo}", which is itself matched`);
+  });
   for (const m of spec.models) getProfile(m);
   const jobs: Job[] = [];
   for (let repeat = 1; repeat <= spec.repeats; repeat++)
@@ -88,24 +105,43 @@ export async function runExperiment(raw: ExperimentSpec, log: (line: string) => 
   log(`experiment ${spec.name}: ${jobs.length} run(s) -> ${dir}`);
 
   const summaries: ExperimentResult["summaries"] = [];
+  // Started runs by label, task, model and repeat, for matched entries. Jobs are taken in order and
+  // a matched entry comes after the one it matches, so the run it waits for has always started.
+  const started = new Map<string, Promise<RunSummary>>();
+  const key = (label: string, job: Job) => `${label}|${job.taskId}|${job.model}|${job.repeat}`;
   let next = 0;
   const worker = async () => {
     while (next < jobs.length) {
       const job = jobs[next++]!;
-      const s = await runOne(
+      const { matchResearchersTo, ...strategy } = job.strategy;
+      const tags: Record<string, string | number> = { experiment: spec.name, task: job.taskId, repeat: job.repeat };
+      let researchersTotal = spec.budget.researchersTotal;
+      if (matchResearchersTo) {
+        const ref = await started.get(key(matchResearchersTo, job));
+        tags.matchedTo = matchResearchersTo;
+        if (ref && ref.status === "ok" && ref.researchersUsed > 0) {
+          researchersTotal = Math.min(ref.researchersUsed, spec.budget.researchersTotal);
+          tags.matchedRun = ref.runId;
+        } else {
+          tags.matchedRun = "none: the matched run failed, so the full budget applies";
+        }
+      }
+      const run = runOne(
         {
           question: job.question,
-          strategy: job.strategy,
+          strategy,
           profile: job.model,
-          researchersTotal: spec.budget.researchersTotal,
+          researchersTotal,
           maxRounds: spec.maxRounds,
           concurrency: spec.concurrency,
           researcherTimeoutMs: spec.researcherTimeoutMs,
           outDir: join(dir, "runs"),
-          tags: { experiment: spec.name, task: job.taskId, repeat: job.repeat },
+          tags,
         },
         log,
       );
+      started.set(key(job.strategy.label, job), run);
+      const s = await run;
       summaries.push({ ...s, taskId: job.taskId, repeat: job.repeat });
       log(`done ${summaries.length}/${jobs.length}: ${job.strategy.label}/${job.model}/${job.taskId}#${job.repeat} ${s.status}`);
     }

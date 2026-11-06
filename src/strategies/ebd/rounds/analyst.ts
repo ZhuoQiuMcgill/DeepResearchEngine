@@ -1,0 +1,537 @@
+/**
+ * The round analyst (design section 10): one model call per round. For each
+ * goal served in the round it splits done_when into parts and marks each part
+ * met or not, citing evidence line IDs; for goals that check claims it gives a
+ * verdict on each claim. It may propose new goals, each citing the line that
+ * prompted it. Code applies the evidence floor, settles goals, accepts or
+ * rejects proposals and makes goals moot. The model never decides whether the
+ * research as a whole is sufficient (section 11).
+ */
+import { z } from "zod";
+import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
+import { GUIDELINES, TEMPLATES, type Issue } from "../request/index.js";
+import { assumptionVerdicts, newGoal, nextGoalId, requeueOrExhaust, settle, synthesisQuestions } from "../goals.js";
+import { structuredCall, zodIssues, type CallOutcome, type Checked } from "../llm.js";
+import type { EbdOptions } from "../options.js";
+import { isSettled, type EbdState, type EvidenceLine, type Goal } from "../state.js";
+import { independentHosts } from "./evidence.js";
+
+export const ANALYST_TOOL = "submit_round_analysis";
+
+export const RoundApiSchema = z.object({
+  judgments: z.array(
+    z.object({
+      goal_id: z.string(),
+      parts: z.array(
+        z.object({
+          part: z.string().describe("One part of done_when"),
+          met: z.boolean(),
+          evidence: z.array(z.string()).describe("Finding IDs that meet this part; empty when not met"),
+        }),
+      ),
+      outcome: z.enum(["answered", "partial", "not_found", "conflicting"]),
+      verdicts: z
+        .array(z.object({ claim_id: z.string(), verdict: z.enum(["supported", "contradicted", "unsettled"]) }))
+        .describe("One entry per claim to verify (A…); empty for a goal without claims"),
+      missing: z.array(z.string()).describe("The parts still missing; empty when answered"),
+    }),
+  ),
+  proposals: z.array(
+    z.object({
+      text: z.string().describe("The new question, self-contained: full names, place and time"),
+      template: z.enum(TEMPLATES),
+      need: z.enum(["necessary", "completing"]),
+      object_id: z.string().describe("The existing object (O…) the new goal attaches to"),
+      new_object: z.string().describe("A new term the evidence introduced, or empty"),
+      new_object_quote: z.string().describe("For a new term: the words copied exactly from a prompting finding; otherwise empty"),
+      prompted_by: z.array(z.string()).describe("The finding, gap or conflict IDs that prompted it"),
+      leads_to: z.array(z.string()).describe("The necessary goals (Q…) or synthesis questions it serves"),
+      done_when: z.string(),
+      source_hints: z.array(z.string()).describe("Up to 3 generic kinds of sources"),
+    }),
+  ),
+});
+export type RoundReply = z.infer<typeof RoundApiSchema>;
+
+const GUIDELINE_FOR: Record<string, (typeof GUIDELINES)[number]> = { T1: "G1", T2: "G1", T3: "G1", T4: "G6", T5: "G6", T6: "G2", T7: "G7" };
+const NUMERIC = /\b(numbers?|amounts?|prices?|costs?|fares?|dates?|percent(age)?s?|rates?|figures?|how much|how many)\b/i;
+
+export const ANALYST_SYSTEM = `You are the round analyst of a research team that follows Environment-Based Design (EBD). Researchers have just answered some research goals. For each goal served in this round you judge, part by part, whether the evidence meets the goal's done_when. You may also propose new goals that the evidence shows are needed. You never decide whether the research as a whole is finished; code does that from your judgments.
+
+Evidence lines have IDs: r2-b1-f3 is a cited finding, r2-b1-g1 is a gap the researcher reported. Conflicts have IDs C1, C2, …. Cite IDs only.
+
+## Judgments: one per goal listed under <served_goals>
+- parts: split done_when into its parts (usually 2–5). When a goal lists "Parts already met", those parts stay met: list only the parts under "Judge only these parts", and give the outcome on them alone (answered when all of them are met). For each part, met is true only if a cited finding states it; list those finding IDs in evidence. A gap line never meets a part. Inferences, general knowledge and your own reasoning never meet a part.
+- Currency: "as of <run date>" or "the latest available evidence" is met by the most recent evidence the sources give, such as a current official page or the latest dated report. It does not require a page's capture date or a source dated on the run date.
+- outcome:
+  - answered: every part is met;
+  - partial: some parts are met, some are not;
+  - not_found: no part is met;
+  - conflicting: the findings for this goal disagree and a conflict about it is listed under <conflicts>.
+- verdicts, for a goal with "Claims to verify": one entry per claim, each judged on its own: supported if findings state the claim holds; contradicted if findings state it does not hold; unsettled if the findings do not decide it or disagree. The claims of one goal are independent: one can hold while another does not. For a goal without claims: an empty list.
+- missing: the unmet parts in a few words each, so the next researcher knows what to look for. Empty when answered.
+
+## Proposals: new goals (EBD: each answer is analysed as new objects and relations, which raise new questions)
+Propose a goal only when the evidence shows the research needs it:
+- a term that a necessary goal needs but that is not yet defined (for example, which products are "the current flagships" once a finding names them): template T1, the term as new_object, copied exactly from the prompting finding as new_object_quote;
+- a part or life-cycle event of an object that a synthesis question depends on: T1 or T3. This includes a step that the findings reveal and no goal covers; for example, a finding that a product must be imported brings in import rules, duties and delivery time. It also includes a main part or step that the findings only name: when findings list an object's main parts or steps but none says what one of them involves, propose a goal for that one if a synthesis question needs it explained, even when the part of a goal that asks for the list is met (for example, findings name a vaccine trial's three phases but describe only the first). Ask what the step requires, checking the same kinds as the request analysis: natural; built, physical and digital (documents, data, laws, software); economic (costs, prices, time); social (people and organisations). Propose such a goal when the step could change the answer to a synthesis question, even if that question does not name the step; the finding that reveals the step is what prompted it;
+- a relation the findings state but leave unverified or contested: T7.
+Each proposal attaches to an existing object (object_id), cites what prompted it (prompted_by), and serves a necessary goal or a synthesis question (leads_to). Write the question so that a researcher who sees only it can act: full names, place and time. Keep the client's scope: do not narrow a new goal to one case of something the client did not state (one region, one customer group, one budget) because a finding describes that case; ask for the main cases, or for the case the request itself implies. Do not propose a goal that repeats an existing goal, asks for the final answer itself, merely re-asks a partial goal (partial goals are re-served automatically), or only asks for a date or a capture of a value already found. Propose at most the number given in <limits>; return [] when nothing is needed.
+
+Reply by calling ${ANALYST_TOOL} once with all judgments and proposals.`;
+
+function evidenceLine(e: EvidenceLine): string {
+  return `${e.id} ${e.text}`;
+}
+
+/** The goals served in the round: every goal named in a brief tag of the round's results. */
+export function servedGoals(state: EbdState, round: number): Goal[] {
+  const ids = new Set(state.results.filter((r) => r.round === round).flatMap((r) => r.goalIds));
+  return state.goals.filter((g) => ids.has(g.id));
+}
+
+export function analystMessage(state: EbdState, round: number, served: Goal[], options: EbdOptions): string {
+  const a = state.analysis;
+  const claims = (g: Goal) => a.assumptions.filter((x) => g.verifies.includes(x.id)).map((x) => `${x.id}: ${x.claim}`);
+  const goalBlock = served.map((g) => {
+    const lines = state.evidence.filter((e) => e.goalIds.includes(g.id));
+    return [
+      `### ${g.id} (kind ${g.kind}, ${g.need}, attempt ${g.attempts})`,
+      `Question: ${g.text}`,
+      `done_when: ${g.doneWhen}`,
+      ...(claims(g).length ? ["Claims to verify:", ...claims(g).map((c) => `- ${c}`)] : []),
+      ...(g.settles ? [`Settles conflict ${g.settles}`] : []),
+      ...(g.metParts.length
+        ? [
+            "Parts already met (kept from earlier rounds; do not judge them again):",
+            ...g.metParts.map((p) => `- ${p.part} [${p.evidence.join(", ")}]`),
+            `Judge only these parts: ${g.missing.join("; ") || "(none recorded; judge what done_when still needs)"}`,
+          ]
+        : g.missing.length
+          ? [`Missing after the last attempt: ${g.missing.join("; ")}`]
+          : []),
+      "Evidence:",
+      ...(lines.length ? lines.map(evidenceLine) : ["(none: the researcher reported nothing for this goal)"]),
+    ].join("\n");
+  });
+  const openGoals = state.goals.filter((g) => !isSettled(g)).length;
+  const allowed = options.newGoals ? Math.max(0, Math.min(options.maxNewGoalsPerRound - createdThisRound(state, round), options.maxOpenGoals - openGoals)) : 0;
+  const roundConflicts = state.conflicts.filter((c) => c.createdRound === round);
+  return [
+    `<run_date>${state.today}</run_date>`,
+    `<question>\n${state.question}\n</question>`,
+    `<objects>\n${[...a.rom.objects.map((o) => `${o.id} "${o.text}": ${o.meaning}`), ...state.objectsFound.map((o) => `${o.id} "${o.text}" (found in ${o.evidence})`)].join("\n")}\n</objects>`,
+    `<synthesis_questions>\n${synthesisQuestions(a).map((q) => `${q.id} ${q.text}`).join("\n")}\n</synthesis_questions>`,
+    `<existing_goals>\n${state.goals.map((g) => `${g.id} [${g.status}, ${g.need}] ${g.text}`).join("\n")}\n</existing_goals>`,
+    `<conflicts>\n${roundConflicts.map((c) => `${c.id} ${c.type} about ${c.about}: ${c.statement}`).join("\n") || "(none)"}\n</conflicts>`,
+    `<served_goals>\n${goalBlock.join("\n\n")}\n</served_goals>`,
+    `<limits>\nNew goals you may propose this round: ${allowed}.${allowed === 0 ? " Return proposals: []." : ""}\n</limits>`,
+  ].join("\n");
+}
+
+/**
+ * Missing lists count as empty: a reply without proposals proposes nothing (live test round 4:
+ * Haiku left the field out), and a judgment without verdicts judges no claim, which the checks
+ * reject only for an answered goal that has claims.
+ */
+function withDefaults(args: unknown): unknown {
+  if (!args || typeof args !== "object" || Array.isArray(args)) return args;
+  const out: Record<string, unknown> = { ...args };
+  if (!("proposals" in out)) out.proposals = [];
+  if (Array.isArray(out.judgments)) out.judgments = out.judgments.map((j) => (j && typeof j === "object" && !Array.isArray(j) && !("verdicts" in j) ? { ...j, verdicts: [] } : j));
+  return out;
+}
+
+/** Code checks (section 10.1). Judgment errors are retried; proposals are accepted or rejected later by acceptProposals. */
+export function checkRound(args: unknown, state: EbdState, served: Goal[]): Checked<RoundReply> {
+  const parsed = RoundApiSchema.safeParse(withDefaults(args));
+  if (!parsed.success) return { value: null, errors: zodIssues(parsed.error), warnings: [] };
+  const reply = parsed.data;
+  const errors: Issue[] = [];
+  const warnings: Issue[] = [];
+  const findings = new Set(state.evidence.filter((e) => e.kind === "finding").map((e) => e.id));
+  const evidence = new Set(state.evidence.map((e) => e.id));
+  const conflicts = new Set(state.conflicts.map((c) => c.id));
+  const servedIds = new Set(served.map((g) => g.id));
+  const judged = new Map<string, number>();
+
+  reply.judgments.forEach((j, i) => {
+    const path = `judgments[${i}]`;
+    const err = (message: string) => errors.push({ code: "judgment", path, message });
+    const goal = served.find((g) => g.id === j.goal_id);
+    if (!goal) {
+      err(`${j.goal_id} was not served in this round; judge only the goals under <served_goals>`);
+      return;
+    }
+    if (judged.has(j.goal_id)) err(`${j.goal_id} is judged twice`);
+    judged.set(j.goal_id, i);
+    if (!j.parts.length) err("parts: split done_when into at least one part");
+    j.parts.forEach((p, k) => {
+      if (p.met && !p.evidence.length) err(`parts[${k}] is met but cites no finding`);
+      const unknown = p.evidence.filter((id) => !findings.has(id));
+      if (unknown.length) err(`parts[${k}]: ${unknown.join(", ")} ${unknown.some((id) => evidence.has(id)) ? "is a gap line, which cannot meet a part" : "is not a finding ID"}`);
+    });
+    const met = j.parts.filter((p) => p.met).length;
+    if (j.outcome === "answered" && met !== j.parts.length) err("answered needs every part met");
+    if (j.outcome === "partial" && (met === 0 || met === j.parts.length)) err("partial needs some parts met and some not");
+    if (j.outcome === "not_found" && met > 0) err("not_found cannot have met parts");
+    if (j.outcome !== "answered" && !j.missing.length) err("missing: name the unmet parts");
+    const judgedClaims = new Set<string>();
+    j.verdicts.forEach((v, k) => {
+      if (!goal.verifies.includes(v.claim_id)) {
+        err(`verdicts[${k}]: ${v.claim_id} is not a claim of ${goal.id}; ${goal.verifies.length ? `its claims are ${goal.verifies.join(", ")}` : "it has no claims, so verdicts is []"}`);
+      } else if (judgedClaims.has(v.claim_id)) err(`verdicts[${k}]: ${v.claim_id} is judged twice`);
+      judgedClaims.add(v.claim_id);
+    });
+    const unjudged = goal.verifies.filter((c) => !judgedClaims.has(c));
+    if (j.outcome === "answered" && unjudged.length) err(`a goal with claims to verify needs a verdict on each (supported, contradicted or unsettled); missing: ${unjudged.join(", ")}`);
+  });
+  for (const id of servedIds) if (!judged.has(id)) errors.push({ code: "judgment_missing", path: "judgments", message: `no judgment for ${id}` });
+
+  reply.proposals.forEach((p, i) => {
+    const path = `proposals[${i}]`;
+    const unknown = p.prompted_by.filter((id) => !evidence.has(id) && !conflicts.has(id));
+    if (!p.prompted_by.length || unknown.length) warnings.push({ code: "proposal", path, message: `prompted_by must cite existing evidence or conflict IDs${unknown.length ? `; unknown: ${unknown.join(", ")}` : ""}` });
+  });
+  return { value: reply, errors, warnings };
+}
+
+const OUTCOME_RANK = { not_found: 0, partial: 1, answered: 2 } as const;
+
+/**
+ * The fallback after the last failed attempt (section 5.3): keep the valid parts.
+ * Evidence IDs that are not findings are dropped, a met part without evidence
+ * becomes unmet, and the outcome is recomputed from the parts, never above what
+ * the analyst said. A judgment of a goal that was not served, or a repeated one,
+ * is dropped; goals left without a judgment become partial when applied.
+ */
+export function repairRound(reply: RoundReply, state: EbdState, served: Goal[]): RoundReply {
+  const findings = new Set(state.evidence.filter((e) => e.kind === "finding").map((e) => e.id));
+  const seen = new Set<string>();
+  const judgments: RoundReply["judgments"] = [];
+  for (const j of reply.judgments) {
+    const goal = served.find((g) => g.id === j.goal_id);
+    if (!goal || seen.has(j.goal_id)) continue;
+    seen.add(j.goal_id);
+    const parts = j.parts.map((p) => {
+      const evidence = p.evidence.filter((id) => findings.has(id));
+      return { part: p.part, met: p.met && evidence.length > 0, evidence };
+    });
+    if (!parts.length) continue;
+    const met = parts.filter((p) => p.met).length;
+    const computed = met === parts.length ? "answered" : met > 0 ? "partial" : "not_found";
+    let outcome: RoundReply["judgments"][number]["outcome"] =
+      j.outcome === "conflicting" ? "conflicting" : OUTCOME_RANK[computed] < OUTCOME_RANK[j.outcome] ? computed : j.outcome;
+    // Keep the first verdict on each of the goal's own claims.
+    const verdicts: RoundReply["judgments"][number]["verdicts"] = [];
+    for (const v of j.verdicts) if (goal.verifies.includes(v.claim_id) && !verdicts.some((x) => x.claim_id === v.claim_id)) verdicts.push(v);
+    const missing = [...j.missing];
+    const unjudged = goal.verifies.filter((c) => !verdicts.some((v) => v.claim_id === c));
+    if (outcome === "answered" && unjudged.length) {
+      outcome = "partial";
+      missing.push(`a verdict on ${unjudged.join(", ")}`);
+    }
+    if (outcome !== "answered" && !missing.length) missing.push(...parts.filter((p) => !p.met).map((p) => p.part));
+    judgments.push({ goal_id: j.goal_id, parts, outcome, verdicts, missing });
+  }
+  return { judgments, proposals: reply.proposals };
+}
+
+export function runRoundAnalyst(model: BaseChatModel, state: EbdState, round: number, served: Goal[], options: EbdOptions): Promise<CallOutcome<RoundReply>> {
+  return structuredCall({
+    model,
+    role: "round_analyst",
+    system: ANALYST_SYSTEM,
+    message: analystMessage(state, round, served, options),
+    tool: { name: ANALYST_TOOL, description: "Submit the judgments of the served goals and any new goals the evidence calls for.", schema: RoundApiSchema },
+    check: (args) => checkRound(args, state, served),
+    fallback: (last) => repairRound(last, state, served),
+    lists: { ids: ["evidence", "prompted_by", "leads_to"], texts: ["missing", "source_hints"] },
+  });
+}
+
+/** New goals made in this round, settle goals included: they share maxNewGoalsPerRound. */
+function createdThisRound(state: EbdState, round: number): number {
+  return state.goals.filter((g) => g.createdRound === round + 1 && g.origin.type !== "request").length;
+}
+
+/** Does the goal need findings from independent hosts (section 10.1)? Verification goals, numbers and dates do. */
+export function needsFloor(goal: Goal): boolean {
+  return goal.kind === "verify" || goal.kind === "settle" || goal.guideline === "G3" || NUMERIC.test(goal.doneWhen);
+}
+
+export type Applied = { settled: string[]; advanced: string[]; requeued: string[]; exhausted: string[] };
+
+/**
+ * Apply the judgments (section 10.1). Mutates the state. Served goals without a
+ * valid judgment are treated as partial.
+ */
+export function applyJudgments(state: EbdState, reply: RoundReply | null, served: Goal[], round: number, options: EbdOptions, log: (line: string) => void): Applied {
+  const out: Applied = { settled: [], advanced: [], requeued: [], exhausted: [] };
+  const byId = new Map(state.evidence.map((e) => [e.id, e]));
+  for (const goal of served) {
+    if (isSettled(goal)) continue;
+    const j = reply?.judgments.find((x) => x.goal_id === goal.id);
+    const before = goal.partsMet;
+    if (!j) {
+      goal.retryNote = null;
+      const r = requeueOrExhaust(goal, round, options.maxAttempts, null);
+      (r === "exhausted" ? out.exhausted : out.requeued).push(goal.id);
+      if (r === "exhausted") out.settled.push(goal.id);
+      log(`${goal.id}: no valid judgment, treated as partial → ${r}`);
+      continue;
+    }
+    // Lab 5 review, change 1: parts met in earlier rounds stay met; this judgment covers the rest.
+    // A kept part the analyst lists again is not counted twice. A conflicting judgment locks
+    // nothing, because its findings disagree.
+    const keptText = new Set(goal.metParts.map((p) => partKey(p.part)));
+    const judgedParts = j.parts.filter((p) => !keptText.has(partKey(p.part)));
+    const metParts = judgedParts.filter((p) => p.met);
+    const cited = [...new Set(j.parts.filter((p) => p.met).flatMap((p) => p.evidence))];
+    const kept = goal.metParts.length;
+    if (j.outcome !== "conflicting") goal.metParts.push(...metParts.map((p) => ({ part: p.part, evidence: p.evidence, round })));
+    goal.partsTotal = kept + judgedParts.length;
+    goal.partsMet = kept + metParts.length;
+    goal.evidence = [...new Set([...goal.evidence, ...cited])];
+    goal.missing = j.missing;
+    let outcome = j.outcome;
+
+    if (outcome === "answered" && needsFloor(goal)) {
+      const hosts = independentHosts(goal.evidence.map((id) => byId.get(id)).filter((e): e is EvidenceLine => Boolean(e)));
+      if (hosts < options.evidenceFloor) {
+        outcome = "partial";
+        goal.missing = [`confirmation from at least ${options.evidenceFloor} independent sources (found ${hosts})`];
+        log(`${goal.id}: answered, but the evidence floor needs ${options.evidenceFloor} independent hosts and found ${hosts} → partial`);
+      }
+    }
+    for (const v of j.verdicts) if (goal.verifies.includes(v.claim_id)) goal.verdicts[v.claim_id] = v.verdict;
+
+    // A settle goal whose sources still disagree ends disputed, and so do its conflict and the goal
+    // waiting for it: a settle goal gets no settle goal of its own (settleBlock). Before this, it could
+    // find its own conflict below and wait on itself, leaving the waiting goal "conflicting" for good.
+    if (outcome === "conflicting" && goal.settles) {
+      settle(goal, "disputed", round);
+      out.settled.push(goal.id);
+      log(`${goal.id}: its sources still disagree → disputed`);
+      resolveSettle(state, goal, "exhausted", round, log);
+      continue;
+    }
+    if (outcome === "conflicting") {
+      const conflict = state.conflicts.find((c) => c.status === "open" && c.settleGoal && c.settleGoal !== goal.id && (c.about === goal.id || goal.objectIds.includes(c.about)));
+      if (conflict) {
+        goal.status = "conflicting";
+        goal.waitingOn = conflict.settleGoal;
+        log(`${goal.id}: conflicting, waits for ${conflict.settleGoal} (${conflict.id})`);
+        if (goal.partsMet > before) out.advanced.push(goal.id);
+        continue;
+      }
+      // A disagreement that cannot get a settle goal (settleBlock) is disputed, and so is the goal.
+      const disputed = state.conflicts.find((c) => c.status === "disputed" && (c.about === goal.id || goal.objectIds.includes(c.about)));
+      if (disputed) {
+        settle(goal, "disputed", round);
+        out.settled.push(goal.id);
+        log(`${goal.id}: conflicting, and ${disputed.id} has no settle goal → disputed`);
+        continue;
+      }
+      outcome = "partial";
+      goal.missing = goal.missing.length ? goal.missing : ["agreement between the sources"];
+      log(`${goal.id}: judged conflicting but no conflict record exists → partial`);
+    }
+
+    if (outcome === "answered") {
+      settle(goal, "answered", round);
+      goal.retryNote = null;
+      out.settled.push(goal.id);
+      log(`${goal.id}: answered (${goal.partsMet}/${goal.partsTotal} parts${claimText(goal)})`);
+      resolveSettle(state, goal, "answered", round, log);
+      continue;
+    }
+    const note = outcome === "not_found" ? "The previous search found nothing for this question; try a different angle: other terms, other kinds of sources, or the primary record." : null;
+    const r = requeueOrExhaust(goal, round, options.maxAttempts, note);
+    if (r === "exhausted") {
+      out.exhausted.push(goal.id);
+      out.settled.push(goal.id);
+      resolveSettle(state, goal, "exhausted", round, log);
+    } else {
+      out.requeued.push(goal.id);
+      if (goal.partsMet > before) out.advanced.push(goal.id);
+    }
+    log(`${goal.id}: ${outcome} (${goal.partsMet}/${goal.partsTotal} parts) → ${r}${goal.missing.length ? `; missing: ${goal.missing.join("; ")}` : ""}`);
+  }
+  return out;
+}
+
+/** When a settle goal settles, its conflict and the goal waiting on it settle too (sections 9 and 10.1). */
+function resolveSettle(state: EbdState, goal: Goal, how: "answered" | "exhausted", round: number, log: (line: string) => void): void {
+  if (!goal.settles) return;
+  const conflict = state.conflicts.find((c) => c.id === goal.settles);
+  if (!conflict || conflict.status !== "open") return;
+  conflict.status = how === "answered" ? "settled" : "disputed";
+  conflict.settledRound = round;
+  for (const waiting of state.goals.filter((g) => g.waitingOn === goal.id && g.status === "conflicting")) {
+    settle(waiting, how === "answered" ? "answered" : "disputed", round);
+    waiting.evidence = [...new Set([...waiting.evidence, ...goal.evidence])];
+    // The settled account replaces the verdict given while the sources disagreed, but only on the claim
+    // the disagreement decided; a settle goal about a detail leaves the verdicts as judged (section 9).
+    for (const claim of goal.verifies.filter((c) => waiting.verifies.includes(c))) {
+      const verdict = how === "answered" ? (goal.verdicts[claim] ?? waiting.verdicts[claim]) : "unsettled";
+      if (verdict) waiting.verdicts[claim] = verdict;
+    }
+    log(`${waiting.id}: ${waiting.status} after ${goal.id}`);
+  }
+  log(`${conflict.id}: ${conflict.status}`);
+}
+
+/** A part's text for comparison: lower case, words only. */
+function partKey(text: string): string {
+  return text.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+/** ", claims A1 supported, A2 contradicted" for the log; empty for a goal without verdicts. */
+function claimText(goal: Goal): string {
+  const entries = Object.entries(goal.verdicts);
+  return entries.length ? `, ${entries.length > 1 ? "claims" : "claim"} ${entries.map(([c, v]) => `${c} ${v}`).join(", ")}` : "";
+}
+
+function words(text: string): Set<string> {
+  return new Set(text.toLowerCase().match(/[a-z0-9]+/g) ?? []);
+}
+
+function similar(a: string, b: string): boolean {
+  const x = words(a);
+  const y = words(b);
+  const shared = [...x].filter((w) => y.has(w)).length;
+  return shared / Math.max(1, new Set([...x, ...y]).size) >= 0.7;
+}
+
+const STOPWORDS = new Set(
+  "a an and are as at be by can did do does for from has have how in is it its of on or that the their these this those to was were what when where which who why will with".split(" "),
+);
+
+/** Content words, singular: "dates" and "date" count as one. */
+function contentWords(text: string): Set<string> {
+  return new Set((text.toLowerCase().match(/[a-z0-9]+/g) ?? []).filter((w) => !STOPWORDS.has(w)).map((w) => (w.length > 3 ? w.replace(/s$/, "") : w)));
+}
+
+/** Shared content words over all content words of both texts. */
+function overlap(a: string, b: string): number {
+  const x = contentWords(a);
+  const y = contentWords(b);
+  return [...x].filter((w) => y.has(w)).length / Math.max(1, new Set([...x, ...y]).size);
+}
+
+/** The share of `part`'s content words that `text` contains. */
+function coverage(part: string, text: string): number {
+  const x = contentWords(part);
+  const y = contentWords(text);
+  return [...x].filter((w) => y.has(w)).length / Math.max(1, x.size);
+}
+
+function sameSet(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every((x) => b.includes(x));
+}
+
+/**
+ * Accept or reject each proposal (section 10.2). Accepted proposals become goals
+ * served from the next round. Returns the new goals; rejections are logged.
+ */
+export function acceptProposals(state: EbdState, reply: RoundReply | null, round: number, options: EbdOptions, log: (line: string) => void): Goal[] {
+  if (!reply?.proposals.length) return [];
+  if (!options.newGoals) {
+    log(`${reply.proposals.length} proposal(s) ignored: newGoals is off`);
+    return [];
+  }
+  const objects = new Set([...state.analysis.rom.objects.map((o) => o.id), ...state.objectsFound.map((o) => o.id)]);
+  const necessary = new Set(state.goals.filter((g) => g.need === "necessary").map((g) => g.id));
+  const synthesis = new Set(synthesisQuestions(state.analysis).map((q) => q.id));
+  const byEvidence = new Map(state.evidence.map((e) => [e.id, e]));
+  const added: Goal[] = [];
+
+  reply.proposals.forEach((p, i) => {
+    const reject = (why: string) => log(`proposal ${i + 1} rejected (${why}): ${p.text.slice(0, 160)}`);
+    const prompts = p.prompted_by.filter((id) => byEvidence.has(id) || state.conflicts.some((c) => c.id === id));
+    if (!prompts.length) return reject("cites no existing evidence or conflict");
+    if (!objects.has(p.object_id)) return reject(`unknown object ${p.object_id}`);
+    // The request analysis never searches the product (the answer the client asks for), and neither do
+    // new goals (Lab 4 flight run: two goals attached to "How"). Since the live round of 2026-11-05 the
+    // test is what the goal asks, not where it is attached: in the flight run the transit and visa
+    // goals were attached to "How" only because the question has no object for them, and were lost.
+    // A goal that asks for the final answer is rejected; any other moves to the object of the goal
+    // whose evidence prompted it.
+    let objectId = p.object_id;
+    const product = state.analysis.rom.objects.find((o) => o.id === p.object_id && o.role === "product");
+    if (product) {
+      // Near-identical, sharing most content words, or adding almost nothing to a synthesis question:
+      // "Why did the tariffs raise prices?" restates a longer synthesis question in a few of its words.
+      const answer = synthesisQuestions(state.analysis).find((q) => similar(q.text, p.text) || overlap(q.text, p.text) >= 0.45 || coverage(p.text, q.text) >= 0.75);
+      if (answer) return reject(`asks for the final answer (${answer.id}), attached to "${product.text}", the answer the client asks for`);
+      const products = new Set(state.analysis.rom.objects.filter((o) => o.role === "product").map((o) => o.id));
+      const prompting = prompts.flatMap((id) => byEvidence.get(id)?.goalIds ?? [state.conflicts.find((c) => c.id === id)?.about ?? ""]);
+      const target = prompting.flatMap((id) => state.goals.find((g) => g.id === id)?.objectIds ?? []).find((o) => !products.has(o));
+      if (!target) return reject(`attaches to "${product.text}", the answer the client asks for, and the goals that prompted it have no other object`);
+      log(`proposal ${i + 1}: moved from "${product.text}" (the answer the client asks for) to ${target}, an object of the goal whose evidence prompted it`);
+      objectId = target;
+    }
+    const leads = p.leads_to.filter((id) => necessary.has(id) || synthesis.has(id));
+    if (!leads.length) return reject("leads to no necessary goal or synthesis question");
+    if (!p.text.trim() || p.text.length > 400 || !p.done_when.trim() || p.done_when.length > 400) return reject("text or done_when empty or longer than 400 characters");
+    const parents = prompts.flatMap((id) => byEvidence.get(id)?.goalIds ?? [state.conflicts.find((c) => c.id === id)?.about ?? ""]);
+    const depth = 1 + Math.max(0, ...parents.map((id) => state.goals.find((g) => g.id === id)?.depth ?? 0));
+    if (depth > options.maxDepth) return reject(`depth ${depth} exceeds maxDepth ${options.maxDepth}`);
+    let objectIds = [objectId];
+    // A new object enters the object model only with the goal it came with.
+    let found: EbdState["objectsFound"][number] | null = null;
+    if (p.new_object.trim()) {
+      const quoteFound = prompts.some((id) => byEvidence.get(id)?.kind === "finding" && byEvidence.get(id)!.text.toLowerCase().includes(p.new_object_quote.trim().toLowerCase()));
+      if (!p.new_object_quote.trim() || !quoteFound) return reject("a new object needs a quote copied exactly from a prompting finding");
+      const existing = state.objectsFound.find((o) => o.text.toLowerCase() === p.new_object.trim().toLowerCase());
+      if (existing) objectIds = [existing.id, objectId];
+      else {
+        const used = [...state.analysis.rom.objects, ...state.objectsFound].map((o) => Number(o.id.slice(1)) || 0);
+        const id = `O${Math.max(0, ...used) + 1}`;
+        const evidenceId = prompts.find((x) => byEvidence.get(x)?.text.toLowerCase().includes(p.new_object_quote.trim().toLowerCase()))!;
+        found = { id, text: p.new_object.trim(), parent: objectId, quote: p.new_object_quote.trim(), evidence: evidenceId, round };
+        objectIds = [id, objectId];
+      }
+    }
+    // Same type and objects is a duplicate only if the questions also overlap: "commissioning dates",
+    // "development history" and "total cost" of one telescope are three questions (Lab 4, 2026-10-26).
+    const duplicate = state.goals.find(
+      (g) => similar(g.text, p.text) || (g.template === p.template && sameSet(g.objectIds, objectIds) && overlap(g.text, p.text) >= 0.45),
+    );
+    if (duplicate) return reject(`duplicates ${duplicate.id}`);
+    // A part a retried goal still misses is already asked for by its retry.
+    for (const g of state.goals.filter((x) => x.servedRounds.includes(round) && !isSettled(x))) {
+      const part = g.missing.find((m) => coverage(m, p.text) >= 0.75);
+      if (part) return reject(`re-asks "${part.slice(0, 80)}", which ${g.id} still looks for in its retry`);
+    }
+    if (createdThisRound(state, round) >= options.maxNewGoalsPerRound) return reject(`quota of ${options.maxNewGoalsPerRound} new goals per round reached (settle goals included)`);
+    if (state.goals.filter((g) => !isSettled(g)).length >= options.maxOpenGoals) return reject(`${options.maxOpenGoals} open goals reached`);
+    const kind = byEvidence.get(prompts[0]!)?.kind;
+    const goal = newGoal({
+      id: nextGoalId(state),
+      text: p.text.trim(),
+      objectIds,
+      template: p.template,
+      guideline: GUIDELINE_FOR[p.template]!,
+      need: p.need,
+      doneWhen: p.done_when.trim(),
+      sourceHints: p.source_hints.slice(0, 3),
+      origin: byEvidence.has(prompts[0]!) ? { type: kind === "gap" ? "gap" : "finding", evidence: prompts } : { type: "conflict", conflict: prompts[0]! },
+      depth,
+      leadsTo: leads,
+      createdRound: round + 1,
+    });
+    if (found) state.objectsFound.push(found);
+    state.goals.push(goal);
+    added.push(goal);
+    log(`${goal.id} created (${goal.kind}, ${goal.need}, depth ${depth}) from ${prompts.join(", ")}: ${goal.text.slice(0, 160)}`);
+  });
+  return added;
+}
+
+/** Verdicts for the rationale and the writer. */
+export function verdictSummary(state: EbdState): string[] {
+  const verdicts = assumptionVerdicts(state);
+  return state.analysis.assumptions.map((x) => `${x.id} ${verdicts[x.id] ?? "not yet judged"}: ${x.claim}`);
+}

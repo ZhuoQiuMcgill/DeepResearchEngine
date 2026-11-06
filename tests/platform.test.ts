@@ -38,4 +38,13 @@ describe("experiment specs", () => {
     expect(() => planJobs({ name: "t", tasks: ["ebd"], strategies: ["baseline"], models: ["gpt"] })).toThrow(/Unknown model profile/);
     expect(() => planJobs({ name: "t", tasks: ["ebd"], strategies: ["baseline", "baseline"], models: ["haiku"] })).toThrow(/distinct label/);
   });
+
+  it("accepts a matched entry only after the entry it matches", () => {
+    const matched = { name: "ebd", label: "ebd-matched", matchResearchersTo: "baseline" };
+    const { jobs } = planJobs({ name: "t", tasks: ["ebd"], strategies: ["baseline", matched], models: ["haiku"] });
+    expect(jobs.map((j) => [j.strategy.label, j.strategy.matchResearchersTo])).toEqual([["baseline", undefined], ["ebd-matched", "baseline"]]);
+    expect(() => planJobs({ name: "t", tasks: ["ebd"], strategies: [matched, "baseline"], models: ["haiku"] })).toThrow(/must come after/);
+    expect(() => planJobs({ name: "t", tasks: ["ebd"], strategies: ["baseline", { ...matched, matchResearchersTo: "nope" }], models: ["haiku"] })).toThrow(/unknown label/);
+    expect(() => planJobs({ name: "t", tasks: ["ebd"], strategies: ["baseline", matched, { name: "ebd", label: "x", matchResearchersTo: "ebd-matched" }], models: ["haiku"] })).toThrow(/itself matched/);
+  });
 });

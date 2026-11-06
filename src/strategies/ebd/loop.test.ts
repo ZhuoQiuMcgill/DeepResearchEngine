@@ -1,0 +1,736 @@
+import { describe, expect, it } from "vitest";
+import { AIMessage, type BaseMessage } from "@langchain/core/messages";
+import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
+import type { ResearchBrief, ResearchResult } from "../../core/index.js";
+import { briefFor, directiveLines, pack, selectGroups, selectWithReserve, spread } from "./briefs.js";
+import { assumptionVerdicts, endedByFailures, goalsFromAnalysis, isComplete, isReady, isSaturated, levelOf, mootDependents, rankReady, refutedObjects, releaseWaiting, requeueOrExhaust, treeMetrics } from "./goals.js";
+import { byBrief } from "./index.js";
+import { decodeNested, structuredCall, wrapLists } from "./llm.js";
+import { parseOptions } from "./options.js";
+import type { Analysis } from "./request/index.js";
+import { EXAMPLES } from "./request/examples.js";
+import { acceptProposals, analystMessage, applyJudgments, checkRound, repairRound, RoundApiSchema } from "./rounds/analyst.js";
+import { applyConflicts, checkConflicts, resolveClaimChecks, settleBlock, settlePriority } from "./rounds/conflicts.js";
+import { headingGoals, hostsIn, readResult, splitNotes } from "./rounds/evidence.js";
+import type { EbdState } from "./state.js";
+import { buildGuidance, buildMaterial, buildOutline, lengthLimit, plain } from "./synthesis.js";
+
+const E1 = EXAMPLES[0]!;
+const options = parseOptions({});
+
+function stateOf(analysis: Analysis = structuredClone(E1.analysis)): EbdState {
+  const goals = goalsFromAnalysis(analysis);
+  return {
+    question: E1.request,
+    today: E1.runDate,
+    init: { mode: "fixed", accepted: true, fallback: false, attempts: 1, stopReason: "accepted" },
+    analysis,
+    goals,
+    objectsFound: [],
+    conflicts: [],
+    evidence: [],
+    results: [],
+    roundsObserved: 0,
+    extraRoundServed: false,
+    stop: null,
+    tree: treeMetrics(goals),
+    step: { phase: "init", round: 0, calls: [], events: [] },
+    problems: [],
+  };
+}
+
+function result(tag: string, notes: string, id = "r1-b1", status: "ok" | "failed" = "ok"): ResearchResult {
+  const brief: ResearchBrief = { id, round: Number(id.slice(1, 2)), objective: "o", keyQuestions: tag.split(",").map((t) => `[${t}] q`), constraints: [], sourceHints: [], tag };
+  return { brief, status, notes, sources: [], queries: [], usage: { inputTokens: 0, outputTokens: 0, searches: 0, pageReads: 0 }, model: "fake", durationMs: 0, unlistedCitations: [], diagnostics: [] };
+}
+
+const NOTES = [
+  "## [Q2] How are prices measured?",
+  "### Takeaway",
+  "Prices rose.",
+  "### Cited Findings",
+  "- The index rose 4% — [StatCan](https://www.statcan.gc.ca/a(1))",
+  "  continued on a second line.",
+  "- Dealers report higher prices — https://news.example.org/x.",
+  "### Inferences",
+  "- Probably tariffs.",
+  "### Gaps",
+  "- No regional data.",
+  "",
+  "## [Q1] Did the US impose tariffs?",
+  "### Cited Findings",
+  "- Yes, in April 2025 — [Gov](https://gov.example/t)",
+].join("\n");
+
+describe("reading results (section 8)", () => {
+  it("indexes findings and gaps with brief-based IDs, keeping continuation lines", () => {
+    const { record, evidence } = readResult(result("Q1,Q2", NOTES));
+    expect(record.sections.map((s) => [s.goalIds, s.mappedBy])).toEqual([[["Q2"], "id"], [["Q1"], "id"]]);
+    expect(evidence.map((e) => e.id)).toEqual(["r1-b1-f1", "r1-b1-f2", "r1-b1-g1", "r1-b1-f3"]);
+    expect(evidence[0]).toMatchObject({ goalIds: ["Q2"], lines: [4, 5], hosts: ["statcan.gc.ca"] });
+    expect(evidence[0]!.text).toContain("continued on a second line");
+    expect(evidence[1]!.hosts).toEqual(["news.example.org"]);
+  });
+
+  it("maps by key-question order, and otherwise to every goal of the brief", () => {
+    const plain = NOTES.replace("[Q2] ", "").replace("[Q1] ", "");
+    expect(readResult(result("Q2,Q1", plain)).record.sections.map((s) => s.mappedBy)).toEqual(["order", "order"]);
+    expect(readResult(result("Q2,Q1,Q3", plain)).record.sections.map((s) => s.goalIds)).toEqual([["Q2", "Q1", "Q3"], ["Q2", "Q1", "Q3"]]);
+  });
+
+  it("reads goal IDs from headings with or without brackets (live check X2)", () => {
+    expect(headingGoals("[Q3] What is it?")).toEqual(["Q3"]);
+    expect(headingGoals("Q4")).toEqual(["Q4"]);
+    expect(headingGoals("Q2: What is the Apple Vision Pro?")).toEqual(["Q2"]);
+    expect(headingGoals("Quarterly Q2 results")).toEqual([]);
+  });
+
+  it("keeps unstructured notes as one section of findings, and failed results as no evidence", () => {
+    expect(splitNotes("Some text\n- a fact\n- another")).toHaveLength(1);
+    expect(readResult(result("Q1", "", "r1-b1", "failed")).evidence).toEqual([]);
+    expect(hostsIn("see [x](https://a.org/p_(x)) and https://b.org/q")).toEqual(["a.org", "b.org"]);
+  });
+
+  it("treats a bold line inside a findings list as a sub-heading, not a finding or part of one (Lab 4)", () => {
+    const notes = ["## [Q1] q", "### Cited Findings", "**Launch (who, when)**", "- Launched in 2021 — [NASA](https://nasa.gov/a)", "**After launch:**", "- Arrived at L2 — [ESA](https://esa.int/b)", "  in January 2022."].join("\n");
+    const { evidence } = readResult(result("Q1", notes));
+    expect(evidence.map((e) => e.id)).toEqual(["r1-b1-f1", "r1-b1-f2"]);
+    expect(evidence.some((e) => /Launch \(who|After launch/.test(e.text))).toBe(false);
+    expect(evidence[1]!.text).toContain("in January 2022");
+  });
+});
+
+describe("goals and order (section 6)", () => {
+  it("derives kind and level from template, need and origin", () => {
+    const goals = goalsFromAnalysis(E1.analysis);
+    expect(goals.map((g) => `${g.id}:${g.kind}:${g.level}`)).toEqual(["Q1:verify:1", "Q2:verify:1", "Q3:define:2", "Q4:verify:1", "Q5:define:2", "Q6:relate:3"]);
+    expect(levelOf("define", "completing")).toBe(4);
+    // A settle goal that decides no claim and holds up no goal is completing (Lab 4 review, 2026-10-26).
+    expect(levelOf("settle", "completing")).toBe(4);
+    expect(levelOf("settle", "necessary")).toBe(1);
+  });
+
+  it("serves premise checks first (L-7), and makes them wait for their dependencies without it", () => {
+    const s = stateOf();
+    const byId = new Map(s.goals.map((g) => [g.id, g]));
+    const q4 = byId.get("Q4")!;
+    expect(isReady(q4, byId, options)).toBe(true);
+    expect(isReady(q4, byId, { ...options, premiseFirst: false })).toBe(false);
+    expect(rankReady(s, options).map((r) => r.goal.id)).toEqual(["Q2", "Q1", "Q4", "Q3"]);
+  });
+
+  it("makes goals moot when the premise they rely on is contradicted", () => {
+    const s = stateOf();
+    const q4 = s.goals.find((g) => g.id === "Q4")!;
+    Object.assign(q4, { status: "answered", verdicts: { A3: "contradicted" }, settledRound: 1 });
+    expect(mootDependents(s, 1)).toEqual(["Q6"]);
+  });
+
+  it("when the checking goal's other claim held, makes moot only the dependents about what was refuted (Lab 4)", () => {
+    const setUp = () => {
+      const s = stateOf();
+      const goal = (id: string) => s.goals.find((g) => g.id === id)!;
+      // Q1 checks "the US imposed tariffs in 2025" (A1, held) and "new-car prices in Canada rose" (A2, contradicted).
+      Object.assign(goal("Q1"), { verifies: ["A1", "A2"], status: "answered", verdicts: { A1: "supported", A2: "contradicted" }, settledRound: 1 });
+      goal("Q2").verifies = [];
+      return { s, goal };
+    };
+    const first = setUp();
+    expect([...refutedObjects(first.s)].sort()).toEqual(["O5", "O6", "O7"]);
+    // Q4 is about "raise", which A2 refutes; Q6 depends on Q4.
+    expect(mootDependents(first.s, 1)).toEqual(["Q4", "Q6"]);
+    // About the tariffs only, Q4 stays; Q6, about "raise" and below Q1 through Q4, is still moot.
+    const second = setUp();
+    second.goal("Q4").objectIds = ["O4"];
+    expect(mootDependents(second.s, 1)).toEqual(["Q6"]);
+  });
+
+  it("is complete only when necessary goals, assumptions and conflicts are all settled", () => {
+    const s = stateOf();
+    expect(isComplete(s).complete).toBe(false);
+    for (const g of s.goals) Object.assign(g, { status: "answered", verdicts: Object.fromEntries(g.verifies.map((c) => [c, "supported"])) });
+    expect(isComplete(s)).toMatchObject({ complete: true });
+    s.conflicts.push({ id: "C1", type: "source_vs_source", about: "Q2", statement: "s", sideA: [], sideB: [], settleBy: "", condition: "", claim: null, status: "open", createdRound: 1, settledRound: null, settleGoal: null, checkedBy: null });
+    expect(isComplete(s).reason).toContain("C1");
+  });
+
+  it("is saturated only when a round made no progress and no researcher failed", () => {
+    const none = { settled: [], advanced: [], newConflicts: 0, newNecessary: 0, anyFailed: false };
+    expect(isSaturated(none)).toBe(true);
+    // Lab 5 review, change 8: one failed researcher is enough, since its goals wait for a retry.
+    expect(isSaturated({ ...none, anyFailed: true })).toBe(false);
+    expect(isSaturated({ ...none, advanced: ["Q1"] })).toBe(false);
+  });
+});
+
+describe("briefs (section 7)", () => {
+  it("packs goals by primary object within the brief and round limits", () => {
+    const s = stateOf();
+    const q = (id: string) => s.goals.find((g) => g.id === id)!;
+    q("Q3").objectIds = ["O4"];
+    expect(pack([q("Q1"), q("Q3"), q("Q2")], { maxPerRound: 1, questionsPerBrief: 3 }).map((g) => g.goals.map((x) => x.id))).toEqual([["Q1", "Q3"]]);
+  });
+
+  it("splits shared briefs when researchers would otherwise sit idle (Lab 5 review, change 3)", () => {
+    const s = stateOf();
+    const [q1, q2, q3, q4] = s.goals;
+    const one = [{ key: "O4", goals: [q1!, q2!, q3!] }, { key: "O7", goals: [q4!] }];
+    const ids = (gs: ReturnType<typeof spread>) => gs.map((g) => g.goals.map((x) => x.id).join(","));
+    // Four free researchers: the shared brief gives up its lowest-ranked goals, one per researcher.
+    expect(ids(spread(one, 4))).toEqual([q1!.id, q4!.id, q3!.id, q2!.id]);
+    expect(ids(spread(one, 3))).toEqual([`${q1!.id},${q2!.id}`, q4!.id, q3!.id]);
+    // No free researcher, or nothing left to split: unchanged.
+    expect(ids(spread(one, 2))).toEqual(ids(one));
+    expect(ids(spread([{ key: "O7", goals: [q4!] }], 4))).toEqual([q4!.id]);
+    // The input groups are not changed.
+    expect(one[0]!.goals).toHaveLength(3);
+  });
+
+  it("splits off completing goals only while a researcher stays for each necessary retry (live round 10)", () => {
+    const s = stateOf();
+    const [q1, q2, q3, q4, q5] = s.goals;
+    for (const g of [q1!, q2!]) g.need = "necessary";
+    for (const g of [q3!, q4!, q5!]) g.need = "completing";
+    const ids = (gs: ReturnType<typeof spread>) => gs.map((g) => g.goals.map((x) => x.id).join(","));
+    // Flight, round 2 of live round 10: two briefs, each one necessary goal with completing goals, 4 researchers left.
+    const flight = [{ key: "O1", goals: [q1!, q3!] }, { key: "O2", goals: [q2!, q4!] }];
+    expect(ids(spread(flight, 4, 4))).toEqual(ids(flight));
+    // With researchers to spare after the retries, the completing goals get their own briefs.
+    expect(ids(spread(flight, 4, 5))).toEqual([q1!.id, `${q2!.id},${q4!.id}`, q3!.id]);
+    expect(ids(spread(flight, 4, 6))).toEqual([q1!.id, q2!.id, q3!.id, q4!.id]);
+    // A necessary goal always leaves a brief that keeps another one.
+    const shared = [{ key: "O1", goals: [q1!, q2!, q5!] }];
+    expect(ids(spread(shared, 4, 3))).toEqual([`${q1!.id},${q5!.id}`, q2!.id]);
+    // Round 9's flight: one necessary goal and the completing premise check, 6 researchers left.
+    expect(ids(spread([{ key: "O2", goals: [q1!, q3!] }], 4, 6))).toEqual([q1!.id, q3!.id]);
+  });
+
+  it("orders results by brief, not by arrival (Lab 5 review, change 4)", () => {
+    expect(["r2-b10", "r2-b2", "r1-b3", "r2-b1"].sort(byBrief)).toEqual(["r1-b3", "r2-b1", "r2-b2", "r2-b10"]);
+  });
+
+  it("gives one slot to the necessary goal that has waited longest", () => {
+    const s = stateOf();
+    s.goals.find((g) => g.id === "Q3")!.createdRound = 0;
+    const { groups, reserve } = selectGroups(rankReady(s, options), { maxPerRound: 2, questionsPerBrief: 1 });
+    expect(reserve).toBe("Q3");
+    expect(groups.map((g) => g.goals[0]!.id)).toEqual(["Q2", "Q3"]);
+  });
+
+  it("holds back briefs of goals added during the run while first tries need the researchers (review of 2026-10-21)", () => {
+    const s = stateOf();
+    const q = (id: string) => s.goals.find((g) => g.id === id)!;
+    for (const id of ["Q2", "Q4", "Q5", "Q6"]) Object.assign(q(id), { status: "answered" });
+    Object.assign(q("Q1"), { attempts: 1 });
+    Object.assign(q("Q3"), { dependsOn: ["Q1"] });
+    s.goals.push({ ...structuredClone(q("Q2")), id: "Q9", kind: "settle", level: 1, status: "open", attempts: 0, depth: 1, objectIds: ["O99"], dependsOn: [], verifies: [], origin: { type: "conflict", conflict: "C1" }, settles: "C1" });
+    const ids = (sel: ReturnType<typeof selectWithReserve>) => sel.groups.map((g) => g.goals.map((x) => x.id).join(","));
+    // Q3 has never been served and waits for Q1: one researcher stays for it, so the settle goal Q9 waits.
+    const tight = selectWithReserve(rankReady(s, options), s, 2, options);
+    expect(ids(tight)).toEqual(["Q1"]);
+    expect(tight).toMatchObject({ researchersKept: 1, released: false });
+    expect(tight.held.map((g) => g.id)).toEqual(["Q9"]);
+    expect(tight.reservedFor.map((g) => g.id)).toEqual(["Q3"]);
+    expect(ids(selectWithReserve(rankReady(s, options), s, 3, options))).toContain("Q9");
+    expect(ids(selectWithReserve(rankReady(s, options), s, 2, { ...options, reserveFirstTries: false }))).toContain("Q9");
+    // A settle goal that a request goal waits for is never held back.
+    Object.assign(q("Q2"), { status: "conflicting", waitingOn: "Q9" });
+    expect(ids(selectWithReserve(rankReady(s, options), s, 2, options))).toContain("Q9");
+    // When nothing else can be served, the reserve is released rather than stopping with researchers left.
+    Object.assign(q("Q2"), { status: "answered", waitingOn: null });
+    Object.assign(q("Q1"), { attempts: options.maxAttempts });
+    const alone = selectWithReserve(rankReady(s, options), s, 1, options);
+    expect(alone).toMatchObject({ released: true, held: [] });
+    expect(ids(alone)).toEqual(["Q9"]);
+  });
+
+  it("writes the verification instruction, the frame and the client's evidence directives into the brief", () => {
+    const s = stateOf({
+      ...structuredClone(E1.analysis),
+      client_directives: [
+        { kind: "source_preference", text: "Use only official statistics.", evidence: ["official statistics only"] },
+        { kind: "report_format", text: "A one-page briefing.", evidence: ["one-page"] },
+        { kind: "scope_limit", text: "Leave out used cars.", evidence: [] },
+      ],
+    });
+    const q1 = s.goals.find((g) => g.id === "Q1")!;
+    const brief = briefFor({ key: "O4", goals: [q1] }, 0, s);
+    expect(brief).toMatchObject({ tag: "Q1", priority: 90 });
+    expect(brief.keyQuestions[0]).toMatch(/^\[Q1\] /);
+    expect(brief.instructions).toContain("Look specifically for evidence that contradicts it.");
+    expect(brief.instructions).toContain("The claim: 'The US imposed tariffs in 2025.'");
+    expect(brief.sourceHints).toContain("primary records; at least two independent publishers");
+    expect(brief.constraints).toContain('Client source preference: Use only official statistics. (client\'s words: "official statistics only")');
+    expect(brief.constraints!.some((c) => c.startsWith("Client report format"))).toBe(false);
+    expect(directiveLines(s.analysis, "writer")).toEqual(['Client report format: A one-page briefing. (client\'s words: "one-page")', "Client scope limit: Leave out used cars."]);
+  });
+
+  it("leaves out a time frame taken only from a refuted date (Lab 4)", () => {
+    const s = stateOf();
+    const q1 = s.goals.find((g) => g.id === "Q1")!;
+    q1.verdicts = { A1: "contradicted" };
+    const timeFrame = () => briefFor({ key: "O4", goals: [q1] }, 0, s).constraints!.some((c) => c.startsWith("Time frame"));
+    // E1's time frame also rests on "in 2026", so it stays.
+    expect(timeFrame()).toBe(true);
+    s.analysis.frame.time_frame = { value: "2025, the year named in the request.", basis: "explicit", evidence: ["in 2025"] };
+    expect(timeFrame()).toBe(false);
+  });
+
+  it("names an object found in the notes in a multi-goal objective", () => {
+    const s = stateOf();
+    s.objectsFound.push({ id: "O14", text: "Bank of Canada outlook", parent: "O9", quote: "q", evidence: "r1-b1-f1", round: 1 });
+    const brief = briefFor({ key: "O14", goals: s.goals.slice(0, 2) }, 0, s);
+    expect(brief.objective).toBe('Answer the key questions below about "Bank of Canada outlook".');
+  });
+});
+
+describe("conflict checker and round analyst checks (sections 9 and 10)", () => {
+  function withEvidence() {
+    const s = stateOf();
+    const { record, evidence } = readResult(result("Q2,Q1", NOTES));
+    s.results.push(record);
+    s.evidence.push(...evidence);
+    return { s, evidence };
+  }
+
+  it("rejects conflicts without valid evidence on both sides", () => {
+    const { s, evidence } = withEvidence();
+    const c = { type: "source_vs_source", about: "Q2", statement: "They differ.", side_a: ["r1-b1-f1"], side_b: ["r9-b9-f9"], settle_by: "The official release.", condition: "" };
+    const out = checkConflicts({ conflicts: [c, { ...c, type: "evidence_vs_assumption", side_b: ["A2"] }] }, s, evidence);
+    expect(out.errors.map((e) => e.path)).toEqual(["conflicts[0]"]);
+    expect(out.errors[0]!.message).toContain("r9-b9-f9");
+  });
+
+  it("rejects a disagreement whose two sides cite the same source", () => {
+    const { s, evidence } = withEvidence();
+    s.evidence.push({ ...evidence[0]!, id: "r1-b1-f9", text: "The index rose 5% - https://statcan.gc.ca/b", hosts: ["statcan.gc.ca"] });
+    const c = { type: "source_vs_source", about: "Q2", statement: "Two figures on one site.", side_a: ["r1-b1-f1"], side_b: ["r1-b1-f9"], settle_by: "The release.", condition: "" };
+    expect(checkConflicts({ conflicts: [c] }, s, evidence).errors[0]!.message).toContain("same source");
+  });
+
+  it("gives a goal at most one settle goal, within the new-goal limits, and disputes the rest", () => {
+    const { s } = withEvidence();
+    const c = (side: string) => ({ type: "source_vs_source" as const, about: "Q2", statement: "They differ.", side_a: ["r1-b1-f1"], side_b: [side], settle_by: "The official release.", condition: "", claim: "" });
+    const log: string[] = [];
+    applyConflicts(s, { conflicts: [c("r1-b1-f2"), c("r1-b1-f3")] }, 1, options, (l) => log.push(l));
+    expect(s.conflicts.map((x) => x.status)).toEqual(["open", "disputed"]);
+    expect(log[1]).toContain("already waits for the settle goal");
+    const q3 = s.goals.find((g) => g.id === "Q3")!;
+    expect(settleBlock(s, { ...q3, need: "completing" }, options, 1)).toContain("completing goal");
+    expect(settleBlock(s, { ...q3, depth: 2 }, options, 1)).toContain("beyond maxDepth");
+    expect(settleBlock(s, q3, { ...options, maxNewGoalsPerRound: 1 }, 1)).toContain("quota");
+    expect(settleBlock(s, { ...q3, settles: "C9" }, options, 1)).toContain("itself settling a disagreement");
+    expect(settleBlock(s, { ...q3, status: "exhausted" }, options, 1)).toContain("already exhausted");
+    expect(settleBlock(s, { ...q3, status: "answered" }, options, 1)).toBeNull();
+  });
+
+  it("marks a goal disputed when its disagreement cannot get a settle goal", () => {
+    const { s } = withEvidence();
+    const q3 = s.goals.find((g) => g.id === "Q3")!;
+    q3.need = "completing";
+    s.conflicts.push({ id: "C1", type: "source_vs_source", about: "Q3", statement: "s", sideA: ["r1-b1-f1"], sideB: ["r1-b1-f2"], settleBy: "x", condition: "", claim: null, status: "disputed", createdRound: 1, settledRound: 1, settleGoal: null, checkedBy: null });
+    const reply = { judgments: [{ goal_id: "Q3", parts: [{ part: "p", met: false, evidence: [] }], outcome: "conflicting" as const, verdicts: [], missing: ["which value holds"] }], proposals: [] };
+    const applied = applyJudgments(s, reply, [q3], 1, options, () => {});
+    expect(q3.status).toBe("disputed");
+    expect(applied.settled).toEqual(["Q3"]);
+  });
+
+  it("lets a settle goal check a claim only when the disagreement decides it (review of 2026-10-21)", () => {
+    const { s, evidence } = withEvidence();
+    const c = { type: "source_vs_source" as const, about: "Q2", statement: "They differ.", side_a: ["r1-b1-f1"], side_b: ["r1-b1-f2"], settle_by: "The official release.", condition: "" };
+    // A reply without the claim field decides no assumption.
+    expect(checkConflicts({ conflicts: [c] }, s, evidence).errors).toEqual([]);
+    expect(checkConflicts({ conflicts: [{ ...c, claim: "A9" }] }, s, evidence).errors[0]!.message).toContain("unknown assumption A9");
+    applyConflicts(s, { conflicts: [{ ...c, claim: "" }] }, 1, options, () => {});
+    expect(s.goals.find((g) => g.id === s.conflicts[0]!.settleGoal)!.verifies).toEqual([]);
+    const other = stateOf();
+    applyConflicts(other, { conflicts: [{ ...c, claim: "A2" }, { ...c, type: "evidence_vs_assumption", about: "Q1", side_b: ["A1"], claim: "" }] }, 1, options, () => {});
+    expect(other.conflicts.map((x) => x.claim)).toEqual(["A2", "A1"]);
+    expect(other.goals.filter((g) => g.settles).map((g) => g.verifies)).toEqual([["A2"], ["A1"]]);
+  });
+
+  it("changes the waiting goal's verdict only when its settle goal judged the claim", () => {
+    for (const [claim, verdict] of [["", "supported"], ["A2", "unsettled"]] as const) {
+      const { s } = withEvidence();
+      const c = { type: "source_vs_source" as const, about: "Q2", statement: "They differ.", side_a: ["r1-b1-f1"], side_b: ["r1-b1-f2"], settle_by: "The official release.", condition: "", claim };
+      applyConflicts(s, { conflicts: [c] }, 1, options, () => {});
+      const settleGoal = s.goals.find((g) => g.id === s.conflicts[0]!.settleGoal)!;
+      const q2 = s.goals.find((g) => g.id === "Q2")!;
+      Object.assign(q2, { status: "conflicting", waitingOn: settleGoal.id, verdicts: { A2: "supported" } });
+      settleGoal.attempts = options.maxAttempts;
+      const verdicts = claim ? [{ claim_id: "A2", verdict: "unsettled" as const }] : [];
+      const reply = { judgments: [{ goal_id: settleGoal.id, parts: [{ part: "which value holds", met: false, evidence: [] }], outcome: "not_found" as const, verdicts, missing: ["the official release"] }], proposals: [] };
+      applyJudgments(s, reply, [settleGoal], 2, options, () => {});
+      expect(q2).toMatchObject({ status: "disputed", verdicts: { A2: verdict } });
+    }
+  });
+
+  it("judges each claim of a goal on its own (Lab 4 review, 2026-10-26)", () => {
+    const { s } = withEvidence();
+    const q1 = s.goals.find((g) => g.id === "Q1")!;
+    q1.verifies = ["A1", "A2"];
+    const [a1, a2] = s.analysis.assumptions;
+    expect(analystMessage(s, 1, [q1], options)).toContain(`Claims to verify:
+- A1: ${a1!.claim}
+- A2: ${a2!.claim}`);
+    const reply = {
+      judgments: [{ goal_id: "Q1", parts: [{ part: "the event", met: true, evidence: ["r1-b1-f1", "r1-b1-f3"] }], outcome: "answered" as const, verdicts: [{ claim_id: "A1", verdict: "supported" as const }, { claim_id: "A2", verdict: "contradicted" as const }], missing: [] }],
+      proposals: [],
+    };
+    expect(checkRound(reply, s, [q1]).errors).toEqual([]);
+    applyJudgments(s, reply, [q1], 1, options, () => {});
+    expect(q1).toMatchObject({ status: "answered", verdicts: { A1: "supported", A2: "contradicted" } });
+    expect(assumptionVerdicts(s)).toMatchObject({ A1: "supported", A2: "contradicted" });
+  });
+
+  it("opens no settle goal when a goal served this round already checks the contradicted claim (Lab 4 review)", () => {
+    const { s } = withEvidence();
+    const log: string[] = [];
+    // r1-b1-f3 is a finding of Q1, which verifies A1: the round analyst judges A1 on it in this round.
+    const premise = { type: "evidence_vs_assumption" as const, about: "Q1", statement: "The evidence says no tariffs were imposed.", side_a: ["r1-b1-f3"], side_b: ["A1"], settle_by: "The official proclamation.", condition: "", claim: "" };
+    applyConflicts(s, { conflicts: [premise] }, 1, options, (l) => log.push(l));
+    expect(s.conflicts[0]).toMatchObject({ status: "open", checkedBy: "Q1", settleGoal: null, claim: "A1" });
+    expect(s.goals.some((g) => g.settles)).toBe(false);
+    expect(log[0]).toContain("no settle goal yet, because Q1 checks A1");
+    // Lab 5 review, change 2: settled only once Q1's verdict decides the claim.
+    s.goals.find((g) => g.id === "Q1")!.verdicts = { A1: "contradicted" };
+    resolveClaimChecks(s, 1, options, (l) => log.push(l));
+    expect(s.conflicts[0]).toMatchObject({ status: "settled", settleGoal: "Q1" });
+    expect(buildGuidance(s)).toContain(`the notes for "${plain(s.goals.find((g) => g.id === "Q1")!.text)}" show which account holds`);
+    // A finding of another goal is not being judged against A1, so it still gets a settle goal.
+    const other = withEvidence().s;
+    applyConflicts(other, { conflicts: [{ ...premise, side_a: ["r1-b1-f1"] }] }, 1, options, () => {});
+    expect(other.goals.find((g) => g.settles)).toMatchObject({ verifies: ["A1"], level: 1 });
+  });
+
+  it("treats a claim check that leaves the claim unsettled as an open disagreement (Lab 5 review, change 2)", () => {
+    const { s } = withEvidence();
+    const premise = { type: "evidence_vs_assumption" as const, about: "Q1", statement: "The evidence says no tariffs were imposed.", side_a: ["r1-b1-f3"], side_b: ["A1"], settle_by: "The official proclamation.", condition: "", claim: "" };
+    applyConflicts(s, { conflicts: [premise] }, 1, options, () => {});
+    const q1 = s.goals.find((g) => g.id === "Q1")!;
+    const reply = { judgments: [{ goal_id: "Q1", parts: [{ part: "the event", met: false, evidence: [] }], outcome: "not_found" as const, verdicts: [{ claim_id: "A1", verdict: "unsettled" as const }], missing: ["the proclamation"] }], proposals: [] };
+    applyJudgments(s, reply, [q1], 1, options, () => {});
+    const log: string[] = [];
+    resolveClaimChecks(s, 1, options, (l) => log.push(l));
+    const settleGoal = s.goals.find((g) => g.settles === "C1");
+    expect(settleGoal).toMatchObject({ verifies: ["A1"], leadsTo: ["Q1"] });
+    expect(s.conflicts[0]).toMatchObject({ status: "open", settleGoal: settleGoal!.id });
+    expect(log[0]).toContain("stays open");
+    // The writer is not told that the notes show which side holds.
+    expect(buildGuidance(s)).not.toContain("show which account holds");
+  });
+
+  it("disputes a settle goal whose sources still disagree, and releases the goal waiting for it", () => {
+    const { s } = withEvidence();
+    const c = { type: "source_vs_source" as const, about: "Q2", statement: "They differ.", side_a: ["r1-b1-f1"], side_b: ["r1-b1-f2"], settle_by: "The official release.", condition: "", claim: "A2" };
+    applyConflicts(s, { conflicts: [c] }, 1, options, () => {});
+    const settleGoal = s.goals.find((g) => g.settles)!;
+    const q2 = s.goals.find((g) => g.id === "Q2")!;
+    Object.assign(q2, { status: "conflicting", waitingOn: settleGoal.id, verifies: ["A2"], verdicts: { A2: "supported" } });
+    const reply = { judgments: [{ goal_id: settleGoal.id, parts: [{ part: "which value holds", met: false, evidence: [] }], outcome: "conflicting" as const, verdicts: [{ claim_id: "A2", verdict: "unsettled" as const }], missing: ["agreement"] }], proposals: [] };
+    applyJudgments(s, reply, [settleGoal], 2, options, () => {});
+    expect(settleGoal.status).toBe("disputed");
+    expect(s.conflicts[0]!.status).toBe("disputed");
+    expect(q2).toMatchObject({ status: "disputed", verdicts: { A2: "unsettled" } });
+  });
+
+  it("releases a conflicting goal once its settle goal has settled, whatever path settled it", () => {
+    const s = stateOf();
+    const [q1, q2] = s.goals;
+    s.goals.push({ ...structuredClone(q2!), id: "Q9", settles: "C1", status: "moot", verifies: [] });
+    Object.assign(q1!, { status: "conflicting", waitingOn: "Q9" });
+    Object.assign(q2!, { status: "conflicting", waitingOn: "Q8" });
+    expect(releaseWaiting(s, 3)).toEqual(["Q1: disputed after Q9 ended moot", "Q2: disputed after Q8 was missing"]);
+    expect(q1!.status).toBe("disputed");
+    s.goals.find((g) => g.id === "Q9")!.status = "answered";
+    Object.assign(q1!, { status: "conflicting" });
+    releaseWaiting(s, 3);
+    expect(q1!.status).toBe("answered");
+  });
+
+  it("keeps a settle goal necessary only while it decides a claim or a goal waits for it (Lab 4 review)", () => {
+    const { s } = withEvidence();
+    const detail = { type: "source_vs_source" as const, about: "Q2", statement: "One source gives 4%, another 3%.", side_a: ["r1-b1-f1"], side_b: ["r1-b1-f2"], settle_by: "The official release.", condition: "", claim: "" };
+    applyConflicts(s, { conflicts: [detail] }, 1, options, () => {});
+    const settleGoal = s.goals.find((g) => g.settles)!;
+    const log: string[] = [];
+    settlePriority(s, (l) => log.push(l));
+    expect(settleGoal).toMatchObject({ need: "completing", level: 4 });
+    expect(log[0]).toContain("decides no claim and no goal waits for it");
+    // Its open conflict does not hold up the stop.
+    for (const g of s.goals.filter((x) => !x.settles)) Object.assign(g, { status: "answered", verdicts: Object.fromEntries(g.verifies.map((c) => [c, "supported"])) });
+    expect(isComplete(s).complete).toBe(true);
+    // When the round analyst judges the goal conflicting, the goal waits for it and it is necessary again.
+    Object.assign(s.goals.find((g) => g.id === "Q2")!, { status: "conflicting", waitingOn: settleGoal.id });
+    settlePriority(s, () => {});
+    expect(settleGoal).toMatchObject({ need: "necessary", level: 1 });
+    expect(isComplete(s).complete).toBe(false);
+    // A disagreement that decides a claim keeps a necessary settle goal.
+    const claimed = withEvidence().s;
+    applyConflicts(claimed, { conflicts: [{ ...detail, claim: "A2" }] }, 1, options, () => {});
+    settlePriority(claimed, () => {});
+    expect(claimed.goals.find((g) => g.settles)).toMatchObject({ need: "necessary", level: 1 });
+  });
+
+  it("keeps parts met in earlier rounds and judges only the missing ones (Lab 5 review, change 1)", () => {
+    const { s } = withEvidence();
+    const q2 = s.goals.find((g) => g.id === "Q2")!;
+    const judge = (parts: { part: string; met: boolean; evidence: string[] }[], outcome: "answered" | "partial", missing: string[], round: number) =>
+      applyJudgments(s, { judgments: [{ goal_id: "Q2", parts, outcome, verdicts: [], missing }], proposals: [] }, [q2], round, { ...options, evidenceFloor: 1 }, () => {});
+    q2.attempts = 1;
+    judge([{ part: "the measure", met: true, evidence: ["r1-b1-f1"] }, { part: "regional data", met: false, evidence: [] }], "partial", ["regional data"], 1);
+    expect(q2).toMatchObject({ status: "open", partsMet: 1, partsTotal: 2, metParts: [{ part: "the measure", evidence: ["r1-b1-f1"], round: 1 }] });
+    const message = analystMessage(s, 2, [q2], options);
+    expect(message).toContain("Parts already met (kept from earlier rounds; do not judge them again):\n- the measure [r1-b1-f1]\nJudge only these parts: regional data");
+    expect(message).not.toContain("Missing after the last attempt");
+    // Round 2 judges only the missing part; meeting it answers the goal with both parts.
+    q2.attempts = 2;
+    judge([{ part: "regional data", met: true, evidence: ["r1-b1-f2"] }], "answered", [], 2);
+    expect(q2).toMatchObject({ status: "answered", partsMet: 2, partsTotal: 2 });
+    expect(q2.evidence).toEqual(["r1-b1-f1", "r1-b1-f2"]);
+  });
+
+  it("does not count a kept part twice when the analyst lists it again", () => {
+    const { s } = withEvidence();
+    const q2 = s.goals.find((g) => g.id === "Q2")!;
+    Object.assign(q2, { attempts: 2, metParts: [{ part: "The measure", evidence: ["r1-b1-f1"], round: 1 }], missing: ["regional data"] });
+    const parts = [{ part: "the measure.", met: true, evidence: ["r1-b1-f1"] }, { part: "regional data", met: false, evidence: [] }];
+    applyJudgments(s, { judgments: [{ goal_id: "Q2", parts, outcome: "partial", verdicts: [], missing: ["regional data"] }], proposals: [] }, [q2], 2, options, () => {});
+    expect(q2).toMatchObject({ partsMet: 1, partsTotal: 2 });
+    expect(q2.metParts).toHaveLength(1);
+  });
+
+  it("reports a goal ended only by researcher failures as a failure, not as sources not found (Lab 5 review, change 8)", () => {
+    const s = stateOf();
+    const [q1, q2] = s.goals;
+    Object.assign(q1!, { status: "exhausted", attempts: 2, failedAttempts: 2 });
+    Object.assign(q2!, { status: "exhausted", attempts: 2, failedAttempts: 1 });
+    expect([endedByFailures(q1!), endedByFailures(q2!)]).toEqual([true, false]);
+    const guidance = buildGuidance(s);
+    expect(guidance).toContain(`could not be researched because of technical failures, not for lack of sources. Do not claim that no source exists; where relevant, say only that the report does not cover them:
+- ${plain(q1!.text)}`);
+    expect(guidance).toContain(`No reliable source was found for these; say so where relevant instead of guessing:
+- ${q2!.text}`);
+    expect(guidance.split("No reliable source")[1]!.split("\n\n")[0]).not.toContain(q1!.text);
+  });
+
+  it("leaves a claim unjudged when every attempt to check it failed (live failure test, 2026-11-05)", () => {
+    const s = stateOf();
+    const q1 = s.goals.find((g) => g.verifies.length)!;
+    const claim = q1.verifies[0]!;
+    Object.assign(q1, { attempts: 2, failedAttempts: 2 });
+    expect(requeueOrExhaust(q1, 2, 2, null)).toBe("exhausted");
+    expect(q1.verdicts).toEqual({});
+    expect(buildGuidance(s)).toContain("This could not be checked; do not present it as established.");
+    // One attempt that reached the sources leaves the claim unsettled, as before.
+    Object.assign(q1, { status: "open", attempts: 2, failedAttempts: 1, verdicts: {} });
+    requeueOrExhaust(q1, 2, 2, null);
+    expect(q1.verdicts).toEqual({ [claim]: "unsettled" });
+  });
+
+  it("keeps the valid parts of a judgment when the retry fails too", () => {
+    const { s } = withEvidence();
+    const served = s.goals.filter((g) => g.id === "Q1" || g.id === "Q2");
+    const repaired = repairRound({
+      judgments: [
+        { goal_id: "Q1", parts: [{ part: "a", met: true, evidence: ["r1-b1-f3"] }, { part: "b", met: true, evidence: ["r1-b1-g1"] }], outcome: "answered", verdicts: [{ claim_id: "A1", verdict: "supported" }, { claim_id: "A9", verdict: "contradicted" }], missing: [] },
+        { goal_id: "Q6", parts: [{ part: "x", met: true, evidence: ["r1-b1-f1"] }], outcome: "answered", verdicts: [], missing: [] },
+        { goal_id: "Q2", parts: [{ part: "y", met: true, evidence: ["r1-b1-f1"] }], outcome: "answered", verdicts: [], missing: [] },
+      ],
+      proposals: [],
+    }, s, served);
+    expect(repaired.judgments).toEqual([
+      { goal_id: "Q1", parts: [{ part: "a", met: true, evidence: ["r1-b1-f3"] }, { part: "b", met: false, evidence: [] }], outcome: "partial", verdicts: [{ claim_id: "A1", verdict: "supported" }], missing: ["b"] },
+      // An answered goal without a verdict on its claim is only partial.
+      { goal_id: "Q2", parts: [{ part: "y", met: true, evidence: ["r1-b1-f1"] }], outcome: "partial", verdicts: [], missing: ["a verdict on A2"] },
+    ]);
+  });
+
+  it("treats a reply without proposals or verdicts as proposing and judging nothing", () => {
+    const { s } = withEvidence();
+    const served = s.goals.filter((g) => g.id === "Q3");
+    const out = checkRound({ judgments: [{ goal_id: "Q3", parts: [{ part: "p", met: false, evidence: [] }], outcome: "not_found", missing: ["p"] }] }, s, served);
+    expect(out).toMatchObject({ errors: [], value: { proposals: [], judgments: [{ verdicts: [] }] } });
+  });
+
+  it("requires cited findings for met parts, a verdict for claims, and a judgment for every served goal", () => {
+    const { s } = withEvidence();
+    const served = s.goals.filter((g) => g.id === "Q1" || g.id === "Q2");
+    const reply = {
+      judgments: [{ goal_id: "Q1", parts: [{ part: "p", met: true, evidence: ["r1-b1-g1"] }], outcome: "answered", verdicts: [{ claim_id: "A3", verdict: "supported" }], missing: [] }],
+      proposals: [],
+    };
+    const out = checkRound(reply, s, served);
+    expect(out.errors.map((e) => e.message)).toEqual([
+      "parts[0]: r1-b1-g1 is a gap line, which cannot meet a part",
+      "verdicts[0]: A3 is not a claim of Q1; its claims are A1",
+      "a goal with claims to verify needs a verdict on each (supported, contradicted or unsettled); missing: A1",
+      "no judgment for Q2",
+    ]);
+  });
+});
+
+describe("new goals (section 10.2)", () => {
+  it("rejects goals on the question word and re-asks of a retried goal, but not different questions of one type (Lab 4)", () => {
+    const s = stateOf();
+    const { record, evidence } = readResult(result("Q2,Q1", NOTES));
+    s.results.push(record);
+    s.evidence.push(...evidence);
+    Object.assign(s.goals.find((g) => g.id === "Q1")!, { attempts: 1, servedRounds: [1], missing: ["the tariff rates on car parts"] });
+    const base = { template: "T3" as const, need: "completing" as const, object_id: "O4", new_object: "", new_object_quote: "", prompted_by: ["r1-b1-f3"], leads_to: ["Q1"], done_when: "d", source_hints: [] };
+    const proposals = [
+      { ...base, text: "How were the 2025 US tariffs on Canadian goods enforced at the border, and by which agency?" },
+      { ...base, text: "Which legal authority did the US use for the 2025 tariffs, and was it challenged in court?" },
+      { ...base, text: "What were the tariff rates on car parts?" },
+      { ...base, object_id: "O1", text: "Why did the tariffs raise prices?" },
+    ];
+    const log: string[] = [];
+    const added = acceptProposals(s, { judgments: [], proposals }, 1, options, (l) => log.push(l));
+    expect(added.map((g) => g.text)).toEqual([proposals[0]!.text, proposals[1]!.text]);
+    expect(log.join("\n")).toContain('re-asks "the tariff rates on car parts", which Q1 still looks for');
+    // A goal on the answer object that restates the final answer is still rejected (live round of 2026-11-05).
+    expect(log.join("\n")).toContain('asks for the final answer (Q7), attached to "Why"');
+    // A near-identical question of the same type and object is still a duplicate.
+    const again = acceptProposals(s, { judgments: [], proposals: [{ ...base, text: "Which legal authority did the US use for its 2025 tariffs, and was that challenged in court?" }] }, 1, options, (l) => log.push(l));
+    expect(again).toEqual([]);
+    expect(log.at(-1)).toContain(`duplicates ${added[1]!.id}`);
+  });
+
+  it("moves a research question attached to the answer object to the object of the goal that prompted it (live round of 2026-11-05)", () => {
+    const s = stateOf();
+    const { record, evidence } = readResult(result("Q2,Q1", NOTES));
+    s.results.push(record);
+    s.evidence.push(...evidence);
+    // r1-b1-f3 is a finding of Q1, whose object is O4 "tariffs"; O1 "Why" is the answer the client asks for.
+    const proposal = { template: "T3" as const, need: "necessary" as const, object_id: "O1", new_object: "", new_object_quote: "", prompted_by: ["r1-b1-f3"], leads_to: ["Q1"], done_when: "d", source_hints: [], text: "What share of Canadian new-car sales are vehicles assembled in the US?" };
+    const log: string[] = [];
+    const added = acceptProposals(s, { judgments: [], proposals: [proposal] }, 1, options, (l) => log.push(l));
+    expect(added.map((g) => g.objectIds)).toEqual([["O4"]]);
+    expect(log[0]).toContain('moved from "Why" (the answer the client asks for) to O4');
+  });
+});
+
+describe("structured-call helper (section 5.3)", () => {
+  function scripted(replies: unknown[]) {
+    const seen: BaseMessage[][] = [];
+    const model = {
+      bindTools: () => ({
+        invoke: async (messages: BaseMessage[]) => {
+          seen.push(messages);
+          const args = replies.shift();
+          return args === undefined ? new AIMessage("no tool") : new AIMessage({ content: "", tool_calls: [{ id: "c", name: "submit_round_analysis", args: args as Record<string, unknown>, type: "tool_call" }] });
+        },
+      }),
+    } as unknown as BaseChatModel;
+    return { model, seen };
+  }
+  const check = (args: unknown) => {
+    const parsed = RoundApiSchema.safeParse(args);
+    if (!parsed.success) return { value: null, errors: [{ code: "schema", path: "", message: "bad" }], warnings: [] };
+    return { value: parsed.data, errors: parsed.data.judgments.length ? [] : [{ code: "judgment_missing", path: "judgments", message: "no judgment for Q1" }], warnings: [] };
+  };
+  const call = (model: BaseChatModel) =>
+    structuredCall({ model, role: "round_analyst", system: "s", message: "m", tool: { name: "submit_round_analysis", description: "d", schema: RoundApiSchema }, check, fallback: (v) => v });
+  const good = { judgments: [{ goal_id: "Q1", parts: [], outcome: "partial", verdicts: [], missing: ["x"] }], proposals: [] };
+
+  it("decodes values the model sent as JSON text, and leaves other text alone", () => {
+    expect(decodeNested({ judgments: '[{"goal_id":"Q1"}]', note: "[Q1] text", n: 2 })).toEqual({
+      value: { judgments: [{ goal_id: "Q1" }], note: "[Q1] text", n: 2 },
+      decoded: ["judgments"],
+    });
+  });
+
+  it("makes a single value a list where the schema expects one, splitting ID lists (Lab 4)", () => {
+    expect(wrapLists({ conflicts: [{ side_a: "r1-b1-f6, r1-b1-f8", side_b: "A2", statement: "s" }] }, { ids: ["side_a", "side_b"], texts: [] })).toEqual({
+      value: { conflicts: [{ side_a: ["r1-b1-f6", "r1-b1-f8"], side_b: ["A2"], statement: "s" }] },
+      wrapped: ["conflicts[0].side_a", "conflicts[0].side_b"],
+    });
+    expect(wrapLists({ missing: "the dates, by month" }, { ids: [], texts: ["missing"] }).value).toEqual({ missing: ["the dates, by month"] });
+  });
+
+  it("accepts a reply with a wrapped list without a retry", async () => {
+    const { model } = scripted([{ judgments: [{ goal_id: "Q1", parts: [], outcome: "partial", verdicts: [], missing: "x" }], proposals: [] }]);
+    const out = await structuredCall({ model, role: "round_analyst", system: "s", message: "m", tool: { name: "submit_round_analysis", description: "d", schema: RoundApiSchema }, check, fallback: (v) => v, lists: { ids: [], texts: ["missing"] } });
+    expect(out).toMatchObject({ accepted: true, value: { judgments: [{ missing: ["x"] }] } });
+    expect(out.calls).toHaveLength(1);
+    expect(out.calls[0]!.warnings.map((w) => w.code)).toEqual(["wrapped_list"]);
+  });
+
+  it("retries once with the previous reply and the numbered errors", async () => {
+    const { model, seen } = scripted([{ judgments: [], proposals: [] }, good]);
+    const out = await call(model);
+    expect(out).toMatchObject({ accepted: true, fallback: false });
+    expect(out.calls.map((c) => c.accepted)).toEqual([false, true]);
+    expect(String(seen[1]![1]!.content)).toContain("<validation_errors>\n1. judgments: no judgment for Q1");
+  });
+
+  it("falls back to the last structurally valid reply", async () => {
+    const { model } = scripted([{ judgments: [], proposals: [] }, undefined]);
+    const out = await call(model);
+    expect(out).toMatchObject({ accepted: false, fallback: true, value: { judgments: [] } });
+    expect(out.calls[1]!.errors[0]!.code).toBe("no_reply");
+  });
+});
+
+describe("writer input (section 12)", () => {
+  it("keeps internal IDs out of the guidance", () => {
+    expect(plain("No timetable confirms it (r1-b1-g1, r2-b1-g1); see C4.")).toBe("No timetable confirms it; see C4.");
+    expect(plain("Mercedes C300 (C2, C3) price r2-b1-f8 differs")).toBe("Mercedes C300 price differs");
+    // A comma left at a parenthesis goes with the ID (review of 2026-10-21); other punctuation stays.
+    expect(plain("Fares differ (snapshots are from mismatched dates, r2-b1-f3).")).toBe("Fares differ (snapshots are from mismatched dates).");
+    expect(plain("Fares differ (r2-b1-f3, snapshots differ).")).toBe("Fares differ (snapshots differ).");
+    expect(plain("A is 5; r1-b1-f2 gives 6.")).toBe("A is 5; gives 6.");
+  });
+
+  it("limits the writer to a short note when the request is out of scope (Lab 4 review, 2026-10-26)", () => {
+    const s = stateOf();
+    Object.assign(s.analysis, { status: "out_of_scope", status_reason: "The request depends on an attached file that was not provided" });
+    expect(buildGuidance(s)).toBe(
+      "Nothing was researched: The request depends on an attached file that was not provided. Write only the title and one paragraph of at most four sentences: why the question cannot be answered yet and what the client could provide. Add no other sections and no general advice.",
+    );
+  });
+
+  it("tells the writer which goals were only partly established, and which found nothing", () => {
+    const s = stateOf();
+    Object.assign(s.goals[0]!, { status: "exhausted", partsMet: 1, partsTotal: 3, missing: ["the rates"] });
+    Object.assign(s.goals[2]!, { status: "exhausted", partsMet: 0, partsTotal: 2 });
+    const guidance = buildGuidance(s);
+    expect(guidance).toContain(`only partly established. Use their notes, and where the report covers them, say what the evidence does not establish:
+- ${s.goals[0]!.text} Not established: the rates`);
+    expect(guidance).toContain(`No reliable source was found for these; say so where relevant instead of guessing:
+- ${s.goals[2]!.text}`);
+  });
+
+  it("follows a length limit and passes the planned contents to the writer (review of 2026-10-21)", () => {
+    const s = stateOf();
+    s.conflicts.push({ id: "C1", type: "source_vs_source", about: "Q2", statement: "One source says 4%, another 1%.", sideA: [], sideB: [], settleBy: "x", condition: "", claim: null, status: "disputed", createdRound: 1, settledRound: 1, settleGoal: null, checkedBy: null });
+    const q7 = s.analysis.questions.find((q) => q.id === "Q7")!;
+    expect(buildGuidance(s)).toContain(`What each part of the report must contain, as planned:\n- ${q7.text} ${q7.done_when}`);
+    expect(buildOutline(s)).toContain("Where the sources disagree");
+    expect(buildGuidance(s)).toContain('under "Where the sources disagree"');
+    s.analysis.client_directives = [{ kind: "report_format", text: "Deliver a one-page summary.", evidence: ["a one-page summary"] }];
+    expect(lengthLimit(s.analysis)).toBe("a one-page summary");
+    const guidance = buildGuidance(s);
+    expect(guidance).toContain('The client limits the length ("a one-page summary"). This comes before everything below');
+    expect(guidance).toContain("Give both sides in one sentence");
+    expect(buildOutline(s)).not.toContain("Where the sources disagree");
+    expect(lengthLimit({ ...s.analysis, client_directives: [{ kind: "report_format", text: "Use bullet points.", evidence: [] }] })).toBeNull();
+  });
+
+  it("keeps whole notes lines grouped by goal and leaves out off-target lines", () => {
+    const s = stateOf();
+    const { record, evidence } = readResult(result("Q2,Q1", NOTES));
+    s.results.push(record);
+    s.evidence.push(...evidence);
+    s.conflicts.push({ id: "C1", type: "off_target", about: "O6", statement: "Another index.", sideA: ["r1-b1-f2"], sideB: ["O6"], settleBy: "", condition: "", claim: null, status: "settled", createdRound: 1, settledRound: 1, settleGoal: null, checkedBy: null });
+    const material = buildMaterial(s);
+    expect(material.map((m) => m.notes.split("\n")[0])).toEqual([expect.stringMatching(/^# \[Q1\]/), expect.stringMatching(/^# \[Q2\]/)]);
+    const lines = new Set(NOTES.split("\n").map((l) => l.trim()));
+    for (const m of material) for (const l of m.notes.split("\n")) if (!l.startsWith("#") && l.trim()) expect(lines.has(l.trim())).toBe(true);
+    expect(material.map((m) => m.notes).join("\n")).not.toContain("Dealers report");
+    expect(buildGuidance(s)).toContain("different referent");
+    // A line a goal cites as its own evidence stays (live run 2026-10-20: the goal asked for the other meanings of "EBD").
+    s.goals.find((g) => g.id === "Q2")!.evidence = ["r1-b1-f2"];
+    expect(buildMaterial(s).map((m) => m.notes).join("\n")).toContain("Dealers report");
+  });
+});

@@ -14,4 +14,5 @@ __pycache__/
 local/*
 !local/.env.example
 /pypi.json
+/labs/
 ~$*
