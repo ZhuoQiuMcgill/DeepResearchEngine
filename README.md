@@ -24,6 +24,26 @@ npm run check-strategy -- --strategy baseline                      # contract ch
 npm test                                                           # unit tests, no network
 ```
 
+### Defense workspace
+
+Run `npm ci`, `npm --prefix ui ci`, and `npm run defense:ui`, then open
+[the workspace](http://127.0.0.1:5178/) in a desktop browser.
+Choose **Engine & evaluation** to run the official EBD or Baseline strategy, or
+to replay the two evaluation cases without model credentials. For an official
+model run, set the appropriate provider key in the engine root's ignored
+`.env` file and restart the UI server. The existing workflow canvas uses its
+own Local Qwen and API profiles in `ui/.env.local`.
+
+Run `npm run evaluate` to replay the scorer and the note screen with fixed
+fixtures. Run `npm run evaluate -- --case dated-conflict --profile haiku` for
+a live one-turn versus EBD comparison with the configured provider. The
+second case is `untrusted-report`. Live runs can make billable calls.
+
+The engine retains raw notes locally and screens direct instruction-like lines
+before passing notes to downstream stages. Review findings and the report
+together in the run viewer. See [the defense guide](docs/defense.md) for the
+evaluation rubric, measurement limits and presentation sequence.
+
 Strategies, their options, models, repeats and budgets are chosen in the
 experiment spec. Each run writes a record: config, decisions, every
 researcher's notes and sources, the writer input, the report and a summary

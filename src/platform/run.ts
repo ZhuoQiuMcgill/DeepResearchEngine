@@ -7,6 +7,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { getProfile, type ModelProfile } from "../config/models.js";
 import type { ResearchResult } from "../core/contracts.js";
 import type { JsonValue } from "../core/strategy.js";
+import { inputFindings, type GuardrailFinding } from "../core/run-guardrails.js";
 import type { DecisionRecord } from "../graph/skeleton.js";
 import { runResearchModule, type CitationCheck } from "../module/research-module.js";
 import { startTracing } from "../observability/langfuse.js";
@@ -40,6 +41,7 @@ export interface RunSpec {
 }
 
 export interface RunSummary {
+  guardrails: GuardrailFinding[];
   runId: string;
   dir: string;
   status: "ok" | "error";
@@ -88,9 +90,20 @@ export async function runOne(spec: RunSpec, log: (line: string) => void = () => 
   const ledger = new UsageLedger(profile.pricing);
   const started = Date.now();
 
+  const guardrails: GuardrailFinding[] = [];
+  const recordGuardrail = async (finding: GuardrailFinding) => {
+    guardrails.push(finding);
+    await recorder.json("guardrails.json", guardrails);
+  };
+
   const tracing = await startTracing({ runId, tags: [label, profile.name] });
   let out: Awaited<ReturnType<typeof runResearchModule>>;
   try {
+    const blocked = inputFindings(spec);
+    if (blocked.length) {
+      for (const finding of blocked) await recordGuardrail(finding);
+      throw new Error("Run input rejected by guardrails.");
+    }
     const strategy = await createStrategy(spec.strategy.name, spec.strategy.options);
     out = await runResearchModule({
       question: spec.question,
@@ -105,6 +118,7 @@ export async function runOne(spec: RunSpec, log: (line: string) => void = () => 
       ledger,
       ...(tracing.handler ? { callbacks: [tracing.handler] } : {}),
       hooks: {
+        onGuardrail: recordGuardrail,
         onDecision: async (d: DecisionRecord) => {
           await recorder.onDecision(d);
           log(`[${runId}] ${d.phase} -> round ${d.round}: ${d.accepted.length} brief(s)${d.dropped.length ? `, ${d.dropped.length} dropped` : ""}${d.invalid.length ? `, ${d.invalid.length} invalid` : ""}${d.stop ? ", stop" : ""}`);
@@ -119,6 +133,7 @@ export async function runOne(spec: RunSpec, log: (line: string) => void = () => 
   } catch (err) {
     // Strategy loading or setup failed before the graph ran.
     out = {
+      guardrails,
       status: "error",
       error: String((err as Error)?.stack ?? err),
       report: "",
@@ -136,6 +151,7 @@ export async function runOne(spec: RunSpec, log: (line: string) => void = () => 
   if (out.report) await recorder.text("report.md", out.report);
   const total = ledger.total();
   const summary: RunSummary = {
+    guardrails: out.guardrails,
     runId,
     dir: recorder.dir,
     status: out.status,
@@ -163,3 +179,4 @@ export async function runOne(spec: RunSpec, log: (line: string) => void = () => 
   await recorder.json("summary.json", summary);
   return summary;
 }
+

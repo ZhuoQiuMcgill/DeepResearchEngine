@@ -1,0 +1,292 @@
+.official-engine {
+  --oe-surface: #fff;
+  --oe-subtle: #f1f6f5;
+  --oe-text: #25383d;
+  --oe-line: #d9e4e2;
+  --oe-muted: #526b70;
+  --oe-accent: #087f73;
+  --oe-error: #9c442c;
+  width: min(960px, calc(100vw - 32px));
+  max-height: min(900px, calc(100dvh - 36px));
+  padding: 0;
+  overflow: auto;
+  color: var(--oe-text);
+  background: var(--oe-surface);
+  border: 1px solid var(--oe-line);
+  border-radius: 16px;
+  box-shadow: 0 24px 80px #142d3855;
+}
+.official-engine::backdrop {
+  background: #14242d83;
+}
+[data-theme="dark"] .official-engine {
+  --oe-surface: #1a252c;
+  --oe-subtle: #202f36;
+  --oe-text: #edf7f7;
+  --oe-line: #364b56;
+  --oe-muted: #b0c4c9;
+  --oe-accent: #75d5c4;
+  --oe-error: #ffd1bd;
+}
+.official-engine .official-engine-header {
+  height: auto;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  gap: 16px;
+  padding: 17px 24px;
+  background: var(--oe-surface);
+  border-bottom: 1px solid var(--oe-line);
+}
+.official-engine-header h2 {
+  font-family: Manrope, system-ui, sans-serif;
+  font-size: 25px;
+  margin: 0;
+}
+.official-engine-body {
+  padding: 16px 24px 24px;
+}
+.official-engine-nav {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--oe-line);
+  margin-bottom: 18px;
+}
+.official-engine-nav button {
+  border-color: transparent;
+  border-radius: 7px 7px 0 0;
+  background: transparent;
+}
+.official-engine-nav button[aria-current] {
+  color: var(--oe-accent);
+  border-bottom-color: currentColor;
+  font-weight: 700;
+  background: var(--oe-subtle);
+}
+.official-engine-form {
+  display: grid;
+  gap: 12px;
+}
+.official-engine-question,
+.official-engine-fields label {
+  display: grid;
+  align-items: start;
+  gap: 5px;
+  min-width: 0;
+  font-weight: 650;
+}
+.official-engine-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+  gap: 12px;
+}
+.official-engine-fields :is(input, select),
+.official-engine-question textarea {
+  width: 100%;
+  min-height: 35px;
+  padding: 7px 9px;
+  color: var(--oe-text);
+  font: inherit;
+  font-weight: 400;
+  border: 1px solid var(--oe-line);
+  border-radius: 7px;
+  background: var(--oe-surface);
+}
+.official-engine-fields select:focus-visible {
+  outline: 2px solid var(--oe-accent);
+  outline-offset: 2px;
+}
+.official-engine-case,
+.official-engine-notice {
+  padding: 12px 14px;
+  margin: 0;
+  background: var(--oe-subtle);
+  border: 1px solid var(--oe-line);
+  border-radius: 9px;
+}
+.official-engine-case p,
+.official-engine-case blockquote {
+  margin: 5px 0 0;
+}
+.official-engine blockquote {
+  padding: 3px 0 3px 10px;
+  border-left: 2px solid var(--oe-accent);
+  color: var(--oe-muted);
+}
+.official-engine-muted {
+  color: var(--oe-muted);
+  margin: 0;
+}
+.official-engine p,
+.official-engine li {
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.official-engine-actions,
+.official-engine-progress,
+.official-engine-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.official-engine-actions {
+  margin-top: 2px;
+}
+.official-engine-progress {
+  color: var(--oe-muted);
+}
+.official-engine-progress svg {
+  animation: official-engine-spin 1.2s linear infinite;
+}
+@keyframes official-engine-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .official-engine-progress svg {
+    animation: none;
+  }
+}
+.official-engine-notice {
+  color: var(--oe-error);
+  margin: 14px 0;
+}
+.official-engine-notice.good {
+  color: var(--oe-accent);
+}
+.official-engine-notice p {
+  flex: 1;
+  margin: 0;
+}
+.official-engine-error {
+  color: var(--oe-error);
+}
+.official-engine-results {
+  display: grid;
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 1px solid var(--oe-line);
+}
+.official-engine-results-heading {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+}
+.official-engine-results-heading h3 {
+  margin: 0;
+  font-size: 18px;
+}
+.official-engine-results-heading span {
+  color: var(--oe-accent);
+  font-weight: 700;
+}
+.official-engine-result-card {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--oe-line);
+  border-radius: 9px;
+}
+.official-engine-result-card h4 {
+  margin: 0;
+  font-size: 15px;
+}
+.official-engine-result-card p {
+  margin: 0;
+}
+.official-engine-table-wrap {
+  overflow: auto;
+}
+.official-engine table {
+  width: 100%;
+  border-spacing: 0;
+  border-collapse: collapse;
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+}
+.official-engine th,
+.official-engine td {
+  padding: 8px;
+  border-bottom: 1px solid var(--oe-line);
+  vertical-align: top;
+}
+.official-engine thead {
+  background: var(--oe-subtle);
+}
+.official-engine th small {
+  display: block;
+  font-weight: 400;
+  color: var(--oe-muted);
+}
+.official-engine-visually-hidden {
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  position: absolute;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.official-engine-arm-details {
+  display: grid;
+  gap: 6px;
+}
+.official-engine-details {
+  color: var(--oe-muted);
+  border: 1px solid var(--oe-line);
+  border-radius: 7px;
+  padding: 7px 9px;
+  overflow-wrap: anywhere;
+}
+.official-engine-details summary {
+  color: var(--oe-text);
+  cursor: pointer;
+  font-weight: 650;
+}
+.official-engine-details blockquote {
+  margin: 10px 0;
+}
+.official-engine-details ul {
+  margin: 8px 0;
+  padding-left: 22px;
+}
+.official-engine-details li + li {
+  margin-top: 4px;
+}
+.official-engine-answer {
+  color: var(--oe-text);
+  padding: 9px;
+  background: var(--oe-subtle);
+  border-radius: 5px;
+  margin-top: 8px;
+}
+.official-engine-answer :is(a, a:visited) {
+  color: var(--oe-accent);
+}
+.official-engine-answer pre {
+  white-space: pre-wrap;
+}
+.official-engine-details dl > div {
+  padding: 6px 0;
+}
+.official-engine-details dt {
+  font-weight: 650;
+}
+.official-engine-details dd {
+  margin: 0;
+}
+.official-engine-checks strong {
+  color: var(--oe-text);
+}
+@media (max-width: 600px) {
+  .official-engine-body,
+  .official-engine .official-engine-header {
+    padding-inline: 13px;
+  }
+}

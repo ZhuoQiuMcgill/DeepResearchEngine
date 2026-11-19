@@ -10,6 +10,7 @@ import { citationBinding, unknownCitations } from "../core/citations.js";
 import type { ResearchResult, SynthesisInput } from "../core/contracts.js";
 import type { ResearchStrategy } from "../core/strategy.js";
 import { extractUrls } from "../core/urls.js";
+import { inputFindings, reportFindings, type GuardrailFinding } from "../core/run-guardrails.js";
 import { buildResearchGraph, initialState, type DecisionRecord, type RunStateType, type SkeletonHooks, type StopReason } from "../graph/skeleton.js";
 import type { UsageLedger } from "../observability/usage.js";
 import { createResearcher } from "../research/researcher.js";
@@ -38,6 +39,7 @@ export interface CitationCheck {
 }
 
 export interface ResearchModuleOutput {
+  guardrails: GuardrailFinding[];
   status: "ok" | "error";
   error?: string;
   report: string;
@@ -55,7 +57,14 @@ export function citationCheck(report: string, results: ResearchResult[]): Citati
 }
 
 export async function runResearchModule(input: ResearchModuleInput): Promise<ResearchModuleOutput> {
+  const blocked = inputFindings(input);
+  if (blocked.length) {
+    for (const finding of blocked) await input.hooks?.onGuardrail?.(finding);
+    return { status: "error", error: "Run input rejected by guardrails.", report: "", results: [], decisions: [], researchersUsed: 0, citationCheck: citationCheck("", []), diagnostics: [], guardrails: blocked };
+  }
   const { profile, ledger, today } = input;
+  // Keep findings even when a later graph node fails and no final state returns.
+  const recordedFindings: GuardrailFinding[] = [];
   const graph = buildResearchGraph({
     strategy: input.strategy,
     strategyModel: createChatModel(profile, [ledger.handler("strategy")]),
@@ -66,7 +75,10 @@ export async function runResearchModule(input: ResearchModuleInput): Promise<Res
     concurrency: input.concurrency,
     runId: input.runId,
     today,
-    ...(input.hooks ? { hooks: input.hooks } : {}),
+    hooks: { ...input.hooks, onGuardrail: async (finding) => {
+      recordedFindings.push(finding);
+      await input.hooks?.onGuardrail?.(finding);
+    } },
   });
 
   let final: RunStateType | undefined;
@@ -84,7 +96,11 @@ export async function runResearchModule(input: ResearchModuleInput): Promise<Res
 
   const results = final?.results ?? [];
   const report = final?.report ?? "";
+  const citations = citationCheck(report, results);
+  const reportChecks = reportFindings(report, citations);
+  for (const finding of reportChecks) await input.hooks?.onGuardrail?.(finding);
   return {
+    guardrails: [...recordedFindings, ...reportChecks],
     status: error || !report ? "error" : "ok",
     ...(error ? { error } : {}),
     report,
@@ -93,7 +109,7 @@ export async function runResearchModule(input: ResearchModuleInput): Promise<Res
     ...(final?.synthesis ? { synthesis: final.synthesis } : {}),
     ...(final?.stopReason ? { stopReason: final.stopReason } : {}),
     researchersUsed: final?.researchersUsed ?? 0,
-    citationCheck: citationCheck(report, results),
+    citationCheck: citations,
     diagnostics: [
       ...(final?.synthesisDiagnostics ?? []).map((d) => `synthesis: ${d}`),
       ...(final?.writerDiagnostics ?? []).map((d) => `writer: ${d}`),
@@ -101,3 +117,4 @@ export async function runResearchModule(input: ResearchModuleInput): Promise<Res
     ],
   };
 }
+

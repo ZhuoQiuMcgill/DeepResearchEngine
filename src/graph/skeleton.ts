@@ -18,6 +18,7 @@ import type { JsonValue, ResearchStrategy, StrategyContext, StrategyStep } from 
 import { markUnverifiedLinks, repairTruncatedUrls } from "../core/citations.js";
 import { materialProvenance } from "../core/material.js";
 import { pageKey } from "../core/urls.js";
+import { screenNotes, type GuardrailFinding } from "../core/run-guardrails.js";
 import type { ResearchFn } from "../research/researcher.js";
 import type { WriteFn } from "../writer/writer.js";
 
@@ -39,6 +40,7 @@ export interface DecisionRecord {
 export type StopReason = "strategy-stop" | "no-briefs" | "budget-exhausted" | "max-rounds";
 
 export interface SkeletonHooks {
+  onGuardrail?(finding: GuardrailFinding): void | Promise<void>;
   onDecision?(record: DecisionRecord): void | Promise<void>;
   onResult?(result: ResearchResult): void | Promise<void>;
   onSynthesis?(synthesis: SynthesisInput, diagnostics: string[]): void | Promise<void>;
@@ -71,6 +73,7 @@ const RunState = Annotation.Root({
   synthesisDiagnostics: Annotation<string[]>,
   report: Annotation<string>,
   writerDiagnostics: Annotation<string[]>,
+  guardrails: Annotation<GuardrailFinding[]>({ reducer: (a, b) => a.concat(b), default: () => [] }),
 });
 export type RunStateType = typeof RunState.State;
 
@@ -170,7 +173,10 @@ export function buildResearchGraph(deps: SkeletonDeps) {
     .addNode("research", async (task: ResearchTask) => {
       const result = await limit(() => deps.research(task.question, task.brief));
       await hooks?.onResult?.(result);
-      return { results: [result] };
+      // Preserve the original in the recorder before withholding any note lines.
+      const screened = screenNotes(result.notes, "research-notes", result.brief.id);
+      for (const finding of screened.findings) await hooks?.onGuardrail?.(finding);
+      return { results: [{ ...result, notes: screened.text }], guardrails: screened.findings };
     })
     .addNode(
       "observe",
@@ -215,8 +221,15 @@ export function buildResearchGraph(deps: SkeletonDeps) {
           };
           if (marked) diagnostics.push(`${marked} link(s) in the material marked as unverified`);
         }
+        const guardrails: GuardrailFinding[] = [];
+        synthesis = { ...synthesis, material: synthesis.material.map((material) => {
+          const screened = screenNotes(material.notes, "synthesis");
+          guardrails.push(...screened.findings);
+          return { ...material, notes: screened.text };
+        }) };
+        for (const finding of guardrails) await hooks?.onGuardrail?.(finding);
         await hooks?.onSynthesis?.(synthesis, diagnostics);
-        return { synthesis, synthesisDiagnostics: diagnostics };
+        return { synthesis, synthesisDiagnostics: diagnostics, guardrails };
       },
       { retryPolicy: { maxAttempts: 3 } },
     )
@@ -259,3 +272,4 @@ export function initialState(question: string): Partial<RunStateType> {
     writerDiagnostics: [],
   };
 }
+
