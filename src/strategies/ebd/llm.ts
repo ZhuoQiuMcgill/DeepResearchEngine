@@ -9,18 +9,29 @@
  * 4. On any error, retry once with the previous reply and the numbered errors.
  * 5. If the retry fails too, return the role's fallback from the last valid reply.
  *
- * The request analysis keeps its own loop in request/ (fixed and agent modes);
- * this helper serves the conflict checker and the round analyst.
+ * It serves the environment analyst, the conflict checker and the round analyst.
  */
 import { HumanMessage, SystemMessage, type AIMessage, type BaseMessage } from "@langchain/core/messages";
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import type { Runnable } from "@langchain/core/runnables";
 import type { z } from "zod";
-import { apiJsonSchema, type FunctionTool, type Issue } from "./request/index.js";
-import { textOf, usageOf } from "./request/trace.js";
+import { apiJsonSchema, type FunctionTool, type Issue } from "./analysis.js";
 import type { CallRecord } from "./state.js";
 
 export type Checked<T> = { value: T | null; errors: Issue[]; warnings: Issue[] };
+
+type Block = Record<string, unknown>;
+
+/** The text of a model message, whatever form its content has. */
+function textOf(message: BaseMessage): string {
+  const c = message.content;
+  if (typeof c === "string") return c;
+  return (c as Block[]).filter((b) => b.type === "text").map((b) => String(b.text ?? "")).join("");
+}
+
+function usageOf(message: AIMessage): { inputTokens: number; outputTokens: number } {
+  return { inputTokens: message.usage_metadata?.input_tokens ?? 0, outputTokens: message.usage_metadata?.output_tokens ?? 0 };
+}
 
 export type StructuredCall<T> = {
   model: BaseChatModel;

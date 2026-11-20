@@ -11,11 +11,11 @@
  */
 import { z } from "zod";
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
-import { GUIDELINES, TEMPLATES, type Issue } from "../request/index.js";
+import { GUIDELINES, TEMPLATES, type Issue } from "../analysis.js";
 import { assumptionVerdicts, newGoal, nextGoalId, requeueOrExhaust, settle, synthesisQuestions } from "../goals.js";
 import { structuredCall, zodIssues, type CallOutcome, type Checked } from "../llm.js";
 import type { EbdOptions } from "../options.js";
-import { EVENT_COVERED, closeEvent, isCovered, liveParts, overwritePart, syncGoal } from "../extension.js";
+import { EVENT_COVERED, closeEvent, isCovered, liveParts, overwritePart, syncGoal } from "../map.js";
 import { eventOf, isCritical, isSettled, type EbdState, type EvidenceLine, type Goal, type MapEvent, type MapPart } from "../state.js";
 import { independentHosts } from "./evidence.js";
 
@@ -94,18 +94,9 @@ Each proposal attaches to an existing object (object_id), cites what prompted it
 
 const ANALYST_REPLY = `Reply by calling ${ANALYST_TOOL} once with all judgments and proposals.`;
 
-/** Added only when the run has an environment map (section 19). */
-export const ANALYST_MAP_SECTION = `## Planned parts: goals of the environment map
-Some goals list "Planned parts" (M1, M2, …) instead of done_when. The analyst wrote these parts before any search, as its working answer to what one life-cycle step of the subject involves. They are assumptions, and the evidence overrides them. For such a goal, give one parts entry for each planned part listed under "Judge only", with part starting with the part's ID ("M4 …"):
-- met is true when a cited finding covers the part; list the finding IDs in evidence.
-- refuted is true when a cited finding states that the part does not exist or does not apply to this subject (for example, the plan expected a licence step and an official guide states that no licence is needed). List the finding IDs in evidence, set met to false, and write what the findings say instead in correction, in a few words, or leave it empty. Silence never refutes: a part that the sources do not mention is neither met nor refuted, and a gap line never refutes. A finding that only one item of a part does not apply, or that the part does not apply to one of several things the subject covers, is information about the part: the part is met, not refuted.
-- otherwise met and refuted are both false.
-For such a goal the outcome is answered when every part judged is met or refuted, partial when some are and not_found when none is; missing lists the parts that are neither met nor refuted. Do not give such a goal the outcome conflicting: a disagreement between sources about one fact is recorded under <conflicts> and does not change what the step involves. For every other goal, leave refuted false and correction empty.
-A planned part that stays unmet is searched again only when most parts of its goal are unmet. When the report needs such a part, propose a goal for it as above: write the question with what the findings now show (the actual options, places or organisations they name) and cite the gap or finding that prompts it. A main step or part that the findings treat and no planned part or goal covers is also a reason for a proposal.`;
-
 /**
- * The map section for a plan made in one call (sections 28 and 29): the parts of a goal are the key
- * questions of a main part of the answer. Same judgments in those terms.
+ * Added when the run has a plan (sections 19, 28 and 29): the parts of a goal are the key questions of
+ * a main part of the answer, and each is judged on its own.
  */
 export const ANALYST_QUESTIONS_SECTION = `## Key questions: goals for a main part of the answer
 Some goals list "Key questions" (M1, M2, …) instead of done_when. The analyst wrote these questions before any search, as what it expected one main part of the answer to need. They, and every example they name, are assumptions, and the evidence overrides them. For such a goal, give one parts entry for each key question listed under "Judge only", with part starting with the question's ID ("M4 …"):
@@ -115,29 +106,17 @@ Some goals list "Key questions" (M1, M2, …) instead of done_when. The analyst 
 For such a goal the outcome is answered when every key question judged is met or refuted, partial when some are and not_found when none is; missing lists the key questions that are neither met nor refuted, in a few words each. Do not give such a goal the outcome conflicting: a disagreement between sources about one fact is recorded under <conflicts> and does not change what the part of the answer needs. For every other goal, leave refuted false and correction empty.
 A key question that stays unanswered is searched again only when most key questions of its goal are unanswered. When the report needs it, propose a goal for it as above: write the question with what the findings now show (the actual options, places or organisations they name) and cite the gap or finding that prompts it. A main part of the answer that the findings treat and no goal covers is also a reason for a proposal.`;
 
-/**
- * The sentence of the focus section on conflicts, in its two wordings. With `strictFollowUp` (section
- * 29) only a conflict that decides a claim of the question gets a goal, so the second is sent.
- */
-export const CONFLICTS_FOLLOWED =
-  "- Conflicts are followed up by code, not by proposals. Under <conflicts>, each conflict is marked critical or not critical: code gives a critical one its own goal, one conflict per round, and one that is not critical is a disagreement about a detail.";
-export const CONFLICTS_REPORTED =
-  "- Conflicts are handled by code, not by proposals. Under <conflicts>, each conflict is marked critical or not critical: code gives a goal of its own only to a conflict that decides a claim of the question; any other disagreement between sources is reported to the client as it stands and is not researched again.";
-
-/** With `focusFollowUp`, the new goals of one round that may be necessary (section 20); settle goals are counted apart. */
+/** The new goals of one round that may be necessary (section 20); settle goals are counted apart. */
 export const FOCUS_NECESSARY = 2;
 
 /**
- * The sentence of the focus section on the main parts of the answer, in its two wordings (section 26).
- * The first asks for a citation, so a part that no source happened to mention could not be raised.
- * The second was approved by the user on 2026-11-19 and is the standing text; the first is sent with
- * `uncitedParts` off.
+ * The sentence of the follow-up section on the main parts of the answer (section 26, approved on
+ * 2026-11-19): a main part that no source happened to mention can be raised without a citation.
  */
-export const MAIN_PARTS_CITED = "For each main part that the findings mention only in passing or not at all, propose a necessary goal, citing the finding or gap that mentions it, before you propose any detail.";
 export const MAIN_PARTS_UNCITED = "For each main part that the findings mention only in passing or not at all, propose a necessary goal before you propose any detail. Cite the finding or gap that mentions it; when nothing mentions it, cite nothing.";
 
 /**
- * Added only with `focusFollowUp` (section 20). EBD collects "the necessary and sufficient information"
+ * What deserves another researcher (section 20). EBD collects "the necessary and sufficient information"
  * and determines "the focus at each stage" (Zeng 2015, p. 15); its questioning goes width first
  * (Zeng 2020, section 4.2).
  */
@@ -146,25 +125,13 @@ What is searched after a round must be what the client's answer depends on. Code
 - A part asks for content. A wish about the source is not a part, and it is not missing: a primary or official source in place of a secondary one, a full text read directly, the date of a page or a publication, a second confirmation. When a cited finding states what a part asks for, the part is met.
 - The verdict on a claim is yours to give from the findings. No finding has to state it, and a verdict is never a part or missing. A claim that a name or an abbreviation stands for something is supported when sources use it that way, also when the name has other meanings.
 - missing lists only content that the findings do not give. A goal is searched again only when most of its parts are unmet or a claim to verify is still unsettled.
-- Conflicts are followed up by code, not by proposals. Under <conflicts>, each conflict is marked critical or not critical: code gives a critical one its own goal, one conflict per round, and one that is not critical is a disagreement about a detail. Never propose a goal to settle a conflict, to check it again or to find the exact value. Do not give a goal the outcome conflicting because of a conflict that decides none of its claims: judge its parts.
+- Conflicts are handled by code, not by proposals. Under <conflicts>, each conflict is marked critical or not critical: code gives a goal of its own only to a conflict that decides a claim of the question; any other disagreement between sources is reported to the client as it stands and is not researched again. Never propose a goal to settle a conflict, to check it again or to find the exact value. Do not give a goal the outcome conflicting because of a conflict that decides none of its claims: judge its parts.
 - need of a proposal. necessary: a main part of the client's question that the findings cover only in passing or not at all, so that a reader would call the report incomplete without it. completing: anything that sharpens an answer the findings already give, such as a more exact value, date or name, the figures of one study, one more market, region, case or group of users, a better source for something already found, or a price or a place of sale that the client did not ask about.
 - Main parts come before details. After judging, compare the findings with what a full answer to the client's question needs: the main parts a reader would expect it to cover. ${MAIN_PARTS_UNCITED} Mark at most ${FOCUS_NECESSARY} proposals necessary, those a full answer needs most, and list them first.`;
 
-export const ANALYST_SYSTEM = `${ANALYST_BODY}
-
-${ANALYST_REPLY}`;
-
-/** May a necessary proposal cite nothing (section 26)? Only with the follow-up rules of section 20. */
-export function allowsUncited(options: Pick<EbdOptions, "focusFollowUp" | "uncitedParts">): boolean {
-  return options.focusFollowUp && options.uncitedParts;
-}
-
-export function analystSystem(withMap: boolean, withFocus = false, uncited = true, variant: { questions?: boolean; reported?: boolean } = {}): string {
-  if (!withMap && !withFocus) return ANALYST_SYSTEM;
-  const cited = uncited ? ANALYST_FOCUS_SECTION : ANALYST_FOCUS_SECTION.replace(MAIN_PARTS_UNCITED, MAIN_PARTS_CITED);
-  const focus = variant.reported ? cited.replace(CONFLICTS_FOLLOWED, CONFLICTS_REPORTED) : cited;
-  const map = variant.questions ? ANALYST_QUESTIONS_SECTION : ANALYST_MAP_SECTION;
-  return [ANALYST_BODY, ...(withMap ? [map] : []), ...(withFocus ? [focus] : []), ANALYST_REPLY].join("\n\n");
+/** The analyst's instructions: the section on key questions when the run has a plan, and the follow-up section. */
+export function analystSystem(withMap: boolean): string {
+  return [ANALYST_BODY, ...(withMap ? [ANALYST_QUESTIONS_SECTION] : []), ANALYST_FOCUS_SECTION, ANALYST_REPLY].join("\n\n");
 }
 
 function evidenceLine(e: EvidenceLine): string {
@@ -189,7 +156,7 @@ export function analystMessage(state: EbdState, round: number, served: Goal[], o
       return [
         `### ${g.id} (kind ${g.kind}, ${g.need}, attempt ${g.attempts})`,
         `Question: ${g.text}`,
-        state.map?.questions ? `Key questions of the main part "${event.name}":` : `Planned parts of the life-cycle step "${event.name}":`,
+        `Key questions of the main part "${event.name}":`,
         ...event.parts.map((p) => `- ${p.id}${mark(p)} ${p.text}`),
         `Judge only: ${judge.join(", ") || "(none left)"}`,
         ...(g.settles ? [`Settles conflict ${g.settles}`] : []),
@@ -225,9 +192,9 @@ export function analystMessage(state: EbdState, round: number, served: Goal[], o
     `<objects>\n${[...a.rom.objects.map((o) => `${o.id} "${o.text}": ${o.meaning}`), ...state.objectsFound.map((o) => `${o.id} "${o.text}" (found in ${o.evidence})`)].join("\n")}\n</objects>`,
     `<synthesis_questions>\n${synthesisQuestions(a).map((q) => `${q.id} ${q.text}`).join("\n")}\n</synthesis_questions>`,
     `<existing_goals>\n${state.goals.map((g) => `${g.id} [${g.status}, ${g.need}] ${g.text}`).join("\n")}\n</existing_goals>`,
-    `<conflicts>\n${roundConflicts.map((c) => `${c.id} ${c.type}${options.focusFollowUp && typeof c.critical === "boolean" ? (isCritical(c) ? " (critical)" : " (not critical)") : ""} about ${c.about}: ${c.statement}`).join("\n") || "(none)"}\n</conflicts>`,
+    `<conflicts>\n${roundConflicts.map((c) => `${c.id} ${c.type}${typeof c.critical === "boolean" ? (isCritical(c) ? " (critical)" : " (not critical)") : ""} about ${c.about}: ${c.statement}`).join("\n") || "(none)"}\n</conflicts>`,
     `<served_goals>\n${goalBlock.join("\n\n")}\n</served_goals>`,
-    `<limits>\nNew goals you may propose this round: ${allowed}${options.focusFollowUp && allowed > FOCUS_NECESSARY ? `, at most ${FOCUS_NECESSARY} of them necessary` : ""}.${allowed === 0 ? " Return proposals: []." : ""}\n</limits>`,
+    `<limits>\nNew goals you may propose this round: ${allowed}${allowed > FOCUS_NECESSARY ? `, at most ${FOCUS_NECESSARY} of them necessary` : ""}.${allowed === 0 ? " Return proposals: []." : ""}\n</limits>`,
   ].join("\n");
 }
 
@@ -246,9 +213,9 @@ function withDefaults(args: unknown): unknown {
 
 /**
  * Code checks (section 10.1). Judgment errors are retried; proposals are accepted or rejected later by acceptProposals.
- * `uncited` says whether a necessary proposal may cite nothing (section 26); then an empty prompted_by is no warning.
+ * A necessary proposal may cite nothing (section 26), so an empty prompted_by is no warning for it.
  */
-export function checkRound(args: unknown, state: EbdState, served: Goal[], uncited = false): Checked<RoundReply> {
+export function checkRound(args: unknown, state: EbdState, served: Goal[]): Checked<RoundReply> {
   const parsed = RoundMapSchema.safeParse(withDefaults(args));
   if (!parsed.success) return { value: null, errors: zodIssues(parsed.error), warnings: [] };
   const reply = parsed.data;
@@ -313,7 +280,7 @@ export function checkRound(args: unknown, state: EbdState, served: Goal[], uncit
   reply.proposals.forEach((p, i) => {
     const path = `proposals[${i}]`;
     const unknown = p.prompted_by.filter((id) => !evidence.has(id) && !conflicts.has(id));
-    if (!p.prompted_by.length && uncited && p.need === "necessary") return;
+    if (!p.prompted_by.length && p.need === "necessary") return;
     if (!p.prompted_by.length || unknown.length) warnings.push({ code: "proposal", path, message: `prompted_by must cite existing evidence or conflict IDs${unknown.length ? `; unknown: ${unknown.join(", ")}` : ""}` });
   });
   return { value: reply, errors, warnings };
@@ -368,10 +335,10 @@ export function runRoundAnalyst(model: BaseChatModel, state: EbdState, round: nu
   return structuredCall({
     model,
     role: "round_analyst",
-    system: analystSystem(Boolean(state.map), options.focusFollowUp, options.uncitedParts, { questions: Boolean(state.map?.questions), reported: options.strictFollowUp }),
+    system: analystSystem(Boolean(state.map)),
     message: analystMessage(state, round, served, options),
     tool: { name: ANALYST_TOOL, description: "Submit the judgments of the served goals and any new goals the evidence calls for.", schema: state.map ? RoundMapSchema : RoundApiSchema },
-    check: (args) => checkRound(args, state, served, allowsUncited(options)),
+    check: (args) => checkRound(args, state, served),
     fallback: (last) => repairRound(last, state, served),
     lists: { ids: ["evidence", "prompted_by", "leads_to"], texts: ["missing", "source_hints"] },
   });
@@ -415,7 +382,6 @@ function heldByConflict(state: EbdState, goal: Goal): boolean {
 export function applyJudgments(state: EbdState, reply: RoundReply | null, served: Goal[], round: number, options: EbdOptions, log: (line: string) => void): Applied {
   const out: Applied = { settled: [], advanced: [], requeued: [], exhausted: [] };
   const byId = new Map(state.evidence.map((e) => [e.id, e]));
-  const focus = options.focusFollowUp;
   for (const goal of served) {
     if (isSettled(goal)) continue;
     const j = reply?.judgments.find((x) => x.goal_id === goal.id);
@@ -471,7 +437,7 @@ export function applyJudgments(state: EbdState, reply: RoundReply | null, served
     } else {
       // Section 20: a conflict holds a goal only when it decides a claim the goal checks. A goal judged
       // conflicting over any other disagreement is judged on its parts, like any other goal.
-      if (focus && outcome === "conflicting" && !goal.settles && !heldByConflict(state, goal)) {
+      if (outcome === "conflicting" && !goal.settles && !heldByConflict(state, goal)) {
         const met = j.parts.filter((p) => p.met).length;
         const unjudged = goal.verifies.filter((c) => !j.verdicts.some((v) => v.claim_id === c));
         outcome = met === 0 ? "not_found" : met < j.parts.length || unjudged.length ? "partial" : "answered";
@@ -491,9 +457,9 @@ export function applyJudgments(state: EbdState, reply: RoundReply | null, served
     }
 
     // An event goal asks what a step involves; its parts are assumptions, so the floor for checked facts does not apply.
-    // Section 20: with focusFollowUp the floor guards the client's claims only. For any other number or
+    // Section 20: the floor guards the client's claims only. For any other number or
     // date a second source is a wish about the sources, and no researcher is spent on it.
-    if (outcome === "answered" && !event && needsFloor(goal) && (!focus || goal.verifies.length > 0)) {
+    if (outcome === "answered" && !event && needsFloor(goal) && goal.verifies.length > 0) {
       const hosts = independentHosts(goal.evidence.map((id) => byId.get(id)).filter((e): e is EvidenceLine => Boolean(e)));
       if (hosts < options.evidenceFloor) {
         outcome = "partial";
@@ -550,7 +516,7 @@ export function applyJudgments(state: EbdState, reply: RoundReply | null, served
     // contradicted on enough independent sources, it is done, whatever its other parts say. In the
     // replays of 2026-11-11 such a goal was sent out again for "an explicit verdict" and for source
     // dates, with its claim already judged supported, and the goal that waited for it was never served.
-    if (focus && outcome === "partial" && !event && !goal.settles && claimsDecided(goal)) {
+    if (outcome === "partial" && !event && !goal.settles && claimsDecided(goal)) {
       const checks = goal.verifies.length > 0;
       const hosts = checks ? independentHosts(goal.evidence.map((id) => byId.get(id)).filter((e): e is EvidenceLine => Boolean(e))) : 0;
       const mostly = goal.partsTotal > 0 && goal.partsMet / goal.partsTotal >= MOSTLY_ANSWERED;
@@ -569,7 +535,7 @@ export function applyJudgments(state: EbdState, reply: RoundReply | null, served
     const note = outcome === "not_found" ? "The previous search found nothing for this question; try a different angle: other terms, other kinds of sources, or the primary record." : null;
     // Section 20: a settle goal gets one attempt. Of 26 second attempts at settle goals in the recorded
     // runs, one settled its disagreement.
-    const single = focus && Boolean(goal.settles);
+    const single = Boolean(goal.settles);
     const r = requeueOrExhaust(goal, round, single ? 1 : options.maxAttempts, note);
     if (r === "exhausted") {
       out.exhausted.push(goal.id);
@@ -680,23 +646,22 @@ export function acceptProposals(state: EbdState, reply: RoundReply | null, round
   reply.proposals.forEach((p, i) => {
     const reject = (why: string) => log(`proposal ${i + 1} rejected (${why}): ${p.text.slice(0, 160)}`);
     const prompts = p.prompted_by.filter((id) => byEvidence.has(id) || state.conflicts.some((c) => c.id === id));
-    // Section 26: a main part of the answer that no finding mentions has nothing to cite. With
-    // `uncitedParts` such a proposal is accepted, but only as one of the necessary new goals of the
+    // Section 26: a main part of the answer that no finding mentions has nothing to cite. Such a
+    // proposal is accepted, but only as one of the necessary new goals of the
     // round: a detail still has to grow from a finding. Before, a part that no source happened to
     // mention could not be raised at all, and in 8 of the 17 saved runs no missing part was raised.
     const uncited = !prompts.length;
     if (uncited) {
-      if (!allowsUncited(options)) return reject("cites no existing evidence or conflict");
       if (p.need !== "necessary") return reject("cites no existing evidence or conflict; only a necessary goal for a main part of the answer may cite nothing");
       if (added.filter((g) => g.need === "necessary").length >= FOCUS_NECESSARY) return reject(`cites nothing, and ${FOCUS_NECESSARY} new goals of this round are already necessary`);
     }
     // Section 20: conflicts are followed up by their settle goals only, within the limits of settleBlock.
     // In the replays of 2026-11-11 the analyst asked again for disagreements the checker had marked as
     // details, and for a critical one that code had refused a settle goal.
-    const followed = options.focusFollowUp ? state.conflicts.find((c) => prompts.includes(c.id)) : undefined;
+    const followed = state.conflicts.find((c) => prompts.includes(c.id));
     if (followed) return reject(`follows up the conflict ${followed.id}; ${isCritical(followed) ? "a critical conflict is followed up by its settle goal only" : "it is not critical"}`);
     if (!objects.has(p.object_id)) return reject(`unknown object ${p.object_id}`);
-    // The request analysis never searches the product (the answer the client asks for), and neither do
+    // The plan never searches the product (the answer the client asks for), and neither do
     // new goals (Lab 4 flight run: two goals attached to "How"). Since the live round of 2026-11-05 the
     // test is what the goal asks, not where it is attached: in the flight run the transit and visa
     // goals were attached to "How" only because the question has no object for them, and were lost.
@@ -762,7 +727,7 @@ export function acceptProposals(state: EbdState, reply: RoundReply | null, round
     const kind = byEvidence.get(prompts[0]!)?.kind;
     // Section 20: at most FOCUS_NECESSARY new goals of a round are necessary; a further one is completing.
     let need = p.need;
-    if (options.focusFollowUp && need === "necessary" && added.filter((g) => g.need === "necessary").length >= FOCUS_NECESSARY) {
+    if (need === "necessary" && added.filter((g) => g.need === "necessary").length >= FOCUS_NECESSARY) {
       need = "completing";
       log(`proposal ${i + 1}: completing, because ${FOCUS_NECESSARY} new goals of this round are already necessary`);
     }

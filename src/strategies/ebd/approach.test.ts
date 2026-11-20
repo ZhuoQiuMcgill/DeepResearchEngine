@@ -1,7 +1,7 @@
 /**
- * The one approach of design section 29, without network: the one-call plan with the follow-up rules
- * of section 20 and `strictFollowUp`. The rule itself, the wording each agent gets in that
- * configuration, and one whole run in which sources disagree.
+ * The one approach of design sections 29 and 30, without network: the one-call plan, the first round
+ * for any number of researchers, and the follow-up rules. The rules themselves, the wording each agent
+ * gets, whole runs through the skeleton, and the texts as approved.
  */
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -14,13 +14,16 @@ import { PLANNED_PARTS_INSTRUCTION, PLAN_QUESTIONS_INSTRUCTION, VERIFY_INSTRUCTI
 import { PLAN_SYSTEM, PLAN_TOOL, checkQuestion, type PlanReply } from "./environment.js";
 import ebd from "./index.js";
 import { parseOptions } from "./options.js";
-import { ANALYST_FOCUS_SECTION, ANALYST_MAP_SECTION, ANALYST_QUESTIONS_SECTION, CONFLICTS_FOLLOWED, CONFLICTS_REPORTED, analystMessage, analystSystem } from "./rounds/analyst.js";
-import { CONFLICT_CRITICAL_SECTION, CONFLICT_MAP_SECTION, CONFLICT_QUESTIONS_SECTION, CRITICAL_FOLLOWED, CRITICAL_REPORTED, applyConflicts, conflictMessage, conflictSystem, type ConflictsReply } from "./rounds/conflicts.js";
+import { ANALYST_FOCUS_SECTION, ANALYST_QUESTIONS_SECTION, analystMessage, analystSystem } from "./rounds/analyst.js";
+import { CONFLICT_CRITICAL_SECTION, CONFLICT_GIVEN_SECTION, CONFLICT_QUESTIONS_SECTION, applyConflicts, conflictMessage, conflictSystem, type ConflictsReply } from "./rounds/conflicts.js";
 import type { EbdState } from "./state.js";
 import { CRITICAL_HEADING, READING_LABEL } from "./synthesis.js";
 
-/** The settings of the one approach (design section 29). */
-const APPROACH = { init: "environment", focusFollowUp: true, leanGuidance: true, strictFollowUp: true } as const;
+/** The one approach needs no settings (design section 32). */
+const APPROACH = {} as const;
+/** What the code tells each agent about a disagreement between sources (section 29). */
+const CHECKER_ON_DISPUTES = "A critical conflict that decides a claim of the question is researched again; any other critical conflict goes to the writer of the report as a point the answer depends on";
+const ANALYST_ON_DISPUTES = "code gives a goal of its own only to a conflict that decides a claim of the question";
 const QUESTION = "Why did the town of Ashby close its public library in 2019?";
 const TODAY = "2026-11-19";
 const q = (text: string) => ({ text, kind: "social" as const });
@@ -61,55 +64,54 @@ const dispute = (claim: string): ConflictsReply => ({
 });
 
 describe("a disagreement between sources is reported, not researched again (section 29)", () => {
-  it("is off by default and part of the one approach", () => {
-    expect(parseOptions({}).strictFollowUp).toBe(false);
-    expect(parseOptions(APPROACH)).toMatchObject({ init: "environment", focusFollowUp: true, leanGuidance: true, strictFollowUp: true, mainPartsFirst: true, uncitedParts: true, premiseRides: true });
+  it("has no switch: the options that chose a planner or a follow-up rule are gone", () => {
+    for (const gone of ["init", "extend", "completeMap", "partQuestions", "premiseSort", "premiseRides", "stepsFirst", "focusFollowUp", "leanGuidance", "mainPartsFirst", "uncitedParts", "strictFollowUp", "extraRound"]) {
+      expect(() => parseOptions({ [gone]: true }), gone).toThrow();
+    }
+    // The two ablation switches of the platform's experiments stay.
+    expect(parseOptions({ conflicts: false, newGoals: false })).toMatchObject({ conflicts: false, newGoals: false, spread: true });
   });
 
   it("gives no settle goal to a critical disagreement that decides no claim of the question", async () => {
     const s = await planned();
     const log: string[] = [];
-    const added = applyConflicts(s, dispute(""), 1, { ...LIMITS, focusFollowUp: true, leanGuidance: true, strictFollowUp: true }, (l) => log.push(l));
+    const added = applyConflicts(s, dispute(""), 1, LIMITS, (l) => log.push(l));
     expect(added).toHaveLength(1);
     expect(added[0]).toMatchObject({ status: "disputed", critical: true, settleGoal: null, claim: null });
     expect(s.goals.some((g) => g.settles)).toBe(false);
     expect(log.join("\n")).toContain("it decides no claim of the question, so it is reported and not researched again");
   });
 
-  it("still gives a settle goal to a disagreement that decides a claim, and without the rule to any critical one", async () => {
+  it("still gives a settle goal to a disagreement that decides a claim of the question", async () => {
     const withClaim = await planned();
-    applyConflicts(withClaim, dispute("A1"), 1, { ...LIMITS, focusFollowUp: true, leanGuidance: true, strictFollowUp: true }, () => {});
+    applyConflicts(withClaim, dispute("A1"), 1, LIMITS, () => {});
     const settle = withClaim.goals.find((g) => g.settles)!;
     expect(settle).toMatchObject({ settles: "C1", verifies: ["A1"], need: "necessary" });
-    const before = await planned();
-    applyConflicts(before, dispute(""), 1, { ...LIMITS, focusFollowUp: true, leanGuidance: true }, () => {});
-    expect(before.goals.filter((g) => g.settles)).toHaveLength(1);
   });
 });
 
 describe("the wording each agent gets in the one approach", () => {
-  it("leaves the standing prompts as they are when no variant is asked for", () => {
-    expect(CONFLICT_CRITICAL_SECTION).toContain(CRITICAL_FOLLOWED);
-    expect(ANALYST_FOCUS_SECTION).toContain(CONFLICTS_FOLLOWED);
-    expect(conflictSystem(true, true)).toContain(CONFLICT_MAP_SECTION);
-    expect(conflictSystem(true, true)).toContain(CRITICAL_FOLLOWED);
-    expect(analystSystem(true, true)).toContain(ANALYST_MAP_SECTION);
-    expect(analystSystem(true, true)).toContain(CONFLICTS_FOLLOWED);
-    expect(conflictSystem(true, true, false, {})).toBe(conflictSystem(true, true));
-    expect(analystSystem(true, true, true, {})).toBe(analystSystem(true, true));
+  it("speaks of key questions and of reported disagreements, never of life-cycle steps", () => {
+    const checker = conflictSystem(true);
+    expect(checker).toContain(CONFLICT_QUESTIONS_SECTION);
+    expect(checker).toContain(CONFLICT_CRITICAL_SECTION);
+    expect(checker).toContain(CHECKER_ON_DISPUTES);
+    expect(checker).not.toContain("life-cycle");
+    expect(checker).not.toContain(CONFLICT_GIVEN_SECTION);
+    const analyst = analystSystem(true);
+    expect(analyst).toContain(ANALYST_QUESTIONS_SECTION);
+    expect(analyst).toContain(ANALYST_FOCUS_SECTION);
+    expect(analyst).toContain(ANALYST_ON_DISPUTES);
+    expect(analyst).not.toContain("one life-cycle step of the subject");
   });
 
-  it("speaks of key questions and of reported disagreements, never of life-cycle steps", () => {
-    const checker = conflictSystem(true, true, false, { questions: true, reported: true });
-    expect(checker).toContain(CONFLICT_QUESTIONS_SECTION);
-    expect(checker).toContain(CRITICAL_REPORTED);
-    expect(checker).not.toContain(CRITICAL_FOLLOWED);
-    expect(checker).not.toContain("life-cycle");
-    const analyst = analystSystem(true, true, true, { questions: true, reported: true });
-    expect(analyst).toContain(ANALYST_QUESTIONS_SECTION);
-    expect(analyst).toContain(CONFLICTS_REPORTED);
-    expect(analyst).not.toContain(CONFLICTS_FOLLOWED);
-    expect(analyst).not.toContain("one life-cycle step of the subject");
+  it("adds the section on claims taken as given only when the plan has one, and leaves out the plan's section for the plan of last resort", () => {
+    expect(conflictSystem(true, true)).toContain(CONFLICT_GIVEN_SECTION);
+    // Section 24.4: the plan of last resort has no main parts, so neither agent is told about key questions.
+    expect(conflictSystem(false)).not.toContain(CONFLICT_QUESTIONS_SECTION);
+    expect(conflictSystem(false)).toContain(CONFLICT_CRITICAL_SECTION);
+    expect(analystSystem(false)).not.toContain(ANALYST_QUESTIONS_SECTION);
+    expect(analystSystem(false)).toContain(ANALYST_FOCUS_SECTION);
   });
 
   it("labels the plan's key questions as such in both messages", async () => {
@@ -230,9 +232,9 @@ describe("a whole run of the one approach, through the skeleton", () => {
     expect(synthesis!.outline).toBeUndefined();
     // The agents got the wording of this approach.
     expect(systems.submit_conflicts).toContain(CONFLICT_QUESTIONS_SECTION);
-    expect(systems.submit_conflicts).toContain(CRITICAL_REPORTED);
+    expect(systems.submit_conflicts).toContain(CHECKER_ON_DISPUTES);
     expect(systems.submit_round_analysis).toContain(ANALYST_QUESTIONS_SECTION);
-    expect(systems.submit_round_analysis).toContain(CONFLICTS_REPORTED);
+    expect(systems.submit_round_analysis).toContain(ANALYST_ON_DISPUTES);
   });
   it("after the first round sends a researcher to a missing main part, and never to a detail", async () => {
     const model = {
@@ -268,7 +270,6 @@ describe("a whole run of the one approach, through the skeleton", () => {
     expect(decisions.map((d) => d.accepted.map((b) => b.tag))).toEqual([["Q1,Q3", "Q4"], [main.id], []]);
     expect(state.results).toHaveLength(3);
     expect(state.stop).toMatchObject({ kind: "complete" });
-    expect(state.extraRoundServed).toBe(false);
   });
 });
 
@@ -430,7 +431,6 @@ const WRITER_LINES = [
 ];
 
 describe("the prompt texts of the one approach, approved on 2026-11-19 (section 29.1)", () => {
-  const sent = { questions: true, reported: true };
   const mark = (text: string) => createHash("sha256").update(text, "utf8").digest("hex").slice(0, 16);
 
   // A different mark means that a text sent to a model has changed. Show the behaviour design lead
@@ -438,8 +438,8 @@ describe("the prompt texts of the one approach, approved on 2026-11-19 (section 
   it("are unchanged", () => {
     expect({
       planner: mark(PLAN_SYSTEM),
-      conflictChecker: mark(conflictSystem(true, true, true, sent)),
-      roundAnalyst: mark(analystSystem(true, true, true, sent)),
+      conflictChecker: mark(conflictSystem(true, true)),
+      roundAnalyst: mark(analystSystem(true)),
       briefs: mark([PLAN_QUESTIONS_INSTRUCTION, VERIFY_INSTRUCTION, PLANNED_PARTS_INSTRUCTION, checkQuestion(["A."]), checkQuestion(["A.", "B."])].join("\n")),
     }).toEqual({ planner: "cd18be9484f760a6", conflictChecker: "e0a4526da75d4b7d", roundAnalyst: "101bd7ad1de0159c", briefs: "685b46f749cd9d47" });
   });

@@ -7,10 +7,12 @@
  */
 import { describe, expect, it } from "vitest";
 import { ChatOpenAI } from "@langchain/openai";
+import { PLAN_TOOL, runEnvironmentAnalysis, type PlanReply } from "./environment.js";
 import { structuredCall } from "./llm.js";
-import { runFixedAnalysis } from "./request/index.js";
-import { EXAMPLES } from "./request/examples.js";
-import { CONFLICT_TOOL, ConflictsApiSchema } from "./rounds/conflicts.js";
+import { CONFLICT_TOOL, conflictsToolSchema } from "./rounds/conflicts.js";
+
+/** The schema the conflict checker is sent for a run without a plan. */
+const ConflictsSchema = conflictsToolSchema(false);
 
 type Sent = { url: string; body: Record<string, unknown> & { tools?: Record<string, unknown>[]; input?: unknown } };
 
@@ -47,9 +49,9 @@ const conflicts = (model: ChatOpenAI) =>
     role: "conflict_checker",
     system: "You are the conflict checker.",
     message: "<new_evidence>(none)</new_evidence>",
-    tool: { name: CONFLICT_TOOL, description: "Submit the conflicts.", schema: ConflictsApiSchema },
+    tool: { name: CONFLICT_TOOL, description: "Submit the conflicts.", schema: ConflictsSchema },
     check: (args) => {
-      const parsed = ConflictsApiSchema.safeParse(args);
+      const parsed = ConflictsSchema.safeParse(args);
       return parsed.success ? { value: parsed.data, errors: [], warnings: [] } : { value: null, errors: [{ code: "schema", path: "", message: parsed.error.message }], warnings: [] };
     },
     fallback: (v) => v,
@@ -80,12 +82,31 @@ describe("EBD on the OpenAI adapter (Luna profile, offline)", () => {
     expect(JSON.stringify(sent[1]!.body.input)).toContain("validation_errors");
   });
 
-  it("runs the request analysis in its default mode and accepts a valid analysis", async () => {
-    const E1 = EXAMPLES[0]!;
-    const { model, sent } = lunaWith([[reasoning(), functionCall("submit_analysis", E1.analysis)]]);
-    const out = await runFixedAnalysis({ question: E1.request, today: E1.runDate, model });
-    expect(out).toMatchObject({ accepted: true, fallback: false, attempts: 1 });
-    expect(out.analysis!.questions.length).toBe(E1.analysis.questions.length);
-    expect(sent[0]!.body.tools!.map((t) => [t.name, t.strict])).toEqual([["submit_analysis", false]]);
+  it("runs the environment analysis and accepts a valid plan", async () => {
+    const q = (text: string) => ({ text, kind: "social" as const });
+    const none = { value: null, basis: "unknown" as const };
+    const plan: PlanReply = {
+      status: "ok",
+      status_reason: null,
+      restated_request: "Explain why the town of Ashby closed its public library in 2019.",
+      subject: "the closure of Ashby's public library",
+      purpose: none,
+      time_frame: none,
+      place: none,
+      directives: [],
+      not_stated: [],
+      terms: [],
+      claims: [{ claim: "The town of Ashby closed its public library in 2019.", verdict: "check", reason: "A particular event with a date." }],
+      parts: [
+        { name: "The closure", need: "necessary", objective: "Establish whether, when and by whose decision the town of Ashby closed its public library.", questions: [q("Did the town of Ashby close its public library, and on what date?"), q("Which body decided to close the public library of Ashby?"), q("What happened to the building of Ashby's public library after the closure?")], source_hints: ["council minutes"] },
+        { name: "Reasons", need: "necessary", objective: "Establish the reasons given for closing the public library of Ashby.", questions: [q("What did the budget of the town of Ashby show for its public library before the closure?"), q("How did use of Ashby's public library change before the closure?"), q("Which alternatives to closing the public library did the council of Ashby consider?")], source_hints: [] },
+      ],
+    };
+    const { model, sent } = lunaWith([[reasoning(), functionCall(PLAN_TOOL, plan)]]);
+    const out = await runEnvironmentAnalysis(model, "Why did the town of Ashby close its public library in 2019?", "2026-11-19");
+    expect(out).toMatchObject({ accepted: true, fallback: false });
+    expect(out.calls).toHaveLength(1);
+    expect(out.value!.parts.map((p) => p.name)).toEqual(["The closure", "Reasons"]);
+    expect(sent[0]!.body.tools!.map((t) => [t.name, t.strict])).toEqual([[PLAN_TOOL, false]]);
   });
 });

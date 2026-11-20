@@ -1,30 +1,29 @@
 /**
- * Environment analysis in one call (design section 28; option `init: "environment"`).
+ * Environment analysis in one call (design section 28): the strategy's first step.
  *
- * The first plan of the other init modes is made in three model calls: the request analysis models the
- * request's wording, the premise sorter sorts its claims, and the extension analyst adds the subject's
- * life cycle. Measured on 12 new questions (2026-11-19), that plan asked a researcher about none of
- * the eight main parts that the reports later lacked, while the baseline's single planning call asked
- * about all eight; the three calls wrote 11.6 times the output of the baseline's planning and took
- * about four fifths of the strategy's extra time.
+ * Until 2026-11-19 the first plan was made in three model calls: a request analysis modelled the
+ * request's wording, a premise sorter sorted its claims, and an extension analyst added the subject's
+ * life cycle. Measured on 12 new questions, that plan asked a researcher about few of the main parts
+ * that the reports later lacked, while the baseline's single planning call asked about nearly all; the
+ * three calls wrote 11.6 times the output of the baseline's planning and took about four fifths of the
+ * strategy's extra time.
  *
- * This mode follows EBD's concept and not its question-asking procedure: the product is the answer,
+ * This step follows EBD's concept and not its question-asking procedure: the product is the answer,
  * and its environment is the client, the subject with what surrounds it, and what the question takes
  * for granted. One call analyses that environment and writes the main parts of a full answer, each
  * with its key questions. The analyst may name what it knows as examples to look for; everything it
  * writes is an assumption that the evidence overrides (decision of 2026-11-11, section 19.3).
  *
- * The reply is turned into the structures the rest of the strategy already uses: an analysis (one
- * object for the subject, the claims as assumptions, one check question, one synthesis question), an
- * environment map whose events are the main parts and whose parts are the key questions, and the
- * claims taken as given. Rounds, conflicts, stop rules and writer input then work unchanged.
+ * The reply is turned into the structures the rest of the strategy uses: an analysis (one object for
+ * the subject, the claims as assumptions, one check question, one synthesis question), a map whose
+ * events are the main parts and whose parts are the key questions, and the claims taken as given.
  */
 import { z } from "zod";
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
-import { doneWhenOf, syncGoal } from "./extension.js";
+import { BACK_REFERENCE, cutAt, type Analysis, type Issue } from "./analysis.js";
 import { newGoal, nextGoalId } from "./goals.js";
 import { structuredCall, zodIssues, type CallOutcome, type Checked } from "./llm.js";
-import { BACK_REFERENCE, cutAt, type Analysis, type Issue } from "./request/index.js";
+import { doneWhenOf, syncGoal } from "./map.js";
 import { ENV_KINDS, type EbdState, type EnvironmentMap, type Goal, type MapEvent } from "./state.js";
 
 export const PLAN_TOOL = "submit_plan";
@@ -320,7 +319,7 @@ export function applyPlan(state: EbdState, plan: PlanReply, log: (line: string) 
   const a = state.analysis;
   const synthesis = a.questions.filter((q) => q.route === "synthesis").map((q) => q.id);
   const objectIds = a.rom.objects.map((o) => o.id);
-  const map: EnvironmentMap = { subject: plan.subject, objectIds: ["O1"], events: [], replaced: {}, questions: true };
+  const map: EnvironmentMap = { subject: plan.subject, objectIds: ["O1"], events: [] };
   const added: Goal[] = [];
   let necessary = 0;
   let part = 0;

@@ -6,6 +6,15 @@ a fake model through the real skeleton and live on Haiku (section 16.1). The ope
 decisions of section 18 are decided. A run viewer for checking runs step by step is in
 `viewer/`. Not yet run on Luna (no OpenAI key on this machine).
 
+**Since 2026-11-19 the code is one approach (section 32):** the environment analysis in one
+call makes the plan (section 28), every researcher of the first round goes to a main part
+of the answer (section 30), a later researcher goes only to a main part or to a claim of
+the question (sections 20 and 29), and the writer is told only what the notes do not show
+(section 20). Sections 5, 19, 22 and 27 describe the request analysis, the problem
+extension and the premise sorter, which made the first plan before and are no longer
+called; sections 20, 21, 25 and 26 describe rules that were options and are now fixed.
+They are kept as the record of how the approach was reached. Section 31 has its test.
+
 - 2026-10-07: first draft, written for the Python platform's planned `ebd@1` method.
 - 2026-10-14: retargeted to the TypeScript platform on main (`d24a40d`, strategy
   contract v1).
@@ -187,6 +196,13 @@ decisions of section 18 are decided. A run viewer for checking runs step by step
   less carefully supported, and three of the baseline's five wins are questions on which
   the approach checked the question's own premise and built the report around the
   verdict. $13.21. The consolidation to one approach waits for the user's word.
+- 2026-11-19, after the test: consolidated on the user's word, after one commit of the
+  state before (`5b84010`). The one approach is the strategy (section 32): 13 options, the
+  premise sorter, the problem extension and every wording and rule that was sent only
+  with an option off are gone; the request analysis is no longer called. Replayed with no
+  model call, the code makes the same decisions, goals, conflicts, log lines and writer
+  input on the 16 runs of the test and on 414 runs of 69 saved plans, and the texts it
+  sends are unchanged. 196 tests. Not run with searches since.
 
 ## 1. Summary
 
@@ -1066,7 +1082,9 @@ do not show.
 
 ## 13. Options and ablations
 
-Strict zod options, all with defaults, chosen per experiment spec:
+Strict zod options, all with defaults, chosen per experiment spec. Since the consolidation
+of section 32 these are the two ablation switches of the platform's experiments and limits;
+an option that is not listed is rejected.
 
 | Option | Default | Use |
 |---|---|---|
@@ -1076,24 +1094,12 @@ Strict zod options, all with defaults, chosen per experiment spec:
 | `newGoals` | true | Grow goals from evidence; off = static EBD plan (tree-growth ablation) |
 | `maxNewGoalsPerRound` / `maxOpenGoals` / `maxDepth` | 4 / 20 / 2 | New-goal limits |
 | `maxAttempts` | 2 | Attempts before a goal is exhausted |
-| `evidenceFloor` | 2 | Independent hosts for verification goals, numbers and dates |
-| `extraRound` | true | One round of completing goals after "complete" |
+| `evidenceFloor` | 2 | Independent hosts needed before a claim of the question counts as checked (section 20) |
 | `premiseFirst` | true | L-7: a request's verification goal is served in round 1 even when the analysis made it wait for definition goals |
 | `reserveFirstTries` | true | D-E: keep researchers for necessary request goals not yet served; briefs made only of goals added during the run use the rest (section 7) |
-| `spread` | true | Split shared briefs when researchers would otherwise sit idle (section 7) |
-| `init` | `"fixed"` | D-F: `"agent"` runs the request analyst as a tool-using agent. Section 28: `"environment"` makes the whole first plan in one call (the main parts of the answer with their key questions, the claims sorted, what the client did not state); `extend`, `completeMap` and `premiseSort` then have nothing to do, and key questions are always asked one by one. In this mode every researcher of the first round goes to a main part of the answer, the necessary parts first, and none is kept for a second try (section 30). Built 2026-11-19; prompt text approved the same day; off until the final test (section 29.6) |
-| `extend` | true | Problem extension (section 19): the analyst's life-cycle answer becomes one search goal per event; findings confirm, correct or refute its assumed parts. Off = the plan built from the request's words |
-| `focusFollowUp` | false | Section 20: settle goals only for critical conflicts, one per round and one attempt; a second attempt only when most of a goal is unanswered or a client claim is undecided; at most two necessary new goals a round; after round 1, necessary goals first and one per researcher. Off = a settle goal for every disagreement and a second attempt for every partial goal |
-| `leanGuidance` | false | Section 20: the writer gets the reading of the question, the premises the evidence contradicts or leaves open, and at most three critical conflicts. Off = the full guidance of section 12 |
-| `partQuestions` | false | Section 21: the brief of a life-cycle step asks one key question per planned part; a necessary goal gets a researcher before a brief of completing goals does, and a completing goal waits when it keeps a necessary goal of its brief from being asked by part. Off = one compound key question per goal |
-| `completeMap` | false | Section 22: the extension analyst writes the events so that they carry the whole answer, and the events replace every planned question they carry in full, unless it checks a client assumption. Off = the extension prompt accepted on 2026-11-11 |
-| `mainPartsFirst` | true | Section 25: with `focusFollowUp`, in a round after the first the necessary goals that ask for content are served before the goals that settle a disagreement, which get the researchers left; a settle goal that a part of the answer waits behind keeps its place. Off = the order of section 20, the critical conflict first. Without `focusFollowUp` it changes nothing |
-| `uncitedParts` | true | Section 26: with `focusFollowUp`, the round analyst may propose a necessary goal for a main part of the answer that no finding mentions and cite nothing; code accepts it as one of the two necessary new goals of the round, one step from the request. Off = every proposal must cite evidence (section 10.2). Without `focusFollowUp` it changes nothing |
-| `premiseRides` | true | Sections 26.5 and 27: in round 1 a goal that only checks a claim of the question is asked in a brief that asks for content, one check to a brief, and takes no researcher of its own. The round is planned as before when a check fits nowhere. On since the user's decision of 2026-11-19. Off = each necessary goal, the check included, has a researcher of its own |
-| `premiseSort` | true | Section 27: one model call after the request analysis sorts the claims the question takes for granted. A specific fact is checked; a claim that only restates what the question asks about is taken as given: its planned question stops being a check, no verdict is needed, and the writer gets no line about it. The conflict checker still reports findings that state it false. Off = every claim is checked |
-| `strictFollowUp` | false | Section 29: after the first round a researcher goes only to a main part of the answer or to a claim of the question. A disagreement between sources is recorded as disputed and reported, not researched again, unless it decides a claim; with `focusFollowUp` a completing goal is never served after round 1 and there is no extra round of completing goals; a planned main part that no researcher was asked about is still served (section 30). Part of the one approach; texts approved on 2026-11-19; off until the final test (section 29.6) |
-| `stepsFirst` | true | Section 27: in round 1, when the plan has life-cycle steps, a planned question that the steps stand in for (one they replaced, or one that stopped being a check) only rides along in a brief with room, and a researcher that would sit idle goes to a step that shares a brief with another step before any other goal. Off = the allocation of sections 7 and 21 |
-| `rom` | `"concept"` | Not built. `"word"` would re-enable the rev 1.3 word-level ROM if the A/B test needs it |
+| `spread` | true | Give every researcher of a round a goal of its own where the goals allow it: in the first round every researcher goes to a main part of the answer, the necessary parts first (section 30); in a later round shared briefs are split when researchers would otherwise sit idle (section 7) |
+
+Removed on 2026-11-19, with the section that describes what each one switched: `extraRound`, `init`, `extend`, `focusFollowUp`, `leanGuidance`, `partQuestions`, `completeMap`, `mainPartsFirst`, `uncitedParts`, `premiseRides`, `premiseSort`, `strictFollowUp`, `stepsFirst`. Section 32.1 says what the code does in place of each.
 
 Example spec entry:
 
@@ -1144,13 +1150,14 @@ src/strategies/ebd/
   options.ts          OptionsSchema (strict zod)
   state.ts            EbdState and its parts (types, not interfaces: JsonValue)
   llm.ts              structured-call helper with validation and one feedback retry
-  request/            prompt (instructions + examples as TS constants), schema, checks,
-                      fixed and agent modes
-  extension.ts        problem extension: prompt, schema, checks, the environment map and
-                      its goals, overwriting a part (section 19)
-  premises.ts         premise sort: which claims of the question are checked (section 27)
-  environment.ts      environment analysis in one call, `init: "environment"`: prompt, schema,
-                      checks, and the analysis, map and goals built from the plan (section 28)
+  environment.ts      environment analysis in one call: prompt, schema, checks, and the
+                      analysis, map and goals built from the plan (section 28)
+  analysis.ts         the analysis as the strategy keeps it: the reading of the request, its
+                      frame, objects, claims and questions; the plan of last resort
+  map.ts              the plan's map during a run: key questions confirmed, corrected or
+                      refuted, and each part's goal kept in step (sections 19 and 28)
+  request/            the request analysis of Lab 2, which made the first plan until
+                      2026-11-19; no longer called by the strategy (section 32.4)
   rounds/evidence.ts  mapping notes to goals and indexing evidence lines (section 8)
   rounds/conflicts.ts conflict checker: prompt, schema, checks, effects (section 9)
   rounds/analyst.ts   round analyst: judgments, evidence floor, proposals (section 10)
@@ -1160,8 +1167,10 @@ src/strategies/ebd/
   viewer/             run viewer: static pages to check a run step by step (viewer/README.md);
                       traces.ts adds each run's Langfuse trace (LangChain callbacks, read back
                       through Langfuse's public API)
-  *.test.ts           unit tests, the fake-model skeleton test (strategy.test.ts), and EBD's
-                      model calls through the OpenAI adapter offline (providers.test.ts)
+  *.test.ts           unit tests, the fake-model skeleton tests (strategy.test.ts,
+                      approach.test.ts, environment.test.ts), and EBD's model calls through
+                      the OpenAI adapter offline (providers.test.ts)
+  fixtures.ts         test data: two worked analyses with goals that depend on one another
   README.md           user guide: running a question, settings, stops, reading a run
   DESIGN.md           this document
 ```
@@ -3793,8 +3802,8 @@ The claims are those the plan marked for a check; "given" claims are left out.
 
 ### 31.6 Open after the test
 
-- **The consolidation of section 29.1** waits for the user's word: it removes code that
-  exists only in the working tree, so the tree is to be committed first.
+- **The consolidation of section 29.1** was made after one commit of the state before
+  (section 32).
 - **Not changed, for a later decision** (each needs new questions to confirm, and the
   sealed set is used): the sort of the question's own premise on "why is X Y" questions,
   and the wording of a checked claim, which must not say more than the question; the
@@ -3805,6 +3814,80 @@ The claims are those the plan marked for a check; "given" claims are left out.
 
 Haiku $10.42 (baseline $5.07, approach $5.35) and the Opus judge $2.79 (558,112 input and
 27,956 output tokens): $13.21, against the $12 to $14 named.
+
+## 32. Consolidation: the one approach is the strategy (2026-11-19)
+
+On the lead's word after the final test ("Commit, then consolidate"). The state before is
+commit `5b84010`. This section says what was removed, what the code does instead, and how
+it was checked that the approach itself did not change.
+
+### 32.1 What went, and what the code does in its place
+
+| Option removed | The code now always | Section |
+|---|---|---|
+| `init` | Makes the first plan with the environment analysis in one call | 28 |
+| `extend`, `completeMap` | Has no problem extension: the plan's main parts are its map | 19, 22, 28 |
+| `premiseSort` | Takes the sort of the claims from the plan; there is no premise sorter | 27, 28 |
+| `partQuestions` | Asks a main part by its key questions, at most six key questions a brief | 21 |
+| `premiseRides` | Asks the check of the claims in the brief of a main part | 26, 27 |
+| `stepsFirst` | Sends a researcher that would sit idle to a main part first | 27, 30 |
+| `focusFollowUp` | Follows up only what the answer depends on: a goal mostly unanswered, an undecided claim, at most two necessary new goals a round | 20 |
+| `mainPartsFirst` | Serves the necessary goals for content before a goal that settles a disagreement | 25 |
+| `uncitedParts` | Lets the round analyst raise a main part that no finding mentions | 26 |
+| `strictFollowUp` | Sends a later researcher only to a main part or a claim: a disagreement that decides no claim is reported, a detail is not researched | 29 |
+| `leanGuidance` | Tells the writer only what the notes do not show | 20 |
+| `extraRound` | Has no round of details after a complete run; the option had no effect any more | 11, 29 |
+
+- **Modules removed:** the problem extension (`extension.ts`) and the premise sorter
+  (`premises.ts`) with their prompts, and in the kept modules every wording and rule that
+  was used only with an option off: the sections on life-cycle steps of both round
+  prompts, the earlier end of the section on critical conflicts, the sentence that asked
+  for a citation, the full guidance for the writer, the brief for a life-cycle step.
+- **Modules added:** `analysis.ts` holds the structure of the analysis, which the request
+  analysis defined and the rest of the strategy reads, and the plan of last resort;
+  `map.ts` holds the map helpers that the extension module held. Nothing in them is new.
+- **State:** `extraRoundServed`, and `replaced` and `questions` of the map, are gone. The
+  run viewer reads records with and without them, and names the goals of the plan "main
+  part" in runs of this approach and "life-cycle event" in earlier records.
+- **Kept:** `conflicts` and `newGoals`, which the platform's comparison experiment sets
+  (`experiments/compare.json`), and the limits (section 13).
+
+### 32.2 The approach did not change
+
+Checked with no model call, before and after, by the same scripts (`local/ebd-heldout/`):
+
+| Check | Result |
+|---|---|
+| `golden.ts`: the 16 runs of the final test and the live run of section 29.5 replayed step by step, with the recorded replies and the recorded researcher results. Compared: every brief, stop and rationale; the goals, conflicts, map and problems after every step; every log line; the checks and a fingerprint of the input of every model call; the writer's material, outline and guidance | The two files are identical |
+| The same replay against the records: for the 16 runs of the test, the decisions and the writer's guidance of the record | Equal in 16 of 16 |
+| `matched-round1.ts`: the 69 saved plans as whole runs with 1 to 6 researchers (414 runs), every allocation listed | The two outputs are identical |
+| The test that pins the approved texts: the planner's prompt, the whole prompts of the conflict checker and the round analyst, the fixed words of a brief, the writer's lines | The same fingerprints |
+| `prompt-page.ts`: the page of texts generated again | Each of its 17 text blocks is on the approved page word for word |
+
+### 32.3 Tests
+
+196 tests in 20 files pass (243 in 22 before). The tests of the extension and of the premise
+sorter went with their modules, and so did every test of an option switched off. The tests
+of the follow-up rules, of the key questions of a brief and of whole runs were rewritten for
+the one approach: `focus.test.ts` (32), `parts.test.ts` (9), `strategy.test.ts` (5, whole
+runs through the skeleton with the plan in one call, the two ablation switches among them).
+`fixtures.ts` holds the two worked analyses those tests build their states from.
+
+### 32.4 What is left
+
+- **The request analysis (`request/`).** The strategy no longer calls it, and nothing in
+  the repository imports it. It is still in the folder because scripts of Lab 3 on the
+  lead's machine, which are not in the repository, import it. Whether it moves to those
+  scripts or goes is the lead's decision.
+- **No run with searches since.** The replays show the same decisions on recorded runs; a
+  live `check-strategy` run of this code has not been made.
+- **The scripts of the tuning period** in `local/ebd-heldout/` that replay the earlier
+  planner or set a removed option (`plans.ts`, `oneplan.ts`, `replay-*.ts`, `referent.ts`)
+  run at commit `5b84010`, not on this code. `golden.ts`, `matched-round1.ts`,
+  `prompt-page.ts`, `judge-final.ts`, `final_stats.py` and `final_check.py` run on it.
+- **What the test showed** (sections 31.4 and 31.6) is unchanged by the consolidation: the
+  sort of the question's own premise, the conflict checker's rejected replies, and the
+  follow-up rules that have hardly run with searches.
 
 ## References
 

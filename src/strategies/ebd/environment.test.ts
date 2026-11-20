@@ -1,5 +1,5 @@
 /**
- * The environment analysis in one call (design section 28; `init: "environment"`), without network:
+ * The environment analysis in one call (design section 28), without network:
  * the checks of the analyst's reply, the analysis and the map built from it, the first-round briefs,
  * the cases without a usable plan, and one whole run through the real skeleton.
  */
@@ -58,7 +58,7 @@ function planner(...replies: unknown[]) {
   return { model, calls };
 }
 const ctx = (model: BaseChatModel, runId = "t") => ({ model, budget, round: 1, runId, today: TODAY });
-const create = (options: Record<string, unknown> = {}) => ebd.create({ init: "environment", ...options } as never);
+const create = (options: Record<string, unknown> = {}) => ebd.create(options as never);
 
 describe("the environment analyst's reply (section 28)", () => {
   it("is asked about the request alone, and told that what it knows is a guess the evidence overrides", () => {
@@ -162,7 +162,7 @@ describe("init in the environment mode", () => {
       ["Q5", "define", "necessary", "assumed"],
       ["Q6", "define", "completing", "assumed"],
     ]);
-    expect(s.map).toMatchObject({ subject: PLAN.subject, questions: true, replaced: {} });
+    expect(s.map).toMatchObject({ subject: PLAN.subject });
     expect(s.map!.events.map((e) => [e.id, e.name, e.goalId, e.parts.length])).toEqual([["E1", "The closure", "Q3", 3], ["E2", "Reasons", "Q4", 3], ["E3", "What a library does for a small town", "Q5", 2], ["E4", "Alternatives", "Q6", 2]]);
     expect(s.premises).toEqual({ given: [{ id: "A2", reason: "The possibility the question asks about." }] });
     expect(s.plan).toEqual({ notStated: PLAN.not_stated });
@@ -192,10 +192,9 @@ describe("init in the environment mode", () => {
     for (const part of PLAN.parts.slice(0, 3)) for (const x of part.questions) expect(asked).toContain(x.text);
   });
 
-  it("asks the key questions one by one whatever the setting of partQuestions, and skips the calls the plan stands in for", async () => {
-    expect(parseOptions({ init: "environment" }).partQuestions).toBe(false);
+  it("makes one model call, and asks the key questions one by one", async () => {
     const { model, calls } = planner(PLAN);
-    const step = await create({ partQuestions: false, extend: true, premiseSort: true }).init({ question: QUESTION }, ctx(model));
+    const step = await create().init({ question: QUESTION }, ctx(model));
     expect(calls).toEqual([PLAN_TOOL]);
     expect(step.decision.briefs.some((b) => b.keyQuestions.includes(`[Q4] ${PLAN.parts[1]!.questions[0]!.text}`))).toBe(true);
   });

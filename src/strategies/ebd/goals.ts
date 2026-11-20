@@ -3,7 +3,7 @@
  * analysis, readiness, the code-computed order, settling goals, making goals
  * moot, the stop rules and the tree metrics. Pure functions; no model calls.
  */
-import type { Analysis, AnalysisQuestion } from "./request/index.js";
+import type { Analysis, AnalysisQuestion } from "./analysis.js";
 import type { EbdOptions } from "./options.js";
 import { isPlanned, isSettled, type Conflict, type EbdState, type Goal, type GoalKind, type Origin, type Tree, type Verdict } from "./state.js";
 

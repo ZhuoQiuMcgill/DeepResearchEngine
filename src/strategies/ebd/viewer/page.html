@@ -152,6 +152,8 @@ const decisions = D.events.filter((e) => e.type === "decision").map((e) => e.dat
 const resultEvents = D.events.filter((e) => e.type === "result").map((e) => e.data);
 const results = Object.values(D.results || {}).filter(Boolean).sort((a, b) => a.brief.round - b.brief.round || a.brief.id.localeCompare(b.brief.id, undefined, { numeric: true }));
 const isEbd = (s) => s && typeof s === "object" && Array.isArray(s.goals) && s.analysis;
+/** A run of the one approach: the goals of the plan are the main parts of the answer, with key questions (design section 28). */
+const isPlanOfParts = (s) => s?.init?.mode === "environment";
 const finalState = [...decisions].reverse().map((d) => d.strategyState).find(isEbd) || null;
 const evidence = new Map((finalState?.evidence || []).map((e) => [e.id, e]));
 const summary = D.summary || {};
@@ -398,6 +400,7 @@ function givenOf(state, id) {
 }
 
 function goalTree(state) {
+  const ofParts = isPlanOfParts(state);
   const goals = state.goals;
   const parentOf = (g) => {
     if (g.origin.type === "conflict") {
@@ -416,7 +419,7 @@ function goalTree(state) {
     children.set(p, [...(children.get(p) || []), g]);
   }
   const node = (g) => `<li>${goalStatusBadge(g.status)} <strong>${esc(g.id)}</strong> ${esc(g.text)}
-    <span class="muted">· ${esc(g.kind)} L${g.level} · ${esc(g.need)} · round ${g.createdRound}${g.settledRound ? `→${g.settledRound}` : ""}${g.origin.type === "assumed" ? ` · life-cycle event ${esc(g.origin.event)} of the environment map` : g.origin.type === "uncovered" ? " · a main part of the answer that no finding mentions" : g.origin.type !== "request" ? ` · from ${g.origin.type === "conflict" ? esc(g.origin.conflict) : g.origin.evidence.map(esc).join(", ")}` : ""}</span> ${claimBadges(g)}
+    <span class="muted">· ${esc(g.kind)} L${g.level} · ${esc(g.need)} · round ${g.createdRound}${g.settledRound ? `→${g.settledRound}` : ""}${g.origin.type === "assumed" ? (ofParts ? ` · main part ${esc(g.origin.event)} of the plan` : ` · life-cycle event ${esc(g.origin.event)} of the environment map`) : g.origin.type === "uncovered" ? " · a main part of the answer that no finding mentions" : g.origin.type !== "request" ? ` · from ${g.origin.type === "conflict" ? esc(g.origin.conflict) : g.origin.evidence.map(esc).join(", ")}` : ""}</span> ${claimBadges(g)}
     ${children.get(g.id) ? `<ul>${children.get(g.id).map(node).join("")}</ul>` : ""}</li>`;
   return `<div class="tree"><ul>${(children.get(null) || []).map(node).join("")}</ul></div>`;
 }
@@ -533,9 +536,9 @@ function decisionView(step) {
     if (state.conflicts.length) html += conflictTable(state, "Conflicts after this step");
     if (state.map) {
       const partRow = (p) => `<tr><td><strong>${esc(p.id)}</strong></td><td>${esc(p.text)}${p.correction ? `<div class="muted">the findings say instead: ${esc(p.correction)}</div>` : ""}${p.replaces ? `<div class="muted">replaces ${esc(p.replaces)}</div>` : ""}</td><td class="muted">${esc(p.kind)}</td><td class="muted">${esc(p.origin)}</td><td>${esc(p.status)}${p.by ? `<div class="muted">${esc(p.by)}, round ${p.round}</div>` : ""}</td><td>${evList(p.evidence)}</td></tr>`;
-      html += `<section class="card"><h2>Environment map of "${esc(state.map.subject)}"</h2>
-        <p class="muted">The analyst's working answer to what the subject's life cycle involves. Assumed parts are confirmed or refuted by findings; a refuted part leaves the plan, and an unfound part was researched but not reported by the sources found.${Object.keys(state.map.replaced).length ? ` Replaced planned questions: ${Object.entries(state.map.replaced).map(([q, by]) => `${esc(q)} by ${by.map(esc).join(", ")}`).join("; ")}.` : ""}</p>
-        ${state.map.events.map((e) => `<h3>${esc(e.id)} ${esc(e.name)} <span class="muted">· goal ${esc(e.goalId)}</span></h3><div class="tablewrap"><table><thead><tr><th>Part</th><th>What the step involves</th><th>Kind</th><th>Origin</th><th>Status</th><th>Evidence</th></tr></thead><tbody>${e.parts.map(partRow).join("")}</tbody></table></div>`).join("")}</section>`;
+      html += `<section class="card"><h2>${isPlanOfParts(state) ? "The plan: main parts of the answer about" : "Environment map of"} "${esc(state.map.subject)}"</h2>
+        <p class="muted">${isPlanOfParts(state) ? "The main parts of the answer that the plan expects, each with its key questions. A key question is an expectation: findings answer it, or show that what it takes for granted does not hold. A refuted key question leaves the plan, and an unfound one was researched but not answered by the sources found." : "The analyst's working answer to what the subject's life cycle involves. Assumed parts are confirmed or refuted by findings; a refuted part leaves the plan, and an unfound part was researched but not reported by the sources found."}${Object.keys(state.map.replaced || {}).length ? ` Replaced planned questions: ${Object.entries(state.map.replaced || {}).map(([q, by]) => `${esc(q)} by ${by.map(esc).join(", ")}`).join("; ")}.` : ""}</p>
+        ${state.map.events.map((e) => `<h3>${esc(e.id)} ${esc(e.name)} <span class="muted">· goal ${esc(e.goalId)}</span></h3><div class="tablewrap"><table><thead><tr><th>Part</th><th>${isPlanOfParts(state) ? "Key question" : "What the step involves"}</th><th>Kind</th><th>Origin</th><th>Status</th><th>Evidence</th></tr></thead><tbody>${e.parts.map(partRow).join("")}</tbody></table></div>`).join("")}</section>`;
     }
     if ((state.objectsFound || []).length) html +=`<section class="card"><h2>Objects found in the evidence</h2><ul class="plain">${state.objectsFound.map((o) => `<li><strong>${esc(o.id)}</strong> ${esc(o.text)} <span class="muted">attached to ${esc(o.parent)}, quote "${esc(o.quote)}" from</span> ${evBtn(o.evidence)}</li>`).join("")}</ul></section>`;
   }

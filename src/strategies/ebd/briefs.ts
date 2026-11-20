@@ -5,7 +5,7 @@
  * goes to the necessary goal that has waited longest.
  */
 import type { ResearchBriefInput } from "../../core/index.js";
-import type { Analysis } from "./request/index.js";
+import type { Analysis } from "./analysis.js";
 import { assumptionVerdicts, longestWaiting, refutedObjects, type Ranked } from "./goals.js";
 import type { EbdOptions } from "./options.js";
 import { eventOf, isPlanned, type Conflict, type EbdState, type Goal, type MapPart } from "./state.js";
@@ -13,28 +13,24 @@ import { eventOf, isPlanned, type Conflict, type EbdState, type Goal, type MapPa
 export const VERIFY_INSTRUCTION =
   "State whether the evidence supports, contradicts or does not settle the claim. Look specifically for evidence that contradicts it. Give each source's finding with its date and scope; report disagreements, do not resolve them.";
 
-/** For a goal of the environment map (section 19): its parts are the plan's assumptions, and the sources decide. */
+/**
+ * For a main part that shares a researcher and is asked as one question, with its key questions listed
+ * in the instructions (section 19): they are the plan's assumptions, and the sources decide.
+ */
 export const PLANNED_PARTS_INSTRUCTION =
   "These parts are what the plan expects this step to involve, not facts. Report what the sources actually say about each. When the sources show that a part does not exist or does not apply here, say so plainly and cite them. Add any other main point that the sources treat as part of this step.";
 
 /**
- * With `partQuestions` (section 21): the parts of a life-cycle step are the brief's key questions, so
- * the researcher answers each one in its own section. Same content as PLANNED_PARTS_INSTRUCTION,
- * worded for parts that are key questions.
- */
-export const PART_QUESTIONS_INSTRUCTION =
-  "Its key questions are the parts that the plan expects this step to involve. They are expectations, not facts. Report what the sources actually say about each. When the sources show that a part does not exist or does not apply here, say so plainly under its key question and cite them. Put any other main point that the sources treat as part of this step under the key question it is closest to.";
-
-/**
- * With `init: "environment"` (section 28): the key questions of a main part were written in full by
- * the environment analyst, who may name what it knows as examples. Same rule as for planned parts:
- * they are expectations, and the sources decide.
+ * For a main part asked by its key questions (sections 21 and 28): each key question is a key question
+ * of the brief, so the researcher answers and sources each one. The key questions were written in full
+ * by the environment analyst, who may name what it knows as examples: they are expectations, and the
+ * sources decide.
  */
 export const PLAN_QUESTIONS_INSTRUCTION =
   "Its key questions are what the plan expects this part of the answer to need. They, and every example they name, are expectations, not facts. Report what the sources actually say on each. When the sources show that something a key question takes for granted did not happen, does not exist or does not apply, say so plainly under that key question and cite them. Put any other main point that the sources treat as part of this topic under the key question it is closest to.";
 
 /**
- * With `partQuestions`, a brief asks at most this many key questions: the most the baseline's planner
+ * A brief asks at most this many key questions: the most the baseline's planner
  * gave one researcher in the comparison of 2026-11-10 (3 to 6, 3.9 on average), and the most parts an
  * event may have. A brief that would ask more keeps one key question per goal.
  */
@@ -43,12 +39,11 @@ export const MAX_PART_QUESTIONS = 6;
 const PRIMARY_SOURCES = "primary records; at least two independent publishers";
 
 type Group = { key: string; goals: Goal[] };
-type BriefOptions = Partial<Pick<EbdOptions, "partQuestions">>;
 /**
- * Section 21: how `spread` may move completing goals. `within` is the goals a brief may hold; `load` is
- * the key questions a brief asks. Section 27: with `step`, which says whether a goal is a life-cycle
- * step, a researcher that would sit idle goes to a step that shares a brief with another step before
- * it goes to any other goal.
+ * Section 21: how `spread` may move completing goals in a later round. `within` is the goals a brief may hold; `load` is
+ * the key questions a brief asks. Section 27: with `step`, which says whether a goal is a main part
+ * of the plan, a researcher that would sit idle goes to a part that shares a brief with another part
+ * before it goes to any other goal.
  */
 export type Regroup = { within: number; load: (group: Group) => number; step?: (goal: Goal) => boolean };
 
@@ -105,11 +100,11 @@ export function selectGroups(ranked: Ranked[], options: Pick<EbdOptions, "maxPer
 export function spread(groups: Group[], slots: number, free: number = slots, regroup: Regroup | null = null): Group[] {
   const out = groups.map((g) => ({ key: g.key, goals: [...g.goals] }));
   const necessary = (g: Group) => g.goals.filter((x) => x.need === "necessary").length;
-  // Section 21 (`regroup` is set only with `partQuestions`): when no researcher is free and a brief
+  // Section 21: when no researcher is free and a brief
   // still holds two necessary goals, the smallest brief made of completing goals only gives up its
   // researcher. Its goals move to other briefs with room: another brief of completing goals first,
   // then the brief that asks the fewest key questions, and never the brief about to be split. In 9 of
-  // the 44 plans recorded up to 2026-11-18, two necessary life-cycle steps shared a researcher in
+  // the 44 plans recorded up to 2026-11-18, two necessary goals of the plan shared a researcher in
   // round 1 while a brief of completing goals had one to itself.
   const freeOne = (from: Group): boolean => {
     if (!regroup) return false;
@@ -142,7 +137,7 @@ export function spread(groups: Group[], slots: number, free: number = slots, reg
   const step = regroup?.step;
   const steps = (g: Group) => (step ? g.goals.filter(step).length : 0);
   while (out.length < slots && free - (out.length + 1) >= retries) {
-    // Section 27: first a life-cycle step out of a brief that holds two or more, so that each is asked
+    // Section 27: first a main part out of a brief that holds two or more, so that each is asked
     // part by part. In 3 of 14 replayed plans of 2026-11-19 the free researcher went to a planned
     // overview question with one key question, while two steps still shared a researcher.
     const crowded = out.reduce<Group | null>((best, g) => (steps(g) > 1 && (!best || steps(g) > steps(best)) ? g : best), null);
@@ -161,7 +156,7 @@ export function spread(groups: Group[], slots: number, free: number = slots, reg
 }
 
 /**
- * Section 30: the first round of a plan of key questions (`init: "environment"`). Every researcher of
+ * Section 30: the first round of the plan. Every researcher of
  * the round goes to a main part of the answer, and none is kept for a second try:
  * - as many researchers as parts, or more: each part has a researcher to itself;
  * - fewer researchers than parts, more than necessary parts: each necessary part has a researcher to
@@ -336,7 +331,7 @@ export function askedParts(state: Pick<EbdState, "map">, goal: Goal): MapPart[] 
 
 /**
  * Section 21: the goals of a brief whose planned parts are asked as key questions, one per part.
- * Only with `partQuestions`. The goals are taken in rank order, and a goal is asked by part while the
+ * The goals are taken in rank order, and a goal is asked by part while the
  * brief stays within MAX_PART_QUESTIONS; every other goal of the brief keeps its one key question. In
  * a brief with a necessary goal only necessary goals are asked by part, so a completing goal that
  * shares the researcher never takes more of the brief than the goal the report depends on. In the
@@ -344,9 +339,8 @@ export function askedParts(state: Pick<EbdState, "map">, goal: Goal): MapPart[] 
  * one with two or three made 7.1; the baseline's researchers, with 3.9 key questions each, made 6.6
  * and reported 36 findings against 26.
  */
-export function askedByPart(group: Group, state: Pick<EbdState, "map">, options: BriefOptions): Set<string> {
+export function askedByPart(group: Group, state: Pick<EbdState, "map">): Set<string> {
   const out = new Set<string>();
-  if (!options.partQuestions) return out;
   const mainOnly = group.goals.some((g) => g.need === "necessary");
   let total = group.goals.length;
   for (const g of group.goals) {
@@ -361,27 +355,27 @@ export function askedByPart(group: Group, state: Pick<EbdState, "map">, options:
 /**
  * Section 21: a completing goal that shares a brief with a necessary goal is left for a later round
  * when it keeps that goal from being asked by part. The completing goals go from the end, and only
- * as many as let one more necessary goal be asked by part; without `partQuestions` nothing is left.
+ * as many as let one more necessary goal be asked by part.
  * In the dry run of 2026-11-18 a necessary step with five parts shared a brief with a completing step
  * and a replaced overview question, and the three were asked as three compound questions.
  */
-export function fitBrief(group: Group, state: Pick<EbdState, "map">, options: BriefOptions): { group: Group; left: Goal[] } {
+export function fitBrief(group: Group, state: Pick<EbdState, "map">): { group: Group; left: Goal[] } {
   const riders = group.goals.filter((g) => g.need !== "necessary");
-  if (!options.partQuestions || riders.length === group.goals.length) return { group, left: [] };
+  if (riders.length === group.goals.length) return { group, left: [] };
   let goals = group.goals;
-  let asked = askedByPart(group, state, options).size;
+  let asked = askedByPart(group, state).size;
   for (let k = 1; k <= riders.length; k++) {
     const out = riders.slice(riders.length - k);
     const without = group.goals.filter((g) => !out.includes(g));
-    const size = askedByPart({ key: group.key, goals: without }, state, options).size;
+    const size = askedByPart({ key: group.key, goals: without }, state).size;
     if (size > asked) [goals, asked] = [without, size];
   }
   return { group: { key: group.key, goals }, left: group.goals.filter((g) => !goals.includes(g)) };
 }
 
 /** The key questions a brief of these goals asks (section 21): one per goal, or one per part for a goal asked by part. */
-export function questionCount(group: Group, state: Pick<EbdState, "map">, options: BriefOptions): number {
-  const byPart = askedByPart(group, state, options);
+export function questionCount(group: Group, state: Pick<EbdState, "map">): number {
+  const byPart = askedByPart(group, state);
   return group.goals.reduce((n, g) => n + (byPart.has(g.id) ? askedParts(state, g).length : 1), 0);
 }
 
@@ -391,56 +385,49 @@ export function isClaimCheck(goal: Goal): boolean {
 }
 
 /**
- * Section 26 (option `premiseRides`): the claim checks of the first round join briefs that ask for
- * content, as one key question each, so that none takes a researcher of its own. A check joins a
- * brief that holds a necessary goal and no other check: the brief about its own object first, then
- * the brief that asks the fewest key questions. It leads the brief. It never joins a brief in which
- * it would keep a necessary goal from being asked part by part, or that would then ask more than
- * MAX_PART_QUESTIONS key questions (section 21); without part questions a brief takes one check
- * beyond its usual number of goals. Returns null when a check fits nowhere, for example when the
- * question has more claims to check than the round has briefs that ask for content: the round is
- * then planned as before, with a researcher for each check.
+ * Section 26: the claim checks of the first round join briefs that ask for content, as one key
+ * question each, so that none takes a researcher of its own. A check joins a brief that holds a
+ * necessary goal and no other check: the brief about its own object first, then the brief that asks
+ * the fewest key questions. It leads the brief. It never joins a brief in which it would keep a
+ * necessary goal from being asked part by part, or that would then ask more than MAX_PART_QUESTIONS
+ * key questions (section 21). Returns null when a check fits nowhere.
  */
-export function shareChecks(groups: Group[], checks: Goal[], state: Pick<EbdState, "map">, options: RiderOptions): Group[] | null {
+export function shareChecks(groups: Group[], checks: Goal[], state: Pick<EbdState, "map">): Group[] | null {
   const out = groups.map((g) => ({ key: g.key, goals: [...g.goals] }));
   for (const check of checks) {
-    const fits = (g: Group) => !g.goals.some(isClaimCheck) && g.goals.some((x) => x.need === "necessary") && hasRoom(g, check, state, options, 1);
-    const target = roomiest(out.filter(fits), check, state, options);
+    const fits = (g: Group) => !g.goals.some(isClaimCheck) && g.goals.some((x) => x.need === "necessary") && hasRoom(g, check, state);
+    const target = roomiest(out.filter(fits), check, state);
     if (!target) return null;
     target.goals.unshift(check);
   }
   return out;
 }
 
-type RiderOptions = BriefOptions & Pick<EbdOptions, "questionsPerBrief">;
-
 /**
- * Can the goal join the brief as one more key question? With part questions: the brief stays within
- * MAX_PART_QUESTIONS and every goal asked part by part stays so (section 21). Without them: the brief
- * holds at most its usual number of goals, plus `beyond`.
+ * Can the goal join the brief as one more key question? The brief stays within MAX_PART_QUESTIONS, and
+ * every goal asked part by part stays so (section 21).
  */
-function hasRoom(group: Group, goal: Goal, state: Pick<EbdState, "map">, options: RiderOptions, beyond: number): boolean {
+function hasRoom(group: Group, goal: Goal, state: Pick<EbdState, "map">): boolean {
   const joined = { key: group.key, goals: [goal, ...group.goals] };
-  if (!options.partQuestions) return joined.goals.length <= options.questionsPerBrief + beyond;
-  return questionCount(joined, state, options) <= MAX_PART_QUESTIONS && askedByPart(joined, state, options).size >= askedByPart(group, state, options).size;
+  return questionCount(joined, state) <= MAX_PART_QUESTIONS && askedByPart(joined, state).size >= askedByPart(group, state).size;
 }
 
 /** The brief a goal joins: the one about its own object first, then the one that asks the fewest key questions. */
-function roomiest(groups: Group[], goal: Goal, state: Pick<EbdState, "map">, options: RiderOptions): Group | undefined {
+function roomiest(groups: Group[], goal: Goal, state: Pick<EbdState, "map">): Group | undefined {
   const own = (g: Group) => Number(g.key === keyOf(goal));
-  return [...groups].sort((a, b) => own(b) - own(a) || questionCount(a, state, options) - questionCount(b, state, options))[0];
+  return [...groups].sort((a, b) => own(b) - own(a) || questionCount(a, state) - questionCount(b, state))[0];
 }
 
 /**
- * Section 27: completing questions that only ride along. Each joins a brief with room for one more
- * key question, after the goals the brief was made for; one that fits nowhere waits for a later
- * round. Used in round 1 for a planned question that the life-cycle steps stand in for.
+ * Sections 27 and 30: completing parts that only ride along. Each joins a brief with room for one
+ * more key question, after the goals the brief was made for; one that fits nowhere waits. Used in
+ * the first round when it has no more researchers than the plan has necessary parts.
  */
-export function shareRiders(groups: Group[], riders: Goal[], state: Pick<EbdState, "map">, options: RiderOptions): { groups: Group[]; waiting: Goal[] } {
+export function shareRiders(groups: Group[], riders: Goal[], state: Pick<EbdState, "map">): { groups: Group[]; waiting: Goal[] } {
   const out = groups.map((g) => ({ key: g.key, goals: [...g.goals] }));
   const waiting: Goal[] = [];
   for (const rider of riders) {
-    const target = roomiest(out.filter((g) => hasRoom(g, rider, state, options, 0)), rider, state, options);
+    const target = roomiest(out.filter((g) => hasRoom(g, rider, state)), rider, state);
     if (target) target.goals.push(rider);
     else waiting.push(rider);
   }
@@ -448,10 +435,10 @@ export function shareRiders(groups: Group[], riders: Goal[], state: Pick<EbdStat
 }
 
 /** One brief per group (section 7). `position` orders the platform's drop rule like EBD's own ranking. */
-export function briefFor(group: Group, position: number, state: EbdState, options: BriefOptions = {}): ResearchBriefInput {
+export function briefFor(group: Group, position: number, state: EbdState): ResearchBriefInput {
   const a = state.analysis;
   const goals = group.goals;
-  const byPart = askedByPart(group, state, options);
+  const byPart = askedByPart(group, state);
   const objectText = [...a.rom.objects, ...state.objectsFound].find((o) => o.id === group.key)?.text ?? group.key;
   // Only refuted dates: a contradicted claim also refutes its context objects (a place, a product) only loosely.
   const refutedDates = [...refutedObjects(state, assumptionVerdicts(state, false))].flatMap((id) => a.rom.objects.find((o) => o.id === id && o.kind === "number_or_date")?.text ?? []);
@@ -462,15 +449,10 @@ export function briefFor(group: Group, position: number, state: EbdState, option
   const instructions: string[] = goals.map((g) => {
     const event = eventOf(state, g);
     // Section 28: the parts of a main part of the answer are full key questions, asked as written.
-    const written = Boolean(state.map?.questions);
     const parts = event
       ? byPart.has(g.id)
-        ? [written ? `For [${g.id}], the objective is: ${g.text} ${PLAN_QUESTIONS_INSTRUCTION}` : `For [${g.id}], the question is: ${g.text} ${PART_QUESTIONS_INSTRUCTION}`]
-        : [
-            written
-              ? `For [${g.id}], the plan expects an answer to cover these questions: ${event.parts.filter((p) => p.status !== "refuted").map((p) => p.text).join(" ")} ${PLANNED_PARTS_INSTRUCTION}`
-              : `For [${g.id}], look for what the sources report on: ${event.parts.filter((p) => p.status !== "refuted").map((p) => p.text).join("; ")}. ${PLANNED_PARTS_INSTRUCTION}`,
-          ]
+        ? [`For [${g.id}], the objective is: ${g.text} ${PLAN_QUESTIONS_INSTRUCTION}`]
+        : [`For [${g.id}], the plan expects an answer to cover these questions: ${event.parts.filter((p) => p.status !== "refuted").map((p) => p.text).join(" ")} ${PLANNED_PARTS_INSTRUCTION}`]
       : [`For [${g.id}], a sufficient answer contains: ${g.doneWhen}`];
     if (g.kind === "verify") parts.push(`${VERIFY_INSTRUCTION}${claimOf(g, a)}`);
     if (g.kind === "settle") parts.push(settleInstruction(g, state.conflicts, state));
@@ -485,8 +467,8 @@ export function briefFor(group: Group, position: number, state: EbdState, option
   return {
     objective: goals.length === 1 ? goals[0]!.text : `Answer the key questions below about "${objectText}".`,
     keyQuestions: goals.flatMap((g) => {
-      // Section 21: each part is asked as "<step>: <part>", under its goal's ID, so its notes section maps to the goal.
-      if (byPart.has(g.id)) return askedParts(state, g).map((p) => (state.map?.questions ? `[${g.id}] ${p.text}` : `[${g.id}] ${eventOf(state, g)!.name}: ${p.text}`));
+      // Section 21: each key question is asked under its goal's ID, so its notes section maps to the goal.
+      if (byPart.has(g.id)) return askedParts(state, g).map((p) => `[${g.id}] ${p.text}`);
       return [`[${g.id}] ${g.text}${g.missing.length && g.attempts > 0 ? ` Still missing: ${g.missing.join("; ")}` : ""}`];
     }),
     constraints: [...frameConstraints(a, refutedDates), ...readingConstraints(a, goals.flatMap((g) => g.objectIds)), ...defaultConstraints(a), ...notStatedConstraints(state), ...directiveLines(a, "researchers")],

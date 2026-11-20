@@ -5,20 +5,18 @@
  * analysis (assumption verdicts, conflicts, defaults, evidence status) goes to
  * the outline and the guidance, never into the material.
  *
- * With `leanGuidance` (design section 20) the writer is told only what the notes
- * do not show: premises the evidence contradicts or leaves open, and at most
- * three critical conflicts, each treated where it arises.
+ * The writer is told only what the notes do not show (design section 20):
+ * premises the evidence contradicts or leaves open, and at most three critical
+ * conflicts, each treated where it arises.
  */
 import type { SynthesisInput } from "../../core/index.js";
 import { directiveLines } from "./briefs.js";
 import { assumptionVerdicts, endedByFailures, synthesisQuestions } from "./goals.js";
-import type { Analysis } from "./request/index.js";
-import type { EbdOptions } from "./options.js";
-import { PLAN_CONFLICT, eventOf, isCritical, type Conflict, type EbdState, type Goal } from "./state.js";
+import type { Analysis } from "./analysis.js";
+import { eventOf, isCritical, type Conflict, type EbdState, type Goal } from "./state.js";
 
 const MAX_OUTLINE = 5;
-export const DISAGREEMENT_SECTION = "Where the sources disagree";
-/** With leanGuidance, the writer is told about at most this many critical conflicts (section 20). */
+/** The writer is told about at most this many critical conflicts (section 20). */
 export const MAX_CRITICAL_LINES = 3;
 export const READING_LABEL = "The question was read as:";
 /**
@@ -27,8 +25,6 @@ export const READING_LABEL = "The question was read as:";
  */
 export const CRITICAL_HEADING =
   "The answer depends on these points, on which the sources disagree. Treat each one where it arises in the report, in at most three sentences, not in a section of its own:";
-
-type WriterOptions = Partial<Pick<EbdOptions, "leanGuidance">>;
 
 /** Report-format words that limit the length: pages, paragraphs, sentences, a word count, or short, brief, concise. */
 const LENGTH = /\b(?:pages?|paragraphs?|sentences?)\b|\b\d[\d,]*\s*words?\b|\bword (?:limit|count)\b|\b(?:short|brief|briefly|concise|succinct)\b/i;
@@ -136,16 +132,13 @@ export function nothingResearched(state: EbdState): boolean {
   return state.results.length > 0 && state.results.every((r) => r.status === "failed");
 }
 
-export function buildOutline(state: EbdState, lean = false): string[] {
+export function buildOutline(state: EbdState): string[] {
   if (nothingResearched(state)) return [];
   const questions = synthesisQuestions(state.analysis).map((q) => q.text);
   // Section 20: a single synthesis question restates the request, which the writer already has, so it
   // is no outline; and a disagreement is treated where it arises, never in a section of its own. In
   // the batch of 2026-11-11 the whole outline of one run was "Where the sources disagree".
-  if (lean) return questions.length > 1 ? questions.slice(0, MAX_OUTLINE) : [];
-  // Under a length limit, disagreements go where they arise, one sentence each.
-  const disputed = state.conflicts.some((c) => c.status === "disputed") && !lengthLimit(state.analysis);
-  return disputed ? [...questions.slice(0, MAX_OUTLINE - 1), DISAGREEMENT_SECTION] : questions.slice(0, MAX_OUTLINE);
+  return questions.length > 1 ? questions.slice(0, MAX_OUTLINE) : [];
 }
 
 /**
@@ -170,7 +163,7 @@ function hostsOf(state: EbdState, ids: string[]): string {
 }
 
 /**
- * Section 20: the conflicts the writer is told about with leanGuidance. Critical ones only, those
+ * Section 20: the conflicts the writer is told about. Critical ones only, those
  * with a client claim at stake first, at most MAX_CRITICAL_LINES. A conflict whose claim has a
  * verdict is left to the premise line. Records made without the critical mark count as critical
  * when their settle goal is necessary (section 9).
@@ -188,7 +181,7 @@ export function criticalForWriter(state: EbdState): Conflict[] {
     .slice(0, MAX_CRITICAL_LINES);
 }
 
-export function buildGuidance(state: EbdState, lean = false): string {
+export function buildGuidance(state: EbdState): string {
   const a = state.analysis;
   if (a.status === "out_of_scope") {
     // Lab 4 review (2026-10-26): with no material, the writer's usual 3–5 sections became generic advice.
@@ -206,7 +199,7 @@ export function buildGuidance(state: EbdState, lean = false): string {
   const limit = lengthLimit(a);
   if (limit) out.push(`The client limits the length ("${limit}"). This comes before everything below: answer the question first, give each disagreement and each gap at most one sentence, and leave out detail the client did not ask for.`);
 
-  // Section 20: with leanGuidance the writer gets the analysis's reading of the question in one
+  // Section 20: the writer gets the analysis's reading of the question in one
   // sentence, and not the planned contents, and only when the question cannot be taken at its word:
   // a premise that the evidence does not support, or a term with several meanings. Rewrites from the
   // saved notes of 2026-11-11: without the reading, the report on "Why did NASA launch ... in 2018?"
@@ -219,125 +212,80 @@ export function buildGuidance(state: EbdState, lean = false): string {
   const given = new Set((state.premises?.given ?? []).map((g) => g.id));
   const silent = (id: string) => given.has(id) && verdicts[id] !== "contradicted";
   const reread = a.assumptions.some((x) => !silent(x.id) && verdicts[x.id] !== "supported") || a.rom.objects.some((o) => o.readings.length > 0);
-  if (lean && reread && a.restated_request.trim()) out.push(`${READING_LABEL} ${a.restated_request.trim()}`);
+  if (reread && a.restated_request.trim()) out.push(`${READING_LABEL} ${a.restated_request.trim()}`);
 
-  // What the analysis planned for each part, including the defaults it asked the report to state.
-  // Left out with leanGuidance. The plan names the first planned questions as the evidence to use
-  // ("based on the evidence gathered for Q1"), which with the environment map hold a small share of the
-  // notes, and it repeats the default reader ("in plain terms for a general reader"): in the batch of
-  // 2026-11-11 the report on EBD left out the Recursive Object Model, which 12 lines of another goal's
-  // notes covered, and did so again in a rewrite that kept only the planned question.
-  const planned = lean ? [] : synthesisQuestions(a).map((q) => `- ${q.text} ${plain(q.done_when)}`);
-  if (planned.length) out.push(`What each part of the report must contain, as planned:\n${planned.join("\n")}`);
-
-  // Section 19: the parts of the subject the research covered. Only events with findings are named: the
-  // map's assumptions never reach the writer.
-  // Section 20: with leanGuidance the labels of the material show the parts, and no list is given.
-  const covered = lean ? [] : (state.map?.events ?? []).filter((e) => e.parts.some((p) => p.status === "confirmed")).map((e) => `- ${e.name}`);
-  // First live batches (2026-11-11): "Give each one a place in the report" made the writer give every
-  // researched event a section, and the reports carried what the question did not ask for (the launch
-  // campaign and the operations of a telescope, for a question about why it was launched).
-  if (covered.length) out.push(`The notes cover these parts of the subject. They are material for answering the client's question, not sections the report must have: take from each part what the answer needs, and leave out what is off the question.\n${covered.join("\n")}`);
-
+  // Section 20: the writer gets neither the planned contents of each part nor a list of the parts the
+  // notes cover. The plan named the first planned questions as the evidence to use, and in the batch
+  // of 2026-11-11 the report on EBD left out what another goal's notes covered; a list of the covered
+  // parts made the writer give every part a section. The labels of the material show the parts.
   const premises = a.assumptions.flatMap((x) => {
     if (silent(x.id)) return [];
     switch (verdicts[x.id]) {
       case "contradicted":
         return [`- The question presupposes: "${x.claim}" The evidence contradicts this; say so plainly early in the report.`];
       case "unsettled":
-        // Section 20: with leanGuidance the report does not have to say so. In the live batch of 2026-11-11
-        // the analyst left "EBD stands for Environment Based Design" unsettled, and the report opened by
-        // doubting what the question itself spells out.
-        return [lean ? `- The question presupposes: "${x.claim}" The evidence neither confirms nor contradicts this; do not present it as established.` : `- The question presupposes: "${x.claim}" The evidence does not establish this; state that it is not established.`];
+        // Section 20: the report does not have to say so. In the live batch of 2026-11-11 the analyst
+        // left "EBD stands for Environment Based Design" unsettled, and the report opened by doubting
+        // what the question itself spells out.
+        return [`- The question presupposes: "${x.claim}" The evidence neither confirms nor contradicts this; do not present it as established.`];
       case "supported":
         // Section 20: a premise that holds needs no instruction.
-        return lean ? [] : [`- The question presupposes: "${x.claim}" The evidence supports this.`];
+        return [];
       default:
         return [`- The question presupposes: "${x.claim}" This could not be checked; do not present it as established.`];
     }
   });
   if (premises.length) out.push(`What the evidence shows about the question's premises:\n${premises.join("\n")}`);
 
-  // Section 20: with leanGuidance only the critical conflicts get a line, each treated where it arises.
-  // Every other disagreement is left to the writer's own rule for notes that disagree.
-  if (lean) {
-    const critical = criticalForWriter(state).map((c) => {
-      if (c.type === "time_dependent") return `- ${plain(c.statement)} Both hold, at different times: ${plain(c.condition)}`;
-      if (c.status === "settled") return `- ${plain(c.statement)} This was researched further, and the notes show which account holds and why.`;
-      // "The source the notes cite": in the live run of 2026-11-11 the writer gave a publisher that the
-      // statement named, and that the notes cite without a link, an invented address.
-      return `- ${plain(c.statement)} Give both sides, each with the source the notes cite for it${hostsOf(state, [...c.sideA, ...c.sideB])}, and say which one the report follows and why, or that the evidence does not decide it.`;
-    });
-    if (critical.length) out.push(`${CRITICAL_HEADING}\n${critical.join("\n")}`);
-    const apart = state.conflicts.flatMap((c) =>
-      c.type === "off_target"
-        ? [`- Some sources concern a different referent with the same name (${plain(c.statement)}). Leave them out, and distinguish the terms only where needed.`]
-        : c.type === "evidence_vs_frame"
-          ? [`- Some evidence falls outside the question's ${c.sideB[0]?.replace("_", " ") ?? "frame"}: ${plain(c.statement)} Use it only as context and say so.`]
-          : [],
-    );
-    if (apart.length) out.push(`Evidence to keep apart:\n${apart.join("\n")}`);
-  }
-
-  // A finding against the plan's own assumption changed the plan, not the report.
-  const conflicts = (lean ? [] : state.conflicts.filter((c) => c.type !== PLAN_CONFLICT)).map((c) => {
-    switch (c.type) {
-      case "off_target":
-        return `- Some sources concern a different referent with the same name (${plain(c.statement)}). Leave them out, and distinguish the terms only where needed.`;
-      case "time_dependent":
-        return `- The sources differ because they describe different times: ${plain(c.statement)} State the condition: ${plain(c.condition)}`;
-      case "evidence_vs_frame":
-        return `- Some evidence falls outside the question's ${c.sideB[0]?.replace("_", " ") ?? "frame"}: ${plain(c.statement)} Use it only as context and say so.`;
-      default:
-        if (c.status === "disputed" || c.status === "open") {
-          const sources = hostsOf(state, [...c.sideA, ...c.sideB]);
-          return limit
-            ? `- The sources disagree: ${plain(c.statement)} Give both sides in one sentence, with their sources${sources}.`
-            : `- The sources disagree: ${plain(c.statement)} Give both sides with their sources${sources} in at most two sentences, under "${DISAGREEMENT_SECTION}" or where it arises.`;
-        }
-        return `- The sources disagreed (${plain(c.statement)}); the notes for "${plain(state.goals.find((g) => g.id === c.settleGoal)?.text ?? "")}" show which account holds and why.`;
-    }
+  // Section 20: only the critical conflicts get a line, each treated where it arises. Every other
+  // disagreement is left to the writer's own rule for notes that disagree. A finding against the
+  // plan's own assumption changed the plan, not the report.
+  const critical = criticalForWriter(state).map((c) => {
+    if (c.type === "time_dependent") return `- ${plain(c.statement)} Both hold, at different times: ${plain(c.condition)}`;
+    if (c.status === "settled") return `- ${plain(c.statement)} This was researched further, and the notes show which account holds and why.`;
+    // "The source the notes cite": in the live run of 2026-11-11 the writer gave a publisher that the
+    // statement named, and that the notes cite without a link, an invented address.
+    return `- ${plain(c.statement)} Give both sides, each with the source the notes cite for it${hostsOf(state, [...c.sideA, ...c.sideB])}, and say which one the report follows and why, or that the evidence does not decide it.`;
   });
-  if (conflicts.length) out.push(`Conflicts in the evidence:\n${conflicts.join("\n")}`);
+  if (critical.length) out.push(`${CRITICAL_HEADING}\n${critical.join("\n")}`);
+  const apart = state.conflicts.flatMap((c) =>
+    c.type === "off_target"
+      ? [`- Some sources concern a different referent with the same name (${plain(c.statement)}). Leave them out, and distinguish the terms only where needed.`]
+      : c.type === "evidence_vs_frame"
+        ? [`- Some evidence falls outside the question's ${c.sideB[0]?.replace("_", " ") ?? "frame"}: ${plain(c.statement)} Use it only as context and say so.`]
+        : [],
+  );
+  if (apart.length) out.push(`Evidence to keep apart:\n${apart.join("\n")}`);
 
   const defaults = (["purpose", "time_frame", "place"] as const)
     .filter((k) => a.frame[k].basis === "default" && a.frame[k].value !== null)
     .map((k) => `- ${k.replace("_", " ")}: ${a.frame[k].value}`);
   if (defaults.length) out.push(`The client did not state these; they were assumed. Mention them only where they change the answer:\n${defaults.join("\n")}`);
 
-  // Evidence status of necessary goals the research could not complete. A goal with some parts met is
-  // partly established: the writer uses its notes and says only what they leave open.
+  // Evidence status of necessary goals the research could not complete.
   // Lab 5 review, change 8: a goal ended only by researcher failures is a failure, not an absence of sources.
   const failed = state.goals.filter((g) => g.need === "necessary" && !g.settles && endedByFailures(g));
-  // A goal of the environment map asked for parts the analyst assumed; a part nobody found is not something the client was promised.
+  // A goal of the plan's map asked for parts the analyst assumed; a part nobody found is not something the client was promised.
   const unfinished = state.goals.filter((g) => g.need === "necessary" && (g.status === "exhausted" || g.status === "disputed") && !g.settles && !failed.includes(g) && !eventOf(state, g));
   const none = unfinished.filter((g) => g.partsMet === 0);
-  const partly = unfinished.filter((g) => g.partsMet > 0);
   if (none.length) out.push(`No reliable source was found for these; say so where relevant instead of guessing:\n${none.map((g) => `- ${g.text}`).join("\n")}`);
-  // Section 20: with leanGuidance a partly established goal gets no line. Its notes show what was
-  // found, the researchers' own gap lines show what was not, and the analyst's notes on what is missing
-  // are written for the next researcher (a source to look for, a conflict ID), not for the writer.
-  if (partly.length && !lean) {
-    out.push(`These were only partly established. Use their notes, and where the report covers them, say what the evidence does not establish:\n${partly.map((g) => `- ${plain(g.text)}${g.missing.length ? ` Not established: ${g.missing.map(plain).join("; ")}` : ""}`).join("\n")}`);
-  }
+  // Section 20: a partly established goal gets no line. Its notes show what was found, the
+  // researchers' own gap lines show what was not, and the analyst's notes on what is missing are
+  // written for the next researcher (a source to look for, a conflict ID), not for the writer.
 
   if (failed.length) {
     out.push(`These questions could not be researched because of technical failures, not for lack of sources. Do not claim that no source exists; where relevant, say only that the report does not cover them:\n${failed.map((g) => `- ${plain(g.text)}`).join("\n")}`);
   }
 
-  // Section 20: with leanGuidance no line for the goals a contradicted premise cancelled. The premise line
-  // says what was contradicted, and the notes show what was researched: in the live batch of 2026-11-11
-  // the line named the question about NASA's reasons as not pursued, although an event goal had
-  // researched them.
-  const moot = lean ? [] : state.goals.filter((g) => g.status === "moot" && !eventOf(state, g));
-  if (moot.length) out.push(`These questions were not pursued because a premise they rely on was contradicted:\n${moot.map((g) => `- ${g.text}`).join("\n")}`);
+  // Section 20: no line for the goals a contradicted premise cancelled. The premise line says what
+  // was contradicted, and the notes show what was researched: in the live batch of 2026-11-11 such a
+  // line named the question about NASA's reasons as not pursued, although a goal had researched them.
 
   out.push("Do not open the report with these notes, and do not mention the research process.");
   return out.join("\n\n");
 }
 
-export function buildSynthesis(state: EbdState, options: WriterOptions = {}): SynthesisInput {
-  const lean = Boolean(options.leanGuidance);
-  const outline = buildOutline(state, lean);
-  return { material: buildMaterial(state), ...(outline.length ? { outline } : {}), guidance: buildGuidance(state, lean) };
+export function buildSynthesis(state: EbdState): SynthesisInput {
+  const outline = buildOutline(state);
+  return { material: buildMaterial(state), ...(outline.length ? { outline } : {}), guidance: buildGuidance(state) };
 }

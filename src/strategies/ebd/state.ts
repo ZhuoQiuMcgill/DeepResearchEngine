@@ -4,7 +4,7 @@
  * unchanged. The platform records it after every step, which makes the goal
  * tree, the conflicts and the stop kind measurable from events.jsonl.
  */
-import type { Analysis, Issue } from "./request/index.js";
+import type { Analysis, Issue } from "./analysis.js";
 
 /** verify: checks a client assumption or a relation; settle: created for a conflict. */
 export type GoalKind = "verify" | "settle" | "define" | "relate";
@@ -19,7 +19,7 @@ export type Origin =
   | { type: "request" }
   | { type: "finding" | "gap"; evidence: string[] }
   | { type: "conflict"; conflict: string }
-  /** A life-cycle event of the environment map: the analyst's working answer, which the evidence overrides. */
+  /** A main part of the plan, an event of its map: the analyst's expectation, which the evidence overrides. */
   | { type: "assumed"; event: string }
   /** A main part of the answer that the round analyst found in no finding of the round (section 26). */
   | { type: "uncovered" };
@@ -168,7 +168,7 @@ export const ENV_KINDS = ["natural", "built_physical", "built_digital", "economi
 export type EnvKind = (typeof ENV_KINDS)[number];
 
 /**
- * One part of a life-cycle event (design section 19). "assumed" parts are the analyst's working
+ * One key question of a main part (design sections 19 and 28). "assumed" parts are the analyst's working
  * answer, made before any search; a finding confirms or refutes each, and a refuted part leaves the
  * plan. A part is "unfound" when its event was researched and the sources found did not report it:
  * it is not searched again. "found" parts are what the findings say instead of a refuted part.
@@ -200,19 +200,15 @@ export type MapEvent = {
   parts: MapPart[];
 };
 
-/** The environment map: the subject's life-cycle events and what each involves (design section 19). */
+/**
+ * The plan's map (design sections 19 and 28): the events are the main parts of the answer, and the
+ * parts of an event are its key questions, written in full by the environment analyst. A brief asks
+ * them as written.
+ */
 export type EnvironmentMap = {
   subject: string;
   objectIds: string[];
   events: MapEvent[];
-  /** Planned questions the event goals replaced, with the goals that replaced them. */
-  replaced: Record<string, string[]>;
-  /**
-   * Section 28 (`init: "environment"`): the events are the main parts of the answer and their parts
-   * are key questions written in full by the environment analyst. A brief asks them as written.
-   * Absent for a map of life-cycle steps, whose parts are short noun phrases.
-   */
-  questions?: boolean;
 };
 
 /** researcher_failures: every necessary goal is settled, but some ended only because their researchers failed. */
@@ -220,7 +216,7 @@ export type StopKind = "complete" | "saturated" | "budget" | "out_of_scope" | "r
 
 /** One model call of a strategy step, kept for the run viewer and for audits. */
 export type CallRecord = {
-  role: "request_analyst" | "premise_sorter" | "extension_analyst" | "environment_analyst" | "conflict_checker" | "round_analyst";
+  role: "environment_analyst" | "conflict_checker" | "round_analyst";
   attempt: number;
   accepted: boolean;
   errors: Issue[];
@@ -261,18 +257,17 @@ export type EbdState = {
   analysis: Analysis;
   goals: Goal[];
   objectsFound: FoundObject[];
-  /** Null when the extension step is off, or gave no usable reply. */
+  /** Null only for the plan of last resort, which has no main parts (section 24.4). */
   map: EnvironmentMap | null;
   /**
    * Section 27: the claims of the question that are taken as given instead of checked, each with
-   * the sorter's reason. Absent or null when the premise sort is off or gave no usable reply: every
-   * claim is then checked. States recorded before 2026-11-19 do not have the field.
+   * the analyst's reason. Every other claim is checked. States recorded before 2026-11-19 do not
+   * have the field.
    */
   premises?: { given: { id: string; reason: string }[] } | null;
   /**
-   * Section 28 (`init: "environment"`): what the answer depends on and the client did not state, each
-   * with the main cases to cover, as the environment analyst wrote them. The briefs carry them as
-   * constraints. Absent in the other init modes.
+   * Section 28: what the answer depends on and the client did not state, each with the main cases to
+   * cover, as the environment analyst wrote them. The briefs carry them as constraints.
    */
   plan?: { notStated: string[] } | null;
   conflicts: Conflict[];
@@ -280,7 +275,6 @@ export type EbdState = {
   results: ResultRecord[];
   /** Rounds whose results have been read. */
   roundsObserved: number;
-  extraRoundServed: boolean;
   stop: { kind: StopKind; round: number; reason: string } | null;
   /** Tree metrics for H-9 (section 14), recomputed after every step. */
   tree: Tree;
@@ -303,7 +297,7 @@ export function isCritical(conflict: Conflict): boolean {
   return conflict.type === "evidence_vs_assumption" || conflict.claim !== null || conflict.critical === true;
 }
 
-/** A goal of the opening plan: from the request analysis or from the environment map. */
+/** A goal of the opening plan: the check of the claims, or a main part of the answer. */
 export function isPlanned(goal: Goal): boolean {
   return goal.origin.type === "request" || goal.origin.type === "assumed";
 }
@@ -312,6 +306,11 @@ export function isPlanned(goal: Goal): boolean {
 export function eventOf(state: Pick<EbdState, "map">, goal: Goal): MapEvent | null {
   const origin = goal.origin;
   return origin.type === "assumed" ? (state.map?.events.find((e) => e.id === origin.event) ?? null) : null;
+}
+
+/** The IDs of the claims of the question that are taken as given and not checked (section 27). */
+export function givenClaims(state: Pick<EbdState, "premises">): Set<string> {
+  return new Set((state.premises?.given ?? []).map((g) => g.id));
 }
 
 /** A main part of the plan that no researcher has been asked about yet (section 30). */
