@@ -53,7 +53,7 @@ to `local/checks/`.
 | Check | Conflict checker (a model) | Compares the new findings with one another, with the question's claims and with what the key questions take for granted. Marks each disagreement critical or not: critical means the answer changes with the side that is right |
 | Judge | Round analyst (a model) | For each main part, which key questions the findings answer; a verdict on each checked claim; and new goals: a main part of the answer that the findings leave out, or a detail |
 | Decide | Code | After the first round a researcher goes only to a main part of the answer or to a claim of the question: a part that is mostly unanswered, a part the analyst found missing (at most two a round), or a disagreement that decides a claim. A disagreement between sources that decides no claim is not researched again; when it is critical the writer is told. A detail gets no researcher. The run stops when nothing of that kind is left, or when no researcher is left |
-| Write | Writer (the platform) | Writes the report from the researchers' notes. EBD tells it only what the notes do not show: a claim of the question that the evidence contradicts or leaves open, at most three critical disagreements, and what the plan assumed because the client did not state it |
+| Write | Writer (the platform) | Writes the report from the researchers' notes. EBD suggests the researched main parts as the outline and tells the writer only a few things: a claim of the question that the evidence contradicts (to be corrected in a sentence or two before the question is answered as asked), at most three critical disagreements, to say what the question's main terms mean, and to build first on the strongest sources |
 
 ## How a run ends
 
@@ -148,13 +148,18 @@ questions of the plan are `M1`, …; disagreements are `C1`, …; a finding is `
 - **The follow-up rules have hardly run with searches.** In all 16 runs of the test the
   first round used every researcher, so no follow-up round took place. One earlier live
   run had one.
-- **The code as it stands has not run with searches.** The strategy was consolidated to
-  this one approach after the test. Replayed on the 16 runs of the test, it makes the
-  same decisions, goals, conflicts and writer input, and the texts it sends are
-  unchanged; a live `check-strategy` run is still to be made.
-- Tested live on Claude Haiku 5.5 only. GPT-6 Luna is checked offline only
-  (`providers.test.ts`); run `check-strategy` with `--model luna` once an OpenAI key is
-  available.
+- **The code as it stands has run with searches on 12 questions.** The strategy was
+  consolidated to this one approach after the test, and on 2026-11-20 what it tells the
+  writer and two passages of the planning prompt were changed (`DESIGN.md`, section 34).
+  The 12 runs of the planted-problem test of that day (section 35) all ended ok; the
+  platform's `check-strategy` run has not been made on this code.
+- **It is level with the baseline, not better.** With the same number of researchers a
+  judge does not tell its reports from the baseline's on ordinary questions, and both
+  state a planted problem (a false fact in the question, sources that disagree, an answer
+  that depends on who asks) in nearly every report (sections 31, 33 and 35).
+- Tested live on Claude Haiku 5.5, and on 2026-11-20 on the OpenAI adapter with the older
+  GPT-5 nano in a side run of six questions (`DESIGN.md`, section 37). GPT-6 Luna is
+  checked offline only (`providers.test.ts`); run `check-strategy` with `--model luna`.
 - When the plan is rejected twice, its valid parts are used. When nothing usable is left,
   the step is run again; if that happens twice in one run, the run plans the request
   itself as one question and records "minimal plan" under `init` in `events.jsonl`. This

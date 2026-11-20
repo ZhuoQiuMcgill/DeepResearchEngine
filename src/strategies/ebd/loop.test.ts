@@ -390,7 +390,7 @@ describe("conflict checker and round analyst checks (sections 9 and 10)", () => 
     expect(s.conflicts[0]).toMatchObject({ status: "settled", settleGoal: "Q1" });
     // Section 20: once the check is settled, the writer is told about the claim, not about the conflict.
     s.goals.find((g) => g.id === "Q1")!.status = "answered";
-    expect(buildGuidance(s)).toContain("The evidence contradicts this; say so plainly early in the report.");
+    expect(buildGuidance(s)).toContain("The evidence in the notes contradicts this. Say so in the opening paragraph, in one or two sentences with the source. Then answer the question the client asked as fully as the notes allow: the correction is not the subject of the report.");
     expect(buildGuidance(s)).not.toContain("The evidence says no tariffs were imposed.");
     // A finding of another goal is not being judged against A1, so it still gets a settle goal.
     const other = withEvidence().s;

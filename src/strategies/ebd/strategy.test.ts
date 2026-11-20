@@ -182,7 +182,8 @@ describe("ebd strategy through the skeleton", () => {
     expect(all).not.toContain("OFFTARGET");
     expect(all).toContain("(Y2019)");
     expect(synthesis.material[0]!.notes.startsWith("# [")).toBe(true);
-    expect(synthesis.outline).toBeUndefined();
+    // The researched main parts are the suggested outline (section 34).
+    expect(synthesis.outline).toEqual(["The closure", "Reasons"]);
     expect(synthesis.guidance).toContain("different referent");
     // The claim holds after the settle goal, so the writer gets no line about it.
     expect(synthesis.guidance).not.toContain("The question presupposes");

@@ -20,7 +20,7 @@ import { ANALYST_FOCUS_SECTION, ANALYST_QUESTIONS_SECTION, FOCUS_NECESSARY, MAIN
 import { CONFLICT_CRITICAL_SECTION, CONFLICT_QUESTIONS_SECTION, applyConflicts, checkConflicts, conflictSystem, conflictsToolSchema, settlePriority } from "./rounds/conflicts.js";
 import { readResult } from "./rounds/evidence.js";
 import { isCritical, type Conflict, type EbdState, type Goal, type MapEvent } from "./state.js";
-import { CRITICAL_HEADING, MAX_CRITICAL_LINES, READING_LABEL, buildGuidance, buildOutline, buildSynthesis, criticalForWriter } from "./synthesis.js";
+import { CONTRADICTED_LINE, CRITICAL_HEADING, MAX_CRITICAL_LINES, READING_LABEL, SOURCES_LINE, TAKEN_FOR_GRANTED, TERMS_LINE, buildGuidance, buildOutline, buildSynthesis, criticalForWriter, withoutClaimLabels } from "./synthesis.js";
 
 const E1 = EXAMPLES[0]!;
 const options = parseOptions({});
@@ -327,7 +327,7 @@ describe("a main part of the answer that no finding mentions (section 26)", () =
 });
 
 describe("the writer's input (section 20)", () => {
-  it("tells the writer the reading of the question, the premises that do not hold and at most three critical conflicts", () => {
+  it("tells the writer the claim that does not hold and at most three critical conflicts", () => {
     const { s } = withEvidence();
     goalOf(s, "Q1").verdicts = { A1: "supported" };
     goalOf(s, "Q4").verdicts = { A3: "contradicted" };
@@ -343,32 +343,57 @@ describe("the writer's input (section 20)", () => {
     );
     expect(criticalForWriter(s).map((c) => c.id)).toEqual(["C4", "C2", "C3"]);
     const guidance = buildGuidance(s);
-    expect(guidance).toContain(`${READING_LABEL} ${s.analysis.restated_request}`);
+    // Section 34: a claim that does not hold no longer brings the reading of the question in.
+    expect(guidance).not.toContain(READING_LABEL);
     expect(guidance).toContain(CRITICAL_HEADING);
     expect(guidance).toContain("- Prices rose or fell. Give both sides, each with the source the notes cite for it (statcan.gc.ca, news.example.org), and say which one the report follows and why, or that the evidence does not decide it.");
     expect(guidance).toContain("- Second critical point. This was researched further, and the notes show which account holds and why.");
     expect(guidance.split("\n").filter((l) => /critical point|rose or fell|detail differs|Two rates|caused the rise/.test(l))).toHaveLength(MAX_CRITICAL_LINES);
     // The premise that holds gets no line; the contradicted one does, and its conflict (C7) needs no second line.
     expect(guidance).not.toContain("The evidence supports this");
-    expect(guidance).toContain("The evidence contradicts this; say so plainly early in the report.");
+    // Section 34: it is corrected in a sentence or two, and the question is then answered as asked.
+    expect(guidance).toContain(`${TAKEN_FOR_GRANTED}\n- "${s.analysis.assumptions.find((x) => x.id === "A3")!.claim}"\n${CONTRADICTED_LINE}`);
+    expect(guidance).not.toContain(s.analysis.assumptions.find((x) => x.id === "A1")!.claim);
+    // The lines on the main terms and on sources close the guidance, before its last line.
+    expect(guidance.endsWith(`${TERMS_LINE}\n\n${SOURCES_LINE}\n\nDo not open the report with these notes, and do not mention the research process.`)).toBe(true);
+    expect(guidance).not.toContain("The client did not state these");
     expect(guidance).not.toMatch(/What each part of the report must contain|only partly established|Where the sources disagree|were not pursued/);
     // A goal cancelled with the contradicted premise gets no line either: the premise line says what was contradicted.
     goalOf(s, "Q6").status = "moot";
     expect(buildGuidance(s)).not.toContain("were not pursued");
   });
 
-  it("gives the reading of the question only when the question cannot be taken at its word", () => {
+  it("gives the reading of the question only for a term with several meanings, and no line for a claim the evidence leaves open (section 34)", () => {
     const { s } = withEvidence();
     for (const [id, claim] of [["Q1", "A1"], ["Q2", "A2"], ["Q4", "A3"]] as const) Object.assign(goalOf(s, id), { status: "answered", settledRound: 1, verdicts: { [claim]: "supported" } });
     expect(buildGuidance(s)).not.toContain(READING_LABEL);
-    // A premise without a verdict, or a term with several meanings, brings the reading in.
+    // A claim the evidence leaves open brings neither the reading nor a line of its own: the notes show both sides.
     goalOf(s, "Q4").verdicts = { A3: "unsettled" };
-    expect(buildGuidance(s)).toContain(`${READING_LABEL} ${s.analysis.restated_request}`);
-    // An unsettled premise is not to be presented as established; the report does not have to say that it is unsettled.
-    expect(buildGuidance(s)).toContain("The evidence neither confirms nor contradicts this; do not present it as established.");
+    expect(buildGuidance(s)).not.toContain(READING_LABEL);
+    expect(buildGuidance(s)).not.toContain(s.analysis.assumptions.find((x) => x.id === "A3")!.claim);
+    expect(buildGuidance(s)).not.toContain("do not present it as established");
+    // A term with several meanings brings the reading in.
     goalOf(s, "Q4").verdicts = { A3: "supported" };
     s.analysis.rom.objects[3]!.readings = ["a tax on imports", "a price list"];
-    expect(buildGuidance(s)).toContain(READING_LABEL);
+    expect(buildGuidance(s)).toContain(`${READING_LABEL} ${s.analysis.restated_request}`);
+  });
+
+  it("names a claim of the question in words, never by its label (final test, 2026-11-19)", () => {
+    const { s } = withEvidence();
+    const about = (claim: string) => conflictOf({ type: "evidence_vs_assumption", sideB: [claim], claim, critical: true });
+    // The forms the conflict checker wrote in the saved runs.
+    expect(withoutClaimLabels("Surveys report approval, while assumption A1 says most people reject it.", s, about("A1"))).toBe("Surveys report approval, while the question's claim says most people reject it.");
+    expect(withoutClaimLabels("Assumption A2 says prices rose in 2018, while the records show a fall.", s, about("A2"))).toBe("The question's claim says prices rose in 2018, while the records show a fall.");
+    expect(withoutClaimLabels("The launch was in 2021, while the client's assumption A2 states it was in 2018.", s, about("A2"))).toBe("The launch was in 2021, while the question's claim states it was in 2018.");
+    expect(withoutClaimLabels("The records show no tariff. A1 says tariffs were imposed.", s, about("A1"))).toBe("The records show no tariff. The question's claim says tariffs were imposed.");
+    // Only the labels of the claims the conflict is about: a name that looks like a label stays.
+    expect(withoutClaimLabels("The form is printed on A4 paper, while A1 says it is not printed.", s, about("A1"))).toBe("The form is printed on A4 paper, while the question's claim says it is not printed.");
+    expect(withoutClaimLabels("Two sources differ on the A1 road.", s, conflictOf({ critical: true }))).toBe("Two sources differ on the A1 road.");
+    // In the guidance: the line of a critical conflict about a claim without a verdict.
+    s.conflicts.push(conflictOf({ id: "C9", type: "evidence_vs_assumption", statement: "Surveys report approval, while assumption A2 says most people reject it.", sideB: ["A2"], claim: "A2", critical: true }));
+    const guidance = buildGuidance(s);
+    expect(guidance).toContain("- Surveys report approval, while the question's claim says most people reject it. Give both sides");
+    expect(guidance).not.toMatch(/\bA2\b/);
   });
 
   it("gives an outline only for a request with several parts, and never a section for disagreements", () => {

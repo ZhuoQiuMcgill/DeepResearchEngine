@@ -11,7 +11,7 @@ import { goalsFromAnalysis, newGoal, nextGoalId, treeMetrics } from "./goals.js"
 import { doneWhenOf, syncGoal } from "./map.js";
 import { readResult } from "./rounds/evidence.js";
 import type { EbdState, Goal, MapEvent } from "./state.js";
-import { buildMaterial } from "./synthesis.js";
+import { buildMaterial, buildOutline, buildSynthesis } from "./synthesis.js";
 
 const E2 = EXAMPLES[1]!;
 
@@ -152,6 +152,31 @@ describe("a main part asked by its key questions", () => {
     // Fewer sections than key questions and no IDs: the brief's goals.
     const merged = readResult(resultOf(brief, [section("Charging", 0), section("Owning", 1), section("Other", 2)].join("\n\n")));
     expect(merged.record.sections.every((s) => s.mappedBy === "brief" && s.goalIds.join() === "Q6,Q7")).toBe(true);
+  });
+
+  it("suggests the researched main parts as the report's outline, the necessary ones first (section 34)", () => {
+    const state = planned();
+    const section = (title: string, i: number) => [`## ${title}`, "### Takeaway", `Takeaway ${i}.`, "### Cited Findings", `- Finding ${i}. — [S](https://host${i}.example/x)`].join("\n");
+    const research = (ids: string[], status: "ok" | "failed" = "ok") => {
+      const brief = briefFor({ key: "O2", goals: ids.map((id) => goal(state, id)) }, 0, state);
+      const result = resultOf(brief, status === "ok" ? brief.keyQuestions.map(section).join("\n\n") : "");
+      state.results.push(readResult(status === "ok" ? result : { ...result, status: "failed", failure: { kind: "timeout", message: "timed out" } }).record);
+    };
+    // Nothing researched, or one part alone: no outline.
+    expect(buildOutline(state)).toEqual([]);
+    research(["Q7"]);
+    expect(buildOutline(state)).toEqual([]);
+    expect(buildSynthesis(state).outline).toBeUndefined();
+    // The completing part was researched first; the necessary ones still come first, in the plan's order.
+    research(["Q6"]);
+    research(["Q4"]);
+    expect(buildOutline(state)).toEqual(["Buying", "Charging in winter", "Owning over the years"]);
+    // A part whose researcher failed has no notes, so it is not in the outline.
+    research(["Q5"], "failed");
+    expect(buildOutline(state)).toEqual(["Buying", "Charging in winter", "Owning over the years"]);
+    expect(buildSynthesis(state).outline).toEqual(["Buying", "Charging in winter", "Owning over the years"]);
+    // A goal that is not a main part of the plan is never a line of the outline.
+    expect(buildOutline(state).join(" ")).not.toContain(goal(state, "Q2").text);
   });
 
   it("in a later round gives each necessary goal a researcher before a brief of completing goals has one to itself", () => {

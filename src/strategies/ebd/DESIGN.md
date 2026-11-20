@@ -15,6 +15,12 @@ extension and the premise sorter, which made the first plan before and are no lo
 called; sections 20, 21, 25 and 26 describe rules that were options and are now fixed.
 They are kept as the record of how the approach was reached. Section 31 has its test.
 
+**Since 2026-11-20 the writer is told different things (section 34):** the plan's main
+parts as a suggested outline, a contradicted claim to be corrected in a sentence or two, a
+line on the question's main terms and a line on sources. Section 33 says why, and why the
+approach is level with the baseline and not better. Section 35 has the test on questions
+with a planted problem: level there too.
+
 - 2026-10-07: first draft, written for the Python platform's planned `ebd@1` method.
 - 2026-10-14: retargeted to the TypeScript platform on main (`d24a40d`, strategy
   contract v1).
@@ -203,6 +209,48 @@ They are kept as the record of how the approach was reached. Section 31 has its 
   model call, the code makes the same decisions, goals, conflicts, log lines and writer
   input on the 16 runs of the test and on 414 runs of 69 saved plans, and the texts it
   sends are unchanged. 196 tests. Not run with searches since.
+- 2026-11-19, after the consolidation: on the user's question why the approach is not
+  better than the baseline (section 33). From the records: the two sides did the same
+  research, the approach's follow-up loop had no researcher left in any run, its plans
+  trade depth on the answer for breadth around it, and what it tells the writer made
+  the reports shorter and less sourced. Three cheap trials, about $2.45, no judge and no
+  change to the strategy: a different input to the writer (the clearest movement, in
+  cheap screens only), a line that makes researchers read pages (not proposed), and
+  reworded planner rules at plan level. Proposed texts and a staged plan wait for the
+  user.
+- 2026-11-20: the user approved the texts of section 33.6 and asked for the judge check
+  (section 33.9). The Opus judge on the 12 rewritten reports against the baseline's
+  recorded ones: 3 to 2 with 7 undecided (the test: 4 to 5 with 3), 11 to 11 in single
+  judgments (11 to 13). Support is no longer lost and coverage rose; usefulness fell. No
+  net gain: the writer's input does not make the approach preferred. $1.68. The texts
+  are approved and not applied.
+- 2026-11-20, later: on the user's word ("Commit consolidation first, then proceed with
+  2 recommended steps") the consolidation was committed (`6fc5f1c`) and the approved
+  texts were applied (section 34): the writer's outline and lines in `synthesis.ts`,
+  two passages of the planning prompt. The line on sources goes in without "Cover each
+  part of the outline.", as recommended after the judge check. Replayed with no model
+  call, nothing else changes on 17 recorded runs, and the writer's input equals the
+  judged one but for that sentence and a claim's label. 199 tests.
+- 2026-11-20, last: the planted-problem test (section 35), questions and run approved by
+  the user beforehand. 12 new questions (a false fact, sources that give different
+  figures, an answer that depends on who asks), both sides with the same researchers,
+  the Opus judge on the one planted point: stated in full 12 of 12 by the approach and
+  11 of 12 by the baseline. No difference; the approach used 33 of 38 researchers and
+  cost 15% less, and took half as long again. $7.43. First runs with searches of the
+  code of sections 32 and 34: 12 of 12 ended ok.
+- 2026-11-20, on the user's question whether a weaker model would separate the sides
+  (section 36): a probe of the planning step, $0.40, no test. With Haiku 5.5 at medium or
+  low effort neither side's plan takes a false or unknowable fact for granted (0 of 24
+  each); with the previous Haiku the baseline's does in 3 of 12 plans and the approach's
+  in none. A sign of where a difference could open, not a result.
+- 2026-11-20, with the OpenAI key the user added (5 dollars on it; section 37): the
+  planning probe on GPT-6 Luna (plans like Haiku 5.5, no gap) and on the older GPT-5 nano,
+  and a side run with searches on GPT-5 nano, six questions with a well-known false fact:
+  the approach stated the correction in 6 of 6 reports, the baseline in 4 of 6 (one in
+  part, one not at all). The first setting in which the approach is ahead; six
+  questions, an indication. On that model 11 of 24 of the approach's replies were
+  rejected and redone and its round analysis was repaired by the code in 5 of 6 runs.
+  At most $2.78. The platform's model file is unchanged.
 
 ## 1. Summary
 
@@ -3889,6 +3937,781 @@ runs through the skeleton with the plan in one call, the two ablation switches a
   sort of the question's own premise, the conflict checker's rejected replies, and the
   follow-up rules that have hardly run with searches.
 
+## 33. Why the approach is not better than the baseline, and what could make it so (2026-11-19, after the test)
+
+On the lead's question: "Why the EBD strategy is still not better than the baseline? What
+could we try to further improve it? Do research and try to exploit the deep search
+strategy". This section reads the records of the final test again (33.1), sets them beside
+what published deep-research systems rely on (33.2), reports three cheap trials (33.3 to
+33.5), and lists what is proposed, with the texts (33.6) and a staged plan (33.7). Section
+33.9 has the result of the plan's second step, the judge of the test on rewritten reports.
+**Nothing in the strategy was changed.** Every trial ran from scripts in
+`local/ebd-heldout/`. The lead approved the texts on 2026-11-20; section 34 applies them.
+
+### 33.1 What the records show
+
+The 12 real queries of the final test, means a run (`why.py` and its follow-up counts, no
+model call):
+
+| | Baseline | Approach |
+|---|---|---|
+| Researchers | 3.42 | 3.42 |
+| Searches | 25.9 | 25.9 |
+| Pages read (a researcher may read 4) | 1.0 | 0.9 |
+| Cited findings in the notes | 153 | 152 |
+| Findings that give a number; a year | 70%; 48% | 70%; 46% |
+| Distinct links in the notes; of them scholarly or official sites | 120; 42 | 121; 41 |
+| Words of notes handed to the writer | 9,232 | 9,259 |
+| Guidance to the writer, in words; outline | 25; none | 190; none |
+| Report: words | 2,093 | 1,913 |
+| Report: distinct links; of them scholarly or official sites | 53; 20.4 | 49; 16.4 |
+| Rounds of research after the first | 0 | 0 |
+| The strategy's own calls | 2.0 | 3.75 |
+
+1. **The research is the same.** Both sides get the same number of researchers, and a
+   researcher is the platform's: its prompt, its 8 searches and 4 page reads. What a
+   strategy writes into a brief differed (the approach's instructions have 145 words, the
+   baseline's none; the baseline's source hints name a source in 74% of cases, the
+   approach's in 13%), and it changed neither how much the researchers found nor from
+   which kinds of sources.
+2. **The approach's own loop did not run.** The experiment gives the approach the number
+   of researchers the baseline used, and the rule of section 30 sends all of them in the
+   first round. In all 12 runs none was left. After the first round the approach still
+   spent 74 seconds a run (conflict checker 44, round analyst 30) and found 8 necessary
+   things to research further in 6 of the 12 runs, and 6 details; nobody could be sent.
+   So the test compared two first-round plans and two inputs to the writer. Looking for
+   conflicts and following them up, which is the part of EBD that the baseline has no
+   counterpart for, was paid for and could not act.
+3. **The plans trade depth for breadth, and the trade comes out even.** A small model
+   labelled every key question by what it asks for, without knowing who wrote it (section
+   33.5). Of the baseline's key questions 66% ask for part of the answer itself; of the
+   approach's, in the plans of the test, 55%. The approach puts 39% on what surrounds the
+   answer (earlier and later history, debates, proposals, what the client can do), the
+   baseline 27%. The approach is less direct on the questions it won (by 15 points) as
+   much as on those it lost (by 10), so directness does not tell wins from losses. The
+   judge's reasons show both sides of the trade. The four questions the approach won, it
+   won with a part around the answer that the baseline lacked (the effects at home, how
+   common typical practice is, more cultural forms, the effect on the wider world). On the
+   five it lost, the baseline went deeper into the answer itself: it "sets out the
+   pro-inequality case more fully", covers "group differences, gateway courses and rate
+   definitions in more depth", is "more focused on Darwin's own account, citing more
+   primary sources", "defines the construct clinically, shows prevalence and risk
+   evidence". On the Darwin question the baseline's three researchers took the causes of
+   variation, selection, and heredity; the approach's took Darwin's account, the check
+   with the objections to it, and what genetics says today. With the same 15 key
+   questions, more breadth is less depth.
+4. **The check of the question's own claim.** A claim was checked in 7 of the 12 queries.
+   There the approach won 2, lost 4, with 1 undecided; on the 5 without a check it won 2
+   and lost 1, with 2 undecided. Where the verdict fell on the very thing the question
+   asks to have explained, the writer was told "The evidence contradicts this; say so
+   plainly early in the report" (inequality, the laws) or "do not present it as
+   established" (eugenics), and the report argued with the question: "mostly argues
+   against the premise, treats the positive case more thinly"; "spends much of its length
+   attacking a premise the question never states". The baseline had no check, found the
+   same evidence and wrote "supports it only in narrow conditions" inside a full answer.
+   Where the checked claim was a side assumption (literacy: that typical practice is what
+   most classrooms use), the correction counted for the approach. On the four planted
+   questions the approach stated every planted point in full and the baseline two of
+   four; the baseline stated the other two as well, less fully.
+5. **The writer got the same notes and wrote less from them.** The approach's reports are
+   9% shorter and cite 4 fewer scholarly or official sources, of the same 41 or 42 that
+   the notes hold. Support is the one criterion with a clear split in the test, 0 to 4.
+   Section 33.3 shows that what the approach tells the writer is part of the cause.
+6. **Definitions are left out by both sides.** Of the 21 checklist items that a side did
+   not cover in full, 11 ask what a main term of the question means ("What is
+   bankruptcy?"). On those 14 items the judge gave the baseline 0.57 and the approach
+   0.50, against 0.85 and 0.87 on the other 39. The judge's reasons name a missing or thin
+   definition on 4 of the 12 questions.
+7. **An internal label reached a report.** The eugenics report says "does not treat A1 as
+   established". The conflict checker had written "assumption A1" into a statement, and
+   the code that cleans the writer's guidance removes the labels of findings and conflicts
+   but not those of claims.
+8. **The size of the test.** 4 to 5 with 3 undecided on 12 questions is no difference; a
+   gain of one or two questions could not be seen (section 31.5).
+
+### 33.2 What published deep-research systems rely on
+
+Read on 2026-11-19 (list at the end of this document).
+
+| What the systems rely on | Source | Here |
+|---|---|---|
+| Spending more on search, reading and iteration. "Token usage by itself explains 80% of the variance" of results on a browsing benchmark; multi-agent systems "work mainly because they help spend enough tokens" | Anthropic | Equal by the rule of the comparison: same researchers, same researcher. The largest lever is switched off for both sides |
+| A loop of search, read and reason, with a queue of open questions, until the answer is found or the budget is used | Jina, "DeepSearch" | Inside a researcher (8 searches). Between researchers only in the approach, and there it had no researcher left (33.1, point 2) |
+| A draft or outline made first, revised as evidence comes in, and used to aim the next searches, in up to 20 steps | TTD-DR; WebWeaver | Neither side sends the writer an outline. Tried on the writer's side (33.3) |
+| Briefs with an objective, an output format, guidance on sources and tools, and boundaries | Anthropic | Both sides. The baseline names sources more often, with no measured effect on the findings |
+| Reading pages in full, not search snippets | Jina; survey in `research/` | 0.3 pages a researcher. Tried (33.4) |
+| A final report written in one pass from all findings works better than sections written apart | LangChain Open Deep Research | The platform's writer does this; a strategy cannot change it |
+| Reports judged on comprehensiveness, depth, instruction-following and readability, and on whether citations support their sentences | DeepResearch Bench | The judge of section 31 reads the text only; no citation is opened |
+| Agents fail less at understanding the task than at integrating evidence, verifying it and re-planning | FINDER and DEFT | The approach's extra work goes into understanding the request, where models seldom fail; integration is the platform's writer; its verification (conflicts) is the one criterion it led, 3 to 2 |
+
+What this says about the result: published gains come from more search and more
+iteration, not from a better first plan at equal spend. At equal spend the approach can
+gain in three places only: how the researchers are divided over the question, what is done
+with a part of them after the first round, and what the writer is told.
+
+### 33.3 Trial 1: what the writer is told
+
+Each report of the 12 real queries was written again by the platform's writer from the
+saved notes, with a different outline and guidance (`rewrite-final.ts`; no search, no
+strategy call; `rewrite_stats.py`). Means of 12 reports:
+
+| Writer's input | Words | Distinct links | Scholarly or official |
+|---|---|---|---|
+| Baseline, as recorded | 2,093 | 53.2 | 20.4 |
+| Baseline, written again (how much the writer varies by itself) | 2,099 | 53.9 | 20.0 |
+| Approach, as recorded | 1,913 | 49.3 | 16.4 |
+| Approach, written again with the recorded guidance (the control) | 1,801 | 44.2 | 15.8 |
+| Approach, notes only, no guidance | 1,947 | 48.0 | 16.7 |
+| Approach, outline of the plan's parts and a reduced guidance | 1,925 | 49.8 | 18.0 |
+| The same, with a line on sources and coverage | 2,073 | 51.0 | 19.1 |
+| The same, with one more line on the question's main terms | 2,264 | 56.8 | 20.7 |
+
+The reduced guidance leaves out the reading of the question unless the plan lists a term
+with several meanings (it does in 9 of these 12 runs, see 34.1), the assumed purpose, time
+frame and place, and the line for a claim the evidence leaves open; a contradicted claim
+is to be corrected in one or two sentences before the question is answered as asked; the
+lines for critical disagreements stay. The outline is the names of the plan's main parts
+that were researched. The texts are in 33.6.
+
+- Against the control, the row with the line on sources adds 272 words (standard error
+  56), 6.8 distinct links (2.0) and 3.2 scholarly or official sources (1.0). Taking the
+  guidance away adds 146 words (77).
+- With the reduced guidance the eugenics report opens "Eugenics is considered unethical
+  mainly because ...", with no argument about the premise and no internal label.
+- One of the 12 reports of the seventh row was cut off at the writer's output limit, as
+  one of the baseline's was in the test; none of the last row was. The limit is the
+  platform's.
+
+Two cheap screens by Haiku, with the judge's own instructions word for word. Pairs
+(`screen-final.ts`): each variant against the baseline's recorded reports, both orders,
+two samples, 48 judgments a row; the share of the decided judgments that prefer the
+approach.
+
+| Approach's reports | Overall | Coverage | Support | Conflicts | Usefulness |
+|---|---|---|---|---|---|
+| As recorded | 68% | 58% | 56% | 58% | 78% |
+| The control | 55% | 49% | 46% | 54% | 74% |
+| Outline and reduced guidance | 56% | 46% | 50% | 59% | 65% |
+| ... with the line on sources and coverage | 57% | 48% | 83% | 75% | 39% |
+| ... and the line on the main terms | 77% | 77% | 76% | 77% | 61% |
+
+Checklist coverage (`cover-screen.ts`; mean score of an item, 0 to 1). On the recorded
+reports Haiku gives the Opus judge's score on 88 of 106 items.
+
+| Reports | All 53 items | 14 definition items | 39 other items | Opus judge, all |
+|---|---|---|---|---|
+| Baseline, as recorded | 0.75 | 0.61 | 0.81 | 0.77 |
+| Approach, as recorded | 0.72 | 0.50 | 0.79 | 0.77 |
+| Approach, outline, reduced guidance, line on sources | 0.75 | 0.54 | 0.83 | not judged |
+| ... and the line on the main terms | 0.82 | 0.71 | 0.86 | not judged |
+
+**Reading.** From the same notes, the last input gives reports that cite as many scholarly
+or official sources as the baseline's (20.7 against 20.4), cover more of the checklist in
+the cheap check (0.82 against 0.75), and are preferred in 33 of the 43 decided judgments of
+the pair screen, against 24 of 44 for the control. The limits are plain: one rewrite of
+each report; Haiku as the reader, which is lenient to the approach (the Opus judge decided
+4 to 5 on the first row) and may favour a longer report although told not to (2,264 words
+against 2,093); the first two rows differ by the writer's own variation alone; and the 12
+questions are development data. The lines on sources and on terms are advice any strategy
+could give the writer; they are not EBD's analysis. **It is a reason for the paid check of
+33.7, not a result.** The paid check was made on 2026-11-20 (33.9): the Opus judge has
+these reports level with the baseline's, so the preference in Haiku's pair screen did not
+hold.
+
+### 33.4 Trial 2: telling researchers to read pages
+
+Three briefs recorded in the test were run again by the platform's researcher, with
+searches, once as recorded and once with one more line of instructions that asks to open
+the pages behind the most important figures before writing (`deepread.ts`).
+
+| | As recorded | With the line |
+|---|---|---|
+| Searches; pages read (3 researchers) | 24; 2 | 20; 6 |
+| Cited findings; of them with a year | 124; 48% | 98; 73% |
+| Distinct links; of them scholarly or official | 96; 48 | 70; 39 |
+| Cost | $0.33 | $0.29 |
+
+The researchers read three times as many pages at no more cost (one of the three read
+none either way: the pages could not be opened), and wrote fewer findings from fewer
+sources, more of them dated. Three briefs, one run each. A judge that reads only the
+report would see fewer sources, not better-read ones. **Not proposed** until facts are
+checked by a person or a tool.
+
+### 33.5 Trial 3: the planner's rules, at plan level
+
+Passages of the planning prompt were reworded (33.6, B) and passed to the strategy's
+planning call from a script; the accepted prompt is untouched. Plans were made twice for
+each question with each wording, and the strategy's own code turned each into the briefs
+of three researchers (`plancheck.ts`, `plancheck_stats.py`; no search). The recorded
+columns are the briefs both sides sent in the test.
+
+| 12 real queries | Baseline, recorded | Approach, recorded | Present wording | All four passages | Claims and definition only |
+|---|---|---|---|---|---|
+| Key questions that ask for part of the answer itself | 66% | 55% | 56% | 61% | 54% |
+| ... that check a claim | 4% | 4% | 9% | 5% | 5% |
+| ... that ask about what surrounds the answer | 27% | 39% | 33% | 30% | 38% |
+| Plans with a question on a definition | 5 of 12 | 3 of 12 | 5 of 24 | 8 of 24 | 7 of 24 |
+| Checklist items the plan asks a researcher about | 79% | 83% | 75% | 82% | 81% |
+| Plans that check a claim | no such step | 7 of 12 | 14 of 24 | 10 of 24 | 12 of 24 |
+| Key questions sent | 15.8 | 15.3 | 14.0 | 14.1 | 14.2 |
+
+On 18 questions written with a false specific fact, a true one or none (the 16 of section
+27.6 and two earlier ones) and the two planted questions with a false fact, the three
+wordings do the same: the false fact is checked in 24 of 24 plans and nothing is checked
+in 12 of 12 plans of a general question.
+
+What each passage did:
+
+- **A claim says no more than the wording.** In the four plans of the two reworded
+  variants the eugenics claim reads "Eugenics is considered unethical", with nothing
+  added; in one of the two plans of the present wording it reads "by ethicists and other
+  authorities".
+- **"How one thing changed another" takes only that for granted.** Fewer plans check a
+  claim (10 and 12 of 24 against 14): "the United States changed the war in some way" and
+  "funding changed the NHS" are taken as given.
+- **The direct answer gets the most room.** 4.4 points more direct key questions
+  (standard error 3.3). Small, and by point 3 of 33.1 a trade and not a gain: the parts
+  around the answer are what won the approach its four questions.
+- **One key question asks for the main terms' definitions.** Not followed: a definition
+  question in 7 or 8 of 24 plans against 5. The prompt's own example has none and says so.
+
+**These are measures of plans, not of reports.**
+
+### 33.6 Proposed, not applied
+
+**A. What the writer is told** (`synthesis.ts`). Tested as the last row of the tables of 33.3.
+
+| | Now | Proposed |
+|---|---|---|
+| Outline | None | The names of the plan's main parts that were researched, the necessary ones first, at most five |
+| Reading of the question | "The question was read as: ..." whenever a claim is not supported or a term has several meanings | Only when a term has several meanings |
+| A claim the evidence contradicts | "The question presupposes: "..." The evidence contradicts this; say so plainly early in the report." | "The question takes for granted: "..." The evidence in the notes contradicts this. Say so in the opening paragraph, in one or two sentences with the source. Then answer the question the client asked as fully as the notes allow: the correction is not the subject of the report." |
+| A claim the evidence leaves open | "The question presupposes: "..." The evidence neither confirms nor contradicts this; do not present it as established." | No line |
+| What the client did not state | "The client did not state these; they were assumed. Mention them only where they change the answer:" with purpose, time frame and place | No block |
+| New line on terms | None | "Early in the report, say what the question's main terms mean and how they are defined or measured, in a sentence or two each, with the source the notes give." |
+| New line on sources | None | "Cover each part of the outline. In each part, build first on the strongest sources in the notes: official statistics, peer-reviewed studies and primary documents before commentary. Give each figure with its year and what it measures, and say where the evidence is thin or disputed." |
+| A claim's label in a conflict statement ("assumption A1") | Reaches the writer | Replaced by the claim's words (code, no text) |
+
+**B. The planner's rules** (`environment.ts`). Tested at plan level only (33.5).
+
+| | Now | Proposed | Stand |
+|---|---|---|---|
+| A claim's wording | "List each claim that the wording treats as settled, as a full sentence, and give it a verdict ..." | "List each claim that the wording treats as settled, as a full sentence that says no more than the wording does ("is considered" does not become "is considered by most people"), and give it a verdict ..." | Proposed: it did what it should, at no cost |
+| Taken as given | "A question that asks whether, which, what or how much takes at most a possibility for granted: given." | The same, followed by: "A question that asks how one thing affected, changed or contributed to another takes for granted only that it did so in some way: given." | Proposed: fewer checks of a claim that only restates the question |
+| The direct answer | "the question itself: the part that answers it most directly comes first;" | "the question itself: the direct answer comes first and gets the most room. Split it into its main kinds (the kinds of reasons or causes, the steps of an explanation, the fields of an effect, the sides of a comparison) and give each kind a part of its own: at least two of the first three parts answer the question itself;" with "The other sides get a part of their own only where the answer depends on them; otherwise a side is one key question inside a part that answers the question." | Not proposed now: a trade between depth and breadth |
+| Definitions | "... a definition that the answer needs is one key question of the part that needs it." | "But a reader must be told what the question is about: one key question of the first part asks what the question's main terms mean and how they are defined or measured." | Did not work as wording. Would need the plan to name the main terms and the code to add the question |
+
+**C. Decisions without a text.**
+
+- **The analysis after the first round when no researcher is left.** Today it costs 74
+  seconds a run and can only add lines for the writer. Either a researcher is kept for it
+  (below), or the round analyst's call is skipped when nobody can be sent and only the
+  conflict checker runs, for the writer's lines on critical disagreements.
+- **Dividing the same researchers as two and one.** The plans have about two necessary
+  parts. The first round could research those, and the last researcher could go where the
+  evidence of the first round points: a necessary gap, a claim, or else the best
+  completing part. This is the loop of search, read and reason between researchers, at
+  equal spend, and the one way the approach's own analysis can act under the rule of the
+  comparison. It is untested, and the follow-ups raised in the test were of mixed worth
+  (two of the eight led further from the question), so it comes after A.
+- **The rule of the comparison.** With equal researchers the loop can run only if the
+  approach divides them differently. A comparison at an equal ceiling, with cost reported
+  beside quality, is the other form; the experiment file is the platform owner's, and
+  equal researchers was the lead's decision of 2026-11-05.
+- **Not proposed:** the line that tells researchers to read pages (33.4); naming sources
+  in the hints, which the baseline does more and which changed nothing measurable.
+
+### 33.7 A staged plan
+
+| Step | What | Cost |
+|---|---|---|
+| 1 | The lead decides on the texts of A and on the first two rows of B. **Done 2026-11-20: approved** | none |
+| 2 | The Opus judge, both orders, on the 12 rewritten reports of the last row of 33.3 against the baseline's recorded reports: does the writer's input alone move the judge that decided the test? With the control judged too, the writer's own variation is taken out. **Done 2026-11-20 without the control (33.9): no net gain** | $1.60, or $3.20 with the control; $1.68 spent |
+| 3 | A and the two rows of B applied; one live run of the platform's strategy check; then four of the old questions with searches, approach only (two it lost, two it won), judged against the baseline's saved reports. Catches a regression before the larger spend; cannot show a gain | about $0.40 and $1.90 |
+| 4 | Confirming test as in section 31: 12 newly drawn real queries and the 4 planted questions, both sides, the same rules | about $13 |
+
+The 12 queries of the final test are development data now. A gain on them does not count
+as a result.
+
+### 33.8 Spend
+
+The trials: about $2.45 of Haiku, no judge: 72 rewritten reports about $0.66 (from the
+writer's recorded cost a call), five pair screens $0.45 and the coverage screen $0.06, six
+researcher runs with searches $0.62, 207 planning calls $0.51 and their labels and
+scores $0.13. Step 2: $1.68 of the Opus judge. About $4.13 in all.
+
+### 33.9 Step 2: the judge of the test on the rewritten reports (2026-11-20)
+
+The lead approved the texts of 33.6 and asked for step 2 ("approve the texts and run step
+2"). Approval is step 1 of 33.7; applying the texts is step 3 and has not been started.
+
+**The run.** `judge-rewrite.ts defs`: the judge of the final test (Claude Opus 5.5, effort
+medium) with its pair instruction word for word, on the 12 reports of the last row of 33.3
+against the baseline's recorded reports, both orders, blind, 24 calls, none failed. The
+calls are traced in the local Langfuse (tags `judge`, `rewrite`, `defs`); the verdicts
+with their reasons are in `judge-rewrite-defs.json` and `judge-rewrite-defs.out`
+(`judge_rewrite_stats.py`). $1.68 (375,698 input and 8,799 output tokens), against $1.60
+named. The rule for reading the result was written into the script before the run.
+
+| | Recorded reports (the test) | Rewritten reports |
+|---|---|---|
+| Questions decided, both orders agreeing: approach, baseline, not decided | 4, 5, 3 | 3, 2, 7 |
+| ... on coverage | 3, 4, 5 | 4, 2, 6 |
+| ... on support | 0, 4, 8 | 1, 1, 10 |
+| ... on conflicts | 3, 2, 7 | 0, 1, 11 |
+| ... on usefulness | 4, 4, 4 | 3, 6, 3 |
+| Single judgments of 24, overall: approach, baseline, tie | 11, 13, 0 | 11, 11, 2 |
+| ... coverage | 10, 10, 4 | 12, 7, 5 |
+| ... support | 2, 13, 9 | 3, 8, 13 |
+| ... conflicts | 7, 9, 8 | 9, 6, 9 |
+| ... usefulness | 10, 11, 3 | 7, 13, 4 |
+| The report shown second is preferred | 15 of 24 | 17 of 22 decided |
+| Questions on which the two orders disagree | 3 of 12 | 7 of 12 |
+
+**By the rule fixed beforehand** the result reads "worth the confirming test": the approach
+has more decided questions than the baseline (3 to 2) and does not lose support on more
+questions than it wins it (1 to 1). The rule was set too low for what it has to bear: the
+margin is one question (sign test p = 1.0), and in single judgments the two sides are
+level, 11 to 11, where they stood at 11 to 13.
+
+**What moved.**
+
+- The baseline's decided wins fell from 5 to 2: inequality, dropout, the laws and eugenics
+  became undecided, Darwin stayed, and affirmative action is new. The approach's fell from
+  4 to 3: the war and the colonies stayed, bankruptcy is new, and literacy and African
+  American culture became undecided.
+- **Support:** the gap of the test (0 to 4) is gone in decided questions and smaller in
+  single judgments (3 to 8, from 2 to 13).
+- **Coverage** rose. The reasons mention a definition in 14 of the 24 judgments, most
+  often to the approach's credit ("defines income inequality and its measures", "defines
+  key terms", "defines eugenics explicitly").
+- **Usefulness** fell. In about ten of the 24 reasons the baseline is called more focused
+  or more direct, or the approach's report is said to wander: "spends much of its length
+  on implementation details that wander from the question", a "long federal-policy section
+  drifts from the question".
+- The eugenics report is no longer faulted for arguing with the question, and one order
+  credits it with handling "the question's presumption". No internal label is in any of
+  the 12 reports. The Darwin report is faulted as before for what was researched (modern
+  mutation rates, nothing on sexual selection): the writer cannot repair a plan.
+
+**The order.** The judge preferred the report shown second in 17 of the 22 decided
+judgments, and the two orders disagree on 7 of 12 questions. The closer the two reports
+are, the more questions the position decides.
+
+**The cheap screens.** Haiku's pair screen had these reports preferred in 33 of 43 decided
+judgments; the Opus judge has them level. Haiku's coverage check pointed the right way
+(coverage rose). So Haiku's pair screen is no guide to this judge's overall verdict, and
+its row in 33.3 promised a gain that is not there.
+
+**Reading.** What the writer is told changes where the two sides differ, not how often the
+approach is preferred. The texts remove the approach's known faults (support, the argument
+with the question, missing definitions) and cost directness. They do not make the approach
+better than the baseline by this judge. A confirming test of these texts alone would most
+likely show the two sides level again.
+
+**Open after step 2.**
+
+- **The texts.** Applied on 2026-11-20 without that sentence (section 34). When this was
+  written they were approved and not applied. The judge's one recurring complaint
+  about the rewritten reports is wandering into side parts, which the first sentence of
+  the new line on sources asks for ("Cover each part of the outline."). Whether the texts
+  go in as approved or without that sentence is the lead's decision; neither form has been
+  judged apart from the other.
+- **Where a difference could still come from.** Not from the first plan or the writer's
+  input at equal research. Left are the approach's own loop at equal spend (33.6, C), and
+  the kind of question the approach's check was built for: a false fact, sources that
+  disagree, an answer that depends on who asks. The test had four of those (stated in full
+  4 of 4 against 2 of 4); a larger set would show whether that difference is real.
+
+## 34. The texts of section 33.6 applied (2026-11-20)
+
+On the lead's words: "approve the texts and run step 2", and after the result of that step
+(33.9) "Commit consolidation first, then proceed with 2 recommended steps". The
+consolidation is commit `6fc5f1c`. The first recommended step was to apply the texts with
+one sentence removed; this section records it. The second is the test of section 35.
+
+### 34.1 What changed
+
+| | Where | On the 17 recorded runs, replayed |
+|---|---|---|
+| **Outline:** the names of the plan's main parts that the notes cover, the necessary ones first, at most five; one part alone is no outline | `buildOutline` | 16 runs get an outline; none did |
+| **Reading of the question:** only when the plan lists a term with several meanings | `buildGuidance` | In 12 runs, from 14 |
+| **A claim the evidence contradicts:** "The question takes for granted:", the claim, and "The evidence in the notes contradicts this. Say so in the opening paragraph, in one or two sentences with the source. Then answer the question the client asked as fully as the notes allow: the correction is not the subject of the report." | `TAKEN_FOR_GRANTED`, `CONTRADICTED_LINE` | 6 runs, in place of "say so plainly early in the report" |
+| **A claim the evidence leaves open:** no line | | 1 run loses "do not present it as established" |
+| **Assumed purpose, time frame and place:** no block | | Gone from all 17 |
+| **New line on terms:** "Early in the report, say what the question's main terms mean and how they are defined or measured, in a sentence or two each, with the source the notes give." | `TERMS_LINE` | In all 17 |
+| **New line on sources:** "Build first on the strongest sources in the notes: official statistics, peer-reviewed studies and primary documents before commentary. Give each figure with its year and what it measures, and say where the evidence is thin or disputed." | `SOURCES_LINE` | In all 17 |
+| **A claim's label in a conflict statement:** the label and the words that introduce it ("assumption A1", "the client's assumption A2") become "the question's claim" | `withoutClaimLabels` | 1 run; 10 mentions in the 590 conflicts of 80 saved runs |
+| **Planner, a claim's wording:** "... as a full sentence that says no more than the wording does ("is considered" does not become "is considered by most people"), ..." | `PLAN_SYSTEM`, step 3 | Plans come from the record in a replay |
+| **Planner, taken as given:** "A question that asks how one thing affected, changed or contributed to another takes for granted only that it did so in some way: given." | `PLAN_SYSTEM`, step 3 | |
+
+- **The sentence left out.** The line on sources was approved with "Cover each part of
+  the outline." in front. The judge then faulted the rewritten reports for wandering into
+  side parts (33.9), and the lead took the recommendation to leave the sentence out. The
+  form without it has not been judged.
+- **The reading of the question stays in most runs.** The plan lists a term with several
+  meanings in 12 of the 16 runs of the test ("NHS", "America", "drop out", "eugenics",
+  "capitalism"), where the planning prompt asks for one only for "an abbreviation, or a
+  word with several unrelated meanings". So this change removes the line in 2 runs, not in
+  most, and the judged reports of 33.9 were written with the line in 9 of 12. Section 33.3
+  said the reading was left out; that was true of the rule, not of most runs. Left as it
+  is: the planner's listing of terms is a matter of its own.
+- **Not changed:** the line for a checked claim that got no verdict, the lines for
+  critical disagreements, and the notes handed to the writer.
+- **"The question's claim"** are three fixed words that the code now writes in place of a
+  label. The saved statements go on to say what the claim is ("... says most people
+  consider eugenics unethical"), so the claim's own words are not repeated.
+
+### 34.2 What the checks show
+
+With no model call (`golden.ts`, `texts_check.py`):
+
+| Check | Result |
+|---|---|
+| The 16 runs of the final test and the live-check run, replayed before and after: every brief, stop, rationale, goal, conflict, map entry, log line and call check | Equal in 17 of 17 |
+| The notes handed to the writer | Equal in 17 of 17 |
+| The writer's outline and guidance, against the input the judged reports of 33.9 were written from | Equal in 12 of 12, but for the sentence left out and the claim's label |
+
+The planner's two passages, with the prompt exactly as applied (`plancheck.ts plan
+applied`, 68 plans, $0.17): the false fact is checked in 24 of 24 plans, the true one in 4
+of 4, nothing in 12 of 12 plans of a general question; on the 12 real queries a claim is
+checked in 12 of 24 plans (14 before), and the plans keep their size (3.75 parts, 13.9 key
+questions with three researchers). The eugenics claim reads "Eugenics is considered
+unethical." in both plans.
+
+### 34.3 Tests
+
+199 tests in 20 files pass (196 before). New: the outline from the researched parts
+(`parts.test.ts`), a claim named in words and never by its label (`focus.test.ts`), and
+the three lines that are no longer sent (`approach.test.ts`). The test that pins the
+approved texts has the planner's new mark and the writer's new lines; the marks of the
+conflict checker, the round analyst and the briefs are unchanged.
+
+### 34.4 What this does and does not do
+
+- By the judge of the test (33.9) these texts do not make the approach preferred. They
+  remove faults that the judge named: the lost criterion of support, the report that
+  argued with the question, the missing definitions, the label in a report.
+- The first run with searches of this code, and of the consolidated code, is the test of
+  section 35.
+
+## 35. The planted-problem test (2026-11-20)
+
+The second recommended step of 33.9, on the lead's word ("proceed with 2 recommended
+steps"); the lead approved the 12 questions and the run before it started. On ordinary
+questions the two sides are level (sections 31 and 33.9). This test asks whether the
+approach is better where its checks were built to matter: a false fact in the question,
+sources that give different figures, an answer that depends on who asks. The final test had
+four such questions (stated in full 4 of 4 against 2 of 4).
+
+### 35.1 The test, fixed before the runs
+
+**Questions** (`planted_spec.py`, `planted2-questions.json`): twelve, four of each kind,
+written on 2026-11-20 before any run on them. None of them and none of their subjects was
+used in the development of the strategy or in an earlier test. Each has the one thing a
+report must say.
+
+| | Question | The report must say |
+|---|---|---|
+| 1 | How did the Wright brothers' first powered flight in 1908 change transportation? | The flight was on 17 December 1903, not in 1908 |
+| 2 | How did Galileo's invention of the telescope change astronomy? | Galileo did not invent the telescope: it appeared in the Netherlands in 1608, and he built his own in 1609 |
+| 3 | Why was Pompeii destroyed by the eruption of Mount Etna? | The volcano was Mount Vesuvius (AD 79), not Mount Etna |
+| 4 | Why did the space shuttle Challenger break apart during re-entry in 1986? | It broke apart shortly after launch, not during re-entry |
+| 5 | How long is the Nile? | About 6,650 km, and that sources give different lengths (6,853 km) because of where the river is taken to start and how it is measured |
+| 6 | How many countries are there in the world? | The number depends on who is counted: 193 members of the United Nations, and at least one case counted differently |
+| 7 | How many people died in the 1918 influenza pandemic? | A range of estimates and not one number (17 to 50 million, some up to 100 million), and why they differ |
+| 8 | How many people died in the bombing of Dresden in February 1945? | About 25,000 (the historians' commission of 2010), and that much higher figures were long claimed, and where they came from |
+| 9 | What is the legal drinking age? | It depends on the country; several countries with different ages; not one country alone |
+| 10 | How many days of paid annual leave am I entitled to? | It depends on the country; several with different rules; not one country alone |
+| 11 | When does the school year start? | It depends on the country; starts that differ; not one country alone |
+| 12 | Do I need a prescription to buy antibiotics? | It depends on the country: required in some, sold without one in many others; not one country alone |
+
+The full wording of each point is in the questions file; the judge gets that wording.
+
+**Sides.** The baseline, and the strategy as it stands (the one approach with the texts of
+section 34), with the number of researchers the baseline used on the same question. One
+run for each cell, Haiku, the same day, traced in Langfuse.
+
+**Scoring.** The judge of the final test (Claude Opus 5.5, effort medium) with its coverage
+instruction word for word (`judge-final.ts`), each report against its one planted point: 1
+stated with a source, 0.5 stated without a source or in part, 0 missing.
+
+**How the result is read.** A question counts for a side when that side has 1 and the other
+has less. "Shown": the two-sided sign test on those questions gives p < 0.05, which needs at
+least six for the approach and none for the baseline (or eight to one). "Points the same
+way": more for the approach, short of that. "No difference": as many or fewer.
+
+**Stages.** Questions 1, 5 and 9 run first (stage a) and are the first run with searches of
+the code of sections 32 and 34. Between the stages only a defect of the program may be
+fixed; the reports of stage a are not read for quality before stage b has run.
+
+**Cost named beforehand:** about $6 to $7 (24 runs about $5.30, the judge about $1).
+
+**What the test cannot show.** It has no question with a true fact that looks doubtful, so
+it does not measure whether the approach "corrects" what is right. Twelve questions show
+only a large difference. The planted points are simple; both sides stated all four in the
+final test, and differed in how fully.
+
+### 35.2 Result
+
+Stage a: 6 runs ended ok, the check of the run records (`final_check.py`) found no fault,
+and stage b followed unchanged. All 24 runs ended ok. Records: `planted2-a-20261120-062842`
+and `planted2-b-20261120-064014` in `local/ebd-heldout/`, the judge's scores in
+`judge-planted2.json` (`planted2_stats.py`), the runs with their traces in
+`local/viewer/index.html`.
+
+| | Baseline | Approach |
+|---|---|---|
+| Planted point stated in full (score 1) | 11 of 12 | 12 of 12 |
+| Stated in part (0.5); missing (0) | 1; 0 | 0; 0 |
+| In full, a false fact in the question | 4 of 4 | 4 of 4 |
+| In full, sources that give different figures | 4 of 4 | 4 of 4 |
+| In full, an answer that depends on who asks | 3 of 4 | 4 of 4 |
+| Researchers used | 38 | 33 of the 38 allowed |
+| Searches; pages read | 267; 24 | 216; 17 |
+| Cost of the 12 runs | $3.63 | $3.10 |
+| Seconds a run | 114 | 173 |
+| Words a report | 1,616 | 1,729 |
+| The strategy's own calls a run | 2.0 | 3.58 |
+
+**By the rule fixed beforehand: "points the same way", and in substance no difference.**
+One question counts for the approach and none for the baseline (sign test p = 1.0). That
+one is the question on antibiotics, where the judge gave the baseline's report a half mark.
+Read side by side, the two reports say much the same: both open with "yes" for nearly every
+country covered, and both report sales without a prescription; the baseline's names 15
+countries and files those sales under weak enforcement. With the four planted questions of
+the final test the count is 16 of 16 against 13 of 16, three questions for the approach and
+none against (p = 0.25).
+
+### 35.3 What the records show
+
+- **The approach's own steps found every planted problem, and so did the baseline's
+  reports without such steps.** The plan marked the false fact for a check in 4 of 4
+  questions and the check came back contradicted in all four. On the drinking age the plan
+  put down "One legal drinking age applies throughout the place the question concerns" and
+  the evidence contradicted it. All four questions that depend on who asks have what the
+  client did not state listed in the plan. The conflict checker recorded 65 disagreements
+  in the 12 runs, 19 of them critical. The baseline has none of this: its researchers
+  found the true date, the range of figures and the differences between countries, and the
+  platform's writer, whose own rules ask for both sources when notes disagree, wrote them
+  down. The approach makes explicit what the baseline does without saying so, and the
+  reports come out the same on the planted point.
+- **Fewer researchers.** The approach stopped as complete with researchers left in 3 runs
+  (the drinking age 3 of 5, Galileo 3 of 4, the school year 2 of 4), which is why it cost
+  15% less here. On the four questions that depend on who asks, the baseline's reports name
+  more countries (11 to 16 of a list of 17, against 6 to 13).
+- **A follow-up round ran for the first time in a test:** on annual leave, where a claim
+  left open got the one researcher left. Two runs stopped for lack of researchers with
+  something necessary still open.
+- **The program.** 5 of the approach's 43 replies were rejected by the code checks and
+  asked again. In 2 runs a researcher wrote sections without a goal label, and the code
+  mapped them to every goal of the brief; this is the recorded problem of section 31.4,
+  not a defect, and nothing was changed between the stages.
+- **The writer's input of section 34 in live runs:** an outline in 11 of 12 runs, the
+  block for a contradicted claim in 5, the reading line in 4, and no report cut off. The
+  writer's calls use more output tokens than the baseline's (11,200 against 8,900 on
+  average, 17,800 at most, of the platform's limit of 21,000).
+
+### 35.4 Reading
+
+- The second place where a difference was looked for shows none. With this model and the
+  platform's researchers, a plain plan and the platform's writer already state a planted
+  problem of this kind, so twelve simple planted points cannot tell the sides apart. The
+  4 of 4 against 2 of 4 of the final test was two half marks on four questions.
+- Three results now stand side by side, all with the same researchers on both sides: on
+  ordinary questions the sides are level (section 31, and section 33.9 with the new
+  writer's input), and on planted problems they are level (this section). The approach
+  costs 5% more on the real queries and 15% less here, and takes about half as long again.
+- What the approach has that the baseline has not is on record, not in the judged report:
+  the claims of the question with a verdict, the disagreements between sources, the plan's
+  parts and what was left open. A judge of reports does not measure that; a person who has
+  to check a run does (the run viewer).
+- Not tested: a question with a true fact that looks doubtful, harder planted problems,
+  and the quality of these 24 reports as a whole (no pair was judged).
+
+### 35.5 Spend
+
+Haiku $6.73 (I had named $5.30; the baseline used 3.2 researchers a question here, 2.5 on
+the four of the final test) and the Opus judge $0.70 (145,857 input and 6,059 output
+tokens): $7.43, against "about $6 to $7" named. The plan check of section 34.2 was $0.17.
+Since the final test: $11.73.
+
+## 36. Would a weaker model separate the two sides? A probe of the planning step (2026-11-20)
+
+On the lead's question: "If we use other weaker model, will EBD and baseline show
+difference?". No test was run; this section holds what the records of section 35 say and a
+probe of the planning step alone (`weaker-probe.ts`, 120 plans and 120 small reads, $0.40,
+no search).
+
+### 36.1 Why the sides are level with this model
+
+In the test of section 35, on all four questions with a false fact, the baseline's planner
+had corrected the fact from its own knowledge in its first call, before any search: "the
+first powered flight was on 17 December 1903 at Kitty Hawk", "Galileo did not invent the
+telescope", "Vesuvius, not Mount Etna", "about 73 seconds after liftoff ... not during
+re-entry". The baseline has no rule that asks for this. The approach has one: a specific
+fact in the question is marked for a check from the wording alone, whatever the model
+believes (section 28). With Claude Haiku 5.5 the model does by itself what the approach's
+rule demands, so the rule changes nothing.
+
+### 36.2 The probe
+
+Both sides' own planning calls were made with three settings of the model, on 6 questions
+of the two tests whose false fact is well known and on 6 questions written for the probe
+with a specific fact that no model can know to be true or false (a small town, firm or
+study; they were not researched). A small call, which does not know the side, then read
+how each plan treats the fact: corrects it itself, asks a researcher to check it, or takes
+it for granted.
+
+| Plans that take the fact for granted | Baseline | Approach |
+|---|---|---|
+| Haiku 5.5, effort medium, as in every test (24 plans a side) | 0 | 0 |
+| Haiku 5.5, effort low (24 plans a side) | 0 | 0 |
+| Haiku 4.5, the previous Haiku, no thinking (12 plans a side) | 3 | 0 |
+
+- **Less effort on the same model changes nothing.** The baseline's planner still corrected
+  the well-known false fact in 11 of 12 plans and asked for a check in the twelfth, and it
+  asked for a check of every fact it could not know.
+- **With the previous Haiku the baseline's planner lets a fact through in 3 of 12 plans.**
+  On Challenger it wrote the assignment "Establish the immediate physical cause of the
+  structural failure and re-entry breakup sequence", and on two of the facts it could not
+  know (a ferry line, an airline) it went straight to the reasons. The approach's plan
+  marked the fact for a check in 12 of 12 plans, as its rule says.
+- **The approach's planning call still works on the previous Haiku:** every plan passed
+  the code checks, with 1.33 calls a plan on the six known questions (1.08 with Haiku
+  5.5) and no plan of last resort.
+
+### 36.3 What this says and does not say
+
+- A weaker model is where a difference can open, and it would open on questions with
+  something wrong in them, at the planning step. The approach's checks are a rule; the
+  baseline's are the model's habit, which a weaker model has less of.
+- It is a probe of plans, one plan a cell for the previous Haiku. Three of twelve against
+  none is not a result (Fisher's exact test, p = 0.22). A researcher sent after "the
+  re-entry breakup" may still find that there was none, and the writer may still correct
+  it; with Haiku 5.5 they did. On ordinary questions nothing here suggests a difference.
+- Further down, a model too weak for the approach's own calls would break the approach
+  first (its plan is one large structured reply). The previous Haiku is not that weak.
+
+### 36.4 What a test would take
+
+- **The model.** Claude Haiku 4.5 is the only weaker Claude model still served. It has no
+  effort setting and a context of 200,000 tokens, so it needs a profile of its own in the
+  platform's model file, which is the platform owner's; the project's models are Haiku 5.5
+  and Luna (`AGENTS.md`). Luna has not been run here (no key).
+- **The cost.** Its tokens cost ten times those of Haiku 5.5 ($1 and $5 a million against
+  $0.10 and $0.50); the search fee is the same, and it is most of a run's cost today
+  (483 searches made $4.83 of the $6.73 of section 35). A run would cost about $0.80
+  against $0.28: about $20 for the 12 planted questions on both sides, or about $13 for 8
+  questions with a false or unknowable fact, the kind on which the probe saw the gap.
+- **The likely outcome,** from the probe: an edge for the approach on such questions that
+  twelve questions would not prove.
+
+## 37. A weaker model: the planning probe on OpenAI models and a side run on GPT-5 nano (2026-11-20)
+
+The lead added an OpenAI key with 5 dollars on it and asked: "Can we get an idea of how
+baseline and EBD perform differently in other weaker models?" Done with at most $2.78 of
+the 5 dollars. It is a side run: the project's models stay Haiku 5.5 and Luna
+(`AGENTS.md`), and the platform's model file was not changed; the profile for GPT-5 nano is
+added to the running process by `local/ebd-heldout/nano-run.ts`.
+
+**Models and prices** (OpenAI's pricing and model pages, read 2026-11-20). GPT-5 nano:
+August 2025, knowledge to May 2024, deprecated and still served, $0.05 and $0.40 a million
+tokens, with web search in the Responses API. GPT-6 Luna: the project's second model, $0.10
+and $0.50. Web search costs $0.01 a call on both, as with Anthropic.
+
+### 37.1 The planning probe on five model settings
+
+The probe of section 36, with two OpenAI models added (`weaker-probe.ts`,
+`weaker_probe_stats.py`; $0.08 of OpenAI). Six questions with a well-known false fact and
+six with a fact no model can know; one or two plans a cell; a small call reads how the plan
+treats the fact.
+
+| Plans that take the fact for granted | Baseline | Approach |
+|---|---|---|
+| Claude Haiku 5.5, effort medium (as tested) | 0 of 24 | 0 of 24 |
+| Claude Haiku 5.5, effort low | 0 of 24 | 0 of 24 |
+| OpenAI GPT-6 Luna | 0 of 12 | 0 of 12 |
+| Claude Haiku 4.5 | 3 of 12 | 0 of 12 |
+| OpenAI GPT-5 nano | 0 of 12 | 2 of 12 |
+
+- **Luna plans like Haiku 5.5:** the baseline's planner corrected all six well-known false
+  facts itself and asked for a check of all six it could not know. Nothing here suggests a
+  difference between the sides on the project's second model.
+- **The two weaker models fail on opposite sides.** With Haiku 4.5 the baseline's plan lets
+  a fact through. With GPT-5 nano the approach's plan does: it marked the claim for a check
+  in 3 of 6 plans on the known facts, because the model does not follow the long rule of
+  the planning prompt, while the same model still corrected the fact in the baseline's
+  short notes. One plan a cell; the run below, with one more plan for each question, came
+  out the other way for the approach (6 of 6 marked), which shows how much a single plan
+  varies on this model.
+
+### 37.2 The side run on GPT-5 nano
+
+The six questions of the two earlier tests whose planted fact is false and well known, both
+sides, at most three researchers a run, one run a cell (`nano_spec.py`, folders
+`nano-a-20261120-160959` and `nano-b-20261120-162011`, `nano_stats.py`). The planted point
+was scored with the judge's coverage instruction answered by Haiku (`planted-screen.ts`),
+and the two reports on which the sides differ were read by hand. With Haiku 5.5 both sides
+had stated all six (sections 31 and 35).
+
+| GPT-5 nano, six questions | Baseline | Approach |
+|---|---|---|
+| Planted point stated in full | 4 | 6 |
+| Stated in part; missing | 1; 1 | 0; 0 |
+| The plan dealt with the false fact | 5 of 6 (corrected in the planner's notes) | 6 of 6 (marked for a check; contradicted in all six) |
+| Runs that ended ok | 6 of 6 | 6 of 6 |
+| Seconds a run | 175 | 326 |
+| Cost a run, at most | $0.25 | $0.21 |
+| Words a report; links; links not in the notes | 1,396; 37; 2 | 1,374; 39; 5 |
+| The strategy's replies rejected by the code checks | none recorded | 11 of 24 |
+| Runs in which the round analysis had to be repaired by the code | | 5 of 6 |
+
+- **Where the sides differ.** On the Wright brothers the baseline's planner did not notice
+  the wrong year, and its report opens "The Wright brothers' 1908 powered flight
+  demonstrated that controllable, practical flight was feasible"; 1903 appears once, in
+  passing. Its researchers' notes do give 1903; the writer followed the question. The
+  approach's report opens "The Wright brothers' first powered flight is best supported by
+  credible sources placing the event on December 17, 1903". On Galileo the baseline's
+  report says only that its focus is "not on the instrument's original invention by
+  others"; the approach's gives the patent application of 1608.
+- **Why.** The approach's check is a rule and its writer's line is an instruction: the plan
+  marked the fact in every run, the check came back contradicted, and the weaker writer
+  did what the line said. The baseline depends on the planner noticing and on the writer
+  acting unasked, and this model does both less reliably than Haiku 5.5.
+- **The approach's own steps strain on this model.** 11 of its 24 replies were rejected by
+  the code checks and asked again (2 of 20 on these questions with Haiku 5.5). In 5 of 6
+  runs the round analysis cited evidence labels that do not exist and the code fell back
+  to its repaired judgments. The conflict checker found 1.3 disagreements a run, against 6
+  to 7 with Haiku 5.5. The verdicts on the claims were still right in all six. A run took
+  almost twice the baseline's time.
+- **Both sides write weaker reports on this model:** fewer words and links than with Haiku
+  5.5 (1,400 and 37 against 1,700 and 62 for the baseline), links that are not in the
+  notes (2 and 5 in six reports, none with Haiku 5.5), and most researchers hit the cap of
+  8 tool calls.
+
+### 37.3 Reading
+
+- This is the first setting in which the approach shows the advantage it was built for:
+  with a weaker model, a false fact in the question is corrected in 6 of 6 reports against
+  4 of 6. It fits the explanation of section 36: Haiku 5.5 does by itself what the
+  approach's rule demands, and a weaker model does not.
+- It is an indication. Six questions, one run each, one kind of problem, a cheap scorer:
+  two questions for the approach and none against (sign test p = 0.5).
+- The advantage comes from the approach's simplest steps (mark the fact, check it, tell the
+  writer). Its heavier steps (the round analysis, the conflict check) are the ones that
+  break on a weak model, and they are held up by the code's repairs.
+- First runs with searches of the approach on the OpenAI adapter: 6 of 6 ended ok. Luna
+  itself has not been run; the platform's `check-strategy` run with `--model luna` is
+  still to be made.
+
+### 37.4 Spend
+
+OpenAI: the probe $0.08, and the 12 runs at most $2.70 (tokens $0.35; 235 web search calls
+if every search and page open is billed, $2.35; the platform's ledger, which counts
+searches only, says $1.82). At most $2.78 of the 5 dollars. Anthropic: about $0.03 for the
+reader of the plans and the scorer.
+
 ## References
 
 EBD papers (`docs/background/ebd-papers/`):
@@ -3921,6 +4744,19 @@ Research loops and stopping:
 - Shao, Y., et al. (2024). Assisting in writing Wikipedia-like articles from scratch
   with large language models (STORM). NAACL. arXiv:2402.14207.
 - Zhou, A., et al. (2024). Language agent tree search (LATS). ICML.
+
+Deep-research systems and their evaluation (read 2026-11-19, section 33.2):
+
+- Anthropic (2025). How we built our multi-agent research system.
+  https://www.anthropic.com/engineering/multi-agent-research-system
+- Jina AI (2025). A practical guide to implementing DeepSearch/DeepResearch.
+  https://jina.ai/news/a-practical-guide-to-implementing-deepsearch-deepresearch/
+- Deep Researcher with Test-Time Diffusion (TTD-DR). arXiv:2507.16075.
+- WebWeaver: structuring web-scale evidence with dynamic outlines. arXiv:2509.13312.
+- DeepResearch Bench: a benchmark for deep research agents. arXiv:2506.11763.
+- FINDER and DEFT: a benchmark and a failure taxonomy of deep research agents.
+  arXiv:2512.01948.
+- LangChain (2025). Open Deep Research. https://blog.langchain.com/open-deep-research
 
 Model judgments:
 

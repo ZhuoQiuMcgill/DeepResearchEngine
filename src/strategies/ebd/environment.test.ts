@@ -340,7 +340,9 @@ describe("a whole run in the environment mode, through the skeleton", () => {
     expect(state.map!.events[0]!.parts.every((p) => p.status === "confirmed")).toBe(true);
     // The checked claim was contradicted; the claim taken as given gets no verdict and no line.
     expect(goal("Q1").verdicts).toEqual({ A1: "contradicted" });
-    expect(synthesis!.guidance).toContain('The question presupposes: "The town of Ashby closed its public library in 2019." The evidence contradicts this; say so plainly early in the report.');
+    // Section 34: the contradicted claim is corrected in a sentence or two, and the question is then answered as asked.
+    expect(synthesis!.guidance).toContain('The question takes for granted:\n- "The town of Ashby closed its public library in 2019."\nThe evidence in the notes contradicts this. Say so in the opening paragraph, in one or two sentences with the source. Then answer the question the client asked as fully as the notes allow: the correction is not the subject of the report.');
+    expect(synthesis!.guidance).not.toContain("The question was read as");
     expect(synthesis!.guidance).not.toContain("A library can help a small town.");
     // No goal waited behind the check, so nothing was cancelled with it.
     expect(state.goals.filter((g) => g.status === "moot")).toEqual([]);

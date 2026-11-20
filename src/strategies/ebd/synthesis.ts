@@ -5,15 +5,19 @@
  * analysis (assumption verdicts, conflicts, defaults, evidence status) goes to
  * the outline and the guidance, never into the material.
  *
- * The writer is told only what the notes do not show (design section 20):
- * premises the evidence contradicts or leaves open, and at most three critical
- * conflicts, each treated where it arises.
+ * The writer is told only what the notes do not show (design section 20): a
+ * claim of the question that the evidence contradicts, and at most three critical
+ * conflicts, each treated where it arises. Since 2026-11-20 (section 34) it also
+ * gets the plan's main parts as a suggested outline, a line on the question's
+ * main terms and a line on sources; the reading of the question, the assumed
+ * purpose, time and place, and a line for a claim the evidence leaves open are
+ * no longer sent.
  */
 import type { SynthesisInput } from "../../core/index.js";
 import { directiveLines } from "./briefs.js";
 import { assumptionVerdicts, endedByFailures, synthesisQuestions } from "./goals.js";
 import type { Analysis } from "./analysis.js";
-import { eventOf, isCritical, type Conflict, type EbdState, type Goal } from "./state.js";
+import { eventOf, isCritical, type Conflict, type EbdState, type Goal, type MapEvent } from "./state.js";
 
 const MAX_OUTLINE = 5;
 /** The writer is told about at most this many critical conflicts (section 20). */
@@ -25,6 +29,26 @@ export const READING_LABEL = "The question was read as:";
  */
 export const CRITICAL_HEADING =
   "The answer depends on these points, on which the sources disagree. Treat each one where it arises in the report, in at most three sentences, not in a section of its own:";
+/**
+ * The texts below were approved by the behaviour design lead on 2026-11-20 (design section 34), after
+ * the reports of the final test were written again with them (section 33.3) and judged (section 33.9).
+ *
+ * A claim of the question that the evidence contradicts. Before, the writer was told to "say so
+ * plainly early in the report", and the report argued with the question instead of answering it.
+ */
+export const TAKEN_FOR_GRANTED = "The question takes for granted:";
+export const CONTRADICTED_LINE =
+  "The evidence in the notes contradicts this. Say so in the opening paragraph, in one or two sentences with the source. Then answer the question the client asked as fully as the notes allow: the correction is not the subject of the report.";
+/** Both sides of the final test left most definitions out; the judge named a missing one on 4 of 12 questions. */
+export const TERMS_LINE =
+  "Early in the report, say what the question's main terms mean and how they are defined or measured, in a sentence or two each, with the source the notes give.";
+/**
+ * From the same notes the approach's reports cited fewer scholarly and official sources than the
+ * baseline's. The line was first approved with "Cover each part of the outline." in front; the judge
+ * then faulted the reports for wandering into side parts, and the sentence was left out (section 34).
+ */
+export const SOURCES_LINE =
+  "Build first on the strongest sources in the notes: official statistics, peer-reviewed studies and primary documents before commentary. Give each figure with its year and what it measures, and say where the evidence is thin or disputed.";
 
 /** Report-format words that limit the length: pages, paragraphs, sentences, a word count, or short, brief, concise. */
 const LENGTH = /\b(?:pages?|paragraphs?|sentences?)\b|\b\d[\d,]*\s*words?\b|\bword (?:limit|count)\b|\b(?:short|brief|briefly|concise|succinct)\b/i;
@@ -132,12 +156,23 @@ export function nothingResearched(state: EbdState): boolean {
   return state.results.length > 0 && state.results.every((r) => r.status === "failed");
 }
 
+/**
+ * Section 34: the suggested outline is the plan's main parts that the notes cover, the necessary
+ * ones first. A part is covered when a researcher's notes have a section for its goal; one part alone
+ * is no outline. A disagreement is treated where it arises, never in a section of its own (section 20).
+ */
 export function buildOutline(state: EbdState): string[] {
   if (nothingResearched(state)) return [];
+  if (state.map) {
+    const covered = new Set(state.results.filter((r) => r.status === "ok").flatMap((r) => r.sections.flatMap((s) => s.goalIds)));
+    const need = (e: MapEvent) => state.goals.find((g) => g.id === e.goalId)?.need;
+    const parts = state.map.events.filter((e) => covered.has(e.goalId));
+    const ordered = [...parts.filter((e) => need(e) === "necessary"), ...parts.filter((e) => need(e) !== "necessary")];
+    return ordered.length > 1 ? ordered.slice(0, MAX_OUTLINE).map((e) => e.name) : [];
+  }
+  // A state without a plan of main parts: the synthesis questions of a request with several parts.
+  // A single synthesis question restates the request, which the writer already has (section 20).
   const questions = synthesisQuestions(state.analysis).map((q) => q.text);
-  // Section 20: a single synthesis question restates the request, which the writer already has, so it
-  // is no outline; and a disagreement is treated where it arises, never in a section of its own. In
-  // the batch of 2026-11-11 the whole outline of one run was "Where the sources disagree".
   return questions.length > 1 ? questions.slice(0, MAX_OUTLINE) : [];
 }
 
@@ -155,6 +190,20 @@ export function plain(text: string): string {
     .replace(/\(\s+/g, "(")
     .replace(/\s{2,}/g, " ")
     .trim();
+}
+
+/**
+ * A conflict about a claim of the question may name the claim by its label ("assumption A1"), which
+ * means nothing to the writer; in the final test one report repeated it. The label goes, with the
+ * words that introduce it, and "the question's claim" stands in its place: the statement itself says
+ * what the claim is. Only the labels of the claims this conflict is about are touched, so a name
+ * such as "A4 paper" survives elsewhere.
+ */
+export function withoutClaimLabels(text: string, state: EbdState, c: Conflict): string {
+  const ids = [...new Set([...(c.claim ? [c.claim] : []), ...c.sideB])].filter((id) => state.analysis.assumptions.some((x) => x.id === id));
+  if (!ids.length) return text;
+  const label = new RegExp(`(?:\\b(?:the\\s+)?(?:client's|plan's|question's)\\s+)?(?:\\b(?:assumption|claim|premise)\\s+)?\\b(?:${ids.join("|")})\\b`, "gi");
+  return text.replace(label, (_match, offset: number) => (offset === 0 || /[.!?]\s+$/.test(text.slice(0, offset)) ? "The question's claim" : "the question's claim"));
 }
 
 function hostsOf(state: EbdState, ids: string[]): string {
@@ -199,53 +248,37 @@ export function buildGuidance(state: EbdState): string {
   const limit = lengthLimit(a);
   if (limit) out.push(`The client limits the length ("${limit}"). This comes before everything below: answer the question first, give each disagreement and each gap at most one sentence, and leave out detail the client did not ask for.`);
 
-  // Section 20: the writer gets the analysis's reading of the question in one
-  // sentence, and not the planned contents, and only when the question cannot be taken at its word:
-  // a premise that the evidence does not support, or a term with several meanings. Rewrites from the
-  // saved notes of 2026-11-11: without the reading, the report on "Why did NASA launch ... in 2018?"
-  // explained the date and left out the mission's purposes. Where the premises hold, the client's own
-  // words are the reading; with the line added anyway, the five reports came out 16% shorter (one
-  // rewrite of each).
+  // Section 34: the reading of the question goes to the writer only when a term has several meanings.
+  // Until 2026-11-20 it also went whenever a claim was not supported (section 20); in the final test
+  // the restated question then framed the report, and the reports with the line came out shorter.
+  if (a.rom.objects.some((o) => o.readings.length > 0) && a.restated_request.trim()) out.push(`${READING_LABEL} ${a.restated_request.trim()}`);
+
+  // Section 20: the writer gets neither the planned contents of each part nor a list of what the
+  // notes cover; the labels of the material and the outline show the parts.
   const verdicts = assumptionVerdicts(state);
   // Section 27: a claim taken as given was not checked, so its missing verdict says nothing against
-  // it. It counts here, and gets a line below, only when the evidence contradicted it after all.
+  // it. It gets a line only when the evidence contradicted it after all.
   const given = new Set((state.premises?.given ?? []).map((g) => g.id));
-  const silent = (id: string) => given.has(id) && verdicts[id] !== "contradicted";
-  const reread = a.assumptions.some((x) => !silent(x.id) && verdicts[x.id] !== "supported") || a.rom.objects.some((o) => o.readings.length > 0);
-  if (reread && a.restated_request.trim()) out.push(`${READING_LABEL} ${a.restated_request.trim()}`);
-
-  // Section 20: the writer gets neither the planned contents of each part nor a list of the parts the
-  // notes cover. The plan named the first planned questions as the evidence to use, and in the batch
-  // of 2026-11-11 the report on EBD left out what another goal's notes covered; a list of the covered
-  // parts made the writer give every part a section. The labels of the material show the parts.
-  const premises = a.assumptions.flatMap((x) => {
-    if (silent(x.id)) return [];
-    switch (verdicts[x.id]) {
-      case "contradicted":
-        return [`- The question presupposes: "${x.claim}" The evidence contradicts this; say so plainly early in the report.`];
-      case "unsettled":
-        // Section 20: the report does not have to say so. In the live batch of 2026-11-11 the analyst
-        // left "EBD stands for Environment Based Design" unsettled, and the report opened by doubting
-        // what the question itself spells out.
-        return [`- The question presupposes: "${x.claim}" The evidence neither confirms nor contradicts this; do not present it as established.`];
-      case "supported":
-        // Section 20: a premise that holds needs no instruction.
-        return [];
-      default:
-        return [`- The question presupposes: "${x.claim}" This could not be checked; do not present it as established.`];
-    }
-  });
-  if (premises.length) out.push(`What the evidence shows about the question's premises:\n${premises.join("\n")}`);
+  // Section 34: a contradicted claim is corrected in a sentence or two, and then the question is
+  // answered as asked. A claim that holds needs no instruction, and one the evidence leaves open gets
+  // none either: the notes show both sides, and in the final test the line "do not present it as
+  // established" made a report spend its length on a premise the question never stated.
+  const contradicted = a.assumptions.filter((x) => verdicts[x.id] === "contradicted");
+  if (contradicted.length) out.push(`${TAKEN_FOR_GRANTED}\n${contradicted.map((x) => `- "${x.claim}"`).join("\n")}\n${CONTRADICTED_LINE}`);
+  // A claim marked for a check that got no verdict at all (every attempt to check it failed).
+  const unchecked = a.assumptions.filter((x) => !given.has(x.id) && !verdicts[x.id]);
+  if (unchecked.length) out.push(`What the evidence shows about the question's premises:\n${unchecked.map((x) => `- The question presupposes: "${x.claim}" This could not be checked; do not present it as established.`).join("\n")}`);
 
   // Section 20: only the critical conflicts get a line, each treated where it arises. Every other
   // disagreement is left to the writer's own rule for notes that disagree. A finding against the
   // plan's own assumption changed the plan, not the report.
   const critical = criticalForWriter(state).map((c) => {
-    if (c.type === "time_dependent") return `- ${plain(c.statement)} Both hold, at different times: ${plain(c.condition)}`;
-    if (c.status === "settled") return `- ${plain(c.statement)} This was researched further, and the notes show which account holds and why.`;
+    const statement = withoutClaimLabels(plain(c.statement), state, c);
+    if (c.type === "time_dependent") return `- ${statement} Both hold, at different times: ${withoutClaimLabels(plain(c.condition), state, c)}`;
+    if (c.status === "settled") return `- ${statement} This was researched further, and the notes show which account holds and why.`;
     // "The source the notes cite": in the live run of 2026-11-11 the writer gave a publisher that the
     // statement named, and that the notes cite without a link, an invented address.
-    return `- ${plain(c.statement)} Give both sides, each with the source the notes cite for it${hostsOf(state, [...c.sideA, ...c.sideB])}, and say which one the report follows and why, or that the evidence does not decide it.`;
+    return `- ${statement} Give both sides, each with the source the notes cite for it${hostsOf(state, [...c.sideA, ...c.sideB])}, and say which one the report follows and why, or that the evidence does not decide it.`;
   });
   if (critical.length) out.push(`${CRITICAL_HEADING}\n${critical.join("\n")}`);
   const apart = state.conflicts.flatMap((c) =>
@@ -257,10 +290,8 @@ export function buildGuidance(state: EbdState): string {
   );
   if (apart.length) out.push(`Evidence to keep apart:\n${apart.join("\n")}`);
 
-  const defaults = (["purpose", "time_frame", "place"] as const)
-    .filter((k) => a.frame[k].basis === "default" && a.frame[k].value !== null)
-    .map((k) => `- ${k.replace("_", " ")}: ${a.frame[k].value}`);
-  if (defaults.length) out.push(`The client did not state these; they were assumed. Mention them only where they change the answer:\n${defaults.join("\n")}`);
+  // Section 34: the purpose, time frame and place that the plan assumed are no longer listed for the
+  // writer. They aimed the research; in the report they were words about the plan, not the answer.
 
   // Evidence status of necessary goals the research could not complete.
   // Lab 5 review, change 8: a goal ended only by researcher failures is a failure, not an absence of sources.
@@ -281,6 +312,7 @@ export function buildGuidance(state: EbdState): string {
   // was contradicted, and the notes show what was researched: in the live batch of 2026-11-11 such a
   // line named the question about NASA's reasons as not pursued, although a goal had researched them.
 
+  out.push(TERMS_LINE, SOURCES_LINE);
   out.push("Do not open the report with these notes, and do not mention the research process.");
   return out.join("\n\n");
 }

@@ -229,7 +229,8 @@ describe("a whole run of the one approach, through the skeleton", () => {
     // The writer is told about it as a point the answer depends on, in the lean guidance.
     expect(synthesis!.guidance).toContain(CRITICAL_HEADING);
     expect(synthesis!.guidance).toContain("One source says the council decided the closure, another that the mayor decided it alone.");
-    expect(synthesis!.outline).toBeUndefined();
+    // The two researched main parts are the suggested outline (section 34).
+    expect(synthesis!.outline).toEqual(["The closure", "Reasons"]);
     // The agents got the wording of this approach.
     expect(systems.submit_conflicts).toContain(CONFLICT_QUESTIONS_SECTION);
     expect(systems.submit_conflicts).toContain(CHECKER_ON_DISPUTES);
@@ -407,16 +408,23 @@ describe("the first round of the plan uses every researcher it has for a main pa
 
 // ---------------------------------------------------------------- the approved texts
 
-/** The writer's fixed words with `leanGuidance`, as approved. */
+/**
+ * The writer's fixed words, as approved: on 2026-11-19 (section 29.1), and on 2026-11-20 (section 34)
+ * the lines on a contradicted claim, on the question's main terms and on sources. Gone since then:
+ * the lines "say so plainly early in the report" and "neither confirms nor contradicts", and the
+ * block of what the client did not state.
+ */
 const WRITER_LINES = [
   "Do not open the report with these notes, and do not mention the research process.",
   "Follow the client's directives:",
   "This comes before everything below: answer the question first, give each disagreement and each gap at most one sentence, and leave out detail the client did not ask for.",
   READING_LABEL,
+  "The question takes for granted:",
+  "The evidence in the notes contradicts this. Say so in the opening paragraph, in one or two sentences with the source. Then answer the question the client asked as fully as the notes allow: the correction is not the subject of the report.",
   "What the evidence shows about the question's premises:",
-  "The evidence contradicts this; say so plainly early in the report.",
-  "The evidence neither confirms nor contradicts this; do not present it as established.",
   "This could not be checked; do not present it as established.",
+  "Early in the report, say what the question's main terms mean and how they are defined or measured, in a sentence or two each, with the source the notes give.",
+  "Build first on the strongest sources in the notes: official statistics, peer-reviewed studies and primary documents before commentary. Give each figure with its year and what it measures, and say where the evidence is thin or disputed.",
   CRITICAL_HEADING,
   "Give both sides, each with the source the notes cite for it",
   "and say which one the report follows and why, or that the evidence does not decide it.",
@@ -425,12 +433,11 @@ const WRITER_LINES = [
   "Evidence to keep apart:",
   "Leave them out, and distinguish the terms only where needed.",
   "Use it only as context and say so.",
-  "The client did not state these; they were assumed. Mention them only where they change the answer:",
   "No reliable source was found for these; say so where relevant instead of guessing:",
   "These questions could not be researched because of technical failures, not for lack of sources. Do not claim that no source exists; where relevant, say only that the report does not cover them:",
 ];
 
-describe("the prompt texts of the one approach, approved on 2026-11-19 (section 29.1)", () => {
+describe("the prompt texts of the one approach, approved on 2026-11-19 (section 29.1) and 2026-11-20 (section 34)", () => {
   const mark = (text: string) => createHash("sha256").update(text, "utf8").digest("hex").slice(0, 16);
 
   // A different mark means that a text sent to a model has changed. Show the behaviour design lead
@@ -441,7 +448,13 @@ describe("the prompt texts of the one approach, approved on 2026-11-19 (section 
       conflictChecker: mark(conflictSystem(true, true)),
       roundAnalyst: mark(analystSystem(true)),
       briefs: mark([PLAN_QUESTIONS_INSTRUCTION, VERIFY_INSTRUCTION, PLANNED_PARTS_INSTRUCTION, checkQuestion(["A."]), checkQuestion(["A.", "B."])].join("\n")),
-    }).toEqual({ planner: "cd18be9484f760a6", conflictChecker: "e0a4526da75d4b7d", roundAnalyst: "101bd7ad1de0159c", briefs: "685b46f749cd9d47" });
+      // The planner's mark was cd18be9484f760a6 until 2026-11-20, when two passages on the question's claims were approved (section 34).
+    }).toEqual({ planner: "ee23db334e24e08c", conflictChecker: "e0a4526da75d4b7d", roundAnalyst: "101bd7ad1de0159c", briefs: "685b46f749cd9d47" });
+  });
+
+  it("no longer sends the writer the lines that were taken out on 2026-11-20", () => {
+    const source = readFileSync(new URL("./synthesis.ts", import.meta.url), "utf8");
+    for (const gone of ["The evidence contradicts this; say so plainly early in the report.", "The evidence neither confirms nor contradicts this; do not present it as established.", "The client did not state these; they were assumed."]) expect(source).not.toContain(gone);
   });
 
   it("include the writer's lines word for word", () => {
