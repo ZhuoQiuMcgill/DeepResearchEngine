@@ -392,6 +392,11 @@ function claimBadges(g) {
   return Object.entries(goalVerdicts(g)).map(([c, v]) => verdictBadge(v, c)).join(" ");
 }
 
+/** Section 27: the sorter's record for a claim taken as given, or undefined. */
+function givenOf(state, id) {
+  return ((state.premises && state.premises.given) || []).find((g) => g.id === id);
+}
+
 function goalTree(state) {
   const goals = state.goals;
   const parentOf = (g) => {
@@ -411,7 +416,7 @@ function goalTree(state) {
     children.set(p, [...(children.get(p) || []), g]);
   }
   const node = (g) => `<li>${goalStatusBadge(g.status)} <strong>${esc(g.id)}</strong> ${esc(g.text)}
-    <span class="muted">· ${esc(g.kind)} L${g.level} · ${esc(g.need)} · round ${g.createdRound}${g.settledRound ? `→${g.settledRound}` : ""}${g.origin.type !== "request" ? ` · from ${g.origin.type === "conflict" ? esc(g.origin.conflict) : g.origin.evidence.map(esc).join(", ")}` : ""}</span> ${claimBadges(g)}
+    <span class="muted">· ${esc(g.kind)} L${g.level} · ${esc(g.need)} · round ${g.createdRound}${g.settledRound ? `→${g.settledRound}` : ""}${g.origin.type === "assumed" ? ` · life-cycle event ${esc(g.origin.event)} of the environment map` : g.origin.type === "uncovered" ? " · a main part of the answer that no finding mentions" : g.origin.type !== "request" ? ` · from ${g.origin.type === "conflict" ? esc(g.origin.conflict) : g.origin.evidence.map(esc).join(", ")}` : ""}</span> ${claimBadges(g)}
     ${children.get(g.id) ? `<ul>${children.get(g.id).map(node).join("")}</ul>` : ""}</li>`;
   return `<div class="tree"><ul>${(children.get(null) || []).map(node).join("")}</ul></div>`;
 }
@@ -434,16 +439,21 @@ function overview() {
   }));
   html += `<section class="card"><h2>Stop</h2>${s.stop ? `<p>${badge(s.stop.kind, s.stop.kind === "complete" ? "ok" : s.stop.kind === "budget" ? "warn" : "info")} after round ${s.stop.round}: ${esc(s.stop.reason)}</p>` : `<p class="muted">No stop recorded by the strategy.</p>`}
     <p class="muted">Platform stop reason: ${esc(summary.stopReason || "")}</p></section>`;
-  html += `<section class="card"><h2>Assumptions in the question</h2>${a.assumptions.length ? `<div class="tablewrap"><table><thead><tr><th>ID</th><th>Claim</th><th>Verdict</th><th>Checked by</th></tr></thead><tbody>${a.assumptions.map((x) => `<tr><td>${esc(x.id)}</td><td>${esc(x.claim)}</td><td>${verdictBadge(verdicts[x.id]) || badge("no verdict", "plain")}</td><td>${s.goals.filter((g) => g.verifies.includes(x.id)).map((g) => `${esc(g.id)} ${goalStatusBadge(g.status)} ${verdictBadge(goalVerdicts(g)[x.id])}`).join("<br>")}</td></tr>`).join("")}</tbody></table></div>` : `<p class="muted">The request analysis found no assumptions.</p>`}</section>`;
+  html += `<section class="card"><h2>Assumptions in the question</h2>${a.assumptions.length ? `<div class="tablewrap"><table><thead><tr><th>ID</th><th>Claim</th><th>Verdict</th><th>Checked by</th></tr></thead><tbody>${a.assumptions.map((x) => `<tr><td>${esc(x.id)}</td><td>${esc(x.claim)}</td><td>${verdictBadge(verdicts[x.id]) || (givenOf(s, x.id) ? badge("taken as given", "info") : badge("no verdict", "plain"))}${givenOf(s, x.id) ? `<div class="muted">not checked as a fact of its own: ${esc(givenOf(s, x.id).reason)}</div>` : ""}</td><td>${s.goals.filter((g) => g.verifies.includes(x.id)).map((g) => `${esc(g.id)} ${goalStatusBadge(g.status)} ${verdictBadge(goalVerdicts(g)[x.id])}`).join("<br>")}</td></tr>`).join("")}</tbody></table></div>` : `<p class="muted">The request analysis found no assumptions.</p>`}</section>`;
   html += `<section class="card"><h2>Goal tree</h2><p class="muted">Request goals at the top level; goals grown from a finding or a conflict sit under the goal whose evidence prompted them.</p>${goalTree(s)}
     <h3>Tree metrics</h3><div class="grid2">${["byOrigin", "byDepth", "byStatus", "createdPerRound", "settledPerRound"].map((k) => `<div><div class="muted">${esc(k)}</div>${Object.entries(s.tree[k] || {}).map(([x, n]) => `${badge(`${x}: ${n}`)}`).join(" ")}</div>`).join("")}</div></section>`;
   html += conflictTable(s, "Conflicts");
   return html;
 }
 
+// A conflict the answer depends on (design section 20): a client claim at stake, or marked critical by the conflict checker.
+function isCritical(c) {
+  return c.type === "evidence_vs_assumption" || Boolean(c.claim) || c.critical === true;
+}
+
 function conflictTable(s, title) {
   if (!s.conflicts.length) return `<section class="card"><h2>${esc(title)}</h2><p class="muted">No conflicts recorded.</p></section>`;
-  return `<section class="card"><h2>${esc(title)}</h2><div class="tablewrap"><table><thead><tr><th>ID</th><th>Type</th><th>About</th><th>Statement</th><th>Side A</th><th>Side B</th><th>Status</th><th>Settle goal</th></tr></thead><tbody>${s.conflicts.map((c) => `<tr><td>${esc(c.id)}</td><td>${esc(c.type)}</td><td>${esc(c.about)}</td><td>${esc(c.statement)}${c.condition ? `<div class="muted">${esc(c.condition)}</div>` : ""}${c.settleBy ? `<div class="muted">settle by: ${esc(c.settleBy)}</div>` : ""}${c.claim ? `<div class="muted">decides the claim ${esc(c.claim)}</div>` : ""}</td><td>${evList(c.sideA)}</td><td>${c.sideB.map((x) => (evidence.has(x) ? evBtn(x) : esc(x))).join(" ")}</td><td>${badge(c.status, c.status === "settled" ? "ok" : c.status === "open" ? "info" : "warn")}<div class="muted">round ${c.createdRound}${c.settledRound ? `→${c.settledRound}` : ""}</div></td><td>${esc(c.settleGoal || "")}${c.checkedBy && !c.settleGoal ? `<div class="muted">waits for the verdict of ${esc(c.checkedBy)}</div>` : c.checkedBy ? `<div class="muted">checked by ${esc(c.checkedBy)}</div>` : ""}</td></tr>`).join("")}</tbody></table></div></section>`;
+  return `<section class="card"><h2>${esc(title)}</h2><div class="tablewrap"><table><thead><tr><th>ID</th><th>Type</th><th>About</th><th>Statement</th><th>Side A</th><th>Side B</th><th>Status</th><th>Settle goal</th></tr></thead><tbody>${s.conflicts.map((c) => `<tr><td>${esc(c.id)}</td><td>${esc(c.type)}</td><td>${esc(c.about)}</td><td>${esc(c.statement)}${typeof c.critical === "boolean" ? ` ${isCritical(c) ? badge("critical", "warn") : badge("detail", "plain")}` : ""}${c.condition ? `<div class="muted">${esc(c.condition)}</div>` : ""}${c.settleBy ? `<div class="muted">settle by: ${esc(c.settleBy)}</div>` : ""}${c.claim ? `<div class="muted">decides the claim ${esc(c.claim)}</div>` : ""}</td><td>${evList(c.sideA)}</td><td>${c.sideB.map((x) => (evidence.has(x) ? evBtn(x) : esc(x))).join(" ")}</td><td>${badge(c.status, c.status === "settled" ? "ok" : c.status === "open" ? "info" : "warn")}<div class="muted">round ${c.createdRound}${c.settledRound ? `→${c.settledRound}` : ""}</div></td><td>${esc(c.settleGoal || "")}${c.checkedBy && !c.settleGoal ? `<div class="muted">waits for the verdict of ${esc(c.checkedBy)}</div>` : c.checkedBy ? `<div class="muted">checked by ${esc(c.checkedBy)}</div>` : ""}</td></tr>`).join("")}</tbody></table></div></section>`;
 }
 
 // ------------------------------------------------------------------ decisions
@@ -474,7 +484,7 @@ function goalTable(state, prev) {
       <td class="num">${g.partsTotal ? `${g.partsMet}/${g.partsTotal}` : ""}</td>
       <td class="num">${g.attempts}${g.failedAttempts ? `<div class="muted">${g.failedAttempts} failed</div>` : ""}${g.servedRounds.length ? `<div class="muted">r${g.servedRounds.join(",")}</div>` : ""}</td>
       <td>${evList(g.evidence)}</td>
-      <td class="muted">${g.origin.type}${g.origin.type === "conflict" ? ` ${esc(g.origin.conflict)}` : g.origin.evidence ? ` ${g.origin.evidence.map(esc).join(", ")}` : ""} · d${g.depth}</td></tr>`;
+      <td class="muted">${g.origin.type}${g.origin.type === "assumed" ? ` ${esc(g.origin.event)}` : g.origin.type === "conflict" ? ` ${esc(g.origin.conflict)}` : g.origin.evidence ? ` ${g.origin.evidence.map(esc).join(", ")}` : ""} · d${g.depth}</td></tr>`;
   });
   return `<div class="tablewrap"><table><thead><tr><th>Goal</th><th>Question</th><th>Kind</th><th>Depends on</th><th>Status</th><th class="num">Parts</th><th class="num">Tries</th><th>Evidence</th><th>Origin</th></tr></thead><tbody>${rows.join("")}</tbody></table></div>
     <p class="muted">${prev ? "Purple rows are new in this step; yellow rows changed status, attempts or parts met." : ""}</p>`;
@@ -521,7 +531,13 @@ function decisionView(step) {
     if (d.phase === "init") html += analysisView(state.analysis);
     html += `<section class="card"><h2>Goal table after this step</h2>${goalTable(state, isEbd(prev) ? prev : null)}</section>`;
     if (state.conflicts.length) html += conflictTable(state, "Conflicts after this step");
-    if ((state.objectsFound || []).length) html += `<section class="card"><h2>Objects found in the evidence</h2><ul class="plain">${state.objectsFound.map((o) => `<li><strong>${esc(o.id)}</strong> ${esc(o.text)} <span class="muted">attached to ${esc(o.parent)}, quote "${esc(o.quote)}" from</span> ${evBtn(o.evidence)}</li>`).join("")}</ul></section>`;
+    if (state.map) {
+      const partRow = (p) => `<tr><td><strong>${esc(p.id)}</strong></td><td>${esc(p.text)}${p.correction ? `<div class="muted">the findings say instead: ${esc(p.correction)}</div>` : ""}${p.replaces ? `<div class="muted">replaces ${esc(p.replaces)}</div>` : ""}</td><td class="muted">${esc(p.kind)}</td><td class="muted">${esc(p.origin)}</td><td>${esc(p.status)}${p.by ? `<div class="muted">${esc(p.by)}, round ${p.round}</div>` : ""}</td><td>${evList(p.evidence)}</td></tr>`;
+      html += `<section class="card"><h2>Environment map of "${esc(state.map.subject)}"</h2>
+        <p class="muted">The analyst's working answer to what the subject's life cycle involves. Assumed parts are confirmed or refuted by findings; a refuted part leaves the plan, and an unfound part was researched but not reported by the sources found.${Object.keys(state.map.replaced).length ? ` Replaced planned questions: ${Object.entries(state.map.replaced).map(([q, by]) => `${esc(q)} by ${by.map(esc).join(", ")}`).join("; ")}.` : ""}</p>
+        ${state.map.events.map((e) => `<h3>${esc(e.id)} ${esc(e.name)} <span class="muted">· goal ${esc(e.goalId)}</span></h3><div class="tablewrap"><table><thead><tr><th>Part</th><th>What the step involves</th><th>Kind</th><th>Origin</th><th>Status</th><th>Evidence</th></tr></thead><tbody>${e.parts.map(partRow).join("")}</tbody></table></div>`).join("")}</section>`;
+    }
+    if ((state.objectsFound || []).length) html +=`<section class="card"><h2>Objects found in the evidence</h2><ul class="plain">${state.objectsFound.map((o) => `<li><strong>${esc(o.id)}</strong> ${esc(o.text)} <span class="muted">attached to ${esc(o.parent)}, quote "${esc(o.quote)}" from</span> ${evBtn(o.evidence)}</li>`).join("")}</ul></section>`;
   }
   html += `<section class="card"><h2>Briefs</h2>${d.accepted.map((b) => briefCard(b)).join("") || `<p class="muted">No briefs accepted.</p>`}
     ${d.dropped.length ? `<h3>Dropped for budget</h3>${d.dropped.map((b) => briefCard(b, badge("dropped", "warn"))).join("")}` : ""}

@@ -18,7 +18,11 @@ export type Verdict = "supported" | "contradicted" | "unsettled";
 export type Origin =
   | { type: "request" }
   | { type: "finding" | "gap"; evidence: string[] }
-  | { type: "conflict"; conflict: string };
+  | { type: "conflict"; conflict: string }
+  /** A life-cycle event of the environment map: the analyst's working answer, which the evidence overrides. */
+  | { type: "assumed"; event: string }
+  /** A main part of the answer that the round analyst found in no finding of the round (section 26). */
+  | { type: "uncovered" };
 
 export type Goal = {
   /** Q-number: the analysis question's ID, or the next free one for a new goal. */
@@ -110,7 +114,9 @@ export type ResultRecord = {
 };
 
 export const CONFLICT_TYPES = ["source_vs_source", "evidence_vs_assumption", "evidence_vs_frame", "off_target", "time_dependent"] as const;
-export type ConflictType = (typeof CONFLICT_TYPES)[number];
+/** evidence_vs_plan exists only with an environment map: a finding against a planned part, which it overwrites. */
+export const PLAN_CONFLICT = "evidence_vs_plan" as const;
+export type ConflictType = (typeof CONFLICT_TYPES)[number] | typeof PLAN_CONFLICT;
 
 export type Conflict = {
   /** C1, C2, … */
@@ -127,6 +133,11 @@ export type Conflict = {
   condition: string;
   /** The assumption the disagreement decides, which its settle goal checks; null for a disagreement about a detail. */
   claim: string | null;
+  /**
+   * Does the answer to the client's question depend on which side is right (design section 20)?
+   * Null when the conflict checker was not asked; records made before the field existed lack it.
+   */
+  critical?: boolean | null;
   status: "open" | "settled" | "disputed";
   createdRound: number;
   settledRound: number | null;
@@ -153,12 +164,63 @@ export type FoundObject = {
   round: number;
 };
 
+export const ENV_KINDS = ["natural", "built_physical", "built_digital", "economic", "social"] as const;
+export type EnvKind = (typeof ENV_KINDS)[number];
+
+/**
+ * One part of a life-cycle event (design section 19). "assumed" parts are the analyst's working
+ * answer, made before any search; a finding confirms or refutes each, and a refuted part leaves the
+ * plan. A part is "unfound" when its event was researched and the sources found did not report it:
+ * it is not searched again. "found" parts are what the findings say instead of a refuted part.
+ */
+export type MapPart = {
+  /** M1, M2, … across the whole map. */
+  id: string;
+  text: string;
+  kind: EnvKind;
+  origin: "assumed" | "found";
+  status: "assumed" | "confirmed" | "refuted" | "unfound";
+  /** The findings that confirmed or refuted it. */
+  evidence: string[];
+  /** For a refuted part: what the findings say instead, if they say. */
+  correction: string | null;
+  /** For a found part: the assumed part it replaces. */
+  replaces: string | null;
+  /** How it was overwritten: by the round analyst's judgment or by a conflict. */
+  by: string | null;
+  round: number | null;
+};
+
+export type MapEvent = {
+  /** E1, E2, … */
+  id: string;
+  name: string;
+  /** The search goal that researches the event. */
+  goalId: string;
+  parts: MapPart[];
+};
+
+/** The environment map: the subject's life-cycle events and what each involves (design section 19). */
+export type EnvironmentMap = {
+  subject: string;
+  objectIds: string[];
+  events: MapEvent[];
+  /** Planned questions the event goals replaced, with the goals that replaced them. */
+  replaced: Record<string, string[]>;
+  /**
+   * Section 28 (`init: "environment"`): the events are the main parts of the answer and their parts
+   * are key questions written in full by the environment analyst. A brief asks them as written.
+   * Absent for a map of life-cycle steps, whose parts are short noun phrases.
+   */
+  questions?: boolean;
+};
+
 /** researcher_failures: every necessary goal is settled, but some ended only because their researchers failed. */
 export type StopKind = "complete" | "saturated" | "budget" | "out_of_scope" | "researcher_failures";
 
 /** One model call of a strategy step, kept for the run viewer and for audits. */
 export type CallRecord = {
-  role: "request_analyst" | "conflict_checker" | "round_analyst";
+  role: "request_analyst" | "premise_sorter" | "extension_analyst" | "environment_analyst" | "conflict_checker" | "round_analyst";
   attempt: number;
   accepted: boolean;
   errors: Issue[];
@@ -199,6 +261,20 @@ export type EbdState = {
   analysis: Analysis;
   goals: Goal[];
   objectsFound: FoundObject[];
+  /** Null when the extension step is off, or gave no usable reply. */
+  map: EnvironmentMap | null;
+  /**
+   * Section 27: the claims of the question that are taken as given instead of checked, each with
+   * the sorter's reason. Absent or null when the premise sort is off or gave no usable reply: every
+   * claim is then checked. States recorded before 2026-11-19 do not have the field.
+   */
+  premises?: { given: { id: string; reason: string }[] } | null;
+  /**
+   * Section 28 (`init: "environment"`): what the answer depends on and the client did not state, each
+   * with the main cases to cover, as the environment analyst wrote them. The briefs carry them as
+   * constraints. Absent in the other init modes.
+   */
+  plan?: { notStated: string[] } | null;
   conflicts: Conflict[];
   evidence: EvidenceLine[];
   results: ResultRecord[];
@@ -217,4 +293,28 @@ export const SETTLED: readonly GoalStatus[] = ["answered", "exhausted", "dispute
 
 export function isSettled(goal: Goal): boolean {
   return SETTLED.includes(goal.status);
+}
+
+/**
+ * A critical conflict (design section 20): the answer depends on which side is right. A conflict
+ * with a client claim at stake always is; otherwise the conflict checker's mark decides.
+ */
+export function isCritical(conflict: Conflict): boolean {
+  return conflict.type === "evidence_vs_assumption" || conflict.claim !== null || conflict.critical === true;
+}
+
+/** A goal of the opening plan: from the request analysis or from the environment map. */
+export function isPlanned(goal: Goal): boolean {
+  return goal.origin.type === "request" || goal.origin.type === "assumed";
+}
+
+/** The map event a goal researches, or null. */
+export function eventOf(state: Pick<EbdState, "map">, goal: Goal): MapEvent | null {
+  const origin = goal.origin;
+  return origin.type === "assumed" ? (state.map?.events.find((e) => e.id === origin.event) ?? null) : null;
+}
+
+/** A main part of the plan that no researcher has been asked about yet (section 30). */
+export function isUnaskedPart(state: Pick<EbdState, "map">, goal: Goal): boolean {
+  return eventOf(state, goal) !== null && goal.status === "open" && goal.attempts === 0;
 }

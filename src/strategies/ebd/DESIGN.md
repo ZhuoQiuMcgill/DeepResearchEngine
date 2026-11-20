@@ -89,6 +89,104 @@ decisions of section 18 are decided. A run viewer for checking runs step by step
 - 2026-11-05, evening: completeness. Live failure tests fixed how failed researchers are
   reported (sections 8, 11 and 12); EBD's model calls are tested offline through the
   OpenAI adapter; a user guide is in `README.md`.
+- 2026-11-11: problem extension (section 19). After the request analysis, the analyst
+  answers "what is the subject?" through its life cycle as a working assumption, each
+  event becomes a search goal, and the findings confirm, correct or refute each assumed
+  part. Option `extend`, on by default since its prompt text was accepted the same day.
+- 2026-11-11, evening: critical conflicts, follow-up and writer input (section 20).
+  The conflict checker marks the conflicts the answer depends on; only those are
+  followed up, one per round, and only those reach the writer, at most three. A goal is
+  searched again only when most of it is unanswered. Options `focusFollowUp` and
+  `leanGuidance`, off by default until their prompt text is approved.
+- 2026-11-18: part questions (section 21) and a complete map (section 22). A brief asks
+  one key question per planned part of a life-cycle step, and each necessary goal gets a
+  researcher before a brief of completing goals does; the extension analyst writes the
+  events so that they carry the whole answer. Options `partQuestions` and `completeMap`,
+  off by default until their text is approved. Checked with a same-day A/B of the briefs
+  and with the extension step rerun on 100 saved analyses, then run end to end on the
+  five development questions and judged against two baseline samples (section 23).
+- 2026-11-18, evening: test on questions the strategy was not developed on (section 24).
+  26 new questions, half of them real user queries drawn at random; the plan-level gains
+  of `completeMap` and `partQuestions` carry over, the result against the baseline does
+  not (blind judgments 8 for EBD and 16 for the baseline on 12 new questions, against 7
+  and 3 on the five development questions). Two code changes to the fallback of the
+  request analysis: a question whose only fault is its length is kept, and a run no
+  longer ends when the analysis leaves nothing usable twice. Of the three changes proposed in
+  section 23.3 none is built; one sentence for the extension prompt awaits approval.
+- 2026-11-18, night: two decisions of the user applied (section 25). The sentence on the
+  main cases is part of the accepted extension prompt. In a follow-up round with
+  `focusFollowUp` the necessary goals that ask for content come before the goals that
+  settle a disagreement (option `mainPartsFirst`, on by default). Replayed on the 17
+  saved runs, the new order changes who gets a researcher in 1 of 23 plans: missing parts
+  of the answer were rarely raised, which is now the first open point.
+- 2026-11-19: two more decisions of the user applied, and a check of whether the changes
+  since section 24 are worth a test (section 26). The round analyst may raise a necessary
+  goal for a main part of the answer that no finding mentions (option `uncitedParts`, on
+  by default with `focusFollowUp`), and one sentence of the pending conflict-checker
+  section is corrected. Replayed with a fresh round analyst on the 17 saved runs, the new
+  sentence was never used (0 of 34 replies cite nothing), and the missing parts the judge
+  named are still not raised. From the records, the baseline's lead comes from earlier in
+  the run: 10 of the 68 first-round researchers only checked a claim the question takes
+  for granted, and parts the judge missed were thin in the notes. Verdict: the changes
+  made since section 24 would not move the result, so no test was run. Built for the
+  user's decision, off by default: a claim check shares a researcher in round 1 (option
+  `premiseRides`).
+- 2026-11-19, later: the premise check redone on the user's instruction (section 27).
+  Before any search a small model call sorts the claims the question takes for granted:
+  a specific fact is checked, a claim that only restates the question is taken as given
+  (option `premiseSort`). A check shares a researcher with a main part (`premiseRides`,
+  now on), and a planned question that the life-cycle steps stand in for only rides
+  along (`stepsFirst`). The conflict checker still reports findings that contradict a
+  claim taken as given, and the writer gets no line about one unless it was
+  contradicted. All three options are on by default. Checked without search: the sorter
+  sent every false premise to be checked, on saved analyses and on 16 new questions; in
+  replayed first-round plans no researcher only checks a claim any more.
+- 2026-11-19, evening: the user allowed a working process of our own as long as EBD's
+  concept is kept, and accepted a change of the first step if it improves the approach.
+  Built, off by default: the whole first plan in one call (`init: "environment"`, section
+  28): the main parts of the answer with their key questions, the claims sorted, what the
+  client did not state. Checked on plans without search (204 plans of three methods on 24
+  questions): one call in place of three, a fifth of the input tokens, less than half the
+  time, no fallback; but it asks about fewer checklist items than the present plan (85% to
+  87% against 93% to 94%; baseline 89% to 91%) and about no more of the parts the reports
+  lacked. Not switched on; a revision is proposed.
+- 2026-11-19, night: the user approved the four wording changes; applied to the planning
+  prompt and checked on 12 real queries from a second random draw, never used before
+  (section 28.8). A plan now has 14.5 key questions against 11.8, and the share of
+  checklist items asked is unchanged (69%; baseline 67%, present EBD 83%). The
+  difference to the present EBD is the items that only ask what a term is (26% against
+  89%); on all other items the four plans are within four points. False premises are
+  still marked for a check in 16 of 16 plans. Both EBD modes stop on a question that
+  names no referent, where the baseline plans a general answer. The mode stays off; a
+  live run is the next step.
+- 2026-11-19, late: the user asked that one EBD approach be left at the end, and approved
+  the one proposed (section 29): the one-call plan, key questions asked one by one, a
+  follow-up only for a main part of the answer or a claim of the question, lean writer
+  input. Built, off by default: option `strictFollowUp` (a disagreement between sources is
+  reported, not researched again; a detail gets no researcher after round 1), the
+  sentence for a request that names no referent, and wording of the round prompts for a
+  plan of key questions. One live run passed all contract checks ($0.58). Every text of
+  the approach is on one page for approval, and the rules of the final test are fixed
+  (section 29.6). The other planner and the option switches go once a test confirms it.
+- 2026-11-19, last: the user approved every change and every text of the one approach
+  ("approve all changes and texts"). Before the test, 69 saved plans were replayed with
+  the baseline's number of researchers, which the test gives the approach (section 30).
+  The first round kept researchers back for second tries: with 3 to 5 researchers a run
+  used 2.7 to 3.2 of them, and 14% to 27% of the main parts were asked as one question.
+  Changed in code: in the first round of a plan of key questions every researcher goes to
+  a main part, the necessary parts first, and a planned part that no researcher was asked
+  about is still served after the first round. The test is prepared in two stages, the
+  four planted questions first as the live check of the program as tested, with its
+  scoring scripts tried on saved runs. It waits for the user's go.
+- 2026-11-19, night: the final test, on the user's go (section 31). The one approach
+  against the baseline with the same number of researchers, on 12 sealed real queries and
+  4 questions with a planted problem. By the rules fixed beforehand the approach is kept:
+  the judge preferred it on 4 questions and the baseline on 5, with 3 not decided; it
+  stated all four planted points in full, the baseline two in full and two in part; it
+  cost 5% more. No difference is shown. It takes 57% longer a run, its claims are judged
+  less carefully supported, and three of the baseline's five wins are questions on which
+  the approach checked the question's own premise and built the report around the
+  verdict. $13.21. The consolidation to one approach waits for the user's word.
 
 ## 1. Summary
 
@@ -313,6 +411,9 @@ The helper in `llm.ts` works in five steps:
    - round analyst: keep valid parts and treat unjudged goals as `partial`.
 
    Throw only when nothing usable remains; the skeleton then retries the whole step.
+   Since 2026-11-18 the fallback of the request analysis keeps a question whose only
+   fault is its length, and a second failure in one run gives a minimal plan instead of
+   a throw (section 24.4).
 
 Problems are recorded in the state, so they appear in `events.jsonl`.
 
@@ -651,6 +752,9 @@ Effects:
 With `conflicts: false`, the round analyst still sees the evidence, but no conflict
 records or settle goals are made. This is the H1 ablation.
 
+With `focusFollowUp` (section 20), only a critical conflict gets a settle goal: one per
+round, necessary, with one attempt.
+
 Built 2026-10-20 (`rounds/conflicts.ts`):
 - A settle goal checks a claim only when the conflict checker says the disagreement
   decides it (field `claim`; for `evidence_vs_assumption`, the assumption in side_b); a
@@ -739,6 +843,10 @@ answered if the settle goal was answered, disputed otherwise (`releaseWaiting`).
 Sufficiency judged per question against the retrieved text works (Joren et al. 2025:
 93% accuracy for a strong model). The citation check and the evidence floor guard
 against weaker models.
+
+With `focusFollowUp` (section 20), a partial goal is re-queued only when fewer than half
+of its parts are met or a client claim it checks is undecided, and the evidence floor
+applies to client claims only.
 
 Built 2026-10-20 (`rounds/analyst.ts`):
 - Code rejects:
@@ -903,7 +1011,9 @@ Basis:
 when a conflict is disputed and the client sets no length limit. At most 5 items,
 matching the writer's 3–5 sections.
 
-**`guidance`:** plain sentences, with no claims of its own beyond the analysis.
+**`guidance`:** plain sentences, with no claims of its own beyond the analysis. What
+follows is the full guidance; `leanGuidance` (section 20.4) keeps only what the notes
+do not show.
 - **Client directives.** The report format, scope limits and other directives, each
   with the client's own words. Source preferences have already reached the
   researchers (section 7).
@@ -971,7 +1081,18 @@ Strict zod options, all with defaults, chosen per experiment spec:
 | `premiseFirst` | true | L-7: a request's verification goal is served in round 1 even when the analysis made it wait for definition goals |
 | `reserveFirstTries` | true | D-E: keep researchers for necessary request goals not yet served; briefs made only of goals added during the run use the rest (section 7) |
 | `spread` | true | Split shared briefs when researchers would otherwise sit idle (section 7) |
-| `init` | `"fixed"` | D-F: `"agent"` runs the request analyst as a tool-using agent |
+| `init` | `"fixed"` | D-F: `"agent"` runs the request analyst as a tool-using agent. Section 28: `"environment"` makes the whole first plan in one call (the main parts of the answer with their key questions, the claims sorted, what the client did not state); `extend`, `completeMap` and `premiseSort` then have nothing to do, and key questions are always asked one by one. In this mode every researcher of the first round goes to a main part of the answer, the necessary parts first, and none is kept for a second try (section 30). Built 2026-11-19; prompt text approved the same day; off until the final test (section 29.6) |
+| `extend` | true | Problem extension (section 19): the analyst's life-cycle answer becomes one search goal per event; findings confirm, correct or refute its assumed parts. Off = the plan built from the request's words |
+| `focusFollowUp` | false | Section 20: settle goals only for critical conflicts, one per round and one attempt; a second attempt only when most of a goal is unanswered or a client claim is undecided; at most two necessary new goals a round; after round 1, necessary goals first and one per researcher. Off = a settle goal for every disagreement and a second attempt for every partial goal |
+| `leanGuidance` | false | Section 20: the writer gets the reading of the question, the premises the evidence contradicts or leaves open, and at most three critical conflicts. Off = the full guidance of section 12 |
+| `partQuestions` | false | Section 21: the brief of a life-cycle step asks one key question per planned part; a necessary goal gets a researcher before a brief of completing goals does, and a completing goal waits when it keeps a necessary goal of its brief from being asked by part. Off = one compound key question per goal |
+| `completeMap` | false | Section 22: the extension analyst writes the events so that they carry the whole answer, and the events replace every planned question they carry in full, unless it checks a client assumption. Off = the extension prompt accepted on 2026-11-11 |
+| `mainPartsFirst` | true | Section 25: with `focusFollowUp`, in a round after the first the necessary goals that ask for content are served before the goals that settle a disagreement, which get the researchers left; a settle goal that a part of the answer waits behind keeps its place. Off = the order of section 20, the critical conflict first. Without `focusFollowUp` it changes nothing |
+| `uncitedParts` | true | Section 26: with `focusFollowUp`, the round analyst may propose a necessary goal for a main part of the answer that no finding mentions and cite nothing; code accepts it as one of the two necessary new goals of the round, one step from the request. Off = every proposal must cite evidence (section 10.2). Without `focusFollowUp` it changes nothing |
+| `premiseRides` | true | Sections 26.5 and 27: in round 1 a goal that only checks a claim of the question is asked in a brief that asks for content, one check to a brief, and takes no researcher of its own. The round is planned as before when a check fits nowhere. On since the user's decision of 2026-11-19. Off = each necessary goal, the check included, has a researcher of its own |
+| `premiseSort` | true | Section 27: one model call after the request analysis sorts the claims the question takes for granted. A specific fact is checked; a claim that only restates what the question asks about is taken as given: its planned question stops being a check, no verdict is needed, and the writer gets no line about it. The conflict checker still reports findings that state it false. Off = every claim is checked |
+| `strictFollowUp` | false | Section 29: after the first round a researcher goes only to a main part of the answer or to a claim of the question. A disagreement between sources is recorded as disputed and reported, not researched again, unless it decides a claim; with `focusFollowUp` a completing goal is never served after round 1 and there is no extra round of completing goals; a planned main part that no researcher was asked about is still served (section 30). Part of the one approach; texts approved on 2026-11-19; off until the final test (section 29.6) |
+| `stepsFirst` | true | Section 27: in round 1, when the plan has life-cycle steps, a planned question that the steps stand in for (one they replaced, or one that stopped being a check) only rides along in a brief with room, and a researcher that would sit idle goes to a step that shares a brief with another step before any other goal. Off = the allocation of sections 7 and 21 |
 | `rom` | `"concept"` | Not built. `"word"` would re-enable the rev 1.3 word-level ROM if the A/B test needs it |
 
 Example spec entry:
@@ -1025,6 +1146,11 @@ src/strategies/ebd/
   llm.ts              structured-call helper with validation and one feedback retry
   request/            prompt (instructions + examples as TS constants), schema, checks,
                       fixed and agent modes
+  extension.ts        problem extension: prompt, schema, checks, the environment map and
+                      its goals, overwriting a part (section 19)
+  premises.ts         premise sort: which claims of the question are checked (section 27)
+  environment.ts      environment analysis in one call, `init: "environment"`: prompt, schema,
+                      checks, and the analysis, map and goals built from the plan (section 28)
   rounds/evidence.ts  mapping notes to goals and indexing evidence lines (section 8)
   rounds/conflicts.ts conflict checker: prompt, schema, checks, effects (section 9)
   rounds/analyst.ts   round analyst: judgments, evidence floor, proposals (section 10)
@@ -1260,6 +1386,2425 @@ No `.env` exists on this machine yet. Copy `.env.example` to `.env` and fill
 | D3 | Budget matching between the arms | **Decided 2026-11-05:** one spec, ceiling 6, matched-spend control (section 14) |
 | D2 (team) | The fixed EBD question has no planted conflicts, so H1 needs the planted-conflict tasks | Keep the four tasks for development; add the nine proposal tasks as explicit questions in experiment specs |
 | D5 (team) | Calendar | If W1 is the week of 2026-09-21, scope freezes the week of 2026-10-26 |
+
+## 19. Problem extension: the environment map (option `extend`, built 2026-11-11)
+
+On by default since 2026-11-11, when the behaviour design lead accepted the prompt text
+after the live checks of section 19.5. `extend: false` gives the plan built from the
+request's words, for comparison.
+
+### 19.1 Why
+
+- **What the comparison showed.** In the five-question comparison of 2026-11-10
+  (`local/arch-1110/`), the first EBD plan had 1 or 2 goals built from the request's
+  words; round 1 made 43 searches against the baseline's 113; topics a full answer needs
+  never reached the notes (for the headset question, how comfortable the headsets are;
+  for the flight question, how to get from the airport to the city).
+- **What EBD prescribes.** Questions asked from the request's own object model are only
+  the first half, "design problem analysis". The second half, "design problem
+  extension", answers the question about the main object through its life cycle and the
+  environment of each event, adds the answer to the object model and asks again (Wang &
+  Zeng 2009, Table 4, rules 3 to 6; Zeng 2020, Table 10 and pp. 58 to 60). In the
+  papers' cases most questions come from the second half: 2 from the wording and 9 from
+  the life cycle for the rivet tool (Wang & Zeng 2009, pp. 293 to 294).
+- **What the module did.** Section 5.6 ported the answering guideline as the completion
+  criterion (`done_when`) of one goal, so one researcher with 8 searches had to deliver
+  the whole life cycle, and no answer went back into the plan.
+
+### 19.2 The step
+
+After the request analysis, `init` makes one more model call, the **extension analyst**
+(`extension.ts`). The request analysis, its prompt and its checks are unchanged.
+
+- **Input:** the analysis: restated request, frame, objects, client assumptions, the
+  planned search questions with what each checks, and the synthesis questions.
+- **Output:** the subject; the life-cycle events the client's question depends on
+  (usually 3 or 4, at most 5), each marked necessary or completing; for each event 3 to
+  6 **parts** (what the event involves, each with an environment kind: natural, built
+  physical, built digital, economic, social), one self-contained search question, source
+  hints and the synthesis questions it feeds; and the planned questions the events
+  replace.
+- **Only what the question needs.** An event is kept only if a full answer to the
+  client's question needs it; a stage of the subject's life that the question does not
+  concern is left out, however much could be found about it. EBD's criteria for
+  environment analysis are meant "to avoid the under- or over- definition of a design
+  problem" (Zeng 2020, p. 51), and the eLCD case keeps only the events "more relevant to
+  the current design" (Yang et al. 2020). In the fourth live batch
+  the plan for "Why did NASA launch the James Webb Space Telescope in 2018?" included
+  the launch campaign, the deployment and the operations after commissioning, and the
+  report spent most of its length on them.
+- **What the analyst may use.** Its general knowledge, to name kinds of things only.
+  Everything it writes is an assumption. The code check that keeps names out of the
+  request analysis (`namesIn`) runs on every event, part and question, so a specific
+  organisation, product or law that the request does not name is rejected. In the live
+  runs it rejected, for example, the name of the departure airport and the orbit point
+  of the telescope, which the analyst knew and the request does not say.
+- **Checks and fallback.** One event, part or source hint too many is cut with a
+  warning. After a second rejected reply, the fallback keeps the valid events and drops
+  only the part an error points to; it needs two events, and then replaces no planned
+  question. Without a usable reply the plan is the request analysis's own.
+- **What code builds.** The **environment map** (`state.map`): the events and their
+  parts, each part with an origin (assumed or found) and a status (assumed, confirmed,
+  refuted, unfound). One search goal per event, with origin `assumed`; at most four are
+  necessary.
+- **Report points.** Every point that a synthesis question says the report must contain
+  is a part of some event, also when a planned question asks for it. The loop can cancel
+  a planned question or give up on it, while an event goal depends on nothing. In the
+  third live batch the goal "Why did NASA launch the James Webb Space Telescope?" was
+  again cancelled with the false launch year, no event asked for the mission's purpose
+  because that planned goal did, and the report could give the purpose only in brief
+  terms. With this rule the same question gets a necessary event for the programme's
+  origins, with the scientific goals as a part.
+- **Replaced questions.** The events may replace a planned question that asks for the
+  subject as a whole, but only one that checks no client assumption. The replaced
+  question is not deleted: it becomes a completing goal, and the goals that waited for it
+  wait for the necessary event goals instead. It is still asked, in the request's own
+  terms, in a brief it shares with event goals, and it neither holds up the stop nor
+  claims a second attempt. The events are assumptions and may not carry all it asked: in
+  the second live batch the events that replaced "What is the telescope ...?" covered
+  its development, launch and deployment but not its purpose, the goal that asked why
+  was cancelled with the false launch year (the open point of section 10.2), and the
+  report could not say why the telescope was launched.
+- **Briefs.** An event goal's brief lists the parts and says they are expectations, not
+  facts: the researcher reports what the sources say, says so when a part does not
+  apply, and adds other main points the sources treat as part of the step.
+
+### 19.3 How the evidence overwrites the plan
+
+The parts are the analyst's working answer, so they are never evidence, and a finding
+decides each one (decision of 2026-11-11: the analyst's general knowledge may give the
+first answers, provided evidence or a conflict can overwrite them).
+
+| What the evidence shows | Effect |
+|---|---|
+| A finding covers the part | The round analyst marks it met; the part is **confirmed** with its findings |
+| A finding states that the part does not exist or does not apply | The part is **refuted** and leaves the plan: it is not searched again and not reported as missing. If the findings say what holds instead, that enters the map as a **found** part |
+| The same, in the findings of any goal of the round | The conflict checker records an `evidence_vs_plan` conflict, which is settled at once with the same effect. This reaches the parts of goals that were not served in the round |
+| Every part of an event is refuted | The event's goal becomes moot |
+| At least half of an event's parts are confirmed | The event counts as researched and its goal is answered. The parts no source reported become **unfound** and are not searched again; the round analyst may propose a goal for one the report needs, written with what the findings now show |
+| Fewer than half are confirmed | The goal gets its second attempt, as other goals do |
+| Sources disagree about a fact inside an event | The disagreement keeps its own conflict record and settle goal. It does not hold the event open, so the settle goal is completing unless it decides a client assumption |
+
+- Silence never refutes: a part the sources do not mention is unfound, not refuted.
+- A finding that only one item of a part does not apply, or that the part does not apply
+  to one of several things the subject covers, confirms the part. In the second live
+  batch the conflict checker removed "sales channels, retailer discounts and trade-in
+  offers" from the headset plan because one headset has no trade-in; both prompts now
+  say that such a finding is information about the part.
+- The floor of two independent hosts (section 10.1) does not apply to event goals: they
+  ask what a step involves, and their parts are assumptions, not checked facts.
+- **The writer** never receives an assumption. The guidance names only the events that
+  findings confirmed; unfound parts, refuted parts, moot event goals and
+  `evidence_vs_plan` conflicts are left out. The events are named as material for
+  answering the client's question, not as sections the report must have: an earlier
+  wording ("give each one a place in the report") made the writer give every researched
+  event a section.
+
+### 19.4 What stays the same
+
+- With `extend` off, no map exists, and the prompts and tool schemas sent to the
+  conflict checker and the round analyst are the earlier ones, character for character
+  (`analystSystem(false)`, `conflictSystem(false)`); the tests check this. So `extend:
+  false` is the plan built from the request's words, for comparison. The loop tests of
+  `strategy.test.ts` run with `extend: false`; the loop with a map is tested in
+  `extension.test.ts` and `focus.test.ts`.
+- With a map, first attempts come before second attempts within a level (section 6.3):
+  the plan is widened before it is deepened, which is the width-first order of Zeng's
+  questioning rules (Zeng 2020, section 4.2).
+- Two checks are more lenient only when a map exists, because the map made the slips
+  frequent and neither changes a judgment: a gap line that the round analyst cites as
+  the reason a part is unmet, or next to the findings that meet a part, is dropped
+  instead of rejected (such citations alone rejected 19 of 52 first replies in the live
+  batches); and an empty field that the conflict checker leaves out counts as empty.
+
+### 19.5 Live checks (2026-11-11)
+
+Five batches of the five development questions (the four fixed questions and "Why did
+NASA launch the James Webb Space Telescope in 2018?"), Haiku, ceiling of 6 researchers,
+one run per question; records in `local/ebd-extend/`. The step changed between batches,
+so they are a development record, not repeats. The comparison runs are those of
+2026-11-10 (`local/arch-1110/`).
+
+| Totals over the five questions | Baseline | EBD, `extend` off | EBD, `extend` on (last batch) |
+|---|---|---|---|
+| Researchers in round 1 | 17 | 8 | 20 |
+| Searches in round 1 | 113 | 43 | 114 |
+| Researchers used | 17 | 25 | 30 |
+| Searches | 113 | 141 | 172 |
+| Characters of notes given to the writer | 278,802 | 259,137 | 363,861 |
+| Report words | 9,329 | 7,146 | 8,347 |
+| Strategy model calls | 10 | 38 | 40 |
+| Cost | $1.53 | $2.10 | $2.53 |
+
+- **Round 1.** Searches in round 1 over the five batches: 108, 125, 121, 114, 114.
+- **The extension analyst.** Its first reply was accepted in 21 of 25 runs. Three named
+  something the request does not, all on the flight question, and were corrected at the
+  second attempt. One gave an event seven parts and used the fallback, which then dropped
+  that event; an extra part is now cut instead. Every run had a map.
+- **The map against the evidence.** In the last batch 84 of 94 assumed parts were
+  confirmed, 10 were unfound and none was refuted; every event goal was answered at its
+  first attempt.
+- **Overwrites.** Two in the full runs: one through the conflict checker, which was too
+  broad and led to the rule about one item of a part, and one through the round analyst
+  ("disagreements between sources about the definition of EBD", which the findings said
+  do not exist). A controlled check with the real model
+  (`local/ebd-extend/overwrite-check.ts`): a finding that a planned part does not exist
+  removed it through either route, including a part of a goal that was not served in the
+  round, and a finding that one item of a part does not apply left the part in place.
+- **What the batches changed.** The coverage rule and the rule that a disagreement does
+  not hold an event open (batch 1: retries for one unfound part took the last
+  researchers, and two detail disagreements held two events of the telescope run);
+  keeping a replaced question (batch 2); report points carried by events (batch 3); only
+  the events the question needs, and the writer's wording (batch 4).
+
+### 19.6 Open points
+
+- **The fixed EBD question.** The extension prompt names the life cycle and the kinds
+  of environment, so on "What is EBD (Environment Based Design)?" the assumed parts can
+  echo them. They are still only assumptions that researchers check.
+- **More findings bring more recorded disagreements.** Each one becomes a line of
+  writer guidance (section 12), so the share of the report spent on disagreements grows
+  with the plan. Section 20 limits this with `leanGuidance`.
+- **New goals share their quota with settle goals** (`maxNewGoalsPerRound`), so a round
+  with several disagreements leaves little room for goals about unfound parts. With
+  `focusFollowUp` (section 20) at most one conflict without a client claim gets a
+  settle goal in a round.
+- **A cancelled goal can still take the question's main point with it** (section 10.2).
+  The report-points rule is a prompt rule, and the analyst does not always follow it: in
+  two of the five telescope runs the goal that asked why the telescope was launched was
+  cancelled with the false launch year, and only an event could carry the purpose.
+- **Topic-specific aspects.** The analyst names kinds of things from general knowledge
+  and may not name an aspect that only someone who knows the topic expects, such as how
+  well a headset shows the room around the wearer. The round analyst can still propose
+  a goal for it once a finding names it.
+- **Luna is untested** with the extension; all live checks ran on Haiku.
+
+## 20. Critical conflicts, follow-up and writer input (options `focusFollowUp` and `leanGuidance`, built 2026-11-11)
+
+Two changes to what happens after the first round. `focusFollowUp` decides where the
+researchers left after a round go. `leanGuidance` decides what the writer is told
+besides the notes. Their prompt text was approved on 2026-11-19 as part of the one
+approach (section 29). Both stay off by default until the final test of section 29.6, and
+with both off nothing sent to a model changes (section 20.5).
+
+### 20.1 Why
+
+**What the runs showed.** The batch of section 19.5 (environment map on), and the 90 EBD
+runs recorded under `local/` up to that batch:
+
+| Observation | Measured |
+|---|---|
+| Disagreements in the writer's guidance | 32 lines over five runs, up to 11 in one run: every recorded conflict got one |
+| Report words under a heading about disagreement | 25% (2,096 of 8,347); in the baseline's reports, written from the notes alone, 9% |
+| Outline of the run on "What food can help me sleep well?" | One heading, "Where the sources disagree": that request has no synthesis question |
+| The report on EBD | Left out the Recursive Object Model, which 12 lines of the notes covered. The planned-contents line named "the evidence gathered for Q1", the notes of one goal out of seven |
+| The ten researchers after round 1 | Served 10 goals to settle a disagreement (1 answered), 5 second attempts (2 answered) and 5 goals raised by findings or gaps |
+| A necessary request goal, on how food affects sleep | Never served: it waited for a premise check that was sent out again for source dates |
+| Second attempts at planned goals with at least half their parts met | 63 in the recorded runs; 11 ended answered; 0.4 parts gained on average |
+| Second attempts at settle goals | 26; 1 settled its disagreement |
+| Settle goals served | 115; 19 answered, 18 of them at the first attempt |
+
+**What EBD prescribes.**
+- **The critical conflict.** EBD does not resolve every conflict it identifies. "A
+  critical conflict can be further determined based on the relations among the
+  identified design conflicts" (Zeng 2015, p. 13), and solution generation is a loop:
+  find the critical environment component, resolve the conflict associated with it,
+  update the ROM, repeat (Zeng 2015, Table 6 and Fig. 12).
+- **Focus.** EBD guides designers "to collect the necessary and sufficient information
+  for a design task" and "to determine the focus at each stage of design" (Zeng 2015,
+  p. 15).
+- **Neither under- nor over-definition** (Zeng 2020, p. 51) and width first (Zeng 2020,
+  section 4.2), as in section 19.
+
+**What the module did.** Every disagreement between sources was treated alike: each got
+a settle goal within the limits of section 9, and each got a line in the writer's
+guidance. Every partial goal got a second attempt. The round analyst gave each new goal
+a need without a definition of "necessary".
+
+### 20.2 Critical conflicts
+
+The conflict checker marks each conflict **critical** or not: a prompt section and one
+schema field, `critical`, added when either option is on.
+
+- **Critical:** the answer to the client's question depends on which side is right.
+  With one side the report would conclude, recommend or instruct something different
+  than with the other.
+- **Not critical:** the report's answer is the same with either side: a value that
+  differs without changing the conclusion, a date or a count in the background, who
+  measured something, a figure for one market or one study.
+- **Code overrides the mark upwards only.** A conflict with a client claim at stake
+  (`evidence_vs_assumption`, or `source_vs_source` with a claim) is critical whatever
+  the checker says. A mark left out counts as not critical, with a warning.
+- **Records.** `Conflict.critical` is true, false, or null when the checker was not
+  asked. The run viewer shows it.
+
+With `focusFollowUp`:
+
+| Rule | Before |
+|---|---|
+| Only a critical conflict gets a settle goal. The others are recorded as disputed at once | Every `source_vs_source` and `evidence_vs_assumption` conflict got one, within the limits |
+| One critical conflict is settled per round: the first in the checker's list, which is asked to put the one the answer depends on most at the top. A conflict with a client claim at stake is handled first and is not counted | One settle goal per goal at a time, up to the quota of new goals |
+| A settle goal is necessary, because its conflict is critical | Necessary only while it decided a claim or a goal waited for it |
+| A settle goal gets one attempt. If it does not settle the disagreement, the conflict is disputed | Two attempts |
+| A conflict holds a goal, so that the goal waits for the settle goal, only when it decides a claim the goal checks. A goal judged "conflicting" over any other disagreement is judged on its parts | Any open or disputed conflict about the goal held it |
+
+### 20.3 What is searched after a round
+
+**Code rules, with `focusFollowUp`:**
+- **Second attempts.** A goal judged partial is searched again only when fewer than half
+  of its parts are met. Otherwise it is settled as answered, and the parts still
+  missing are logged and not searched again. The same share closes an event of the
+  environment map (section 19.3).
+- **Premise checks.** A goal that checks client claims is done when each claim has a
+  verdict of supported or contradicted and its evidence comes from at least
+  `evidenceFloor` independent hosts, whatever its other parts say. An unsettled claim,
+  or too few hosts, still gets the second attempt.
+- **The evidence floor** guards the client's claims only. For any other number or date
+  a second source is a wish about the sources, and no researcher is spent on it.
+- **New goals.** At most two new goals of a round are necessary; a further necessary
+  proposal becomes completing. A proposal that cites a conflict is rejected: conflicts
+  are followed up by their settle goals only.
+- **Briefs after round 1.** The researchers go to the necessary goals first, one goal
+  per researcher while researchers last. A brief of completing goals is added only for
+  a researcher that no necessary goal can use, so a detail never shares the researcher
+  sent for a main part. Since 2026-11-18 the goals that settle a disagreement are served
+  after the necessary goals that ask for content, with the researchers left (section 25.2).
+- **A replaced question** (section 19.2) is not served once the necessary event goals
+  that replaced it have been researched.
+
+**The round analyst's prompt section,** added only with the option:
+- A part asks for content. A wish about the source is not a part and is not missing: a
+  primary source in place of a secondary one, a full text read directly, a page date, a
+  second confirmation.
+- The verdict on a claim is the analyst's to give from the findings; no finding has to
+  state it.
+- Conflicts are followed up by code, not by proposals, and a conflict that decides none
+  of a goal's claims is no reason to judge the goal "conflicting".
+- **Need of a proposal.** Necessary: a main part of the client's question that the
+  findings cover only in passing or not at all, so that a reader would call the report
+  incomplete without it. Completing: anything that sharpens an answer the findings
+  already give.
+- Main parts come before details: the analyst compares the findings with what a full
+  answer needs before it proposes any detail, and marks at most two proposals
+  necessary.
+
+The stop rules of section 11 are unchanged. A main part still uncovered is a necessary
+goal, so the run is not complete while one is open.
+
+### 20.4 Writer input with `leanGuidance`
+
+The baseline hands its writer the notes and, at most, one sentence on how the question
+was read. The lean guidance is close to that: it keeps what the notes do not show.
+
+| Part of the writer input | Full (section 12) | Lean |
+|---|---|---|
+| Outline | The synthesis questions, plus "Where the sources disagree" when a conflict is disputed | The synthesis questions only when the request has several; never a section for disagreements |
+| Reading of the question | – | "The question was read as: <the analysis's restated request>", only when the question cannot be taken at its word: a premise the evidence does not support, or a term with several meanings |
+| Planned contents | Each synthesis question with what the plan said its part must contain | Left out |
+| Parts of the subject covered (section 19) | The events with confirmed parts | Left out; the labels of the note sets show them |
+| Premises | One line per premise, also when the evidence supports it | Only premises the evidence contradicts, leaves open or could not check. For one left open: "do not present it as established", in place of "state that it is not established" |
+| Conflicts | One line per conflict | At most three critical conflicts, a client claim first, each "where it arises in the report, in at most three sentences, not in a section of its own". A conflict whose claim has a verdict is left to the premise line |
+| Off-target referents, evidence outside the frame | One line each | The same |
+| Defaults, client directives, length limit, goals whose researchers failed | As in section 12 | The same |
+| Goals without any reliable source | Named | The same |
+| Goals only partly established | Named with the analyst's list of what is missing | Left out: the notes show what was found, the researchers' gap lines show what was not, and the list is written for the next researcher (a source to look for, a conflict ID) |
+| Goals cancelled with a contradicted premise | Named as not pursued | Left out: the premise line says what was contradicted |
+
+Every other disagreement is left to the shared writer prompt, which already says to
+report notes that disagree and never to pick a side silently. Records made without the
+critical mark are read as before this section: a conflict counts as critical when its
+settle goal is necessary.
+
+**Rewrites from saved notes.** The five reports of section 19.5 were written again from
+the same notes with the lean guidance, one writer call each and no search
+(`local/ebd-focus/rewrite.ts`):
+- Words under a heading about disagreement fell from 25% to 4%, and the report on EBD
+  named the Recursive Object Model 7 times, against 0.
+- **The reading line** came from three wordings tried on two questions. With no line
+  about the question, the report on "Why did NASA launch the James Webb Space Telescope
+  in 2018?" explained the date and left out the mission's purposes. With the synthesis
+  question's text ("... explained in plain terms for a general reader?") the report on
+  EBD left out the Recursive Object Model again. With the planned contents worded as a
+  minimum, 38% of that report was about disagreements, because the plan says "notes any
+  disagreement between sources". With the restated request, both reports covered both
+  points.
+- **Only where needed.** With the reading line on every question, the five reports
+  were 16% shorter than without it (6,904 against 8,191 words, one rewrite of each), so
+  the line is given only when a premise fails or a term is ambiguous.
+- **Length follows the notes.** From the notes of three runs of the batch of section
+  20.6, the writer produced reports of the same length with no guidance at all (1,211
+  to 1,556 words) as with the lean guidance (1,298 to 1,628).
+
+### 20.5 What stays the same
+
+- With both options off, the prompts and tool schemas sent to the conflict checker and
+  the round analyst are the earlier ones character for character, with and without an
+  environment map. A snapshot taken before the work is compared by
+  `local/ebd-focus/prompt-invariant.ts`, and the tests check it (`focus.test.ts`).
+- The request analysis, the extension analyst, the researchers' briefs and the material
+  given to the writer are unchanged by either option.
+- The shared writer prompt belongs to the platform and is unchanged.
+
+### 20.6 Live checks (2026-11-11)
+
+Records in `local/ebd-focus/`. All on Haiku with a ceiling of 6 researchers.
+
+- **Replays.** Round 1 of each run of section 19.5 was put through `observe` again with
+  the real model: the saved plan and notes, the new conflict checker and round analyst,
+  no search (`replay.ts`, four passes over the five runs). They showed, and the rules
+  above then fixed: the analyst asking again for disagreements marked as details;
+  every new goal marked necessary; a premise check sent out again with its claim
+  already judged supported; two necessary goals sharing a researcher while a detail had
+  one to itself; a goal with every part met waiting for a disagreement about one food.
+- **One live run,** then **one live batch** of the five development questions, with
+  `extend`, `focusFollowUp` and `leanGuidance` on.
+
+| Totals over the five questions | `extend` only (section 19.5) | With both options |
+|---|---|---|
+| Researchers in round 1 | 20 | 19 |
+| Searches in round 1 | 114 | 106 |
+| Researchers used | 30 | 26 |
+| Searches | 172 | 136 |
+| Strategy model calls | 40 | 32 |
+| Characters of notes given to the writer | 363,861 | 311,451 |
+| Conflicts recorded | 32 | 40, of which 10 critical |
+| Settle goals served | 9, of which 1 answered | 3, of which 2 answered |
+| Other goals searched twice | 5 | 1 |
+| Report words | 8,347 | 7,448 |
+| Report words under a heading about disagreement | 25% | 5% |
+| Cost | $2.53 | $1.97 |
+
+- **The reports counted here** were written again from the batch's notes
+  (`local/ebd-focus/b1-final/`), because three writer rules changed after the batch
+  started: the reading line only where needed, at most three sentences for a critical
+  conflict, and no line for cancelled goals. The batch's own reports had 7,336 words.
+  Headings are counted by keyword, and one of the headings counted in the 5% is about
+  EBD's own concept of conflict.
+- **Changed after these reports.** The wording for a premise left open (section 20.4),
+  checked with one rewrite of the report on EBD, and one clause of the round analyst's
+  section, reworded to say that code settles one conflict per round.
+- **What the live runs changed.**
+  - One critical conflict settled per round: in the first live run two settle goals and
+    a new goal shared one researcher, and none of the three was answered. In the batch,
+    the settle goal on whether a nonstop flight exists settled its conflict, which no
+    earlier run had done.
+  - The writer line for a critical conflict asks for "the source the notes cite" (the
+    writer had invented an address for a publisher that the notes cite without a link)
+    and for at most three sentences (a disagreement about one battery figure had got a
+    section of its own).
+  - The reading line only where needed and no line for cancelled goals (section 20.4):
+    in the batch that line named the question about NASA's reasons as not pursued,
+    although an event goal had researched them.
+  - The wording for a premise left open: the report on EBD had opened by doubting that
+    EBD stands for Environment Based Design.
+- **Checks.** With both options off, nothing sent to a model changed (snapshot). The
+  run viewer shows the critical mark (`viewer-check.ts`). `npm run check-strategy`
+  passed live with the final text: with the default options on the EBD question (a map,
+  no critical mark asked), and with both options on for the flight question (outputs
+  in `local/ebd-focus/check-default.out` and `check-focus.out`).
+
+### 20.7 Open points
+
+- **A run can end with researchers unspent.** When the plan is answered after round 1
+  and the round analyst proposes no further main part, the run stops: two of the five
+  runs of the batch used 4 of 6 researchers. Whether a main part is still thin then
+  rests on one judgment of the round analyst, which varies: in the replays the same
+  notes gave a goal on how the headsets track hands and eyes once as necessary and once
+  as completing.
+- **Which conflicts are critical varies** between runs of one question: 1 to 4 of the
+  4 to 9 conflicts of the sleep question in the replays and live runs.
+- **Report length follows the notes** (section 20.4): the reports are shorter than the
+  baseline's (7,448 against 9,329 words) with either guidance.
+- **A premise the question itself spells out** can still be left open by the round
+  analyst ("EBD stands for Environment Based Design" in the batch), and the report then
+  treats it with caution. Premise checks on obvious premises are on the deferred list of
+  2026-11-10.
+- **The cancel rule of section 10.2** again dropped the goal on NASA's reasons with the
+  false launch year; an event goal carried the reasons.
+- **The conflict checker's second reply,** after a rejected first one, can list fewer
+  conflicts or none: the valid items of the first reply are not kept.
+- **Luna is untested** with either option.
+
+## 21. Part questions (option `partQuestions`, built 2026-11-18)
+
+Off by default until the behaviour design lead approves the brief text. With the option
+off, every brief is the earlier one (the tests check this).
+
+### 21.1 Why
+
+**What the runs showed.** The batch of section 20.6 against the baseline runs of
+2026-11-10, per researcher:
+
+| Per researcher | Baseline | EBD (section 20.6) |
+|---|---|---|
+| Key questions in the brief | 3.9 | 1.3 |
+| Searches | 6.6 | 5.2 |
+| Findings in the notes | 36 | 26 |
+| Characters of notes | 16,400 | 11,800 |
+
+- An EBD researcher with one key question made 4.5 searches on average; one with two or
+  three made 7.1. The shared researcher prompt tells a researcher to stop when the key
+  questions are answered.
+- The baseline's planner gives each researcher 3 to 6 specific key questions. An EBD
+  brief asked one compound question for a whole life-cycle step and listed the step's
+  parts in the instructions.
+
+**What EBD prescribes.** Every object of the environment that is not yet defined gets
+its own question (Wang & Zeng 2009, Table 4; Zeng 2020, Table 10). The parts of an event
+are such objects. Section 19 turned each event into a question; the parts stayed a list
+inside one question.
+
+### 21.2 The brief
+
+For a goal of the environment map that is **asked by part**:
+
+| Field | With `partQuestions` | Before |
+|---|---|---|
+| `keyQuestions` | One per planned part still open: `[Q5] <event name>: <part>`, for example `[Q5] Driving in the cold: cabin heating system and its energy use` | `[Q5] <the event's question>` |
+| `objective` | The event's question (a brief with one goal), as before | The same |
+| `instructions` | `For [Q5], the question is: <the event's question>` followed by `PART_QUESTIONS_INSTRUCTION` | `For [Q5], look for what the sources report on: <parts>.` followed by `PLANNED_PARTS_INSTRUCTION` |
+
+`PART_QUESTIONS_INSTRUCTION` says what `PLANNED_PARTS_INSTRUCTION` says, worded for parts
+that are key questions: the parts are expectations, not facts; the researcher reports
+what the sources say about each, says so under the key question when a part does not
+apply, and puts any other main point under the key question it is closest to.
+
+- **At most six key questions in a brief** (`MAX_PART_QUESTIONS`): the most the
+  baseline's planner gave one researcher, and the most parts an event may have. Goals
+  are taken in rank order and asked by part while the brief stays within six; every
+  other goal keeps its one question.
+- **Necessary goals first.** In a brief with a necessary goal, only necessary goals are
+  asked by part. A completing goal that shares the brief keeps one question, and it
+  waits for a later round when it keeps the necessary goal from being asked by part
+  (`fitBrief`).
+- **Second attempts** ask only the parts still open.
+- **Goals without planned parts** (request goals, premise checks, settle goals and goals
+  raised by findings) keep their brief.
+- **Reading the notes** (section 8). A notes section maps to its goal by the ID in its
+  heading, as before. A section without an ID maps to the goal of the key question at
+  its position when the notes have one section per key question.
+
+### 21.3 A researcher for each necessary goal
+
+`pack` groups goals by object, and every event goal carries the same objects, so three
+events can share a brief while a completing goal on another object opens a brief of its
+own. In 9 of the 44 plans recorded up to 2026-11-18, two necessary life-cycle steps
+shared a researcher in round 1 while a brief of completing goals had one to itself.
+
+With `partQuestions`, `spread` frees a researcher in that case: the smallest brief made
+of completing goals only gives up its researcher, and its goals move to another brief of
+completing goals, or else to the brief that asks the fewest key questions. Recomputed on
+the 44 plans without a model call (`local/ebd-parts/alloc.ts`): 0 plans with the flaw,
+and plans in which two necessary goals share a researcher fall from 14 to 7 (those have
+more necessary goals than researchers in a round).
+
+### 21.4 What stays the same
+
+- The request analysis, the extension analyst, the conflict checker, the round analyst
+  and the writer input are unchanged. The round analyst judges the planned parts from
+  the same evidence lines.
+- The researcher prompt belongs to the platform and is unchanged; the option changes
+  only the fields of the brief.
+
+### 21.5 Live check (2026-11-18)
+
+A same-day A/B on identical plans (`local/ebd-parts/ab.ts`): the plan of each question
+was made once, and round 1 was researched twice, with the earlier briefs and with
+`partQuestions`. A brief that is the same in both arms was researched once and shared.
+Three questions (the fixed EBD question, the headset comparison, the sleep question),
+Haiku, 12 researchers in each arm, 21 researcher runs in all.
+
+| Per researcher, the 9 briefs that differ | Earlier briefs | Part questions |
+|---|---|---|
+| Key questions | 1.4 | 4.7 |
+| Searches | 6.1 | 6.4 |
+| Page reads | 0.8 | 0.9 |
+| Sections in the notes | 1.4 | 4.1 |
+| Findings | 27.7 | 37.1 |
+| Cited pages | 25.9 | 30.3 |
+| Characters of notes | 13,500 | 17,000 |
+| Cost | $0.08 | $0.09 |
+
+| Round 1 of the three questions | Earlier briefs | Part questions |
+|---|---|---|
+| Findings | 329 | 414 |
+| Findings on the necessary life-cycle steps | 124 | 219 |
+| Planned parts confirmed by the round analyst | 42 of 50 | 49 of 50 |
+| Conflicts recorded | 18 | 18 |
+| New goals, settle goals included | 3 | 3 |
+| Characters of notes given to the writer | 164,000 | 195,400 |
+| Report words (written from round 1 alone) | 4,508 | 4,657 |
+| Pages cited in the reports | 110 | 118 |
+
+- **More findings, hardly more searches.** The researchers searched about as often and
+  reported a third more findings, one section per part.
+- **The effort moves to the necessary steps.** In the headset plan of that day the two
+  necessary steps "Buying" and "Hardware" shared a researcher while a replaced overview
+  question had one to itself (49 findings); with the option each step had a researcher
+  (34 and 47 findings, against 31 for both).
+- **Fewer follow-up goals for gaps.** With the earlier briefs the headset run raised two
+  necessary goals for parts round 1 had missed (the app library, where one headset is
+  sold); with part questions round 1 confirmed all 19 parts and the run was complete.
+- **The reports did not grow.** The writer produced reports of the same length from the
+  larger notes. Whether they are better was not judged.
+- **Checks.** Every conflict-checker and round-analyst reply in the part arm was accepted
+  at the first attempt. The notes sections mapped by ID or by key-question order; in one
+  brief with a single goal, six sections without IDs mapped to that goal.
+
+### 21.6 Open points
+
+- **One run per brief.** The A/B has 9 pairs of briefs on 3 questions. On the fixed EBD
+  question two of three researchers wrote one section with sub-headings instead of one
+  per key question, and reported no more findings than before.
+- **The report.** More findings did not make a longer report. No judge compared the two
+  arms' reports.
+- **Goals without parts** still go out as one compound question. A premise check that
+  also asks for the subject's definition is such a goal (section 22).
+- **Run end to end** only together with `completeMap`, `focusFollowUp` and
+  `leanGuidance` (section 23). Luna is untested.
+
+## 22. A complete map (option `completeMap`, built 2026-11-18)
+
+A variant of the extension analyst's prompt (section 19.2). Off by default until the
+behaviour design lead approves the text; with the option off the prompt is the one
+accepted on 2026-11-11, character for character (the tests check this).
+
+### 22.1 Why
+
+**What the plans showed.** The plans of the recorded runs and dry runs with an
+environment map (44, of which 8 to 10 for each of the five development questions):
+
+| Observation | Measured |
+|---|---|
+| The fixed EBD question: an event for what the method consists of | In 5 of 10 plans; in the others one planned question carried it |
+| The sleep question: an event for the foods that help | In 3 of 9 plans |
+| The sleep question: an event for products sold for sleep, their prices or where to get them | In 5 of 9 plans |
+| The flight question, plan of 2026-11-18 | No event for travel documents or for booking; events for on-time rates and for the weather on arrival |
+| The sleep run of 2026-11-11 | The two planned questions with the core of the answer shared one researcher (25 findings); a planned question on how sleep is measured had a researcher to itself (30 findings) |
+
+- **The cause.** Step 5 of the prompt tells the analyst not to write an event that
+  repeats a planned question. The core of the answer then stays in a planned question,
+  which goes to one researcher as one compound question, while the events around it are
+  researched part by part.
+- **The writer** is told to use every set of notes, so a goal on a side topic takes
+  space in the report (the judge of 2026-11-11 named melatonin products and sleep
+  measures in the sleep report).
+
+**What EBD prescribes.** The answer to "what is the subject?" through its life cycle
+is the environment system of the problem, and it must hold the necessary components
+(Zeng 2020, p. 51). The questions asked from the request's wording are the first half;
+in the papers' cases most questions come from the life cycle (Wang & Zeng 2009,
+pp. 293 to 294).
+
+### 22.2 The change
+
+Three passages of the prompt are reworded (`RELEVANCE_NOW`, `PLANNED_NOW` and
+`EXAMPLE_NOW` in `extension.ts`, each with its proposed text), and the worked example
+replaces both of its planned questions.
+
+- **The most direct event.** One event answers the client's question most directly; it
+  must be there, and it is necessary.
+- **Relevance.** Any other event is kept only if what happens in it could change the
+  answer, or if it is a step the client must take to do what they ask. A question about
+  what a thing does needs neither where it is sold nor what it costs.
+- **The events carry the answer on their own.** Every main part of a full answer is an
+  event or a part of one, also when a planned question asks for it.
+- **Defining questions.** A planned question that only asks what a word of the request
+  means, or how something is measured, becomes one part of the event that depends on
+  it, not an event of its own.
+- **Replaced questions.** The events replace every planned question that checks no
+  client assumption and whose sufficient answer they carry in full. A planned question
+  that checks a client assumption always stays, for its verdict.
+
+The code is unchanged: a replaced question becomes a completing goal, and the goals
+that waited for it wait for the necessary event goals (section 19.2).
+
+### 22.3 Check without search (2026-11-18)
+
+The extension step was run again on the request analysis of every recorded run of the
+five development questions (100 analyses), with both prompts on the same day
+(`local/ebd-parts/plans.ts`). A small model call (Haiku) then listed, for each item of
+the question's coverage checklist (`experiments/checklists.md`), the plan elements that
+ask for it. It judges the plan, not a report.
+
+| 100 plans with each prompt | Accepted prompt | Variant |
+|---|---|---|
+| Checklist items asked by some goal of the plan | 83% | 84% |
+| Checklist items asked by an event or one of its parts | 72% | 82% |
+| Checklist items asked by a necessary goal | 71% | 66% |
+| Events with no checklist item | 0.34 per plan | 0.14 per plan |
+| Planned questions replaced | 0.56 per plan | 0.90 per plan |
+| Necessary planned questions left | 1.16 per plan | 0.88 per plan |
+
+| The same, each question weighted equally | Accepted prompt | Variant |
+|---|---|---|
+| Checklist items asked by an event: share of items | 75% | 86% |
+| Agreement between the plans of one question on those items | 84% | 93% |
+| Items asked by an event in some plans and not in others (20% to 80% of the plans), of 41 | 14 | 5 |
+
+- **The events now carry what the plan asks.** Nearly every item that the plan asks for
+  is asked by an event, so it is researched part by part (section 21), and the plans of
+  one question agree more on which items those are.
+- **Side events.** On the sleep question an event about products, prices or places of
+  sale appeared in 5 of 12 plans with the accepted prompt and in none with the variant.
+  On the flight question the events outside the checklist fell from 5 to 1 in 21 plans.
+- **Necessary planned questions.** With the variant every planned question that is left
+  necessary checks a client assumption (with the accepted prompt 1.3 per sleep plan and
+  0.6 per telescope plan checked none).
+- **Fewer items under a necessary goal.** What a replaced question carried now sits in
+  events, and the analyst marks some of them completing.
+- **The defining-questions sentence** was added after a first scoring of the variant
+  (83% of the items asked by an event), because 4 of 12 sleep plans had made an event of
+  how sleep is measured. With the final wording, scored above: 2 of 12, by keyword.
+- **The scoring varies** by a point or two between two passes over the same plans.
+
+### 22.4 Open points
+
+- **Aspects only the topic's sources name** are in no plan with either prompt: how EBD
+  identifies conflicts, its theoretical basis and its life-cycle view (missed by 81% to
+  100% of the plans), and dietary patterns for the sleep question (83% to 100%). The
+  analyst may not name them (section 19.2), so they can come only from findings: a
+  researcher's "other main points", or a goal the round analyst proposes.
+- **A premise check that also asks for the subject** stays necessary and overlaps the
+  event that now carries the subject. It costs one researcher of round 1.
+- **Necessary and completing marks** vary between plans of one question.
+- **One reply in 300** sent its events as malformed JSON text twice, and that plan had
+  no map.
+- **Run with search** only together with the other options (section 23); Luna is
+  untested.
+
+### 22.5 Plans from the request alone (idea of 2026-11-18, tested on plans only)
+
+**The idea** (behaviour design lead, 2026-11-18): decompose the request into its
+concepts first, the product at the centre and the environment around it, and let the
+researchers work on those; the wording of the request should not be taken apart first,
+because that limits what the model associates with the question.
+
+**Where the module stands.** The request analysis does not work word by word: since
+revision 2 its objects are phrases (4 for the sleep question, 2 for the fixed EBD
+question; section 5.5). But it still plans from the wording: one question for each
+phrase that needs one and one for each presupposed claim, by the templates of section
+5.6. The decomposition into a centre and its environment is the second step
+(section 19), and `completeMap` makes its events the plan.
+
+**The test.** The extension analyst was given the bare request: no objects from the
+wording, no assumption and no planned question (`plans.ts direct`, 12 plans for each of
+the five questions with each wording of the prompt, no search). Scored as in section
+22.3, each question weighted equally:
+
+| | Analysis of the wording, then extension | | The request alone | |
+|---|---|---|---|---|
+| Extension prompt | Accepted | Variant | Accepted | Variant |
+| Checklist items asked by some goal | 87% | 88% | 85% | 88% |
+| Agreement between plans on those items | 95% | 95% | 91% | 95% |
+| Checklist items asked by an event | 75% | 86% | 85% | 88% |
+| Items asked by an event in some plans only, of 41 | 14 | 5 | 8 | 4 |
+| Model tokens for the plan, in and out | 22,500 and 7,400 | 23,000 and 7,100 | 4,900 and 2,300 | 4,800 and 2,100 |
+| Seconds | about 30 | about 30 | about 10 | about 10 |
+
+- **As complete and as stable** as the two-step plan with the variant, for a third of
+  the output tokens and a third of the time. On the fixed EBD question all 12 plans
+  made with the accepted wording had the same four events (origin, what it consists
+  of, application, assessment).
+- **What the plans lost** is what the analysis of the wording supplies:
+  - the check of a presupposed claim. Other meanings of the acronym "EBD" were asked
+    for in 0% to 8% of the plans, against 75% to 81%;
+  - the client's unstated details. Naming the nationality and dates as assumptions
+    was asked for in 0% to 8% of the flight plans, against 62% to 67%;
+  - the question's own "why". 2 of 12 telescope plans with each wording had no event
+    for the mission's purpose, against none.
+- **Model knowledge in the plan.** Several telescope plans named events such as "Delays
+  from 2018 to launch": the analyst used what it knows about the subject, which the
+  request analysis never does.
+
+Not decided and not built. The test covers the plan only: no premise list was produced,
+and no search or report used these plans.
+
+## 23. End-to-end check with every option (2026-11-18)
+
+The five development questions with `extend`, `completeMap`, `partQuestions`,
+`focusFollowUp` and `leanGuidance`, one run each, Haiku, ceiling of 6 researchers; and
+the baseline on the same day. Records in `local/ebd-parts/` (`ebd-parts-one-*`,
+`ebd-parts-batch-*`, `baseline-1118-*`). The options are still off by default: their
+text awaits approval.
+
+### 23.1 The runs
+
+| Totals over the five questions | Baseline, 11-10 | Baseline, 11-18 | EBD, 11-11 (section 20.6) | EBD, 11-18 |
+|---|---|---|---|---|
+| Researchers used | 17 | 16 | 26 | 27 |
+| Researchers in round 1 | 17 | 16 | 19 | 20 |
+| Searches | 113 | 112 | 136 | 159 |
+| Findings in the notes | 617 | 639 | 677 | 866 |
+| Characters of notes | 278,800 | 276,000 | 311,500 | 396,900 |
+| Report words | 9,329 | 8,201 | 7,336 | 7,686 |
+| Pages cited in the reports | 246 | 216 | 182 | 223 |
+| Strategy model calls | 10 | 10 | 32 | 36 |
+| Seconds | 563 | 563 | 1,190 | 1,391 |
+| Cost | $1.53 | $1.52 | $1.97 | $2.34 |
+
+- Every run ended with status ok and no recorded problem. On the sleep question each
+  necessary step had its own researcher, 15 of 15 planned parts of the necessary steps
+  were confirmed in round 1, and round 2 served one critical conflict and one goal
+  raised by a gap (how much of the trial doses ordinary foods supply).
+- The run on the fixed EBD question was complete after round 1 with 4 of 6 researchers,
+  as on 11-11.
+- `npm run check-strategy` passed live with the five options on the headset question
+  (all 11 required checks; `local/ebd-parts/check-parts.out`).
+
+### 23.2 The judge pass
+
+The informal judge of the earlier passes (Claude Opus 5.5, the prompts and checklists of
+`local/arch-1110/judge/`), one pass of 30 calls (`local/ebd-parts/judge.ts`, 310,600
+input tokens): checklist coverage of the new EBD reports and of the new baseline
+reports, and each new EBD report against each of the two baseline samples in both
+orders, blind.
+
+| Checklist coverage, 41 items | Score |
+|---|---|
+| Baseline, 11-10 (scored on 11-10) | 36.5 (89%) |
+| Baseline, 11-18 | 35.5 (87%) |
+| EBD, 11-10 | 32.5 (79%) |
+| EBD, 11-11 (section 20.6) | 36.5 (89%) |
+| EBD, 11-18 | 38.5 (94%) |
+
+| Blind pairs, overall verdict | EBD | Tie | Baseline |
+|---|---|---|---|
+| EBD 11-11 against the baseline reports of 11-10 (10 judgments) | 2 | 0 | 8 |
+| EBD 11-18 against the same baseline reports (10 judgments) | 5 | 1 | 4 |
+| EBD 11-18 against the baseline reports of 11-18 (10 judgments) | 7 | 0 | 3 |
+
+| EBD 11-18, the 20 judgments by criterion | EBD | Tie | Baseline |
+|---|---|---|---|
+| Coverage | 7 | 5 | 8 |
+| Support | 8 | 7 | 5 |
+| Handling of disagreements and false premises | 7 | 10 | 3 |
+| Usefulness | 12 | 2 | 6 |
+| Overall | 12 | 1 | 7 |
+
+| EBD 11-18 by question, four judgments each | EBD | Tie | Baseline |
+|---|---|---|---|
+| The fixed EBD question | 2 | 0 | 2 |
+| Headset comparison | 3 | 0 | 1 |
+| Flight | 1 | 0 | 3 |
+| Sleep | 3 | 1 | 0 |
+| Telescope (false premise) | 3 | 0 | 1 |
+
+**How far this goes.**
+- One run of each question and one judge. Of the 10 pairs of a question with a baseline
+  sample, the two orders agreed in 4: three for EBD, one for the baseline.
+- The judge preferred the report shown second in 14 of the 20 judgments (5 of 10 in the
+  pass of 11-11), so a single order says little.
+- The questions are the ones the options were developed on.
+- EBD used 69% more researchers, 54% more money and 2.5 times the time of the baseline.
+  The judge does not see cost.
+
+**What the judge named.**
+- For EBD: every checklist item of the sleep question, with cautions and the point at
+  which to see a clinician; the mission's purpose and the launch operator in the
+  telescope report; careful handling of the disputed prices, battery figures and
+  trial results; no wrong statement against two in the baseline reports of 11-18.
+- Against EBD, the flight report: it assumed a Chinese passport without naming other
+  travellers, said that every route enters Canada at one of two airports against its
+  own list of routes, and spent space on a cargo airport and airline reviews.
+- Against EBD, the fixed EBD question: a shorter report (1,113 words) without the
+  life-cycle view and the two types of conflict, which the baseline report of 11-10
+  had; the baseline report of 11-18 explained the procedure and the acronym's other
+  meanings in more detail.
+- Against EBD, the headset report in one order: no processors, little on availability.
+
+### 23.3 Open points
+
+- **One nationality.** The flight plan asked for "a traveller from China", and both
+  follow-up goals asked about Chinese passport holders. The extension prompt has no
+  rule to cover the main cases of what the client did not state, which the request
+  analysis and the round analyst have. Counted on the saved flight plans, an event names
+  one nationality in 9 of 21 with the accepted prompt and in 13 of 21 with the variant.
+- **Researchers unspent on a short answer.** The run on the fixed EBD question stopped
+  complete with 4 of 6 researchers and gave the shortest report.
+- **Follow-up on a side step.** In the headset run a completing step about support and
+  warranty was searched again in the extra round, and a necessary goal raised from its
+  notes took the last researcher (one such goal in the ten recorded runs with
+  `focusFollowUp`).
+- **A place name read as ambiguous.** The request analysis of the flight run asked
+  which Montreal is meant, and the report mentioned another airport.
+- **Cost.** No run with the baseline's number of researchers was made.
+- **The evaluation** needs repeated runs and questions that were not used for
+  development before it can show a difference.
+- Section 24 tests the options, and the first three points above, on questions that
+  were not used for development.
+
+## 24. Test on questions the strategy was not developed on (2026-11-18)
+
+The options of sections 20 to 22 were developed on five questions and judged on the
+same five (section 23). This section tests them on questions that were never used:
+whether what the options gained carries over, and whether a rule written after one
+question's failure holds for other requests. Records, scripts and results are in
+`local/ebd-heldout/`. No option changed its default.
+
+### 24.1 The questions
+
+| Set | Questions | Where they come from | Checklist |
+|---|---|---|---|
+| Real | 14 search-engine queries of real users | A random draw with a fixed seed (20261118) from the test split of the public dataset Researchy Questions (Rosset et al. 2024), so nobody chose them | The dataset's own top-level sub-questions for each query (written by GPT-4 for the dataset's authors), 3 to 7 items |
+| Designed | 12 questions, one for each kind of request that the five questions and the draw lack | Written for this test | Written from the question alone before any run, 3 to 8 items |
+| Probes | 5 questions of the flight question's pattern (the answer depends on who the client is, and a place is named) | Written for the main-cases rule (section 24.6) | None |
+
+The designed kinds: a procedure with details not stated (registering a trademark), a
+quantity (people without electricity), an abbreviation with several meanings and no
+gloss ("SLA"), a false premise of another kind (a prize awarded for the wrong work), a
+true premise with a date, a request with directives on format and sources, one simple
+fact, how a technology works, a decision that depends on place, time and the person, the
+sleep question's wording with another subject (exercises for back pain), a person, and
+a technical choice between two options.
+
+Each set was split by position before any run, not by content:
+
+- **Check questions** (6 real, 6 designed): used first, and only at plan level, without
+  search. A problem found here may lead to a change.
+- **Sealed questions** (6 real, 6 designed): not looked at until everything else was
+  frozen, then run once end to end, with the configuration of section 23 unchanged.
+- Two real queries are reserves. A larger draw with the same seed starts with the same
+  14 queries, so draws 15 onward give the next sealed set.
+
+The sealed questions: six real queries ("does population control lead to better child
+quality? evidence from china's one-child policy enforcement", "how did industrial
+revolution affect people", "why was slavery important", "why disability inclusion
+matters", "how did the internet spread to other areas", "how can social science solve
+social problems") and six designed ones (the quantity, the false premise, the
+directives, the technology, the back-pain question and the technical choice). The full
+list with the checklists is `local/ebd-heldout/questions.json`.
+
+### 24.2 The prompt texts, checked for traces of the five questions
+
+- No prompt names a development question, its subject or a name from it. The worked
+  examples use other subjects (car prices and tariffs, an electric car, a vaccine, a
+  licence).
+- Four passages were written after a failure on one development question:
+  1. the example in the `completeMap` wording that a question about what a thing does
+     needs neither where it is sold nor what it costs (sleep question);
+  2. in the follow-up section of the round analyst, "a price or a place of sale that the
+     client did not ask about" as an example of a detail (sleep question);
+  3. in the same section, the sentence on a name or an abbreviation (fixed EBD question);
+  4. in the conflict checker's section on critical conflicts, the four cases after "This
+     covers", which match the kinds of the four fixed questions.
+- Passage 1 was tested by removing it (section 24.3): the result on the five questions
+  does not depend on it. Passages 2 to 4 are worded as general rules and cannot be tested
+  without search; the sealed runs give what there is on them (section 24.5).
+- The allow-list of the name check in the request analysis (`GENERIC` in
+  `request/checks.ts`: units and abbreviations of computer hardware) is a list grown from
+  the questions of Lab 3. It is older than these options and is treated in section 24.3.
+
+### 24.3 Plans on the check questions (no search)
+
+The method of section 22.3: six request analyses of each check question (72), the
+extension step with the accepted prompt and with the `completeMap` wording on each, and
+a small model call that says which plan elements ask for which checklist item. The five
+development questions were scored again the same evening with the same script (their 100
+saved analyses). The scorer is itself a model call: scoring the same plans twice moved
+the averages by 1 to 2 points.
+
+| Measure, accepted prompt → `completeMap` wording | Five development questions (100 plans each) | Twelve new questions (72 plans each) |
+|---|---|---|
+| Checklist items asked by a life-cycle step | 76% → 86% | 82% → 90% |
+| The same, difference on the same analyses, with a 95% interval | +9.6 points (6.2 to 13.0) | +7.7 points (2.8 to 13.0) |
+| Agreement between plans of one question | 85% → 93% | 85% → 93% |
+| Items asked in 20% to 80% of the plans | 14 → 6 of 41 | 13 → 7 of 61 |
+| Items asked by any goal of the plan | 88% → 88% | 95% → 94% |
+| Items asked in round 1 (ceiling of 6) | 86% → 88% | 92% → 92% |
+| Events that match no checklist item, per plan | 0.33 → 0.13 | 0.56 → 0.24 |
+
+- **The gain of the wording carries over.** More of the answer is asked by a life-cycle
+  step, and the plans of one question agree more, by about as much on the new questions
+  as on the five. The gain is larger on the real queries (75% → 88%) than on the designed
+  questions (90% → 92%), whose plans were already close to their checklists.
+- **The example written for the sleep question is not what carries the result.** Without
+  it, the five development questions score the same (86% and 87% by step; difference 0.0
+  points, interval −2.4 to +2.8), the sleep question included. On the new questions the
+  text with the example scores 3 points higher, within the noise (interval −6.9 to +0.3).
+  The text stays as built.
+- **Without the stricter relevance rule** (the direct-answer sentence added to the
+  accepted rule) the plans have more events and more of them off the list, and score 1.6
+  to 2.4 points lower on both sets. The rule stays.
+- **Part questions and the allocation rule hold.** Over all 569 round-1 briefs of the
+  144 plans, no brief asks more than 6 key questions, and every necessary goal that is
+  ready has a researcher in round 1.
+
+What the new questions showed that the five did not:
+
+- **The first reply of the extension analyst is rejected twice as often**: 25% to 28% of
+  the plans against 12% to 16% on the five questions, and 3 of 72 plans per wording fell
+  back to their valid events (none of 100 on the five). Nearly every rejection is the
+  rule against names that the request does not contain.
+- **That rule meets two different things on new questions.** On questions about history
+  and people the analyst writes names it knows (a county, a college, co-workers), which
+  the rule is there to stop. And the check takes capitalised common words for names:
+  "X-ray" (19 times), "IT", "Celsius", "Fahrenheit", "Black". The second kind is a defect
+  of the check. Adding the words found to its allow-list would repeat how that list was
+  made; the check needs a rule that does not depend on a word list. Open.
+- **A request analysis can leave nothing usable.** In 1 of 102 analyses of new questions
+  both replies were rejected for a text over the 400-character limit, the only search
+  question was dropped, and `init` threw. The skeleton then runs the whole step again, up
+  to three times (section 5.3), so a run ends without a report only when every attempt
+  fails. 9 of the 102 fell back to a reduced plan, 6 of them for the same length limit.
+  Changed in section 24.4.
+- **One simple fact gets a full plan.** The boiling-point question gets 2 to 3 events and
+  4 researchers in round 1. The plan is sound and larger than the question needs.
+
+### 24.4 Changes made after the check questions (code only, no prompt text)
+
+Both concern the fallback of the request analysis (section 5.3, step 5) and apply with
+any options.
+
+- **A question whose only fault is its length is kept.** After the last failed attempt
+  the fallback dropped every question an error pointed to. A question whose only error is
+  a text or done_when over the limit is now kept with that text cut at the limit, after
+  its last full sentence or its last whole word (`salvage`, `cutAt` in
+  `request/checks.ts`). A question with any other error is dropped as before.
+- **A run no longer ends for want of a usable analysis.** The first time an analysis
+  leaves nothing usable, `init` throws as before and the skeleton runs the step again.
+  When it happens a second time in the same run, `init` plans the request itself as one
+  search question and one synthesis question (`minimalAnalysis`): no model of the
+  request, no check of its assumptions. The record says so (`init.stopReason` is
+  "minimal plan", and a line under `problems`), and the problem extension builds its
+  events on it as on any analysis.
+- Tests: `request/checks.test.ts` (three) and `strategy.test.ts` (one).
+- Live: 31 further analyses with the changed code, none failed; 6 fell back, 5 of them
+  with a length fault, and in four of these a question that would have been dropped was
+  kept with its text cut. The minimal plan has not occurred live; only its test
+  exercises it.
+- `npm run check-strategy` passed live with the changed code and the five options on the
+  sleep question (all 11 required checks; `local/ebd-heldout/check-after-fallback.out`).
+
+### 24.5 The sealed questions, end to end
+
+The configuration of section 23 (`extend`, `completeMap`, `partQuestions`,
+`focusFollowUp`, `leanGuidance`; the code as it stood before section 24.4), the baseline,
+and on the six real queries also EBD with its default options. One run per cell, Haiku,
+ceiling of 6 researchers, the same evening. All 30 runs ended with status ok.
+
+| Totals | Baseline (12 questions) | EBD, five options (12) | EBD, default options (6 real) | EBD, five options (the same 6) |
+|---|---|---|---|---|
+| Researchers used | 43 | 68 | 36 | 35 |
+| Searches | 310 | 407 | 243 | 233 |
+| Findings in the notes | not counted | 2,458 | 1,305 | 1,435 |
+| Findings per researcher | not counted | 36.1 | 36.2 | 41.0 |
+| Report words | 21,772 | 18,704 | 10,949 | 9,735 |
+| Seconds | 1,530 | 3,627 | 2,093 | 1,992 |
+| Cost | $4.31 | $6.29 | $3.52 | $3.44 |
+
+- EBD with the five options ended 6 runs complete and 6 at the ceiling. No run stopped
+  early with researchers to spare: 4 researchers once, 5 twice, 6 nine times.
+- Recorded problems in 5 of its 12 runs, none of which ended a run: one request analysis
+  and one extension fell back, one conflict check fell back, and in two runs some note
+  sections carried no goal ID and were assigned to every goal of their brief.
+- The false premise was contradicted and corrected in the first sentence of the report,
+  by the baseline too. The directives were recognised (a table; sources from 2023), and
+  both reports have tables. On the quantity question the one conflict marked critical was
+  the disagreement over the figure asked for, so the mark does not depend on the four
+  cases the prompt lists (section 24.2, passage 4).
+
+**The judge pass.** The judge and the two instructions of section 23.2, one pass of 54
+calls (`local/ebd-heldout/judge.ts`; 477,800 input and 35,700 output tokens): checklist
+coverage of all 30 reports, and each EBD report with the five options against the
+baseline report of its question in both orders, blind.
+
+| Checklist coverage | Baseline | EBD, five options | EBD, default options |
+|---|---|---|---|
+| Six real queries (25 items) | 18.0 (72%) | 20.5 (82%) | 21.0 (84%) |
+| Six designed questions (36 items) | 34.0 (94%) | 34.0 (94%) | not run |
+| All twelve (61 items) | 52.0 (85%) | 54.5 (89%) | |
+| Statements the judge marked wrong | 2 | 5 | 1 (six questions) |
+
+| Blind pairs, EBD with the five options against the baseline | EBD | Tie | Baseline |
+|---|---|---|---|
+| Overall, six real queries (12 judgments) | 4 | 0 | 8 |
+| Overall, six designed questions (12 judgments) | 4 | 0 | 8 |
+| Overall, all twelve (24 judgments) | 8 | 0 | 16 |
+| Questions on which both orders agree (12) | 3 | 2 undecided | 7 |
+| Coverage | 7 | 2 | 15 |
+| Support | 2 | 16 | 6 |
+| Handling of disagreements and false premises | 7 | 13 | 4 |
+| Usefulness | 6 | 2 | 16 |
+
+| The same configuration on the two kinds of question | Five development questions (section 23) | Twelve new questions |
+|---|---|---|
+| Checklist coverage, EBD against the baseline of the same day | 94% against 87% | 89% against 85% |
+| Blind judgments against the baseline of the same day, EBD : tie : baseline | 7 : 0 : 3 | 8 : 0 : 16 |
+| Statements marked wrong, EBD against baseline | 0 against 2 | 5 against 2 |
+| Researchers, cost and time against the baseline | +69%, +54%, 2.5 times | +58%, +46%, 2.4 times |
+
+- **The result against the baseline did not carry over.** On the development questions
+  the judge preferred the EBD report in 7 of 10 judgments; on the new questions in 8 of
+  24. EBD won both orders on 3 questions (how the internet spread, how HTTPS works, the
+  database choice) and the baseline on 7.
+- **The five options did not change the checklist coverage on the new questions**: 82%
+  with them and 84% without, on the six real queries. With them a researcher wrote 13%
+  more findings (41.0 against 36.2); on the development questions the same-plan
+  comparison of section 21.5 gave 34% more. The reports were 11% shorter.
+- **What the judge named against EBD** is the same from question to question:
+  - a main part of the answer is missing that the baseline covers: politics, protest and
+    culture for the industrial revolution; how slavery ended and what it left; how to do
+    the exercises and what to avoid; the outlook for electricity access; the lecture
+    behind the belief about the prize;
+  - space spent beside the question: health studies in the electricity report, tests of
+    relativity in the prize report;
+  - the report framed around a doubt: the back-pain report leads with whether exercise
+    helps at all, the social-science report with rejecting the question's premise.
+- **Where the follow-up researchers went.** Of the 20 researchers sent after round 1, 9
+  served a goal to settle a critical disagreement and 9 a new goal from the findings. Of
+  the 9 settle goals, 3 were answered and 6 ended with nothing settled; 23 of the 31
+  critical disagreements stayed disputed. In the industrial-revolution run the two
+  follow-up researchers went to a dispute over one living-standard index and to other
+  countries, while the goal for the political and cultural effects was raised as
+  completing and never served.
+
+**How far this goes.**
+- One run of each question and one judge. The two orders agreed on 10 of the 12
+  questions, 7 to 3; that count alone could arise by chance (two-sided p = 0.34). The
+  judge preferred the report shown second in 14 of 24 judgments.
+- The checklists of the real queries are coarse (3 to 7 broad items), and those of the
+  designed questions were written by the person who ran the test, before the runs.
+- The real queries are of one kind (questions on history and society that ask why or
+  how); the draw contains no product, travel or how-to request.
+- The test does not show that the baseline is better. It shows that the advantage
+  measured on the five development questions is not found on new ones.
+- The sealed questions have now been read and are development questions from here on.
+
+### 24.6 The three changes proposed in section 23.3, against the new questions
+
+Each was proposed after one run of one development question. None was built at the time
+of the test; the first was approved afterwards (section 25.1).
+
+| Proposed change | What the new questions show | Decision |
+|---|---|---|
+| A rule in the extension prompt to cover the main cases of what the client did not state | A plan settles on one nationality in 5 of 50 plans without the rule (3 of 21 saved flight analyses, 2 of 29 analyses of five new questions of the same pattern) and in 2 of 50 with it. Too few to tell the two apart. On the 72 analyses of the check questions the rule changes no measure | One sentence, consistent with the rule the request analyst and the round analyst already have. Approved by the user on 2026-11-18 and added to the accepted prompt (section 25.1) |
+| Spend the researchers left when a run is complete early | Did not recur: no sealed run stopped with fewer than 4 researchers, and 6 of 12 reached the ceiling with goals still open | Not built |
+| Never mark a goal necessary when it was raised from a completing step | 2 of the 11 necessary goals raised in the sealed runs came from a completing step: one a detail (how a connection is closed), one a main part of the answer (the role of enslaved labour). A fixed rule would have been wrong for one of the two | Not built |
+
+The count of 9 to 13 of 21 flight plans in section 23.3 was a count of plans that name
+a nationality anywhere. A model call that reads each plan and reports only a plan that
+asks for one nationality and no other gives 3 of 21.
+
+The sentence for the main-cases rule, at the end of step 4 of the extension prompt
+(tested as the wording "m" in `local/ebd-heldout/plans.ts`; approved and added on
+2026-11-18, section 25.1): "When
+what an event involves depends on something the client did not state (who the client is,
+where they come from, their budget, their dates), the question and the parts cover the
+main cases and name them; never settle on one case that the request does not state."
+
+### 24.7 Open points
+
+- **Follow-up priority.** Under a ceiling of 6, nearly half of the follow-up researchers
+  go to settling a disagreement, and two thirds of those settle nothing, while main parts
+  of the answer stay unserved. Whether a missing main part should come before a critical
+  disagreement is a design decision: section 20 gives the critical conflict the first
+  place, following EBD. Decided on 2026-11-18: the missing main part comes first
+  (section 25.2). The replay of section 25.3 shows that the order was rarely what decided.
+- **Breadth of the plan.** The life-cycle steps follow the question's own scope; the
+  baseline's planner spreads over the topic, and the judge counted that as coverage.
+- **A claim read from a modal verb.** "Exercises can help" and "social science can
+  solve" became claims to check, and their verdict shaped the report's first sentence.
+- **The name check** (section 24.3) and the rejection rate of the first replies.
+- **Size of the plan for a simple question.**
+- **The next test** needs a new sealed set (draws 15 onward), more than one run per
+  question, and the default configuration judged in pairs as well.
+
+## 25. Two decisions of 2026-11-18: the main cases, and the order of the follow-up
+
+After section 24 the user decided two of its open points: the sentence on the main cases
+goes into the extension prompt, and a missing main part of the answer comes before
+settling a disagreement. Both are in the code. Neither has been tested on reports of new
+questions yet (section 25.5).
+
+### 25.1 The main-cases sentence in the extension prompt
+
+The last sentence of step 4, as shown to the user and approved: "When what an event
+involves depends on something the client did not state (who the client is, where they
+come from, their budget, their dates), the question and the parts cover the main cases
+and name them; never settle on one case that the request does not state."
+
+- It is part of the accepted prompt (`EXTENSION_SYSTEM`), so it applies with the default
+  options and with `completeMap`.
+- Checked without search on a larger sample than in section 24.6: 60 analyses of the
+  five probe questions and the 21 saved analyses of the flight question, each planned
+  with and without the sentence. A model call reads each plan and reports a plan that
+  asks for one nationality and no other; its count on the same plans moved by one or two
+  between passes.
+
+| Plans that settle on one nationality the request does not state | Without the sentence | With the sentence |
+|---|---|---|
+| Accepted prompt | 5 of 81 | 7 of 81 |
+| `completeMap` wording | 12 of 81 | 4 of 81 |
+
+- **The failure belongs mostly to the `completeMap` wording**, whose events carry the
+  answer and are therefore written more specifically. There the sentence brings it down
+  to the level of the accepted prompt. On the accepted prompt it makes no measurable
+  difference.
+- **No side effect on the check questions.** With the accepted prompt, on the 72
+  analyses of section 24.3: items asked by any goal +0.1 points, by a life-cycle step
+  −1.4 (interval −7.6 to +4.9), in round 1 +1.5.
+- The figures of section 24.6 (5 of 50 and 2 of 50) were the first 29 probe analyses and
+  the flight analyses with the `completeMap` wording.
+
+### 25.2 The order of a follow-up round (option `mainPartsFirst`)
+
+**The decision.** A missing main part of the answer comes before settling a
+disagreement. Section 20 had given the goal that settles a critical conflict the first
+place: it is a necessary goal of level 1, ranked with the premise checks and before the
+goals that ask for content.
+
+**The rule,** with `focusFollowUp`, in every round after the first:
+
+1. The researchers go first to the necessary goals that ask for content: planned goals
+   not yet asked, goals asked again under the rules of section 20.3, and the new goals
+   the round analyst marked necessary. One goal to a researcher while researchers last,
+   as before.
+2. The goals that settle a disagreement are served with the researchers that are left,
+   one settle goal to a researcher.
+3. Briefs of completing goals come last, as before.
+
+- **One exception.** A settle goal that a part of the answer waits behind stays in the
+  first pass. This is the case when a goal judged "conflicting" waits for its outcome
+  and a necessary goal that is still open depends on that goal (verify before
+  explaining, section 6.2). Serving the settle goal is then the only way to that part.
+  A premise check does not wait for the goal it depends on (`premiseFirst`), so it is
+  not counted as held up.
+- **What stays.** Which conflicts get a settle goal (critical ones, one per round), that
+  the goal is necessary, so the run is not complete while it is open, its single
+  attempt, and what the writer is told about a critical conflict that was not settled:
+  both sides, where it arises. No prompt text changes. Without `focusFollowUp` nothing
+  changes: there a settle goal is necessary only while it decides a claim or a goal
+  waits for it (section 9).
+- **Records.** The rationale of the decision names the settle goals that wait and why.
+- **Code.** `plan` in `index.ts`, `gatesAnswer` in `goals.ts`, option `mainPartsFirst`
+  (default true; false gives the order of section 20). Six tests in `focus.test.ts`.
+
+### 25.3 The new order replayed on the saved runs (no model call)
+
+`local/ebd-heldout/replay-order.ts` recomputes every plan of a follow-up round from the
+recorded state of the 17 saved runs with the five options (the 12 sealed questions of
+section 24 and the five development questions of section 23): 23 plans, 27 researchers.
+
+- **The replay computes what the runs computed.** With the order of section 20 the
+  recomputed plan equals the recorded one in all 23 plans.
+- **The new order changes who gets a researcher in 1 of the 23 plans.** In the run on
+  the one-child-policy question two settle goals wait, and their researcher goes to a
+  new necessary goal (the long-run outcomes of the children born under the policy). In
+  6 other plans only the order of the same briefs changes.
+- **In the 9 other plans in which a settle goal had a researcher, no other necessary
+  goal was left without one.** Briefs that settle a disagreement: 11 of the 27 follow-up
+  researchers before, 9 with the new order.
+
+What the follow-up had to choose from after round 1, with 2 researchers left in each of
+the 17 runs (`local/ebd-heldout/supply.py`):
+
+| After round 1, over the 17 runs | Count |
+|---|---|
+| New necessary goals for a part of the answer | 10: none in 8 runs, one in 8 runs, two in 1 run |
+| New completing goals | 10 |
+| Goals to settle a disagreement | 11 |
+| Researchers left | 34 |
+| Researchers sent | 26 |
+
+- **The order was not what kept missing parts from being researched.** In 16 of the 17
+  runs the round analyst raised at most one missing part. The settle goal then took the
+  second researcher, which nothing else asked for, and 8 of the 34 researchers were not
+  sent at all.
+- **Why few missing parts are raised,** as far as the rules show:
+  - A proposal must cite a finding or a gap that mentions the part (section 10.2), and
+    one that cites nothing is rejected. A part of the answer that no researcher was asked
+    about, and that no source happened to mention, cannot be raised.
+  - The analyst marked as completing a part that the judge of section 24.5 then missed
+    in the report: the political and cultural effects in the industrial-revolution run.
+- Section 24.7 called the follow-up order the first open point. On this evidence the
+  first open point is the raising of missing parts; the order only decides between goals
+  that have been raised.
+
+### 25.4 Live checks
+
+- `npm run check-strategy` passed live after both changes: with the default options on
+  the fixed EBD question, whose extension prompt now carries the sentence, and with the
+  five options on the flight question (all 11 required checks each;
+  `local/ebd-heldout/check-decisions-default.out` and `check-decisions-five.out`).
+- In the flight run the step for travel documents asked "for the main nationalities and
+  for connections in third countries". After round 1 the two researchers left went to a
+  new necessary goal first and then to the goal that settles the one critical conflict
+  followed up; the record says the settle goal took a researcher "that no missing part
+  of the answer can use this round". It settled its conflict, and the run ended complete.
+- One run of one question: it shows that both changes work in a real run, not what they
+  do to the report.
+
+### 25.5 Open points
+
+- **Raising the missing parts.** Proposed to the user, not built: the round analyst may
+  propose a necessary goal for a main part of the answer that no finding mentions,
+  within the two necessary goals of a round, and code accepts it without a citation.
+  It changes the rule that every new goal grows from evidence, and it needs prompt text.
+  Approved and built on 2026-11-19 (section 26.1); the replay of section 26.2 shows the
+  analyst does not use it.
+- **One sentence of the pending conflict-checker section** says of the critical
+  conflicts that "one of them is settled in each round". With the new order one of them
+  is followed up in a round only when a researcher is left. To be corrected when that
+  section is approved. Corrected on 2026-11-19 (section 26.1).
+- **Neither decision has been tested on reports.** The replay shows what the order does
+  to the plans of saved runs, most of them runs the decision was drawn from. A test on
+  new questions needs a new sealed set (section 24.1) and a judge pass.
+
+## 26. Before the next test: would the changes so far move the result? (2026-11-19)
+
+The user approved two more changes and asked that, before any test, the changes be shown
+to be worth one, because the API budget is short. This section records the two changes,
+what replays of the saved runs show about them, where the baseline's lead of section 24.5
+comes from, and one further change built for decision. No search and no judge pass was
+run. Scripts and outputs are in `local/ebd-heldout/`.
+
+**Verdict.** The changes made since section 24 (sections 25 and 26.1) would not change
+the result of section 24.5. A test now would spend its budget to measure the same thing
+again.
+
+### 26.1 Two changes approved on 2026-11-19
+
+**A main part of the answer that no finding mentions** (option `uncitedParts`, on by
+default, effective only with `focusFollowUp`).
+
+- Prompt, one sentence of the pending follow-up section of the round analyst
+  (`MAIN_PARTS_UNCITED` in `rounds/analyst.ts`), as shown to the user and approved: "For
+  each main part that the findings mention only in passing or not at all, propose a
+  necessary goal before you propose any detail. Cite the finding or gap that mentions it;
+  when nothing mentions it, cite nothing." The earlier sentence (`MAIN_PARTS_CITED`) is
+  sent with the option off.
+- Code, in `acceptProposals`: a proposal that cites no existing evidence is accepted when
+  it is marked necessary and fewer than two new goals of the round are necessary. It is
+  never made a completing goal: a detail still has to grow from a finding. Every other
+  check of section 10.2 applies (it serves a necessary goal or a synthesis question, it
+  repeats no goal, the limits). The new goal is one step from the request, its origin is
+  recorded as `uncovered`, a term it introduces is not added to the objects, and a goal
+  attached to the answer the client asks for moves to an object of the goal it serves.
+- 8 tests in `focus.test.ts`. The run viewer shows the origin.
+
+**The sentence on critical conflicts** in the pending conflict-checker section. Before:
+"one of them is settled in each round." Now: "at most one of them is followed up in each
+round." The log line of the same rule was reworded to match.
+
+### 26.2 The step after round 1 replayed with a fresh round analyst
+
+`replay-observe.ts` runs `observe` again from the recorded state before round 1's results
+and the recorded researcher results of the 17 saved runs with the five options (the 12
+sealed questions of section 24 and the five development questions).
+
+- **The replay is exact.** With the recorded replies of the conflict checker and the
+  round analyst and the options of the runs, all 17 steps give the recorded goals and
+  briefs, and the round analyst's input is the recorded input character for character.
+- Then the round analyst was called afresh, twice with each wording of the sentence, on
+  the same input: 68 calls, about $0.51. Both wordings use the follow-up order of
+  section 25.
+
+| Over 34 replayed steps with each wording | Earlier sentence | Approved sentence |
+|---|---|---|
+| New necessary goals for a part of the answer | 23 | 26 |
+| of them citing nothing | 0 | 0 |
+| Steps with none, one, two such goals | 16, 13, 5 | 14, 14, 6 |
+| New completing goals | 14 | 11 |
+| Researchers of round 2 sent to a new necessary goal | 23 | 26 |
+| to a goal that settles a disagreement | 19 | 21 |
+
+- **The permission is never used.** No reply cites nothing. The analyst always finds a
+  finding to cite, so the citation was not what kept missing parts from being raised;
+  section 25.3 guessed that it was.
+- **The two wordings cannot be told apart** (23 and 26 over 34 steps; two calls with one
+  wording differ as much).
+- **What the analyst calls a missing main part is not what the judge missed.** For the
+  seven questions on which the judge preferred the baseline in both orders, in the four
+  fresh calls each:
+
+| Question | The judge missed | What the round analyst raised |
+|---|---|---|
+| Industrial revolution | Politics, protest and culture | That part as a completing goal in 4 of 4; "outside Britain" as the necessary one in 4 of 4 |
+| Slavery | How slavery ended and what it left | Other slave systems (the Islamic world, the Indian Ocean) as necessary in 4 of 4; the ending never |
+| People without electricity | The outlook, investment needs | Nothing in 4 of 4 |
+| Einstein's prize | The Nobel lecture behind the belief | One goal on the prize's statutes in 1 of 4; the lecture never |
+| Back-pain exercises | How to do them, what to avoid | One named method in 2 of 4, guidelines in 1; neither part |
+| Nuclear and solar | Land per unit of energy, costs on one basis | Two necessary goals in 3 of 4, with either wording: land per unit of energy each time, cost on one basis once. The recorded run raised none |
+| One-child policy | Care in what is concluded | One goal in 1 of 4 |
+
+- The same sentence in the prompt names "one more market, region, case or group of
+  users" as a completing goal. The analyst marked other regions or other systems
+  necessary in two of these questions.
+
+### 26.3 Where the baseline's lead comes from, in the records
+
+Read from the saved runs and the judge's results of section 24.5, with no model call
+(`digest.py`, `innotes.py`, `plansvs.py`, `round1.py`). The line counts are keyword
+counts and only show the size of a difference.
+
+- **It is not checklist coverage.** Item by item, the EBD report scored higher than the
+  baseline's on 11 checklist items and lower on 6. The judge still preferred the
+  baseline in 16 of 24 judgments, and on usefulness in 16.
+- **Parts the judge missed were thin in EBD's notes, or in the notes and little used.**
+
+| Question | Part | Lines in EBD's notes, then report | In the baseline's notes, then report |
+|---|---|---|---|
+| Industrial revolution | Politics and movements | 2, 1 | 44, 7 |
+| Slavery | How it ended | 31, 3 | 28, 7 |
+| Slavery | What it left | 4, 2 | 20, 5 |
+| People without electricity | Outlook to 2030 | 10, 2 | 16, 4 |
+| Einstein's prize | The Nobel lecture | 5, 0 | 14, 1 |
+| Back-pain exercises | What to avoid | 8, 1 | 34, 4 |
+| Back-pain exercises | Flare-ups and warning signs | 9, 1 | 24, 7 |
+| Nuclear and solar | Capacity factor | 6, 1 | 32, 4 |
+
+- **EBD's notes are longer than the baseline's on six of the seven questions** (for
+  example 17,200 against 9,700 words on slavery), and on five of those six its report is
+  the shorter one. What the researchers were asked decides what the notes hold.
+- **A researcher of round 1 often only checks a claim the question takes for granted.**
+  In the 17 runs, 10 of the 68 first-round researchers served nothing else. Seven of the
+  ten confirmed the claim ("Slavery was important", "The industrial revolution affected
+  people", "Some people in the world do not have access to electricity"), two left a
+  claim undecided ("Exercises can help with lower back pain"), and one found the claim
+  false: the telescope question, which was written with a false premise. Of all 17 claims
+  checked, 11 were supported, 3 undecided and 3 contradicted, the 3 on the two questions
+  written with a false premise.
+- **The check and a life-cycle step then ask the same thing.** For the back-pain
+  question one researcher asked whether exercise helps and a second asked for the
+  evidence of benefit; the step on safety was a completing goal that shared a researcher
+  with the step on mechanisms. The baseline sent its three researchers to the exercises
+  and how they are done, the evidence, and safety and what to avoid.
+- **A part can be missing from the plan altogether**: politics and protest for the
+  industrial revolution, where the baseline's plan had two of four briefs on it.
+- **The writer was told to build on side disputes.** For the slavery question the two
+  conflicts marked critical were about farm labour in Athens and the kingdom of Kongo,
+  and both went to the writer as points "the answer depends on". The judge called both
+  tangents.
+
+### 26.4 The writer's input rewritten on the saved notes
+
+Tested because it costs a cent a report: `rewrite.ts` writes the 12 sealed reports again
+from their saved states with the platform's writer (48 writer calls, about $0.35).
+
+| Variant | What the writer is told |
+|---|---|
+| `rec` | The recorded input, written again: the control |
+| `none` | The notes alone, as the baseline hands them over |
+| `quiet` | The recorded input without the line for an undecided premise and without the lines for critical conflicts |
+| `parts` | `quiet`, plus the researched life-cycle steps as the suggested outline |
+
+- **The writer differs from run to run by more than the variants differ.** The same
+  input written again gave 22,500 words over the 12 reports; the saved reports have
+  18,700, the baseline's 21,800. In the back-pain report the lines on how the exercises
+  are done went from 0 to 3 with the same input.
+- **No variant brings in what the notes lack.** Politics in the industrial-revolution
+  report: 1 line in every variant, against 7 in the baseline's. The Nobel lecture: 0 in
+  every variant. The first section of the back-pain report is on how far exercise helps
+  at all in every variant, also with no guidance: the notes carry that weight.
+- **`quiet` and `parts` help where the notes hold the part.** Slavery, how it ended: 2
+  lines in the control, 8 and 6 in these two, with a section of its own; Athens and
+  Kongo: 4 lines in the saved report, 1 and 2. With `quiet` the title of the
+  social-science report no longer denies the question's premise.
+
+**A cheap screen, and its limits.** `screen.ts` puts the judge's pair instruction, word
+for word, to Claude Haiku: three times per pair and order on the saved reports, twice on
+the rewrites (about $0.10 a pass).
+
+- Against the Opus judge on the same 24 pairs of saved reports: the same overall verdict
+  in 52 of 72 judgments, and the same side on 8 of the 10 questions the Opus judge
+  decided in both orders.
+- It favours EBD more than the Opus judge does: 38 of 72 judgments for EBD against 8 of
+  24. On "handling of disagreements" it gives EBD 38, tie 24, baseline 10; the Opus
+  judge gave 7, 13, 4.
+- On the rewrites (48 judgments each; EBD, tie, baseline): control 29, 3, 16; `quiet`
+  22, 3, 23; `parts` 32, 1, 15; `none` 23, 2, 23. The industrial-revolution and
+  back-pain reports stay with the baseline in all four, and the Einstein report never
+  goes to EBD.
+- The screen rewards the handling of disputes, which is what `quiet` removes, so it
+  cannot decide for or against `quiet`. It is good enough to say that no variant of the
+  writer's input turns the questions lost on missing material.
+
+No change to the writer's input is proposed on this evidence.
+
+### 26.5 A claim check shares a researcher (option `premiseRides`, built, not decided)
+
+**The rule.** In round 1 a goal that only checks a claim of the question is asked in a
+brief that asks for content, as one more key question at the head of the brief, and
+takes no researcher of its own.
+
+- The check is still made in round 1, so a false premise is still found before the
+  follow-up (`premiseFirst`, section 6.2).
+- It joins a brief that holds a necessary goal and no other check: the brief about its
+  own object first, then the brief that asks the fewest key questions.
+- It never joins a brief in which it would keep a life-cycle step from being asked part
+  by part, or that would then ask more than six key questions (section 21).
+- When a check fits nowhere, for example when the question has more claims to check than
+  the round has briefs that ask for content, the round is planned as before.
+- After round 1 nothing changes. No prompt text changes.
+- Code: `isClaimCheck` and `shareChecks` in `briefs.ts`, `plan` in `index.ts`. 5 tests.
+  Off by default: it changes what section 6.2 gives a premise check, which is the user's
+  decision. Decided on 2026-11-19 and on by default since (section 27).
+
+**Replayed on the 17 saved first-round plans** (`replay-round1.ts`, no model call; with
+the option off the replay gives the recorded briefs in all 17):
+
+| Over the 17 first-round plans | Now | With the option |
+|---|---|---|
+| Plans that change | | 14 |
+| Researchers in round 1 | 68 | 67 |
+| Researchers that only check a claim | 10 | 0 |
+| Key questions asked | 288 | 330 |
+| Goals asked part by part | 49 | 60 |
+| Most key questions in one brief | 6 | 6 |
+
+- For the slavery question the step on how slavery ended is asked in round 1; before, it
+  waited for round 2.
+- **Open:** in 3 of the 14 changed plans the researcher that becomes free goes to a
+  planned overview question with one key question, while two completing steps still
+  share a researcher (the back-pain plan: safety and mechanisms). Sending it to the step
+  instead needs a further rule in `spread`. Done in section 27.4 (option `stepsFirst`).
+- **Not known:** what it does to the reports. That needs searches.
+
+### 26.6 What a test needs first
+
+- **Not addressed by anything built:** a main part missing from the plan (26.3), and
+  what the round analyst takes for a main part (26.2).
+- **A staged order, cheapest first,** each step only if the one before it shows a
+  difference:
+  1. The user decides `premiseRides`.
+  2. A check with searches on six questions already read: four the baseline won for a
+     missing part (back pain, slavery, industrial revolution, electricity) and two EBD
+     won (the internet, the database choice), so that a gain is not only the effect of
+     picking the worst cases. About $3 of Haiku calls and 12 pair judgments, about
+     110,000 input tokens of Opus.
+  3. The sealed test of section 24.7 on new questions: about $11 of Haiku calls for 12
+     questions in both arms, and 240,000 to 450,000 input tokens of Opus.
+- The live contract check (`npm run check-strategy`) has not been run on the changes of
+  this section. The approved sentence went to the live model 34 times through `observe`
+  in the replay; the path for a goal that cites nothing has run in unit tests only.
+
+### 26.7 Spend
+
+About $1.30 of Haiku calls (round analyst replays $0.51, rewrites about $0.35, screen
+passes $0.45), no search and no Opus call.
+
+## 27. The premise check: sort, share, overrule (2026-11-19)
+
+After section 26.3 the user asked how else a premise could be checked, what other deep
+research systems do, and then gave the instruction: "Apply the recommend premise check
+solution". This section records what was applied. Records and scripts are in
+`local/ebd-heldout/` (`sort.ts`, `replay-round1.ts`, `replay-conflicts.ts`).
+
+**The problem.** Section 6.2 checks every claim the question takes for granted in
+round 1, with a researcher of its own. In the 17 saved runs that took 10 of the 68
+first-round researchers; 7 of the 10 confirmed a claim that restates the question, and
+where the check came back undecided the report opened with a doubt (section 26.3). A
+strategy may not search (docs/strategy-modules.md, rule 2), so a claim cannot be settled
+before round 1, and deciding it from the model's memory would be a guess.
+
+**The solution, in four parts.** Which claims need a check is decided before any
+search; a check that remains shares a researcher; the evidence can still overrule a
+claim that was not checked; and the writer hears about a claim only when it matters.
+
+### 27.1 The premise sort (option `premiseSort`, on by default)
+
+One model call after the request analysis and before the extension (`premises.ts`,
+role `premise_sorter`, tool `submit_premise_sort`). The request-analysis prompt of
+Lab 2 is not changed.
+
+- **Input:** the question and the claims the analysis listed (A1, A2, ...). Nothing else.
+- **Output:** for each claim `check` or `given`, with a reason of at most 15 words.
+- **It never says whether a claim is true.** The prompt says so, and tells the sorter
+  to judge from the wording, "never from what you believe to be true".
+- **check**, in the prompt's words: "the claim states a specific fact that the question
+  treats as settled and that could simply be wrong", such as a particular event, a date,
+  a number, who did something, the cause of a particular event, a place, or a property
+  of a named thing.
+- **given**: "the claim only restates, in general terms, what the question itself asks
+  about: that its subject exists, matters, has effects, can help, can work or can be
+  done", or the question's own words spell it out.
+- **When in doubt: check.** A claim that joins a general part and a specific fact is
+  check too.
+- **Fail-safe.** Without a usable reply every claim is checked, as before, and the run
+  records it under problems. No call is made when the analysis lists no claim.
+- The full prompt is `PREMISE_SYSTEM` in `premises.ts`. Its five examples use subjects
+  that are in no test question.
+
+**What a claim taken as given changes in the plan** (`applyGiven`, after the extension):
+
+- The planned question that checked it loses the claim. When it checks nothing any
+  more, it is no longer a check: its brief carries no instruction to verify, the round
+  analyst is asked for no verdict, and the evidence floor of section 10.1 does not apply.
+- With necessary life-cycle steps in the plan, that question is treated like a question
+  the steps replace (section 19.2): a completing goal, and what waited for it waits for
+  the steps instead. Without them it stays a necessary question for content, and what
+  waited for it no longer waits, since nothing is verified first.
+- The run is complete without a verdict on the claim (section 11 needs a verdict only
+  while a goal that verifies the claim is open).
+- When another claim is contradicted, a claim taken as given protects its objects like
+  a supported one (`refutedObjects`, section 10.2).
+- The decision's rationale names the claims taken as given, and the run viewer shows
+  the sorter's reason beside each.
+
+### 27.2 A check that remains shares a researcher (option `premiseRides`, now on)
+
+The rule of section 26.5, unchanged: in round 1 a goal that only checks a claim is asked
+at the head of a brief that asks for content, one check to a brief, and the round is
+planned as before when a check fits nowhere.
+
+### 27.3 Where the first round's researchers go (option `stepsFirst`, on by default)
+
+Two rules, so that the researcher a check gives up goes to a part of the answer. They
+apply in round 1 when the plan has life-cycle steps.
+
+- **A planned question that the steps stand in for only rides along.** That is a
+  question the steps replaced (section 19.2) or one that stopped being a check
+  (27.1). The briefs are made without it; it then joins a brief that has room for one
+  more key question, or waits (`shareRiders`). Before, such a question could take a
+  researcher to itself with one key question.
+- **A researcher that would sit idle goes to a step first.** When a brief holds two or
+  more steps, one of them gets the free researcher, so that each is asked part by part
+  (`spread`). Otherwise the rule of section 7 applies as before.
+
+### 27.4 The evidence can overrule a claim taken as given
+
+- The conflict checker still sees every claim. A claim taken as given is marked
+  "(taken as given)", and one section is added to the checker's prompt only when a run
+  has such a claim (`CONFLICT_GIVEN_SECTION` in `rounds/conflicts.ts`):
+
+  > Assumptions taken as given:
+  > Under <assumptions>, a claim marked (taken as given) only restates, in general
+  > terms, what the question asks about. The team did not check it as a fact of its own.
+  > For such a claim, report an evidence_vs_assumption conflict only when findings state
+  > that it is false as a whole (for example, the question asks why a food causes an
+  > illness, and the sources report that it causes none). Findings that limit or qualify
+  > it (it holds for some cases, groups or conditions and not for others, or its size is
+  > disputed) are part of the answer and no conflict with the assumption. A disagreement
+  > between sources about how far it holds is a source_vs_source conflict with an empty
+  > claim.
+
+- A conflict of evidence against a claim is critical as before (section 20.2). Its
+  settle goal verifies the claim, and that goal's verdict is the claim's verdict.
+
+### 27.5 What the writer is told about a claim
+
+| The claim | Its verdict | The writer is told |
+|---|---|---|
+| Checked | Contradicted | "The evidence contradicts this; say so plainly early in the report." (unchanged) |
+| Checked | Undecided, or never checked | Not to present it as established (unchanged) |
+| Checked | Supported | Nothing with `leanGuidance`; one line otherwise (unchanged) |
+| Taken as given | None | Nothing |
+| Taken as given | Contradicted by a goal that settled a conflict about it | To say so plainly early in the report |
+| Taken as given | Anything else from such a goal | Nothing about the claim; the conflict keeps its own line |
+
+- The recommendation put to the user said "say nothing about one that was skipped or
+  undecided". The line for a checked claim that stays undecided was kept: for a specific
+  fact that no source confirms, the warning protects the reader. The three undecided
+  claims of section 26.3 were general ones; the sorter takes two of them as given (27.6).
+
+### 27.6 Checks without search
+
+**The sorter on every saved request analysis that has claims** (`sort.ts saved`; 156
+analyses, 184 claims, about $0.04): 121 claims taken as given, 63 to be checked, no
+unusable reply and no second attempt.
+
+| Question (saved analyses) | Claim, in one of its wordings | Verdicts |
+|---|---|---|
+| Telescope, written with a false date (15) | "The launch ... took place in 2018"; "NASA launched ..." | check in all 29 |
+| Einstein's prize, false attribution (1) | "... was awarded for the theory of relativity" | check |
+| Swiss women's vote (6) | "Switzerland did not give women the right to vote ... before 1971" | check in all 10 |
+| Sleep and food (13) | "Some food can help the client sleep well" | given in all 13 |
+| The EBD question (29) | "EBD stands for Environment Based Design" | given in 27, check in 2 that add "a design method" |
+| Back-pain exercises (1) | "Exercises can help with lower back pain" | given |
+| Social science (1) | "Social science can solve social problems" | given |
+| One-child policy (1) | "Population control led to better child quality" | check: read as a cause stated as fact, although the question asks whether |
+
+**The sorter on 16 new questions** (`sort.ts new`), written for this test before the
+sorter ran on them and used for nothing else: one request analysis each, then the sorter
+twice. The prompt was not changed afterwards.
+
+| Kind of question | Questions | Result |
+|---|---|---|
+| A false premise: a wrong actor, inventor, date, number, property or cause | 8 | Every claim that holds the false element is check, in both sorts of all 8 |
+| A general premise ("Why does sleep matter for learning?") | 6 | given in both sorts of all 6 |
+| A true specific fact ("Why did the Titanic sink in 1912?") | 2 | check |
+
+- In "How did Thomas Edison's invention of the telephone change communication?" the
+  sorter split the two claims: "Thomas Edison invented the telephone" is check, "The
+  invention of the telephone changed communication" is given.
+
+**First-round plans replayed** (`replay-round1.ts`, no model call in the replay; with
+the three options off it gives the recorded briefs in all 23 plans):
+
+| Over the first-round plans | 17 plans, five options: before | after | 6 plans, default options: before | after |
+|---|---|---|---|---|
+| Claims of the question, and those taken as given | 17 | 10 given | 6 | 4 given |
+| Researchers in round 1 | 68 | 65 | 24 | 24 |
+| Researchers that only check a claim | 10 | 0 | 6 | 0 |
+| Key questions asked | 288 | 340 | 39 | 38 |
+| Briefs with exactly one life-cycle step | 44 | 61 | 7 | 15 |
+| Steps that share a brief with another step | 22 | 6 | 16 | 11 |
+| Steps not asked in round 1 | 1 | 0 | 3 | 0 |
+| Researchers on one planned completing question alone | 2 | 0 | 0 | 0 |
+
+- The back-pain plan: before, one researcher checked whether exercise helps and the
+  steps on safety and on mechanisms shared one. After, each of the four steps (exercise
+  types, evidence of benefit, mechanisms, safety) has a researcher.
+- With the default options every one of the six plans had a researcher that only
+  checked a claim.
+
+**The conflict checker replayed** on the 10 saved runs with a claim taken as given
+(`replay-conflicts.ts`; `observe` run again with a fresh checker and the recorded round
+analyst, twice per arm, about $0.37):
+
+| Checker replies | As recorded (10) | Fresh, no mark (20) | Fresh, claims marked (20) |
+|---|---|---|---|
+| With a conflict of evidence against a claim taken as given | 2 | 4 | 1 |
+| With a disagreement between sources tied to such a claim | 0 | 2 | 0 |
+| Conflicts in all | 72 | 116 | 111 |
+
+- The conflicts against "exercise can help" and "social science can solve" are gone
+  with the mark (0 of 4 replies; without it 3 of 4). The one left is a page that says no
+  flight exists on the route, which states the claim false as a whole.
+- **The safety net holds.** For the two questions written with a false premise every
+  claim was marked as given against the sorter's verdict. The checker still reported
+  the findings against the false claim in 4 of 4 replies.
+
+### 27.7 Live check
+
+`npm run check-strategy` passed live with the default options, which now include the
+three options of this section: all 11 required checks, 6 researchers, 2 rounds, $0.50
+(`local/ebd-heldout/check-premises-default.out`). The question is one of the 16 new
+ones and has a false premise: "How did Thomas Edison's invention of the telephone change
+communication?"
+
+- **The sort.** "Thomas Edison invented the telephone" was sent to be checked, and "The
+  invention of the telephone changed communication" was taken as given. One call, 1,419
+  input tokens, 1.4 seconds.
+- **Round 1** used three researchers. The check was asked in a brief together with a
+  question for content, and the round analyst judged the claim contradicted in that
+  round.
+- **The writer** was told about the contradicted claim and nothing about the other one.
+  The report opens: "The telephone did not come from Thomas Edison. Alexander Graham
+  Bell received the key U.S. patent on March 7, 1876", and then answers how the
+  telephone changed communication.
+- One run of one question. It shows the parts working together in a real run, not what
+  they do to the reports against the baseline.
+
+**Code and tests.** `premises.ts` (the sorter, `recordSort`, `applyGiven`);
+`shareChecks`, `shareRiders` and `spread` in `briefs.ts`; `init` and `plan` in
+`index.ts`; `CONFLICT_GIVEN_SECTION` and the mark in `rounds/conflicts.ts`;
+`buildGuidance` in `synthesis.ts`; `refutedObjects` in `goals.ts`. 15 tests in
+`premises.test.ts`, 5 in `focus.test.ts`; 207 tests pass.
+
+### 27.8 Open points
+
+- **Not tested on reports.** Everything above is about plans and about what the checker
+  and the sorter say. Whether the reports get better needs searches and a judge
+  (section 26.6).
+- **The correction rule approved on 2026-11-16 is still not built**: when a premise is
+  contradicted, the questions that rely on it should be corrected, not dropped. It needs
+  prompt text for the round analyst.
+- **The sorter sorts what the request analysis lists.** A presupposition the analysis
+  does not list is not sorted; it was not checked before either.
+- **A claim that is the question itself.** "Population control led to better child
+  quality" was listed as a claim of a question that asks whether, and sorted as check.
+  One case; the prompt was not tuned on it.
+- **Without life-cycle steps** (`extend` off, or no usable extension) a question that
+  stopped being a check keeps a researcher as a question for content.
+- **`stepsFirst` also changes plans of questions without claims**: a replaced overview
+  question no longer takes a researcher to itself.
+
+### 27.9 Spend
+
+About $1.00 of Haiku calls: the sorter on saved analyses $0.04 and on the new questions
+with their request analyses about $0.05, the conflict checker replays $0.37, and the
+one live run with searches $0.50. No Opus call.
+
+## 28. Environment analysis in one call (option `init: "environment"`, built 2026-11-19, off)
+
+On 2026-11-19 the behaviour design lead set the frame: "we just need to follow the overall
+concept of EBD for this approach, and we can develop optimal working process by our own",
+and then: "Proceed with the next step, I accept the architecture update if it improves the
+EBD approach." The next step was a first plan made in one call, checked on plans without
+search. This section records what was built and what the check showed. The mode is off by
+default: its prompt text is not approved, and the check does not show an improvement in
+what the plan asks for (section 28.5).
+
+### 28.1 Why
+
+Read from the 24 saved runs of the sealed questions (section 24.5), no model call
+(`local/ebd-heldout/yield.py`); EBD with the five options against the baseline:
+
+| Over the 12 questions | Baseline | EBD |
+|---|---|---|
+| Strategy calls a run | 2.0 | 7.6 |
+| Output tokens of the strategy's own calls | 36,400 | 422,600 |
+| Seconds, of which first-round research | 1,530, 811 | 3,627, 814 |
+| Words of notes, then words of reports | 101,900, 21,800 | 140,600, 18,700 |
+| Citations in the reports for each researcher | 16.0 | 8.3 |
+| Runs with a follow-up round | 1 | 11 |
+
+- Report length does not follow the notes: over the 24 runs the correlation of note words
+  with report words is -0.02, and every report has 1,185 to 2,155 words.
+- The researchers sent to settle a disagreement were 13% of EBD's researchers and supplied
+  6% of the citations in its reports. A follow-up researcher on a new part supplied as much
+  as a first-round one (9.6 against 9.4 citations).
+- Of EBD's extra 2,097 seconds, 446 were follow-up research and about 1,650 its own model
+  calls. Three of those calls come before the first search.
+- The baseline's planning call names what the model knows as examples to look for (41% to
+  45% of its key questions carry one); the extension analyst may not name anything
+  (section 19.2), and its name check rejected a quarter of the first replies on new
+  questions (section 24.3).
+
+### 28.2 The concept kept, the procedure changed
+
+EBD's procedure asks questions from the wording of the request (the request analysis),
+then widens them through the life cycle of the subject (section 19). This mode keeps the
+concept and drops that order of steps:
+
+- **The product is the answer.** Its environment has three sides: the client, who will
+  use it; the subject, with everything around it that the answer depends on; and what the
+  question takes for granted.
+- **One call analyses that environment and writes the plan**: the main parts of a full
+  answer, each with an objective and 4 or 5 key questions (3 to 5 in the first wording). The parts are found by looking
+  from each side: the question itself, the subject over time, what surrounds the subject
+  (natural, built, economic, social), the client's side, and where sources are likely to
+  disagree.
+- **The analyst may use what it knows**, and may name specific things as examples to look
+  for. Everything it writes is an assumption that the evidence overrides, as decided on
+  2026-11-11 (section 19.3): researchers are told so, a finding confirms or refutes each
+  key question, and nothing the analyst writes reaches the writer.
+- **Conflicts still drive what follows.** The claims of the question are sorted as in
+  section 27, in the same call; the conflict checker, the round analyst, the stop rules
+  and the writer input are unchanged.
+
+### 28.3 The call
+
+`environment.ts`: the prompt `PLAN_SYSTEM`, the reply schema, the checks, the fallback.
+
+| The reply holds | Used for |
+|---|---|
+| Status, restated request, subject | Out-of-scope stop; the writer's reading line |
+| Purpose, time frame, place, each with its basis | Brief constraints, as before |
+| Directives, with the client's words | Researchers and writer, as before |
+| What the client did not state, with the main cases | A constraint line in every brief |
+| An abbreviation or ambiguous term, with its meanings | Brief constraint, or the writer's reading line |
+| The claims the question takes for granted, each marked check or given | One check question for the claims marked check; the others are taken as given (section 27) |
+| 1 to 5 main parts: name, necessary or completing, objective, key questions, source hints | One goal and one map event for each part; the key questions are its parts |
+
+- **Checks.** A list that is too long is cut with a warning. A part listed twice, an
+  objective or key question that refers to another one, or fewer than two key questions
+  is an error, and the call is retried once with the errors. The fallback keeps the parts
+  no error points to; a key question whose only fault is its length is cut.
+- **No name check.** Names are allowed here; the checks of the request analysis do not
+  apply.
+- **No usable plan.** As in the other modes (section 24.4): the first time, `init`
+  throws and the skeleton runs the step again; the second time the plan is the request
+  itself as one question.
+
+### 28.4 What code builds from the plan
+
+- **An analysis** (`analysisFromPlan`) with one object for the subject, one for each
+  abbreviation or ambiguous term, no relations, the claims as assumptions, and at most
+  two questions: the check of the claims marked check, and the client's question as the
+  synthesis question.
+- **The environment map**: each main part is an event and its key questions are the
+  event's parts, so the round analyst confirms or refutes each key question and the rules
+  of section 19.3 apply unchanged. `map.questions` marks such a map.
+- **Goals**: one for each part (at most four necessary, at least one), and the check.
+  No goal waits for the check, so a contradicted claim cancels nothing.
+- **Briefs**: a part's key questions are asked as written, one by one, whatever
+  `partQuestions` says; the researcher is told that they and the examples they name are
+  expectations (`PLAN_QUESTIONS_INSTRUCTION`). The check leads a brief that asks for
+  content (`premiseRides`).
+- `extend`, `completeMap` and `premiseSort` have nothing to do in this mode. Everything
+  after `init` is the code of the other modes. The prompts of the conflict checker and the
+  round analyst still say "life-cycle step" for a part.
+- Code: `environment.ts`; `init` in `index.ts`; `briefFor` in `briefs.ts`; two optional
+  state fields (`map.questions`, `plan`). 17 tests in `environment.test.ts`, one of them
+  a whole run through the skeleton with fake researchers; 224 tests pass.
+
+### 28.5 Plan-level check (no search)
+
+`local/ebd-heldout/oneplan.ts`: the first-round plan of each method, several times for each
+of the 24 questions of section 24 (12 sealed, 12 check; all read before, so development
+data), and a small model call that says which checklist items the plan asks a researcher
+about. The scorer sees objectives and key questions without the strategy's marks.
+
+| | Baseline | EBD, five options, today's code | New one-call plan |
+|---|---|---|---|
+| Plans | 72 | 60 (36 rebuilt from saved replies) | 72 |
+| Checklist items asked in round 1, sealed / check questions | 91% / 89% | 93% / 94% | 85% / 87% |
+| The 8 main parts that the sealed reports lacked (section 26.3): asked | 23 of 24 | 11 of 16 | 16 of 24 |
+| Researchers in round 1 | 3.5 | 3.8 | 3.4 |
+| Key questions for each researcher, and their length | 4.5, 21 words | 5.4, 17 words | 3.7, 27 words |
+| Key questions that name an example | 41% | 7% to 12% | 30% to 41% |
+| Researchers that only check a claim | 0 | 0 | 0 |
+| Planning: calls, seconds | 1.0, 12 to 14 | 2.7 to 3.4, about 40 | 1.0 to 1.1, 17 |
+| Planning: input and output tokens | 1,700 and 2,500 | 29,100 and 9,300 | 5,900 and 3,600 |
+| Plans with a fallback or a recorded problem | 0 | 5 | 0 |
+
+- **The new plan is cheaper and faster, and it does not ask for more.** It needs one call
+  where the present plan needs about three, a fifth of the input tokens and less than half
+  the time, and none of its 72 plans fell back. It asks about fewer checklist items than
+  the present plan (85% and 87% against 93% and 94%), and no more of the eight parts the
+  reports lacked (16 of 24 against 11 of 16). The baseline's plan asks about nearly all of
+  those (23 of 24).
+- **Why it asks for less.** (1) Fewer key questions for each researcher: 3.7 against 4.5
+  and 5.4. (2) Half of the items it asks about in fewer than half its plans are
+  definitions ("What is slavery?"), which the prompt tells it not to make a part of; the
+  baseline's plans leave out most of these too. (3) Parts about where things are heading
+  or what is done about them are missing: the outlook for electricity access in 0 of 3
+  plans, interventions against juvenile crime in 0 of 3. (4) The prompt is worded to keep
+  parts out ("keep a part only if the answer would be wrong or incomplete without it"),
+  where the baseline's says that the subtopics together must cover everything.
+- **The claims.** Sorted from the wording as in section 27: both claims of the false
+  premise question on Einstein's prize are checked in 3 of 3 plans, and so are the dated
+  facts of the other questions; the general restatements ("Slavery was important",
+  "Exercises can help with lower back pain") are taken as given. Four general claims were
+  marked check in some plans ("The internet spread from its place of origin to other
+  areas"), which the separate sorter did not do on its test questions. The 16 questions
+  written for the sorter (section 27.6) have not been run through this mode.
+- **A correction.** Before this check the user was told that the first plan of EBD asked
+  about none of those eight parts. That was a keyword count on the saved plans of the
+  sealed runs. With the scorer used here those saved plans ask about 3 of 8, and fresh
+  plans with today's code about 11 of 16: the changes of section 27 and the difference
+  between one plan and the next account for much of that gap. The baseline's saved plans
+  ask about 8 of 8.
+- **What this check cannot show.** Plan-level checklist coverage did not decide the
+  sealed test: the present plan scores highest on it, and its reports lost (section
+  24.5). Nothing here was searched or written.
+
+### 28.6 Verdict and open points
+
+- **Not switched on.** The condition was that the change improves the approach. It lowers
+  the cost and time of planning; it does not improve what the plan asks for.
+- **One revision is indicated** (made and checked later the same day, section 28.8): 4 or 5 key questions for each part; the
+  parts together must cover everything a full answer needs, stated as a requirement; the
+  subject over time includes where it stands, where it is heading and what is done about
+  it; `not_stated` only where it changes the answer. It needs the user's approval of the
+  wording and a new check, on questions not used for it.
+- **Not run end to end.** No live run and no `npm run check-strategy` in this mode.
+- **The round prompts** name a part of the answer a "life-cycle step".
+- **The steps after the plan** (one review call instead of two, follow-up only when it
+  changes the answer, the writer's outline) are not built.
+
+### 28.7 Spend
+
+About $0.63 of Haiku calls against the $0.50 named beforehand: planning calls $0.45 (the
+live plans of the present EBD cost $0.18 of that), scoring calls $0.17. No search, no Opus
+call.
+
+### 28.8 The wording revised and checked on new questions (2026-11-19, later)
+
+The user approved the four changes of section 28.6 ("proceed with proposed change and
+recheck"). They are in `PLAN_SYSTEM`; the first wording is kept in `oneplan.ts`
+(`REWORDED`), which runs either wording through the strategy's own call.
+
+| Passage | First wording | Revised |
+|---|---|---|
+| Key questions | "3 to 5 key questions that split the objective." | "4 or 5 key questions that split the objective; 3 only for a narrow part." |
+| Completeness | "List the parts that together carry a full answer: [...] Look at the answer's environment from each side below, and keep a part only if the answer would be wrong or incomplete without it:" | "List the parts that together cover everything a full answer needs, so that the client does not have to ask again for a main point: [...] The parts do not overlap. Look at the answer's environment from each side below:" |
+| The subject over time | "[...] how it is used or done, what follows from it;" | "[...] how it is used or done, how it changed or ended, where it stands now and where it is heading, and what is being done about it;" |
+| What the client did not state | | Added: "List a point only when the answer changes with it; most questions have none or one." |
+
+The worked example was brought in line with the first change: its two parts of three key
+questions got a fourth ("When did sales of digital cameras overtake sales of film cameras,
+worldwide and for Eastman Kodak Company?" and "Which warning signs of a technology change
+do advisers tell small family businesses to watch for, and what do they recommend doing
+first?").
+
+**New questions.** 12 real queries from a second random draw of the same dataset with
+another seed (`sample2.py`, seed 20261120; `fresh-questions.json`). The rows that the first
+seed gives in its first 60 draws were left out without being fetched, so the sealed set of
+the next end-to-end test (draws 15 onward of seed 20261118) is still unread. Three plans
+for each question with the first wording, the revised wording and the baseline, one with
+the present EBD; the scorer of section 28.5.
+
+| On the 12 new questions | Baseline | EBD, five options | One call, first wording | One call, revised |
+|---|---|---|---|---|
+| Key questions in a plan | 16.3 | 17.6 | 11.8 | 14.5 |
+| Key questions for each part | | | 3.5 | 4.2 |
+| Points listed as not stated by the client, a plan | | | 2.4 | 1.7 |
+| Checklist items asked in round 1, each question weighted equally | 69% | 75% | 62% | 62% |
+| The same on the 11 questions that every method planned, by item (46 items) | 67% | 83% | 69% | 69% |
+| Of those: the 9 items that only ask what a term of the question is | 30% | 89% | 33% | 26% |
+| Of those: the 37 other items | 77% | 81% | 77% | 79% |
+| Planning: calls, seconds, tokens in and out | 1.0, 14, 1,700 and 2,700 | 3.2, 39, 29,300 and 9,200 | 1.0, 16, 5,800 and 3,300 | 1.1, 16, 6,200 and 3,500 |
+| Plans with a fallback or a recorded problem | 0 | 1 of 12 | 0 | 0 |
+
+An item "only asks what a term is" by a rule (`oneplan_items.py`): it starts with What or
+Who is, are, was or were, and what follows up to the first "and" is one to five words of the
+question ("What was apartheid?", "What is Hanna Andersson?"). On the 24 earlier questions
+the same split gives, for the other items: baseline 94%, present EBD 92% to 93%, one call
+with the first wording 90% to 92%; and for the 11 definition items: 60%, 100%, 55%.
+
+- **The revised wording does what it was written for, and the checklist score does not
+  move.** A plan has 14.5 key questions against 11.8, and 1.7 points the client did not
+  state against 2.4. The share of checklist items asked is the same, and on the items other
+  than definitions 79% against 77%: with three plans for each question that difference
+  cannot be told from chance.
+- **What separates the plans is definitions.** On every other item the four are within four
+  points on the new questions (77% to 81%) and on the earlier ones (90% to 94%). The present
+  EBD plan asks what each term of the question is, through the defining questions of the
+  request analysis; the one-call plan and the baseline's plan do so for about a third of
+  such items. Whether a report is better for having them cannot be read from a plan: the
+  checklists count them, and the baseline's reports won the sealed test without them.
+- **A question that does not say what it refers to.** For "what caused so many casualties
+  in the earthquake" both EBD modes stop as out of scope (the request names no earthquake),
+  in every plan; the baseline plans to identify the likely events and answer in general.
+  This is the rule of the request analysis (section 5), carried into the new prompt. One of
+  the 12 new questions is of this kind, none of the first 14.
+- **The claims** (the 16 questions of section 27.6, two plans each, revised wording): the
+  claim that holds the false premise is marked check in 16 of 16 plans (the script counts
+  15: one plan words it "can be seen" where the script looks for "visible"), the true dated
+  fact in 4 of 4, and every claim of the six general questions is taken as given in 12 of
+  12. Some plans add a second claim that only repeats the first ("There is a reason why
+  humans use only 10% of their brains"), also marked check; it joins the same check
+  question.
+
+- **The parts the sealed reports lacked, with the revised wording** (measured afterwards
+  for the user's question about the gap; 36 plans on the 12 sealed questions, $0.13). These
+  questions are development data, and two of the four changes were written after reading
+  their plans, so the number is favourable to the revised wording.
+
+  | The 8 main parts of section 26.3, asked in the first plan | Asked |
+  |---|---|
+  | Saved plans of the sealed runs (code of 2026-11-18) | 3 of 8 |
+  | Present EBD, five options, today's code | 11 of 16 |
+  | One call, first wording | 16 of 24 |
+  | One call, revised wording | 20 of 24 |
+  | Baseline, fresh plans | 23 of 24 |
+
+  The revised plan has 3.8 researchers and 16.0 key questions on these questions and asks
+  about 86% of the checklist items (first wording 85%).
+- **What the follow-up researchers of the sealed runs were sent for** (from the records, no
+  model call): of 20, 9 went to settle a disagreement. Six of those disagreements were
+  between sources only and three decided a claim of the question; six of the nine ended
+  with nothing settled. The follow-up rules are unchanged since.
+
+**Verdict.** At plan level the one-call plan now asks for what the baseline's plan and the
+present EBD plan ask for, apart from definitions, with one call in place of about three, 16
+seconds in place of 39, a fifth of the input tokens, and no fallback in 176 plans (8 needed the one retry). It is
+not shown to ask for more. Whether its reports are better can only be shown with searches.
+
+**Open, for the user:** the definitions (left out as written; one key question could ask
+for them); the question that names no referent (stop, or plan for the likely cases as the
+baseline does); a live run in this mode (`npm run check-strategy`), which nothing above
+replaces.
+
+**Spend of the recheck.** About $0.47 of Haiku calls: planning calls on the new questions
+$0.31, on the premise questions $0.08, scoring $0.08. No search, no Opus call.
+
+## 29. The one approach (2026-11-19, night)
+
+The behaviour design lead on the end state: "by the end of this improving tuning process of
+the EBD deep search approach, we only left 1 optimal EBD approach". The approach below was
+put to the lead and approved the same evening ("recommended approach and plan approved"),
+with the steps to take before a test: every prompt text of the approach on one page for
+approval, the follow-up rule built, one live run, and the rules of the test fixed
+beforehand. This section records those steps. The lead approved all of it the same night
+("approve all changes and texts"). Nothing here is on by default: that waits for the test.
+
+### 29.1 What it is
+
+Settings: `{ "init": "environment", "focusFollowUp": true, "leanGuidance": true,
+"strictFollowUp": true }`; every other option at its default.
+
+| Step | Who | What | Section |
+|---|---|---|---|
+| Plan | Environment analyst, one call | The main parts of the answer, each with 4 or 5 key questions; the claims of the question sorted into checked and taken as given; what the client did not state | 28 |
+| Round 1 | Researchers | One researcher for each main part, its key questions asked one by one; the check of the claims rides in one of those briefs. With fewer researchers than parts the necessary parts come first | 21, 26.5, 28.4, 30 |
+| After each round | Conflict checker, then round analyst | Conflicts among the findings and with the claims; each key question judged; new goals proposed | 9, 10, 20 |
+| Follow-up | Code | A researcher goes only to a main part of the answer or to a claim of the question | 29.2 |
+| Report | The platform's writer | The notes, and a line only for what the notes do not show: a contradicted or undecided claim, at most three critical disagreements | 20.4 |
+
+- **The texts were approved on 2026-11-19** ("approve all changes and texts"), as they
+  stand on one page generated from the code: `local/ebd-heldout/one-approach-prompts.md`
+  (`prompt-page.ts`). That covers the texts written for this approach (the planning
+  prompt, what a researcher is told about key questions, the question that checks the
+  claims, the two sections on key questions, the two reworded sentences on conflicts) and
+  the texts pending since 2026-11-11 and 2026-11-18 (the section on critical conflicts,
+  the follow-up section of the round analyst, the writer's lean lines). A test pins them
+  (`approach.test.ts`, "the prompt texts of the one approach"): it fails when one of
+  these texts changes, so that a later change is shown to the lead and approved first.
+- **What goes when a test confirms the approach:** the request analysis in both modes
+  (`request/`), the premise sorter, the problem extension, and the options that switch
+  between them and their rules (`init`, `extend`, `completeMap`, `partQuestions`,
+  `premiseSort`, `premiseRides`, `stepsFirst`, `focusFollowUp`, `leanGuidance`,
+  `mainPartsFirst`, `uncitedParts`, `strictFollowUp`). Until then they stay, so that nothing
+  in use changes. `conflicts` and `newGoals` are used by the platform's experiment file for
+  its ablation runs and are to be kept; to confirm with the platform owner.
+
+### 29.2 After the first round: only a main part or a claim (option `strictFollowUp`)
+
+Two rules, in code only:
+
+1. **A disagreement between sources is reported, not researched again.** A conflict gets a
+   goal of its own only when it decides a claim of the question (an `evidence_vs_assumption`
+   conflict, or a disagreement between sources that the checker ties to a claim). Any other
+   disagreement is recorded as disputed at once; when it is critical the writer gets its
+   line (section 20.4). `applyConflicts` in `rounds/conflicts.ts`.
+2. **A detail gets no researcher after the first round.** With `focusFollowUp`, a follow-up
+   round serves necessary goals only; a completing goal is never served in it, there is no
+   extra round of completing goals once the run is complete, and when no necessary goal and
+   no claim is left the run stops. `plan` in `index.ts`.
+
+Replayed with no model call (`replay-disputes.ts`, `replay-live.ts`): the step after round 1
+from the recorded state, with the recorded replies.
+
+| The follow-up round after round 1 | Today's rules | With the rule |
+|---|---|---|
+| 17 saved runs with the five options: researchers | 26 | 15 |
+| ... of them sent to settle a disagreement | 9 | 2 |
+| ... runs that stop after round 1 | 2 | 5 |
+| ... plans that change | | 10 |
+| The live run of section 29.5: researchers | 2 (a missing main part, a detail) | 1 (the missing main part) |
+
+Two sentences of the pending prompt texts say what code does with a conflict; with the
+option they are sent in a wording that fits the rule (`CRITICAL_REPORTED` in
+`rounds/conflicts.ts`, `CONFLICTS_REPORTED` in `rounds/analyst.ts`). 9 tests in
+`approach.test.ts`, two of them whole runs through the skeleton; 233 tests pass.
+
+### 29.3 A request that names no referent
+
+For "what caused so many casualties in the earthquake" both EBD modes stopped as out of
+scope, and the baseline planned a general answer (section 28.8). Approved sentence, added
+to step 1 of the planning prompt: "A request that points at something without naming it
+("the earthquake", "the new law") is not out of scope when research can still serve the
+client: list it under not_stated, and plan for the most likely cases and name them."
+
+Checked on plans (`referent.ts`, 11 plans, $0.02): that question and two others of the kind
+("why did the bridge collapse", "how much does the surgery cost") are planned for the likely
+cases in 7 of 7 plans; a request for a poem and "Are the mortgage rates from my earlier
+message still current?" still stop, in 4 of 4.
+
+### 29.4 Wording for a plan of key questions
+
+The sections that the conflict checker and the round analyst get about the plan were
+written for life-cycle steps with short parts (section 19). For a plan made in one call
+they are sent in terms of key questions: `CONFLICT_QUESTIONS_SECTION` and
+`ANALYST_QUESTIONS_SECTION`, and the two messages label the items "Key questions of the
+main part". A key question is met when findings answer it, also with a no; it is refuted
+only when what it takes for granted did not happen or does not exist. New text, on the page
+of section 29.1. The other modes get the standing sections unchanged (tests).
+
+### 29.5 Live check (one run, with searches)
+
+`npm run check-strategy` with the settings of section 29.1, without rule 2 of section 29.2,
+which was built after this run. Question: "How did Thomas Edison's invention of the
+telephone change communication?", the question of the live check of section 27.7, so the
+two runs can be set side by side. Record: `local/checks/20261119-222907-ebd-haiku-45abc8-e46b`.
+
+| | Default options (section 27.7) | The one approach |
+|---|---|---|
+| Required contract checks passed | 11 of 11 | 11 of 11 |
+| Planning | 3 calls, 38 s | 1 call, 11 s |
+| Round 1 | 3 researchers, 5 key questions | 4 researchers, 15 key questions |
+| Researchers, rounds, searches | 6, 2, 37 | 6, 2, 43 |
+| Strategy calls, and their output tokens | 7, 33,300 | 6, 23,800 |
+| Seconds | 274 | 243 |
+| Cost | $0.50 | $0.58 |
+| Report: words, pages cited | 1,497, 42 | 2,163, 69 |
+| Recorded problems | none | none |
+
+- **The plan.** Four main parts with 14 key questions: who invented the telephone, changes
+  in everyday communication, Edison's own telephone work, and disputed and limited effects.
+  "Thomas Edison invented the telephone" was marked check; "The telephone changed
+  communication" was taken as given.
+- **Round 1.** Four researchers; the check led the brief on who invented the telephone.
+  Every key question was judged answered, and the claim was contradicted in this round.
+  The report opens "Edison did not invent the telephone."
+- **Disagreements.** Five between sources, none critical, none researched again.
+- **Follow-up.** The round analyst raised a necessary goal (the state of telephone
+  communication as of 2026) and a completing one (news gathering). Both got a researcher.
+  The first found none of what it asked for and wanted a second try when the researchers
+  ran out; the second is the case rule 2 was then written for.
+- **One reply rejected.** The first reply of the conflict checker named the same source on
+  both sides of two conflicts and was sent back; that cost 33 seconds.
+- One run of one question; it shows that the approach runs, not how good it is.
+
+### 29.6 The final test: rules fixed before any run
+
+Written on 2026-11-19, before the sealed questions are drawn, and approved by the lead
+the same night. `final_spec.py` makes the question files and the experiment specs; its
+second stage reads the sealed questions and must not be run before the test.
+
+- **Two stages.** Stage 1 (`final_spec.py planted`): the 4 planted questions, both arms.
+  They are not sealed, so stage 1 is also the live check of the program as tested: rule 2
+  of section 29.2 and the first-round rule of section 30 were built after the live run of
+  section 29.5. Between the stages only a defect of the program may be fixed (a failed
+  run, a contract problem, a rule that does not act as specified), and the approach's runs
+  of stage 1 are then made again; the reports of stage 1 are not read for quality before
+  stage 2 has run. `final_check.py` reads the records of stage 1 and lists every
+  departure from the rules of sections 29.2 and 30 without reading a report; tried on the
+  live run of section 29.5 it reports that run's one known departure, the detail that got
+  a researcher before rule 2 existed. Stage 2 (`final_spec.py sealed`) reads the 12
+  sealed questions, and both arms run on them.
+
+- **Arms.** The baseline, and the one approach with the number of researchers the baseline
+  used on the same question (`matchResearchersTo`), so that both spend the same research.
+  One run for each cell, Haiku, the same day.
+- **Questions.** 12 real queries: draws 15 onward of seed 20261118, unread until the test.
+  And 4 questions with a planted problem, each with the one thing a report must say:
+
+| Question | The report must say |
+|---|---|
+| Why did the Chernobyl nuclear accident happen in 1989? | That the accident happened in 1986, not in 1989 |
+| How did Alexander Fleming's discovery of insulin change the treatment of diabetes? | That Fleming did not discover insulin, and that Banting (with Best, at Toronto, 1921 to 1922) did |
+| How tall is Mount Everest? | 8,848.86 m as announced by Nepal and China in 2020, and that at least one earlier figure differs, and why |
+| Do I need a visa to visit the United Kingdom for a week? | That the answer depends on nationality, covering visitors who need a visa and visitors who need only an electronic travel authorisation |
+
+- **Measures.** (1) Blind pairs by the Opus judge in both orders on the 12 real queries; a
+  question counts for an arm only when both orders name it. (2) The planted problems: the
+  judge's checklist instruction on the one planted point; the point counts as said at
+  score 1 (stated with a source), and a score of 0.5 (stated without a source, or in
+  part) is reported apart. (3) Cost, time and strategy calls from the records. (4) The
+  platform's citation check. (5) Checklist items covered by the report, with the items that
+  only ask what a term is counted apart (section 28.8).
+- **Scoring scripts.** `judge-final.ts`: the judge of 2026-11-18 (Opus 5.5, effort medium)
+  with its two instructions word for word; the script stops if they differ, saves each
+  result when it arrives and asks again only for what is missing. `final_stats.py` prints
+  the five measures and applies the rules below. Both were tried without cost on the saved
+  runs of 2026-11-18, where `final_stats.py` gives that test in these terms: approach 3,
+  baseline 7, not decided 2, cost +46% with 5.7 researchers a run against 3.6.
+- **What counts.** The approach is kept if, on the pairs, the baseline does not win 10 or
+  more of the questions decided; it says at least as many of the four planted points as the
+  baseline; and it costs no more than 15% above the baseline. It is shown to be better only
+  if it wins 10 or more of the questions decided.
+- **What the test can show.** With 12 questions only a split of 10 to 2 or wider can be
+  told from chance (audit of the judge of 2026-11-19, `local/ebd-heldout/judgecheck.py`), so the likely outcome is
+  "no difference shown", which the first criterion counts as kept.
+- **Cost.** About $9 to $11 of Haiku calls. For the judge about 500,000 input and 40,000
+  output tokens of Opus, about $2.80 at $4 and $20 per million tokens: the pass of
+  2026-11-18 used 477,783 and 35,696 tokens for 54 calls, and this one has 56. The first
+  version of this line said 300,000 input tokens, which was too low. About $12 to $14 in
+  all.
+
+### 29.7 Open points
+
+- **What the round analyst calls a missing main part.** In the live run it was a side topic
+  that the search could not serve. With equal researcher numbers the follow-up rarely gets
+  a researcher, so the test will say little about it.
+- **Rule 2 of section 29.2 has still not run with searches.** In all 16 runs of the test
+  the approach used every researcher it was allowed in the first round, so no follow-up
+  round took place (section 31.4). The first-round rule of section 30 acted as specified
+  in all 16.
+- **`not_stated`** still lists the client's purpose in some plans, which changes nothing.
+- **The consolidation of section 29.1 waits for the test.**
+
+### 29.8 Spend
+
+About $0.73 of Haiku calls: the live run $0.58, plans for the check of section 28.8 on the
+sealed questions $0.13, the check of section 29.3 $0.02. No Opus call.
+
+## 30. The first round with the baseline's number of researchers (2026-11-19, after the approval)
+
+The final test gives the approach the researchers the baseline used on the same question
+(section 29.6): 3 to 5 on the 12 runs of 2026-11-18, 3.6 on average. Every check of the
+one-call plan so far ran with 6. This section records what a replay with fewer researchers
+showed, and the rule that was changed for it. Code only; no text sent to a model changes.
+
+### 30.1 The replay
+
+`local/ebd-heldout/matched-round1.ts`, no model call and no search. The 72 saved one-call
+plans of the revised wording (section 28.8; 24 questions, 3 plans stopped as out of scope)
+are replayed by their shape: the main parts with their need and number of key questions,
+and the claims with their verdicts. Each runs as a whole run in the skeleton with 1 to 6
+researchers; the researchers answer every key question, the conflict checker finds
+nothing, and the round analyst judges every key question answered and proposes nothing. A
+plan has 3.72 main parts (2.10 necessary, 1.62 completing) and 15.5 key questions; 28 of
+the 69 have a claim to check.
+
+| Researchers | Used a run, before and after | Main parts asked key question by key question | Main parts asked as one question | Plans with a part never researched |
+|---|---|---|---|---|
+| 3 | 2.71, 2.99 | 73%, 81% | 68, 48 | 2 (with a researcher unused), 0 |
+| 4 | 2.94, 3.72 | 79%, 100% | 54, 0 | 0, 0 |
+| 5 | 3.19, 3.72 | 86%, 100% | 37, 0 | 0, 0 |
+| 6 | 3.72, 3.72 | 100%, 100% | 0, 0 | 0, 0 |
+
+- **Before.** With 3 to 5 researchers a run sent 2.7 to 3.2 of them in the first round, and
+  14% to 27% of the main parts were asked as one question while a researcher was kept
+  back. With nothing to follow up, that researcher was never used. In 2 plans with 3
+  researchers a planned part was left for a later round and then, by rule 2 of section
+  29.2, never asked, with a researcher free.
+- **The cause.** `spread` (section 7) takes a completing goal out of a shared brief only
+  while one researcher stays for a second try of each necessary goal served in the round.
+  Second tries are rare: in the 12 runs on new questions of 2026-11-18, 2 of 44 necessary
+  planned goals got one, and one of the two was answered by it.
+- **With 6 researchers nothing changes**, which is why the live run of section 29.5 and
+  the plan checks did not show it.
+
+### 30.2 The rule
+
+1. **In the first round of a plan of key questions, every researcher of the round goes to
+   a main part of the answer, and none is kept for a second try** (`partsFirst` in
+   `briefs.ts`, used by `plan` in `index.ts`):
+   - as many researchers as parts, or more: each part has a researcher to itself, and
+     the researchers left over wait for the follow-up of section 29.2;
+   - fewer researchers than parts, more than necessary parts: each necessary part has a
+     researcher to itself, and the completing parts share the researchers left;
+   - no more researchers than necessary parts: the necessary parts share the
+     researchers, and a completing part is asked as one question in a brief that has
+     room for one more key question, and not at all when none has.
+   The check of the claims leads the brief of a necessary part, as before; when no brief
+   has room it leads the brief that asks the fewest key questions all the same.
+2. **After the first round, a main part of the plan that no researcher was asked about is
+   not a detail**: with `strictFollowUp` it is still served while researchers last
+   (`isUnaskedPart` in `state.ts`). With rule 1 this can only happen when a round has
+   fewer researchers than the plan has parts and no brief has room.
+
+The other planners keep their first round: every earlier test passes unchanged. In the
+replay of section 29.2 on the 17 saved runs the totals are the same, and one follow-up
+brief holds one more goal, a planned step that had not been asked.
+
+### 30.3 What remains
+
+- **With 1 or 2 researchers a full plan does not fit.** With 1, the necessary parts and
+  the check are asked and 69 of the 112 completing parts are not; with 2, 3 are not. This
+  is the case of a question that the baseline's planner takes for a single fact and the
+  plan gives 3 or 4 parts.
+- **Run with searches in the final test** (section 31): in all 16 runs the first round
+  was as specified. Measured cost with equal researchers: 5% above the baseline (2% on
+  the 12 real queries, 22% on the 4 planted questions), against the estimate below.
+- **Expected cost with equal researchers, from the records.** A researcher costs $0.097
+  in the baseline's runs and $0.085 to $0.092 in EBD's; the strategy's own calls cost
+  $0.004 a run for the baseline and $0.012 to $0.032 for EBD. With the same number of
+  researchers the approach should cost between about 9% less and 3% more than the
+  baseline, inside the 15% of the rule of section 29.6.
+
+8 tests in `approach.test.ts` (19 there, 243 in all). No spend.
+
+## 31. The final test: the one approach against the baseline (2026-11-19, night)
+
+Run on the user's go, by the rules of section 29.6, with the code of sections 29 and 30.
+Records: `local/ebd-heldout/final-planted-20261120-022344` and
+`final-sealed-20261120-023629` (the stamps are in UTC), `judge-final-results.json`,
+`final-stats.out`. Every run can be stepped through in the run viewer
+(`local/viewer/index.html`, 32 runs); 31 have a Langfuse trace, because the tracing
+service was started during stage 1 (the first baseline run has none, two have a part).
+
+### 31.1 Result by the rules
+
+| Rule fixed beforehand | Result | |
+|---|---|---|
+| The baseline does not win 10 or more of the questions decided | baseline 5, approach 4, not decided 3 | met |
+| The approach says at least as many planted points as the baseline | 4 of 4 against 2 of 4 in full | met |
+| The approach costs no more than 15% above the baseline | $5.35 against $5.07, 5% more | met |
+| Shown to be better: 10 or more wins | 4 wins | not shown |
+
+**The approach is kept. No difference between the two is shown** (exact sign test on the
+9 questions decided: p = 1.0). All 32 runs ended ok, and the judge's 56 calls all
+returned a usable reply.
+
+### 31.2 The measures
+
+| | Baseline | The one approach |
+|---|---|---|
+| Blind pairs, 12 real queries, both orders: overall | 5 | 4 (3 not decided) |
+| ... coverage | 4 | 3 (5 not decided) |
+| ... support (how carefully claims are stated and cited) | 4 | 0 (8 not decided) |
+| ... conflicts (disagreements and false assumptions) | 2 | 3 (7 not decided) |
+| ... usefulness | 4 | 4 (4 not decided) |
+| Planted points, of 4: in full, in part | 2, 2 | 4, 0 |
+| Researchers a run | 3.19 | 3.19 |
+| Cost a run, 16 runs | $0.317 | $0.334 |
+| Seconds a run | 122 | 192 |
+| The strategy's own calls a run | 2.0 | 3.8 |
+| Report, words | 1,904 | 1,750 |
+| Cited statements not bound to a source (platform check) | 29 of 487 | 34 of 450 |
+| Checklist items of the real queries covered, of 53 | 47 | 47 |
+| ... mean score: items that only ask what a term is, other items | 0.57, 0.85 | 0.50, 0.87 |
+| ... items flagged as wrong by the judge | 2 | 0 |
+
+- **Planted points.** Both arms stated all four. The judge gave the baseline half marks
+  on two: its Chernobyl report opens "The Chernobyl accident occurred on 26 April 1986,
+  not 1989." with no citation on that sentence, and its Everest report explains the older
+  figure in one sentence marked as an inference, where the approach lists the earlier
+  surveys in a table. Both reports on the two false premises open with the correction.
+- **The judge's quotes.** Each of its 102 quotes is in the report it was taken from.
+- **The two orders** named opposite reports on 3 of the 12 questions.
+
+### 31.3 Question by question
+
+The claims are those the plan marked for a check; "given" claims are left out.
+
+| Question | Claim checked, verdict | Outcome | The judge's reason, in short |
+|---|---|---|---|
+| how changes to funding have impacted the nhs | funding changed; it had an impact: both supported | not decided | The orders disagree |
+| why income inequality is good for the economy | "Income inequality is good for the economy": contradicted | baseline | A fuller account of the case for inequality and of the evidence against it |
+| why do engineering students drop out | none | baseline | More ground: gateway courses, differences between groups, how the rate is defined |
+| how did america change ww1 | the United States changed the war: supported | approach | Only it covers the effects at home: the draft, the Espionage and Sedition Acts, women's work |
+| why do people oppose affirmative action | none | not decided | The orders disagree |
+| how structured literacy instruction differs from typical literacy practices | "typical practices are what most classrooms use": contradicted | approach | Says what typical practice is today, with survey evidence, and questions that it is still the majority |
+| how did darwin explain the differences in traits? | Darwin offered an explanation: supported | baseline | More focused on Darwin's own account; the approach answers "an odd yes/no framing" and drifts into modern figures |
+| why are there no laws yet to protect people from sociopaths | "There are no laws yet": contradicted | baseline | Covers more: definition, prevalence, legal mechanisms. The approach is shorter and built around the false premise (usefulness went to it in both orders) |
+| how does economics play a role in african american culture | none | approach | Ties economics to more cultural forms |
+| why is eugenics considered unethical | "considered unethical by most people, scholars and institutions today": unsettled | baseline | The approach "spends much of its length attacking a premise the question never states" |
+| how did early american colonies contribute to the growth of capitalism? | none | approach | The baseline's report is cut off in mid-sentence and has no conclusion |
+| why do people declare bankruptcy | none | not decided | The orders disagree |
+
+### 31.4 What the records show
+
+- **Checking the question's own premise cost the approach.** The plan marked a claim for
+  a check in 7 of the 12 real queries. In 6 of the 7 the claim is the question's own
+  premise, not a fact of its own such as a date or a name: in three it only restates the
+  question (the NHS, the war, Darwin), and in three it is the opinion the question starts
+  from (inequality, the laws, eugenics). On those last three the evidence contradicted the
+  claim or left it open, the writer was told so, and the report was framed by that
+  verdict: the inequality report is titled "Evidence Contradicts the Claim That
+  Inequality Boosts Growth", the report on the laws opens "The question's premise is not
+  supported", and the eugenics report has a section on "the disputed premise" and ends on
+  it. The judge preferred the baseline on all three; the baseline's reports on the first
+  two correct the premise as well, inside a fuller answer. In the eugenics plan the claim
+  says more than the question does ("by most people, scholars and institutions today"). The seventh (literacy) is a claim the question does not make either; there the
+  judge counted the correction for the approach. The plan checks before the test had
+  measured the sort only on questions written for it (section 28.8), not on real queries
+  of the form "why is X considered Y".
+- **Where the approach won**, its plan had a main part that the baseline's left out (the
+  effects at home, what typical practice is today, more cultural forms). The fourth win
+  is against a report that the platform's writer cut off at its output limit (21,000
+  tokens; "writer: report output truncated" in the record). Without it the count is 3 to 5.
+- **Time.** The approach spent 86 seconds a run in its own calls. 12 of its 60 replies
+  were rejected by the code checks and asked again: 9 of the 16 first replies of the
+  conflict checker (the same source on both sides of a conflict, or a statement longer
+  than one sentence), 2 plans and 1 round analysis.
+- **The rules of sections 29.2 and 30.** `final_check.py` on the 16 runs of the approach:
+  no departure. It used every researcher it was allowed in the first round in every run
+  (3.19 a run, as the baseline), each necessary part asked key question by key question
+  and the check riding in a brief. So no run had a follow-up round, and rule 2 of section
+  29.2 was not exercised. Of the 93 conflicts recorded, 29 were marked critical; the 19 of
+  them that decide no claim got no goal and were left to the writer (who is told about
+  three a run at most), and the 10 that decide a claim were tied to its check. One
+  problem was recorded: in one run a researcher wrote sections without a goal ID, which
+  were mapped to every goal of its brief.
+- **Cost.** 2% above the baseline on the 12 real queries and 22% on the 4 planted
+  questions, where its researchers searched more (64 searches against 57) and its own
+  calls weigh more in a small run.
+
+### 31.5 What the test does and does not show
+
+- It shows that with the same number of researchers and 5% more money, the approach's
+  reports are not told apart from the baseline's by this judge on 12 real queries, and
+  that it states a planted problem at least as fully.
+- It does not show that the approach is better. On real queries the one criterion with a
+  clear split is support, 4 to 0 for the baseline.
+- The limits of section 29.6 hold: 12 questions, one run for each cell, a model as the
+  judge, no fact checked and no human reading. The test of 2026-11-18 had other
+  questions, so the two can only be set side by side roughly: then 3 to 7 with 58% more
+  researchers and 46% more cost, now 4 to 5 with the same researchers and 5% more cost.
+
+### 31.6 Open after the test
+
+- **The consolidation of section 29.1** waits for the user's word: it removes code that
+  exists only in the working tree, so the tree is to be committed first.
+- **Not changed, for a later decision** (each needs new questions to confirm, and the
+  sealed set is used): the sort of the question's own premise on "why is X Y" questions,
+  and the wording of a checked claim, which must not say more than the question; the
+  conflict checker's first replies, rejected in 9 of 16 runs; the writer's output limit,
+  which is the platform's.
+
+### 31.7 Spend
+
+Haiku $10.42 (baseline $5.07, approach $5.35) and the Opus judge $2.79 (558,112 input and
+27,956 output tokens): $13.21, against the $12 to $14 named.
 
 ## References
 

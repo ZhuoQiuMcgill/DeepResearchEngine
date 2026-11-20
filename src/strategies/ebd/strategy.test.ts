@@ -137,7 +137,7 @@ function fakeModel() {
         const name = tools[0]!.function.name;
         const message = String(messages.at(-1)!.content);
         calls.push(name);
-        const args = name === "submit_analysis" ? E1.analysis : name === "submit_conflicts" ? conflicts(message) : round(message);
+        const args = name === "submit_analysis" ? E1.analysis : name === "submit_premise_sort" ? { claims: E1.analysis.assumptions.map((x) => ({ id: x.id, verdict: "check", reason: "a specific fact" })) } : name === "submit_conflicts" ? conflicts(message) : round(message);
         return new AIMessage({ content: "", tool_calls: [{ id: `c${calls.length}`, name, args: args as Record<string, unknown>, type: "tool_call" }] });
       },
     }),
@@ -150,7 +150,8 @@ async function run(options: Record<string, unknown> = {}) {
   const decisions: DecisionRecord[] = [];
   let synthesis: { material: { label: string; notes: string }[]; outline?: string[]; guidance?: string } | undefined;
   const graph = buildResearchGraph({
-    strategy: ebd.create(options as never),
+    // The plan built from the request's words; the loop with the environment map is tested in extension.test.ts.
+    strategy: ebd.create({ extend: false, ...options } as never),
     strategyModel: model,
     research,
     write: async (_q, s) => ((synthesis = s), { report: "report", diagnostics: [] }),
@@ -164,6 +165,31 @@ async function run(options: Record<string, unknown> = {}) {
   const final = await graph.invoke(initialState(E1.request), { recursionLimit: 100 });
   return { final, decisions, synthesis: synthesis!, calls, state: final.strategyState as EbdState };
 }
+
+describe("ebd init when the request analysis leaves nothing usable (section 24.4)", () => {
+  it("throws the first time, so the step is run again, and then plans the request itself as one question", async () => {
+    // Every reply breaks the schema, so neither attempt gives an analysis and nothing can be salvaged.
+    const model = {
+      bindTools: (tools: { function: { name: string } }[]) => ({
+        invoke: async () => new AIMessage({ content: "", tool_calls: [{ id: "c", name: tools[0]!.function.name, args: { status: "ok" }, type: "tool_call" }] }),
+      }),
+    } as unknown as BaseChatModel;
+    const strategy = ebd.create({ extend: false } as never);
+    const ctx = { model, budget: { researchersTotal: 6, researchersUsed: 0, researchersRemaining: 6, toolCallsPerResearcher: 12 }, round: 1, runId: "t", today: E1.runDate };
+    await expect(strategy.init({ question: E1.request }, ctx)).rejects.toThrow("produced no usable analysis");
+    // Another run of the same strategy starts its own count.
+    await expect(strategy.init({ question: E1.request }, { ...ctx, runId: "u" })).rejects.toThrow("produced no usable analysis");
+    const step = await strategy.init({ question: E1.request }, ctx);
+    const state = step.state as EbdState;
+    expect(state.init).toMatchObject({ accepted: false, fallback: true, attempts: 2, stopReason: "minimal plan" });
+    expect(state.problems[0]).toContain("the plan is the request itself as one question");
+    expect(state.goals.map((g) => [g.id, g.text, g.need])).toEqual([["Q1", E1.request, "necessary"]]);
+    expect(step.decision.stop).toBe(false);
+    expect(step.decision.briefs).toHaveLength(1);
+    expect(step.decision.briefs[0]!.keyQuestions.join(" ")).toContain(E1.request);
+    expect(step.decision.rationale).toContain("nothing usable, so the request itself is the plan");
+  });
+});
 
 describe("ebd strategy through the skeleton", () => {
   it("grows the goal tree, settles the conflict, makes moot goals and stops complete", async () => {
@@ -206,7 +232,7 @@ describe("ebd strategy through the skeleton", () => {
 
     // Every step recorded its own model calls for the viewer.
     expect(decisions.map((d) => (d.strategyState as EbdState).step.calls.map((c) => c.role))).toEqual([
-      ["request_analyst"],
+      ["request_analyst", "premise_sorter"],
       ["conflict_checker", "round_analyst"],
       ["conflict_checker", "round_analyst"],
       ["conflict_checker", "round_analyst"],
@@ -232,7 +258,7 @@ describe("ebd strategy through the skeleton", () => {
     let synthesis: { outline?: string[]; guidance?: string } | undefined;
     const failing = async (q: string, brief: ResearchBrief): Promise<ResearchResult> => ({ ...(await research(q, brief)), status: "failed", notes: "", failure: { kind: "timeout", message: "timed out" } });
     const graph = buildResearchGraph({
-      strategy: ebd.create({}),
+      strategy: ebd.create({ extend: false }),
       strategyModel: model,
       research: failing,
       write: async (_q, s) => ((synthesis = s), { report: "r", diagnostics: [] }),
@@ -258,7 +284,7 @@ describe("ebd strategy through the skeleton", () => {
   it("records the unmet demand when the budget runs out", async () => {
     const { model } = fakeModel();
     const graph = buildResearchGraph({
-      strategy: ebd.create({}),
+      strategy: ebd.create({ extend: false }),
       strategyModel: model,
       research,
       write: async () => ({ report: "r", diagnostics: [] }),

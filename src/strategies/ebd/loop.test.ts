@@ -27,6 +27,7 @@ function stateOf(analysis: Analysis = structuredClone(E1.analysis)): EbdState {
     analysis,
     goals,
     objectsFound: [],
+    map: null,
     conflicts: [],
     evidence: [],
     results: [],

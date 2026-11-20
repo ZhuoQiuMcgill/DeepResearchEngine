@@ -5,7 +5,7 @@
  */
 import type { Analysis, AnalysisQuestion } from "./request/index.js";
 import type { EbdOptions } from "./options.js";
-import { isSettled, type Conflict, type EbdState, type Goal, type GoalKind, type Origin, type Tree, type Verdict } from "./state.js";
+import { isPlanned, isSettled, type Conflict, type EbdState, type Goal, type GoalKind, type Origin, type Tree, type Verdict } from "./state.js";
 
 const DEFINE = new Set(["T1", "T2", "T3", "T6"]);
 
@@ -116,7 +116,7 @@ export function nextGoalId(state: Pick<EbdState, "analysis" | "goals">): string 
 /** Section 6.2: every goal it depends on is settled. With premiseFirst (L-7) a verification goal does not wait. */
 export function isReady(goal: Goal, byId: Map<string, Goal>, options: Pick<EbdOptions, "maxAttempts" | "premiseFirst">): boolean {
   if (goal.status !== "open" || goal.attempts >= options.maxAttempts) return false;
-  if (options.premiseFirst && goal.kind === "verify" && goal.origin.type === "request") return true;
+  if (options.premiseFirst && goal.kind === "verify" && isPlanned(goal)) return true;
   return goal.dependsOn.every((d) => {
     const dep = byId.get(d);
     return !dep || isSettled(dep);
@@ -158,7 +158,11 @@ export function undefinedConstraints(goal: Goal, state: Pick<EbdState, "goals" |
 
 export type Ranked = { goal: Goal; reach: number; undefinedConstraints: number };
 
-/** Section 6.3: level, then reach, undefined constraints, depth, attempts, age, table order. */
+/**
+ * Section 6.3: level, then reach, undefined constraints, depth, attempts, age, table order.
+ * With an environment map (section 19), first attempts come before second attempts within a
+ * level: the plan is widened before it is deepened (Zeng 2020, section 4.2: width first).
+ */
 export function rankReady(state: EbdState, options: EbdOptions): Ranked[] {
   const byId = new Map(state.goals.map((g) => [g.id, g]));
   const order = new Map(state.goals.map((g, i) => [g.id, i]));
@@ -169,6 +173,7 @@ export function rankReady(state: EbdState, options: EbdOptions): Ranked[] {
       (a, b) =>
         a.goal.level - b.goal.level ||
         KIND_ORDER[a.goal.kind] - KIND_ORDER[b.goal.kind] ||
+        (state.map ? a.goal.attempts - b.goal.attempts : 0) ||
         b.reach - a.reach ||
         b.undefinedConstraints - a.undefinedConstraints ||
         a.goal.depth - b.goal.depth ||
@@ -176,6 +181,20 @@ export function rankReady(state: EbdState, options: EbdOptions): Ranked[] {
         a.goal.createdRound - b.goal.createdRound ||
         order.get(a.goal.id)! - order.get(b.goal.id)!,
     );
+}
+
+/**
+ * Section 25: a goal that settles a disagreement and that a part of the answer waits behind. A goal
+ * judged conflicting waits for its outcome (`waitingOn`), and a necessary goal that is still open
+ * cannot be asked before that goal is settled. Serving the settle goal is then the way to the part of
+ * the answer behind it, so it keeps its place in a follow-up round.
+ */
+export function gatesAnswer(goal: Goal, state: Pick<EbdState, "goals">, options: Pick<EbdOptions, "maxAttempts" | "premiseFirst">): boolean {
+  if (!goal.settles) return false;
+  const waiting = new Set(state.goals.filter((w) => w.waitingOn === goal.id && w.status === "conflicting").map((w) => w.id));
+  if (!waiting.size) return false;
+  const byId = new Map(state.goals.map((g) => [g.id, g]));
+  return state.goals.some((d) => d.need === "necessary" && d.status === "open" && d.dependsOn.some((id) => waiting.has(id)) && !isReady(d, byId, options));
 }
 
 /** The ready necessary goal that has waited longest since it was created or last served (the reserve slot). */
@@ -230,11 +249,13 @@ export function assumptionVerdicts(state: Pick<EbdState, "analysis" | "goals">, 
  * contradicted while "NASA launched the telescope" holds, so only "2018" is refuted (Lab 4,
  * 2026-10-26). Settled goals' verdicts by default; briefs also use the latest judgments.
  */
-export function refutedObjects(state: Pick<EbdState, "analysis" | "goals">, verdicts = assumptionVerdicts(state)): Set<string> {
+export function refutedObjects(state: Pick<EbdState, "analysis" | "goals"> & Partial<Pick<EbdState, "premises">>, verdicts = assumptionVerdicts(state)): Set<string> {
   const a = state.analysis;
   const relations = new Map(a.rom.relations.map((r) => [r.id, r]));
   const ends = (ids: string[]) => ids.flatMap((id) => (relations.has(id) ? [relations.get(id)!.from, relations.get(id)!.to] : []));
-  const held = new Set(a.assumptions.filter((x) => verdicts[x.id] === "supported").flatMap((x) => x.relation_ids));
+  // Section 27: a claim taken as given holds like a supported one, unless the evidence contradicted it.
+  const given = new Set((state.premises?.given ?? []).map((g) => g.id));
+  const held = new Set(a.assumptions.filter((x) => verdicts[x.id] === "supported" || (given.has(x.id) && verdicts[x.id] !== "contradicted")).flatMap((x) => x.relation_ids));
   const heldObjects = new Set(ends([...held]));
   const refuted = new Set<string>();
   for (const x of a.assumptions.filter((y) => verdicts[y.id] === "contradicted")) {
