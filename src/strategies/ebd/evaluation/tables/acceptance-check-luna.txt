@@ -1,4 +1,4 @@
-Run record: local\checks\20261120-170955-ebd-luna-b06a5d-5ebe  cost ≈ $0.039
+Run record: local\checks\20261120-180854-ebd-luna-b06a5d-6a49  cost ≈ $0.098
 PASS  module loads (ebd, contract 1)
 PASS  run completes with a report
 PASS  init returns at least one valid brief

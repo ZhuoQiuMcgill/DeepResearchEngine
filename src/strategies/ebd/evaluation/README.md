@@ -29,7 +29,7 @@ came about, step by step, is in [../DESIGN.md](../DESIGN.md), sections 23 to 37.
 | Writer-input check, 2026-11-20 | Final writer input, on the saved notes | The 12 real queries | Same notes | Questions 3 to 2, 7 undecided; single judgments 11 to 11 | |
 | **Planted-problem test, 2026-11-20** | Final code | 12 new planted | Equal allowance; EBD used 33 of 38 | Planted points in full 12 of 12 against 11 of 12 | -15%, +52% |
 | Weaker model, 2026-11-20 | Final code, on GPT-5 nano | 6 with a well-known false fact | At most 3 each | Corrections in full 6 of 6 against 4 of 6 | -16%, +86% |
-| Acceptance check, 2026-11-20 | Final code | The project's fixed EBD question | Up to 6 | 11 of 11 contract checks on Haiku 5.5 and on GPT-6 Luna | $0.19 and $0.04 a run |
+| Acceptance check, 2026-11-20 | Final code | The project's fixed EBD question | Up to 6 | 11 of 11 contract checks on Haiku 5.5 and on GPT-6 Luna | $0.23 and $0.10 a run |
 
 "Questions 4 to 5, 3 undecided" means: the judge preferred EBD's report on 4 questions and
 the baseline's on 5, in both orders of presentation; on 3 the two orders disagreed.
@@ -284,21 +284,25 @@ almost twice as long.
 
 ### 3.6 Acceptance checks of the final code (2026-11-20)
 
-The platform's `npm run check-strategy` on the committed final code, with the project's
-fixed question `What is EBD (Environment Based Design)?` and up to 6 researchers. Tables:
+The platform's `npm run check-strategy` on the committed final code (`46fa444`, after the
+two switches of section 3.7 were removed), with the project's fixed question
+`What is EBD (Environment Based Design)?` and up to 6 researchers. Tables:
 `tables/acceptance-check-haiku.txt`, `tables/acceptance-check-luna.txt`; the reports are
 in `reports/acceptance-check/`.
 
 | | Claude Haiku 5.5 | OpenAI GPT-6 Luna |
 |---|---|---|
 | Contract checks passed | 11 of 11 | 11 of 11 |
-| Main parts planned; researchers used | 3; 3 of 6 | 1; 1 of 6 |
-| Searches; page reads | 13; 2 | 3; 2 |
-| Cost; seconds | $0.19; 129 | $0.04; 64 |
-| Words of the report | 1,514 | 907 |
+| Main parts planned; researchers used | 3; 3 of 6 | 2; 2 of 6 |
+| Searches; page reads | 17; 1 | 8; 3 |
+| Cost; seconds | $0.23; 105 | $0.10; 91 |
+| Words of the report | 1,199 | 1,108 |
 
-This was EBD's first run on Luna. Luna planned one main part and used one researcher on
-this question. A comparison of the two sides on Luna has not been run.
+Both runs ended complete after the first round. The same check had passed earlier that
+day on the code before the removal (`bd19ea8`), also 11 of 11 on both models: Haiku with
+3 researchers ($0.19, 129 seconds, 1,514 words), and Luna, in EBD's first run on that
+model, with one main part and one researcher ($0.04, 64 seconds, 907 words). Luna has
+these two runs only; a comparison of the two sides on Luna has not been run.
 
 ### 3.7 What the conflict checker and the new goals change (replay, 2026-11-20)
 
@@ -389,7 +393,7 @@ rule that gives the direct answer more room (a trade, not a gain; section 33.5).
 - **The planted problems are simple** and well known. Nothing was tested with a true fact
   that looks doubtful, so it is not measured whether EBD "corrects" what is right.
 - **One model for the main comparison.** Everything in sections 3.1 to 3.4 is on Claude
-  Haiku 5.5. Luna has an acceptance run only; GPT-5 nano is a side run outside the
+  Haiku 5.5. Luna has two acceptance runs only; GPT-5 nano is a side run outside the
   project's model list.
 - **Equal researchers** is one way to be fair. EBD's follow-up rounds cannot run under it
   unless EBD divides its researchers differently; that was not tested.
@@ -407,7 +411,7 @@ rule that gives the direct answer more room (a trade, not a gain; section 33.5).
 | Analysis after it, with the writer-input check | $4.13 |
 | Planted-problem test (24 runs and the judge), with its plan check | $7.60 |
 | Weaker models: planning probes and the run on GPT-5 nano | $0.43 and at most $2.78 on the OpenAI key |
-| Acceptance checks | $0.19 and $0.04 |
+| Acceptance checks | $0.19 and $0.04 before the removal of the switches; $0.23 and $0.10 after it |
 
 A run costs about $0.28 to $0.36 on Haiku 5.5, most of it the search fee of $0.01 a search.
 
@@ -426,7 +430,8 @@ Names: `final-test` uses the label `ebd-one` for EBD in its judgments; `p01` to 
 `pp01` to `pp12` are planted-problem questions, `s01` to `s12` the real queries. In
 `runs.csv` the code version of the final test reads "d906c5d + uncommitted changes": that
 state was committed afterwards as `5b84010`. The planted-problem test and the run on GPT-5
-nano ran on the state committed as `bd19ea8`.
+nano ran on the state committed as `bd19ea8`. The acceptance runs in `runs.csv` and in
+`reports/acceptance-check/` are those on `46fa444`.
 
 The full run records (every decision, every researcher's notes, every model call) are too
 large for the repository (29 MB). They are on the behaviour design lead's machine under

@@ -195,8 +195,9 @@ the plan's parts, which the run viewer shows step by step.
 - **Weaker models strain it.** On GPT-5 nano almost half of EBD's own replies failed the
   code checks and were asked again, and the round analysis had to be repaired by the code
   in 5 of 6 runs. The runs still ended ok.
-- **Luna has an acceptance run only.** On the fixed EBD question Luna planned one main
-  part and used one researcher. The comparison with the baseline on Luna has not been run.
+- **Luna has acceptance runs only.** On the fixed EBD question Luna planned one main
+  part in one run and two in the other, with a researcher for each. The comparison with
+  the baseline on Luna has not been run.
 - **Fewer researchers than main parts** (DESIGN.md, section 30). With one or two
   researchers a plan of four parts does not fit: the necessary parts and the check of the
   claims are asked, and some completing parts are not.

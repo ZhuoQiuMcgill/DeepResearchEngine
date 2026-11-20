@@ -1,7 +1,8 @@
 # EBD strategy design: building EBD research behaviour on the LangGraph platform
 
 Behaviour design (Haoxi Li). **Final (2026-11-20).** The strategy is one approach. It
-passes the platform's acceptance check on Claude Haiku 5.5 and on GPT-6 Luna (section 38).
+passes the platform's acceptance check on Claude Haiku 5.5 and on GPT-6 Luna (sections 38
+and 39.2).
 With the same number of researchers it is level with the baseline, not better; every test
 against the baseline is summarised in [evaluation/README.md](evaluation/README.md).
 
@@ -259,7 +260,9 @@ changed or removed, so start from the table.
   28 test runs give the writer the same input without new goals (28 of 28); without the
   conflict checker the writer loses the lines on critical disagreements in 17 of 27
   runs, and a run would be about 40 s shorter. The platform's comparison spec loses the
-  two arms that set them, in a commit for the platform owner's review.
+  two arms that set them, in a commit for the platform owner's review. Two limits that
+  stopped every new goal at 0 now start at 1. The acceptance check passed again on the
+  committed code on Haiku 5.5 and on Luna (11 of 11 checks each).
 
 ## 1. Summary: the final design
 
@@ -4813,7 +4816,7 @@ the rest of the team.
 
 ### 38.3 What is open
 
-- **The comparison on Luna** has not been run; Luna has the acceptance run only.
+- **The comparison on Luna** has not been run; Luna has acceptance runs only.
 - **EBD's own loop at equal spend.** With the baseline's number of researchers all of
   them go out in the first round, so finding conflicts and following them up has hardly
   run in a test. Sending two researchers first and the third where the evidence points
@@ -4896,8 +4899,22 @@ spec `experiments/compare.json` has an arm for each.
   them to 0. The three rules for dividing researchers (`premiseFirst`,
   `reserveFirstTries`, `spread`) stay as settings: they turn no part off.
 - **Nothing changes for a run that did not set them.** The 28 runs replayed before and
-  after the removal give the same file, byte for byte. The acceptance checks of section
-  38.1 ran on the code before the removal.
+  after the removal give the same file, byte for byte.
+- **Acceptance after the removal.** The platform's `npm run check-strategy` on the
+  committed code (`46fa444`), with the project's fixed question and up to 6 researchers,
+  passed 11 of 11 contract checks on both models. Both runs ended complete after the
+  first round.
+
+| | Claude Haiku 5.5 | OpenAI GPT-6 Luna |
+|---|---|---|
+| Contract checks passed | 11 of 11 | 11 of 11 |
+| Main parts planned; researchers used | 3; 3 of 6 | 2; 2 of 6 |
+| Searches; page reads | 17; 1 | 8; 3 |
+| Cost; seconds; words of the report | $0.23; 105; 1,199 | $0.10; 91; 1,108 |
+
+  These runs replace those of section 38.1 in `evaluation/`. $0.33 against about $0.23
+  named: Haiku made four more searches than in its earlier run, and Luna planned two main
+  parts where its first run had one.
 - **The platform's files, for the platform owner's review** (a commit of their own, as
   for the comparison spec itself on 2026-11-05): `experiments/compare.json` loses its two
   arms `ebd-no-conflicts` and `ebd-static`, which would now be rejected, and has 72 runs

@@ -1,4 +1,4 @@
-Run record: local\checks\20261120-170955-ebd-haiku-b06a5d-349f  cost ≈ $0.193
+Run record: local\checks\20261120-180854-ebd-haiku-b06a5d-1d79  cost ≈ $0.234
 PASS  module loads (ebd, contract 1)
 PASS  run completes with a report
 PASS  init returns at least one valid brief
