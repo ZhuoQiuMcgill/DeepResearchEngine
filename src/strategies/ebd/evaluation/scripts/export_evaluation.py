@@ -148,6 +148,7 @@ TABLES = {
     "planted-problem-test.txt": ["planted2_stats.py", "--quotes"],
     "planning-probe-weaker-models.txt": ["weaker_probe_stats.py"],
     "weaker-model-run.txt": ["nano_stats.py"],
+    "switches-replay.txt": ["switch_check.py"],
 }
 for name, cmd in TABLES.items():
     out = subprocess.run([sys.executable, os.path.join(R, cmd[0]), *cmd[1:]], capture_output=True, text=True, encoding="utf8", errors="replace")
@@ -162,7 +163,7 @@ SCRIPTS = [
     "sample.py", "sample2.py", "final_spec.py", "judge.ts", "judge-final.ts", "final_stats.py", "final_check.py", "golden.ts", "matched-round1.ts",
     "why.py", "rewrite-final.ts", "rewrite_stats.py", "screen-final.ts", "cover-screen.ts", "judge-rewrite.ts", "judge_rewrite_stats.py", "texts_check.py",
     "deepread.ts", "plancheck.ts", "plancheck_stats.py", "planted_spec.py", "planted2_stats.py", "planted-screen.ts",
-    "weaker-probe.ts", "weaker_probe_stats.py", "nano-run.ts", "nano_spec.py", "nano_stats.py", "export_evaluation.py",
+    "weaker-probe.ts", "weaker_probe_stats.py", "nano-run.ts", "nano_spec.py", "nano_stats.py", "switch_check.py", "export_evaluation.py",
 ]
 shutil.rmtree(os.path.join(OUT, "scripts"), ignore_errors=True)
 for name in SCRIPTS:

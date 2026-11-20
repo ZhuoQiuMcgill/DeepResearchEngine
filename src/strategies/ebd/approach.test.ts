@@ -64,12 +64,19 @@ const dispute = (claim: string): ConflictsReply => ({
 });
 
 describe("a disagreement between sources is reported, not researched again (section 29)", () => {
-  it("has no switch: the options that chose a planner or a follow-up rule are gone", () => {
-    for (const gone of ["init", "extend", "completeMap", "partQuestions", "premiseSort", "premiseRides", "stepsFirst", "focusFollowUp", "leanGuidance", "mainPartsFirst", "uncitedParts", "strictFollowUp", "extraRound"]) {
+  it("has no switch: the options that chose a planner, a follow-up rule or turned a part off are gone", () => {
+    // The last two went on 2026-11-20 (design section 39): the conflict checker and new goals are always on.
+    for (const gone of ["init", "extend", "completeMap", "partQuestions", "premiseSort", "premiseRides", "stepsFirst", "focusFollowUp", "leanGuidance", "mainPartsFirst", "uncitedParts", "strictFollowUp", "extraRound", "conflicts", "newGoals"]) {
       expect(() => parseOptions({ [gone]: true }), gone).toThrow();
+      expect(() => parseOptions({ [gone]: false }), gone).toThrow();
     }
-    // The two ablation switches of the platform's experiments stay.
-    expect(parseOptions({ conflicts: false, newGoals: false })).toMatchObject({ conflicts: false, newGoals: false, spread: true });
+    // Nor can a limit turn new goals off: the two that would do so at 0 start at 1.
+    expect(() => parseOptions({ maxNewGoalsPerRound: 0 })).toThrow();
+    expect(() => parseOptions({ maxDepth: 0 })).toThrow();
+    expect(parseOptions({ maxNewGoalsPerRound: 1, maxDepth: 1 })).toMatchObject({ maxNewGoalsPerRound: 1, maxDepth: 1 });
+    // What is left are limits and three scheduling rules, each with a default.
+    expect(parseOptions({})).toMatchObject({ maxPerRound: 4, questionsPerBrief: 3, maxAttempts: 2, spread: true });
+    expect(parseOptions({ maxPerRound: 3 })).toMatchObject({ maxPerRound: 3 });
   });
 
   it("gives no settle goal to a critical disagreement that decides no claim of the question", async () => {

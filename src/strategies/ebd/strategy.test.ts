@@ -196,25 +196,6 @@ describe("ebd strategy through the skeleton", () => {
     ]);
   });
 
-  it("makes no conflict records with conflicts: false (H1 ablation)", async () => {
-    const { state, calls } = await run({ conflicts: false });
-    expect(calls).not.toContain("submit_conflicts");
-    expect(state.conflicts).toEqual([]);
-    expect(state.goals.some((g) => g.settles)).toBe(false);
-    // Without a conflict record the analyst's "conflicting" judgment is judged on its parts, and the check is searched again.
-    expect(state.goals.find((g) => g.id === "Q1")!.servedRounds).toEqual([1, 2]);
-    expect(state.stop).toMatchObject({ kind: "complete" });
-  });
-
-  it("serves only the plan's goals with newGoals: false (tree-growth ablation)", async () => {
-    const { state } = await run({ newGoals: false });
-    expect(state.goals.every((g) => g.origin.type !== "finding" && g.origin.type !== "uncovered")).toBe(true);
-    expect(state.objectsFound).toEqual([]);
-    // The disagreement that decides the claim is still settled.
-    expect(state.goals.filter((g) => g.settles).map((g) => g.status)).toEqual(["answered"]);
-    expect(state.stop).toMatchObject({ kind: "complete" });
-  });
-
   it("reports a run whose researchers all failed as researcher failures, with its claim unchecked (live failure test, 2026-11-05)", async () => {
     const failing = async (question: string, brief: ResearchBrief): Promise<ResearchResult> => ({ ...(await research(question, brief)), status: "failed", notes: "", failure: { kind: "timeout", message: "timed out" } });
     const { state, synthesis } = await run({}, 30, failing);

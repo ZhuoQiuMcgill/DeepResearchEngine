@@ -184,7 +184,7 @@ export function analystMessage(state: EbdState, round: number, served: Goal[], o
     ].join("\n");
   });
   const openGoals = state.goals.filter((g) => !isSettled(g)).length;
-  const allowed = options.newGoals ? Math.max(0, Math.min(options.maxNewGoalsPerRound - createdThisRound(state, round), options.maxOpenGoals - openGoals)) : 0;
+  const allowed = Math.max(0, Math.min(options.maxNewGoalsPerRound - createdThisRound(state, round), options.maxOpenGoals - openGoals));
   const roundConflicts = state.conflicts.filter((c) => c.createdRound === round);
   return [
     `<run_date>${state.today}</run_date>`,
@@ -633,10 +633,6 @@ function sameSet(a: string[], b: string[]): boolean {
  */
 export function acceptProposals(state: EbdState, reply: RoundReply | null, round: number, options: EbdOptions, log: (line: string) => void): Goal[] {
   if (!reply?.proposals.length) return [];
-  if (!options.newGoals) {
-    log(`${reply.proposals.length} proposal(s) ignored: newGoals is off`);
-    return [];
-  }
   const objects = new Set([...state.analysis.rom.objects.map((o) => o.id), ...state.objectsFound.map((o) => o.id)]);
   const necessary = new Set(state.goals.filter((g) => g.need === "necessary").map((g) => g.id));
   const synthesis = new Set(synthesisQuestions(state.analysis).map((q) => q.id));

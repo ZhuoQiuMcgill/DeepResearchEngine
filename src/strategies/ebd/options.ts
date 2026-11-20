@@ -1,12 +1,15 @@
 /**
  * EBD options (design section 13). Every option has a default, so an experiment spec names only what
- * it changes, e.g. { "conflicts": false } for the H1 ablation.
+ * it changes, e.g. { "maxPerRound": 3 }.
  *
  * Since the consolidation of 2026-11-19 (design section 32) the strategy is one approach, and the
  * options that switched between planners and follow-up rules are gone: `init`, `extend`,
  * `completeMap`, `partQuestions`, `premiseSort`, `premiseRides`, `stepsFirst`, `focusFollowUp`,
- * `leanGuidance`, `mainPartsFirst`, `uncitedParts`, `strictFollowUp` and `extraRound`. What is left
- * are the two ablation switches the platform's experiments use, and limits.
+ * `leanGuidance`, `mainPartsFirst`, `uncitedParts`, `strictFollowUp` and `extraRound`. On 2026-11-20
+ * the two switches `conflicts` and `newGoals`, which turned the conflict checker and the growth of
+ * new goals off, went too (design section 39). What is left are limits and three scheduling rules
+ * (`premiseFirst`, `reserveFirstTries`, `spread`). No setting turns the conflict checker or the new
+ * goals off: the two limits that would do so at 0 start at 1.
  */
 import { z } from "zod";
 
@@ -16,14 +19,11 @@ export const OptionsSchema = z
     maxPerRound: z.number().int().min(1).max(20).default(4),
     /** Goals packed into one brief (D-C). */
     questionsPerBrief: z.number().int().min(1).max(6).default(3),
-    /** Conflict checker on or off (H1 ablation). */
-    conflicts: z.boolean().default(true),
-    /** Grow goals from evidence; off gives a static EBD plan (tree-growth ablation). */
-    newGoals: z.boolean().default(true),
-    maxNewGoalsPerRound: z.number().int().min(0).max(20).default(4),
+    /** New goals a round, settle goals included. At least 1: 0 would turn new goals off (section 39). */
+    maxNewGoalsPerRound: z.number().int().min(1).max(20).default(4),
     maxOpenGoals: z.number().int().min(1).max(60).default(20),
-    /** Derivation steps from the request a new goal may be. */
-    maxDepth: z.number().int().min(0).max(5).default(2),
+    /** Derivation steps from the request a new goal may be. At least 1: 0 would allow no new goal (section 39). */
+    maxDepth: z.number().int().min(1).max(5).default(2),
     /** Attempts before a goal is exhausted. */
     maxAttempts: z.number().int().min(1).max(5).default(2),
     /** Independent hosts needed before a claim of the question counts as checked (section 20). */

@@ -300,6 +300,32 @@ in `reports/acceptance-check/`.
 This was EBD's first run on Luna. Luna planned one main part and used one researcher on
 this question. A comparison of the two sides on Luna has not been run.
 
+### 3.7 What the conflict checker and the new goals change (replay, 2026-11-20)
+
+Until 2026-11-20 two settings turned the conflict checker and the round analyst's new
+goals off. Before they were removed (DESIGN.md, section 39), the 28 runs of EBD in the
+final test and in the planted-problem test were replayed with each of them off: the
+recorded replies and researcher results are fed back in, with no model call. No report was
+written or judged for this. Table: `tables/switches-replay.txt`.
+
+| | New goals off | Conflict checker off |
+|---|---|---|
+| Runs compared | 28 | 27 |
+| Researchers sent to the same goals | 28 of 28 | 27 of 27 |
+| The writer gets the same notes and outline | 28 of 28 | 27 of 27 |
+| The writer gets the same guidance | 28 of 28 | 10 of 27 |
+| The writer is told to correct a claim of the question | The same | The same: 10 runs, the same text |
+| What is no longer there | 21 proposed goals, none of which had a researcher | The lines on critical disagreements in 17 runs (1 to 3 a run) and a line on evidence to keep apart in 1 run |
+
+- With the baseline's number of researchers the new goals change no report: in 8 runs
+  EBD asked for a researcher for one, and none was left.
+- The conflict checker gives the writer the lines on where the sources disagree. It also
+  sent the only researcher of the 28 runs that went out after the first round (the
+  question on paid annual leave); that run cannot be replayed without it.
+- In these 28 runs the conflict checker takes 40 of a run's 184 seconds and 3% of its
+  cost. A run of the baseline takes 118 seconds.
+- Whether a report is better with or without either part was not tested.
+
 ## 4. What the records explain
 
 From the 12 real queries of the final test (`tables/final-test-what-the-records-show.txt`):
@@ -334,12 +360,12 @@ rule that gives the direct answer more room (a trade, not a gain; section 33.5).
 
 ## 5. Software tests
 
-- **199 automated tests pass** (`npm test`, no network), 169 of them in this strategy's
+- **197 automated tests pass** (`npm test`, no network), 167 of them in this strategy's
   folder: the planning call and its checks (`environment.test.ts`, 17), briefs and key
   questions (`parts.test.ts`, 10), conflicts, round analysis, goals and stopping
   (`loop.test.ts`, 50), the follow-up rules and the writer's input (`focus.test.ts`, 33),
   whole runs through the platform's skeleton with a scripted model (`approach.test.ts`,
-  20, and `strategy.test.ts`, 5), the OpenAI adapter (`providers.test.ts`, 3), the run
+  20, and `strategy.test.ts`, 3), the OpenAI adapter (`providers.test.ts`, 3), the run
   viewer's trace reader (3), and the request analysis that is no longer called (28).
 - **The approved prompt texts are pinned**: a test fails when a text sent to a model
   changes (`approach.test.ts`).
@@ -367,6 +393,9 @@ rule that gives the direct answer more room (a trade, not a gain; section 33.5).
   project's model list.
 - **Equal researchers** is one way to be fair. EBD's follow-up rounds cannot run under it
   unless EBD divides its researchers differently; that was not tested.
+- **No part of EBD was measured by itself.** No report was made without the conflict
+  checker or without the new goals and judged against one made with them; section 3.7
+  has only what a replay shows.
 - **Cheap screens can mislead.** A screen that put Haiku in the judge's place had the
   rewritten reports preferred in 33 of 43 judgments; the Opus judge had them level.
 

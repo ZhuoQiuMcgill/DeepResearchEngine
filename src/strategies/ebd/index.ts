@@ -167,7 +167,7 @@ Out of scope: ${a.status_reason ?? ""}` } };
 
     // Section 9: conflicts, before the round analyst.
     let newConflicts = 0;
-    if (this.options.conflicts && fresh.some((e) => e.kind === "finding")) {
+    if (fresh.some((e) => e.kind === "finding")) {
       const checked = await runConflictChecker(ctx.model, state, fresh);
       step.calls.push(...checked.calls);
       if (checked.fallback) state.problems.push(`round ${round}: conflict checker fell back to its valid items`);
@@ -193,7 +193,7 @@ Out of scope: ${a.status_reason ?? ""}` } };
         newNecessary: added.filter((g) => g.need === "necessary").length,
       };
     }
-    if (this.options.conflicts) resolveClaimChecks(state, round, this.options, log);
+    resolveClaimChecks(state, round, this.options, log);
     for (const line of releaseWaiting(state, round)) log(line);
     const mooted = mootDependents(state, round);
     if (mooted.length) log(`moot after a contradicted premise: ${mooted.join(", ")}`);

@@ -57,7 +57,7 @@ npm run research -- --strategy ebd --model haiku --question "How do heat pumps w
 - The question is used exactly as typed.
 - `--researchers` is the most researchers the run may send (default 10). Each
   researcher runs one brief with up to 12 web searches and page reads.
-- `--options '{"conflicts": false}'` changes a setting (see below).
+- `--options '{"maxPerRound": 3}'` changes a setting (see below).
 - `--task ebd` (or `headset`, `flight`, `sleep`) runs one of the fixed test questions.
 
 The run writes its record to `local/runs/<run id>/`; the report is `report.md` there.
@@ -101,18 +101,16 @@ shown in the viewer.
 
 ## Settings
 
-Set in `--options` or in an experiment spec's strategy entry. All have defaults. The
-first two are the switches the platform's comparison experiment uses
-(`experiments/compare.json`); the others are limits.
+Set in `--options` or in an experiment spec's strategy entry. All have defaults. They
+are limits and three rules for dividing researchers (`spread`, `premiseFirst`,
+`reserveFirstTries`). No setting turns the conflict checker or the new goals off.
 
 | Setting | Default | What it changes |
 |---|---|---|
-| `conflicts` | true | `false` turns the conflict checker off |
-| `newGoals` | true | `false` keeps only the goals of the first plan |
 | `maxPerRound` | 4 | Researchers per round at most |
 | `questionsPerBrief` | 3 | Goals packed into one brief in a round after the first |
 | `spread` | true | Give every researcher of a round a goal of its own where the goals allow it. `false` packs the goals of the first round by the limit above |
-| `maxNewGoalsPerRound`, `maxOpenGoals`, `maxDepth` | 4, 20, 2 | Limits on new goals: per round, open at once, and steps away from the question |
+| `maxNewGoalsPerRound`, `maxOpenGoals`, `maxDepth` | 4, 20, 2 | Limits on new goals: per round, open at once, and steps away from the question. Each is at least 1 |
 | `maxAttempts` | 2 | Attempts before a goal is given up on |
 | `evidenceFloor` | 2 | Different websites needed before a claim of the question counts as checked |
 | `premiseFirst` | true | Check the question's claims in the first round |
@@ -121,8 +119,10 @@ first two are the switches the platform's comparison experiment uses
 An unknown setting is rejected. That includes the settings that existed until
 2026-11-19 and chose a planner or a follow-up rule (`init`, `extend`, `completeMap`,
 `partQuestions`, `premiseSort`, `premiseRides`, `stepsFirst`, `focusFollowUp`,
-`leanGuidance`, `mainPartsFirst`, `uncitedParts`, `strictFollowUp`, `extraRound`). No
-experiment spec in the repository uses one of them.
+`leanGuidance`, `mainPartsFirst`, `uncitedParts`, `strictFollowUp`, `extraRound`), and the
+two that turned the conflict checker and new goals off until 2026-11-20 (`conflicts`,
+`newGoals`; DESIGN.md, section 39). No experiment spec in the repository uses one of
+them.
 
 ## Reading a run
 
@@ -188,8 +188,9 @@ the plan's parts, which the run viewer shows step by step.
 - **The follow-up rounds have hardly run.** With the baseline's number of researchers all
   of them go out in the first round, so the analysis after it could rarely send anyone:
   one follow-up round in EBD's 28 runs of the two tests.
-- **Time.** EBD spends about 85 seconds a run in its own calls. Some first replies of the
-  conflict checker fail the code checks and are asked again (9 of 16 runs of the final
+- **Time.** EBD spends about 85 seconds a run in its own calls, about 40 of them in the
+  conflict checker, which runs after every round and cannot be turned off. Some of its
+  first replies fail the code checks and are asked again (9 of 16 runs of the final
   test).
 - **Weaker models strain it.** On GPT-5 nano almost half of EBD's own replies failed the
   code checks and were asked again, and the round analysis had to be repaired by the code

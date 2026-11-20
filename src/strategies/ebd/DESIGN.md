@@ -15,7 +15,7 @@ changed or removed, so start from the table.
 | The mechanisms that are in the code | Sections 6 to 12 (goals, briefs, reading results, conflicts, round analysis, stopping, the writer's input), as changed by sections 20 (critical conflicts and what is searched after a round), 21 (the key questions of a part), 28 (the plan in one call), 29 (after the first round, only a main part or a claim), 30 (the first round) and 34 (what the writer is told) |
 | What was built and taken out again | Sections 5 (the request analysis in several calls), 19 and 22 (the problem extension), 27 (the premise sorter). Section 32 says what went and how it was shown that nothing else changed |
 | The tests against the baseline | Sections 23 and 24 (2026-11-18), 31 (the final test), 33 (why the two sides are level), 35 (planted problems), 36 and 37 (weaker models). In one place: `evaluation/README.md` |
-| Settings and files | Sections 13 and 15 |
+| Settings and files | Sections 13 and 15; section 39 for the two switches that were removed last |
 | The state at the end, and what is open | Section 38 |
 
 - 2026-10-07: first draft, written for the Python platform's planned `ebd@1` method.
@@ -253,6 +253,13 @@ changed or removed, so start from the table.
   Luna (11 of 11 checks each). The user guide and the head and section 1 of this
   document describe the final strategy; `evaluation/` holds the record of every test
   against the baseline with its data. Nothing outside this folder was changed.
+- 2026-11-20, after the finalization: the two switches `conflicts` and `newGoals` removed
+  on the user's view that they should not stay (section 39). No test had compared a
+  report with a switch off against one with it on. Replayed with each switch off, the
+  28 test runs give the writer the same input without new goals (28 of 28); without the
+  conflict checker the writer loses the lines on critical disagreements in 17 of 27
+  runs, and a run would be about 40 s shorter. The platform's comparison spec loses the
+  two arms that set them, in a commit for the platform owner's review.
 
 ## 1. Summary: the final design
 
@@ -295,8 +302,9 @@ changed or removed, so start from the table.
   Code checks every reply and asks again once when it fails, and code alone turns the
   judgments into priorities, briefs and stops. Every step records its model calls and its
   code actions, which the run viewer shows.
-- **Settings** (section 13): two switches for the platform's comparison experiment
-  (`conflicts`, `newGoals`) and limits. No setting chooses another planner.
+- **Settings** (section 13): limits and three rules for dividing researchers. No setting
+  chooses another planner or turns the conflict checker or the new goals off (section
+  39).
 - **What was built and taken out.** The request analysis in several calls, the problem
   extension with its environment map, and the premise sorter made the first plan until
   2026-11-19. They took about three planning calls where one now does, for the same
@@ -388,7 +396,7 @@ Provider documentation:
 | Analyst's assistant | Not needed. There is no candidate pool, because researchers choose their pages inside their tool cap. H-4 (candidate value) no longer applies. |
 | Searchers and Readers | Platform researchers: one model call per brief with the provider's search and fetch; notes with one section per key question |
 | Finance | Platform budget (`researchersTotal`, priority drop), plus EBD code that allocates goals to briefs |
-| Conflict checker | A `ctx.model` call in `observe` (option `conflicts`) |
+| Conflict checker | A `ctx.model` call in `observe` |
 | Writer | The shared writer; EBD supplies `material`, `outline` and `guidance` |
 | Records | Run records (`events.jsonl` holds EBD's state after every step) and Langfuse traces |
 
@@ -850,7 +858,8 @@ Effects:
 - **`time_dependent`:** settled at once with the condition ("as of …").
 
 With `conflicts: false`, the round analyst still sees the evidence, but no conflict
-records or settle goals are made. This is the H1 ablation.
+records or settle goals are made. This is the H1 ablation. (The switch was removed on
+2026-11-20, section 39: the conflict checker always runs.)
 
 With `focusFollowUp` (section 20), only a critical conflict gets a settle goal: one per
 round, necessary, with one attempt.
@@ -1167,16 +1176,15 @@ do not show.
 ## 13. Options and ablations
 
 Strict zod options, all with defaults, chosen per experiment spec. Since the consolidation
-of section 32 these are the two ablation switches of the platform's experiments and limits;
-an option that is not listed is rejected.
+of section 32 and the removal of the two ablation switches (section 39) these are limits
+and three rules for dividing researchers (`premiseFirst`, `reserveFirstTries`,
+`spread`); an option that is not listed is rejected.
 
 | Option | Default | Use |
 |---|---|---|
 | `maxPerRound` | 4 | Briefs per round |
 | `questionsPerBrief` | 3 | Goals packed into one brief |
-| `conflicts` | true | Conflict checker on or off (H1 ablation) |
-| `newGoals` | true | Grow goals from evidence; off = static EBD plan (tree-growth ablation) |
-| `maxNewGoalsPerRound` / `maxOpenGoals` / `maxDepth` | 4 / 20 / 2 | New-goal limits |
+| `maxNewGoalsPerRound` / `maxOpenGoals` / `maxDepth` | 4 / 20 / 2 | New-goal limits, each at least 1 (section 39) |
 | `maxAttempts` | 2 | Attempts before a goal is exhausted |
 | `evidenceFloor` | 2 | Independent hosts needed before a claim of the question counts as checked (section 20) |
 | `premiseFirst` | true | L-7: a request's verification goal is served in round 1 even when the analysis made it wait for definition goals |
@@ -1188,8 +1196,11 @@ Removed on 2026-11-19, with the section that describes what each one switched: `
 Example spec entry:
 
 ```json
-{ "name": "ebd", "label": "ebd-no-conflicts", "options": { "conflicts": false } }
+{ "name": "ebd", "label": "ebd-three-a-round", "options": { "maxPerRound": 3 } }
 ```
+
+Removed on 2026-11-20 (section 39): `conflicts` (the conflict checker on or off) and
+`newGoals` (new goals from the evidence, or the first plan only).
 
 ## 14. Records and metrics
 
@@ -4761,7 +4772,7 @@ the rest of the team.
 - **The code** of sections 32 and 34: the one approach, with the writer's input and the
   two planner passages approved on 2026-11-20. After that only comments and two test
   titles were brought in line with it. 199 tests pass and the project's type check is
-  clean.
+  clean (197 tests since section 39, which took out the two tests of the switches).
 - **Acceptance.** The platform's `npm run check-strategy` on the committed code, with the
   project's fixed question and up to 6 researchers:
 
@@ -4782,11 +4793,14 @@ the rest of the team.
 
 ### 38.2 For the rest of the team
 
-- **Nothing outside `src/strategies/ebd/` was changed.** Against the main branch as merged
-  on 2026-11-06, every difference is inside this folder.
-- **The experiment specs keep working.** `experiments/compare.json` sets only `conflicts`
-  and `newGoals`, which stay. The settings that chose a planner or a follow-up rule are
-  gone and are rejected when given (section 13); no spec in the repository gives one.
+- **Nothing outside `src/strategies/ebd/` was changed** up to this point: against the main
+  branch as merged on 2026-11-06, every difference is inside this folder. The one
+  exception came after it, with section 39: two platform files, in a commit of their
+  own for the platform owner's review.
+- **The experiment specs.** The settings that chose a planner or a follow-up rule are
+  gone and are rejected when given (section 13). So are, since section 39, `conflicts`
+  and `newGoals`, which `experiments/compare.json` set in two of its arms; those two arms
+  are taken out of the spec in a commit for the platform owner's review.
 - **Run records.** Goals, disagreements, findings, the question's claims with their
   verdicts and the writer's input are recorded as before, so a tool that reads them keeps
   working. Gone from the state: `map.replaced`, `map.questions` and `extraRoundServed`.
@@ -4809,8 +4823,92 @@ the rest of the team.
 - **Smaller matters:** the conflict checker's first replies that fail the code checks;
   the planner listing a term with several meanings more often than its prompt asks for
   (section 34.1); the writer's output limit, which is the platform's.
-- **For the platform owner:** whether the two switches `conflicts` and `newGoals` are
-  still wanted in the comparison, now that the default EBD entry is this approach.
+- **For the platform owner:** the change of `experiments/compare.json` and of the example
+  in the module guide that goes with the removal of the two switches (section 39).
+
+## 39. The two switches removed (2026-11-20)
+
+The lead: "I do not think we should keep the switches. Is there any case the output is
+better while conflict checker and newgoals are turned off?" Until now `conflicts: false`
+turned the conflict checker off and `newGoals: false` kept only the goals of the first
+plan. They were made so that what each part contributes could be measured by a run
+without it (the conflict checker is a call of its own for that reason, decision D-D of
+section 18), and they stayed at the consolidation (section 32) because the comparison
+spec `experiments/compare.json` has an arm for each.
+
+### 39.1 What the records say
+
+- **No test compared a report made with a switch off against one made with it on.** Of
+  the 169 runs of the strategy recorded on the lead's machine, two had a switch off: one
+  live run for each switch on 2026-11-05, with the planner of that time, and no record of
+  a comparison. No run of the comparison spec's two arms is on record there.
+- **A replay with each switch off**, with no model call: the 28 runs of the strategy in
+  the final test and in the planted-problem test, replayed by `golden.ts` on commit
+  `a4e5cb2`, the last with the switches, and compared by `switch_check.py`. A replay
+  feeds a run's recorded replies and researcher results back in, so it says what the
+  strategy would have done as long as the same researchers are sent. Neither switch
+  touches the first round, and only one of the 28 runs had a researcher after it. Table:
+  `evaluation/tables/switches-replay.txt`.
+
+| | New goals off | Conflict checker off |
+|---|---|---|
+| Runs compared | 28 | 27 |
+| Researchers sent to the same goals | 28 of 28 | 27 of 27 |
+| The writer gets the same notes and outline | 28 of 28 | 27 of 27 |
+| The writer gets the same guidance | 28 of 28 | 10 of 27 |
+| The writer is told to correct a claim of the question | The same | The same: 10 runs, the same text |
+| What is no longer there | 21 goals proposed by the round analyst, in 15 runs; 10 of them necessary, in 8 runs; none had a researcher | The lines on critical disagreements in 17 runs (28 lines, 1 to 3 a run); the line on evidence to keep apart in 1 run; the record of 153 disagreements, 45 of them critical; 5 goals made to settle one, none of which had a researcher |
+| Runs whose end is recorded as "researchers ran out" | 3 instead of 10 | 9 instead of 10 |
+
+- **New goals change no report at the baseline's number of researchers.** In 8 runs the
+  strategy asked for a researcher for a proposed goal, and none was left. What the switch
+  changes there is the record: it shows what the run would have researched next.
+- **The conflict checker gives the writer the lines on disagreements, and it sent the
+  only later researcher of the 28 runs.** On the question about paid annual leave, the
+  one researcher left after the first round went to settle a disagreement between a
+  claim of the question and the findings. The claim stayed unsettled, and both sides'
+  reports state the planted point in full. That run cannot be replayed without the
+  checker.
+- **The conflict checker is the longest of the strategy's own steps.** In the 28 runs it
+  takes 40 s of a run's 184 s (22%) and $0.008 of $0.302 (3%); 13 of its 42 replies
+  failed the code checks and were asked again. The round analyst takes 24 s and the plan
+  17 s. A run of the baseline takes 118 s. So a run without the checker would be about
+  40 s shorter.
+- **The judge.** On the handling of conflicts and false assumptions the two sides are
+  level. In the final test the approach led on 3 questions to 2 with 7 undecided, and
+  trailed in single judgments, 7 to 9. With the final writer input it stands at 0 to 1
+  with 11 undecided, and leads in single judgments, 9 to 6 (section 33.9). The criterion
+  also covers the correction of a false claim, which does not depend on the checker.
+- **So:** the records hold no case in which a report is better with a switch off, and
+  none in which it is better with it on, because that was never tested. With new goals
+  off the writer's input is the same. With the conflict checker off a run is shorter and
+  the writer is told less about where the sources disagree.
+
+### 39.2 What changed
+
+- **The strategy.** `conflicts` and `newGoals` are gone from `options.ts` and are rejected
+  like any unknown setting. The conflict checker runs after every round with findings, and
+  the round analyst's proposals are always considered. The two whole-run tests of the
+  switches went, and the test of rejected settings covers the two. 197 tests pass.
+- **Two limits no longer take 0.** `maxNewGoalsPerRound: 0` and `maxDepth: 0` stopped
+  every new goal, the goals that settle a disagreement included, so they were a second
+  way to switch new goals off. Their smallest value is now 1. No test and no spec set
+  them to 0. The three rules for dividing researchers (`premiseFirst`,
+  `reserveFirstTries`, `spread`) stay as settings: they turn no part off.
+- **Nothing changes for a run that did not set them.** The 28 runs replayed before and
+  after the removal give the same file, byte for byte. The acceptance checks of section
+  38.1 ran on the code before the removal.
+- **The platform's files, for the platform owner's review** (a commit of their own, as
+  for the comparison spec itself on 2026-11-05): `experiments/compare.json` loses its two
+  arms `ebd-no-conflicts` and `ebd-static`, which would now be rejected, and has 72 runs
+  instead of 120; the example entry in `docs/strategy-modules.md` sets a limit instead of
+  `conflicts`.
+- **What is given up.** A run with a part switched off was the way to measure what that
+  part contributes to a report, and the comparison spec planned it (section 16, step 5).
+  After the removal it can only be made on commit `a4e5cb2` or earlier, and every run
+  pays for the conflict checker. For the comparison at equal researchers the replay of
+  39.1 stands in its place as far as the writer's input goes; it does not say whether
+  the reports are better.
 
 ## References
 

@@ -1,8 +1,8 @@
 /**
  * The conflict checker (design section 9): one model call per round, before the
- * round analyst (D-D), so H1 is attributable to it and `conflicts: false` turns
- * it off. It cites evidence line IDs only; code checks every record and applies
- * its effects. A conflict without valid evidence on both sides is not recorded.
+ * round analyst (D-D). It cites evidence line IDs only; code checks every record
+ * and applies its effects. A conflict without valid evidence on both sides is not
+ * recorded.
  */
 import { z } from "zod";
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
