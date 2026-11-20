@@ -10,7 +10,9 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run",
+    "test": "vitest run --exclude \"ui/**\"",
+    "defense:ui": "npm --prefix ui run dev:ui",
+    "evaluate": "tsx src/cli/evaluate.ts",
     "research": "tsx src/cli/research.ts",
     "experiment": "tsx src/cli/experiment.ts",
     "check-strategy": "tsx src/cli/check-strategy.ts"

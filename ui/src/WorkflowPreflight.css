@@ -1,0 +1,111 @@
+.workflow-preflight {
+  --review-surface: #f3f7f7;
+  --review-border: #dce6e6;
+  --review-muted: #50656b;
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  padding: 24px;
+  color: #20383f;
+  background: #fff;
+  border: 1px solid var(--review-border);
+  border-radius: 14px;
+  box-shadow: 0 20px 64px #14222638;
+}
+.workflow-preflight::backdrop {
+  background: #1422269e;
+}
+.workflow-preflight h2 {
+  margin: 0 0 20px;
+  font-family: Manrope, system-ui, sans-serif;
+  font-size: 22px;
+}
+.workflow-preflight h3 {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 8px;
+  font-size: 13px;
+}
+.workflow-preflight h3 span {
+  margin-left: auto;
+  font-weight: 400;
+}
+.workflow-preflight :is(h3 span, li span) {
+  color: var(--review-muted);
+}
+.workflow-preflight section {
+  margin: 0 0 16px;
+}
+.workflow-preflight-question {
+  max-height: 110px;
+  overflow: auto;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 7px;
+  background: var(--review-surface);
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.workflow-preflight ol {
+  max-height: 142px;
+  overflow: auto;
+  margin: 0;
+  padding: 3px 12px 3px 31px;
+  border: 1px solid var(--review-border);
+  border-radius: 7px;
+}
+.workflow-preflight :is(.workflow-preflight-question, ol):focus-visible {
+  outline: 2px solid #098779;
+  outline-offset: 2px;
+}
+.workflow-preflight li {
+  padding: 5px 0;
+  overflow-wrap: anywhere;
+}
+.workflow-preflight li span {
+  margin-left: 4px;
+  font-size: 12px;
+}
+.workflow-preflight-scope {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 10px 12px;
+  background: var(--review-surface);
+  border-radius: 7px;
+  color: var(--review-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.workflow-preflight-scope svg {
+  flex-shrink: 0;
+}
+.workflow-preflight-scope p {
+  margin: 0;
+}
+.workflow-preflight-scope p + p {
+  margin-top: 6px;
+}
+.workflow-preflight-error {
+  margin: 0 0 16px;
+  color: #a12842;
+  font-weight: 600;
+}
+.workflow-preflight-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 18px;
+}
+[data-theme="dark"] .workflow-preflight {
+  --review-surface: #111c24;
+  --review-border: #30414d;
+  --review-muted: #b7c9d1;
+  color: #e0ebef;
+  background: #17212a;
+}
+[data-theme="dark"] .workflow-preflight-error {
+  color: #ffb5c4;
+}
