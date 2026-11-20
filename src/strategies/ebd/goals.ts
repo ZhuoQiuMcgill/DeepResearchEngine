@@ -1,6 +1,6 @@
 /**
- * The goal table (design sections 6, 10 and 11): building it from the request
- * analysis, readiness, the code-computed order, settling goals, making goals
+ * The goal table (design sections 6, 10 and 11): building it from the analysis
+ * of the request, readiness, the code-computed order, settling goals, making goals
  * moot, the stop rules and the tree metrics. Pure functions; no model calls.
  */
 import type { Analysis, AnalysisQuestion } from "./analysis.js";

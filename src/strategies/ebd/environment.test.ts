@@ -147,7 +147,7 @@ describe("the analysis built from a plan", () => {
   });
 });
 
-describe("init in the environment mode", () => {
+describe("init: the plan from the environment analysis", () => {
   it("makes the whole first plan in one call: a goal for each main part, with its key questions as written", async () => {
     const { model, calls } = planner(PLAN);
     const step = await create().init({ question: QUESTION }, ctx(model));
@@ -293,7 +293,7 @@ function judge(message: string) {
   return { judgments, proposals: [] };
 }
 
-describe("a whole run in the environment mode, through the skeleton", () => {
+describe("a whole run from the environment analysis, through the skeleton", () => {
   it("plans in one call, researches the main parts, judges the checked claim and hands the notes to the writer", async () => {
     const calls: string[] = [];
     const model = {

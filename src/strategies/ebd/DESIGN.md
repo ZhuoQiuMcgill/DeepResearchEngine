@@ -1,25 +1,22 @@
 # EBD strategy design: building EBD research behaviour on the LangGraph platform
 
-Behaviour design (Haoxi Li). **Final for the comparison with the baseline (2026-11-05).**
-Built: the request analysis (section 5) and the loop (sections 6–12), tested offline with
-a fake model through the real skeleton and live on Haiku (section 16.1). The open
-decisions of section 18 are decided. A run viewer for checking runs step by step is in
-`viewer/`. Not yet run on Luna (no OpenAI key on this machine).
+Behaviour design (Haoxi Li). **Final (2026-11-20).** The strategy is one approach. It
+passes the platform's acceptance check on Claude Haiku 5.5 and on GPT-6 Luna (section 38).
+With the same number of researchers it is level with the baseline, not better; every test
+against the baseline is summarised in [evaluation/README.md](evaluation/README.md).
 
-**Since 2026-11-19 the code is one approach (section 32):** the environment analysis in one
-call makes the plan (section 28), every researcher of the first round goes to a main part
-of the answer (section 30), a later researcher goes only to a main part or to a claim of
-the question (sections 20 and 29), and the writer is told only what the notes do not show
-(section 20). Sections 5, 19, 22 and 27 describe the request analysis, the problem
-extension and the premise sorter, which made the first plan before and are no longer
-called; sections 20, 21, 25 and 26 describe rules that were options and are now fixed.
-They are kept as the record of how the approach was reached. Section 31 has its test.
+**How to read this document.** It is the record of how the design was reached, in the
+order in which things happened. Early sections describe mechanisms that later sections
+changed or removed, so start from the table.
 
-**Since 2026-11-20 the writer is told different things (section 34):** the plan's main
-parts as a suggested outline, a contradicted claim to be corrected in a sentence or two, a
-line on the question's main terms and a line on sources. Section 33 says why, and why the
-approach is level with the baseline and not better. Section 35 has the test on questions
-with a planted problem: level there too.
+| To learn | Read |
+|---|---|
+| What the final strategy does | Section 1, then the user guide ([README.md](README.md)) |
+| The mechanisms that are in the code | Sections 6 to 12 (goals, briefs, reading results, conflicts, round analysis, stopping, the writer's input), as changed by sections 20 (critical conflicts and what is searched after a round), 21 (the key questions of a part), 28 (the plan in one call), 29 (after the first round, only a main part or a claim), 30 (the first round) and 34 (what the writer is told) |
+| What was built and taken out again | Sections 5 (the request analysis in several calls), 19 and 22 (the problem extension), 27 (the premise sorter). Section 32 says what went and how it was shown that nothing else changed |
+| The tests against the baseline | Sections 23 and 24 (2026-11-18), 31 (the final test), 33 (why the two sides are level), 35 (planted problems), 36 and 37 (weaker models). In one place: `evaluation/README.md` |
+| Settings and files | Sections 13 and 15 |
+| The state at the end, and what is open | Section 38 |
 
 - 2026-10-07: first draft, written for the Python platform's planned `ebd@1` method.
 - 2026-10-14: retargeted to the TypeScript platform on main (`d24a40d`, strategy
@@ -251,30 +248,69 @@ with a planted problem: level there too.
   questions, an indication. On that model 11 of 24 of the approach's replies were
   rejected and redone and its round analysis was repaired by the code in 5 of 6 runs.
   At most $2.78. The platform's model file is unchanged.
+- 2026-11-20, final: on the user's word to finalize (section 38). The platform's
+  acceptance check passed on the committed code on Haiku 5.5 and, for the first time, on
+  Luna (11 of 11 checks each). The user guide and the head and section 1 of this
+  document describe the final strategy; `evaluation/` holds the record of every test
+  against the baseline with its data. Nothing outside this folder was changed.
 
-## 1. Summary
+## 1. Summary: the final design
 
-- EBD is a strategy plug-in, `src/strategies/ebd/`, implementing `init`, `observe` and
-  `finalize` of contract v1 (`docs/strategy-modules.md`).
-  - The platform runs the researchers, the writer, the budget and the records for both
-    arms.
-  - EBD decides what to research, when to stop and what the writer sees.
-- What EBD does in each step:
-  - `init` runs the request analysis: the Lab 2 contract, ported.
-  - `observe` reads the round's notes, checks conflicts, judges every served goal
-    against its `done_when` and grows new goals.
-  - Code ranks the goals, packs them into researcher briefs and applies the stop rules.
-- The model still makes only narrow, categorical judgments; code turns them into
-  priorities and stop decisions. That rule from the first draft is unchanged.
-- The rewrite removes most of the old design's platform work:
-  - no Distiller and no source selection: the provider tools search and read inside
-    each researcher;
-  - no 32-call cap;
-  - no Writer 5/Reviewer 4 projection.
-- It adds three constraints:
-  - all search goes through briefs;
-  - the writer's material must be researcher notes lines;
-  - structured outputs behave differently on the two providers (section 5.3).
+- **What it is.** EBD is a strategy plug-in, `src/strategies/ebd/`, implementing `init`,
+  `observe` and `finalize` of contract v1 (`docs/strategy-modules.md`). The platform runs
+  the researchers, the writer, the budget and the records for both sides. EBD decides
+  what to research, when to stop and what the writer is told.
+- **What it keeps of Environment-Based Design.** EBD designs a product from its
+  environment: first what surrounds the product and what that requires of it, then the
+  conflicts, then solutions, and each solution changes the environment. Here the product
+  is the answer to the client's question. Its environment has three sides: the client who
+  will use the answer, the subject with everything around it that the answer depends on,
+  and what the question itself takes for granted. The conflicts are disagreements between
+  sources and between the evidence and the question's claims. The procedure is the
+  team's own: on 2026-11-19 the lead decided that the strategy follows EBD's concept and
+  not its procedure step by step (section 28.2).
+- **`init`: the plan, in one model call** (the environment analyst, section 28). It writes
+  the main parts a full answer needs, usually 3 or 4, each with 4 or 5 key questions and
+  marked necessary or completing; the claims the question takes for granted, sorted into
+  those to check (a specific fact that could be wrong) and those taken as given; what the
+  answer depends on and the client did not state; and terms with several meanings. Code
+  checks the reply and turns the plan into goals. In the first round every researcher
+  goes to a main part, the necessary parts first (section 30), and the check of the
+  claims is one key question in the brief of a main part.
+- **`observe`: after each round.** Code maps the researchers' notes to goals and indexes
+  every finding (section 8). The conflict checker, one model call, lists the disagreements
+  and marks each critical or not (sections 9 and 20). The round analyst, one model call,
+  says which key questions the findings answer, gives a verdict on each checked claim and
+  proposes new goals (section 10). Code then settles goals, accepts at most two necessary
+  new goals a round, and sends a later researcher only to a main part of the answer or to
+  a claim of the question (section 29). The run stops when nothing of that kind is left,
+  or when no researcher is left (section 11).
+- **`finalize`: what the writer gets** (sections 12 and 34). The material is whole lines
+  of the researchers' notes, grouped by goal. The researched main parts are the suggested
+  outline. The guidance has a few lines: a claim of the question that the evidence
+  contradicts, to be corrected in a sentence or two before the question is answered as
+  asked; at most three critical disagreements; a line on the question's main terms and a
+  line on sources.
+- **Model and code.** The three model roles make narrow judgments in structured replies.
+  Code checks every reply and asks again once when it fails, and code alone turns the
+  judgments into priorities, briefs and stops. Every step records its model calls and its
+  code actions, which the run viewer shows.
+- **Settings** (section 13): two switches for the platform's comparison experiment
+  (`conflicts`, `newGoals`) and limits. No setting chooses another planner.
+- **What was built and taken out.** The request analysis in several calls, the problem
+  extension with its environment map, and the premise sorter made the first plan until
+  2026-11-19. They took about three planning calls where one now does, for the same
+  substance (section 28), and the follow-up they fed spent researchers on disagreements
+  that decided nothing (section 24.5). The one-call plan and the fixed follow-up rules replaced them
+  (sections 28 to 32).
+- **Where it stands against the baseline.** With the same number of researchers on Claude
+  Haiku 5.5 the two sides are level on ordinary questions and on questions with a planted
+  problem, at about the same cost and half as much time again. On a weaker model the
+  strategy's explicit checks begin to pay (sections 31, 33 and 35 to 37;
+  `evaluation/README.md`).
+- **Constraints from the platform**, unchanged since the first build: all search goes
+  through briefs; the writer's material must be lines of the researchers' notes; and
+  structured replies behave differently on the two providers (section 5.3).
 
 ## 2. What changed on main and what it means for EBD
 
@@ -1219,6 +1255,8 @@ src/strategies/ebd/
                       approach.test.ts, environment.test.ts), and EBD's model calls through
                       the OpenAI adapter offline (providers.test.ts)
   fixtures.ts         test data: two worked analyses with goals that depend on one another
+  evaluation/         the tests against the baseline: questions, the judge's output, reports,
+                      tables and the scripts behind them (evaluation/README.md)
   README.md           user guide: running a question, settings, stops, reading a run
   DESIGN.md           this document
 ```
@@ -4711,6 +4749,68 @@ OpenAI: the probe $0.08, and the 12 runs at most $2.70 (tokens $0.35; 235 web se
 if every search and page open is billed, $2.35; the platform's ledger, which counts
 searches only, says $1.82). At most $2.78 of the 5 dollars. Anthropic: about $0.03 for the
 reader of the plans and the scorer.
+
+## 38. The final state (2026-11-20)
+
+On the lead's word to finalize the work on EBD's search behaviour, bring the documents in
+line with the final implementation, record the tests, and leave the repository ready for
+the rest of the team.
+
+### 38.1 What is final
+
+- **The code** of sections 32 and 34: the one approach, with the writer's input and the
+  two planner passages approved on 2026-11-20. After that only comments and two test
+  titles were brought in line with it. 199 tests pass and the project's type check is
+  clean.
+- **Acceptance.** The platform's `npm run check-strategy` on the committed code, with the
+  project's fixed question and up to 6 researchers:
+
+| | Claude Haiku 5.5 | OpenAI GPT-6 Luna |
+|---|---|---|
+| Contract checks passed | 11 of 11 | 11 of 11 |
+| Main parts planned; researchers used | 3; 3 of 6 | 1; 1 of 6 |
+| Stop | complete after the first round | complete after the first round |
+| Cost; seconds; words of the report | $0.19; 129; 1,514 | $0.04; 64; 907 |
+
+  It was the strategy's first run on Luna. Luna planned one main part for the fixed
+  question, and one researcher answered it.
+- **The documents.** The user guide (`README.md`) describes the final strategy, its
+  records and its limits. `evaluation/README.md` holds every test against the baseline
+  with its method, results and limits, and the folder holds the data: the questions, the
+  judge's output, the 70 reports of the last three tests, the printed tables and the
+  scripts. This document keeps the full record; its head says which sections still apply.
+
+### 38.2 For the rest of the team
+
+- **Nothing outside `src/strategies/ebd/` was changed.** Against the main branch as merged
+  on 2026-11-06, every difference is inside this folder.
+- **The experiment specs keep working.** `experiments/compare.json` sets only `conflicts`
+  and `newGoals`, which stay. The settings that chose a planner or a follow-up rule are
+  gone and are rejected when given (section 13); no spec in the repository gives one.
+- **Run records.** Goals, disagreements, findings, the question's claims with their
+  verdicts and the writer's input are recorded as before, so a tool that reads them keeps
+  working. Gone from the state: `map.replaced`, `map.questions` and `extraRoundServed`.
+  The roles of the strategy's model calls are `environment_analyst`, `conflict_checker`
+  and `round_analyst`. `synthesis.json` now has an outline in most runs.
+- **`request/`** is not called by the strategy and nothing else in the repository uses
+  it. It is kept because scripts of an earlier lab on the lead's machine import it.
+- **To run it:** the user guide. **To change it:** the last section of the user guide;
+  the texts sent to a model are approved by the lead and pinned by a test.
+
+### 38.3 What is open
+
+- **The comparison on Luna** has not been run; Luna has the acceptance run only.
+- **EBD's own loop at equal spend.** With the baseline's number of researchers all of
+  them go out in the first round, so finding conflicts and following them up has hardly
+  run in a test. Sending two researchers first and the third where the evidence points
+  would let it act; it is untested (section 33.6).
+- **The evaluation.** No person has rated the reports and no fact was checked; twelve
+  questions show only a large difference (`evaluation/README.md`, section 6).
+- **Smaller matters:** the conflict checker's first replies that fail the code checks;
+  the planner listing a term with several meanings more often than its prompt asks for
+  (section 34.1); the writer's output limit, which is the platform's.
+- **For the platform owner:** whether the two switches `conflicts` and `newGoals` are
+  still wanted in the comparison, now that the default EBD entry is this approach.
 
 ## References
 

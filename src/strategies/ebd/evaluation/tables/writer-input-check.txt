@@ -1,0 +1,88 @@
+Judge claude-opus-5-5 (effort medium); 24 pair judgments; tokens in 375698, out 8799; $1.68
+
+Questions decided (both orders agree): approach, baseline, not decided
+                   recorded reports        rewritten reports
+overall           4      5      3          3      2      7     sign test p = 1.00
+coverage          3      4      5          4      2      6
+support           0      4      8          1      1     10
+conflicts         3      2      7          0      1     11
+usefulness        4      4      4          3      6      3
+
+By question (overall; then coverage, support, conflicts, usefulness of the rewritten report: A approach, B baseline, - not decided)
+   s01  recorded -         rewritten -         [A - - B]  how changes to funding have impacted the nhs
+   s02  recorded baseline  rewritten -         [- - - B]  why income inequality is good for the economy
+   s03  recorded baseline  rewritten -         [- - - -]  why do engineering students drop out
+   s04  recorded approach  rewritten approach  [A A - A]  how did america change ww1
+   s05  recorded -         rewritten baseline  [- - - B]  why do people oppose affirmative action
+   s06  recorded approach  rewritten -         [- - - B]  how structured literacy instruction differs from typical liter
+   s07  recorded baseline  rewritten baseline  [B B - B]  how did darwin explain the differences in traits?
+   s08  recorded baseline  rewritten -         [- - B -]  why are there no laws yet to protect people from sociopaths
+   s09  recorded approach  rewritten -         [- - - B]  how does economics play a role in african american culture
+   s10  recorded baseline  rewritten -         [B - - A]  why is eugenics considered unethical
+   s11  recorded approach  rewritten approach  [A - - A]  how did early american colonies contribute to the growth of ca
+   s12  recorded -         rewritten approach  [A - - -]  why do people declare bankruptcy
+
+Single judgments (24 each): recorded approach 11, baseline 13, tie 0; rewritten approach 11, baseline 11, tie 2
+Questions on which the two orders disagree: 7 of 12
+The report shown first is preferred in 5 of 24 judgments
+
+s01 how changes to funding have impacted the nhs
+   [rewrite-defs as A] overall base | cov EBD sup base con base use base
+      Report A covers the full sequence of funding settlements from 2010 to 2026 and the service impacts in breadth, but leans on weaker sources such as aggregators and pay-calculator sites. Report B is more carefully sourced, reconciles conflicting growth figures and claims about what drove the waiting-list fall, and gives a clearer account of how the funding changes translated into specific impacts.
+   [baseline as A] overall EBD | cov EBD sup tie con EBD use base
+      B covers more of the question: it defines what NHS funding means, sets out the sequence of settlements from 2010 onward, and covers impacts on beds, social care, pay, deficits and mortality. It also handles source disagreements more explicitly, such as government versus BMA COVID totals, conflicting dates for the waiting-list peak, and funding-first versus reform-first views. A is more focused and easier to act on, but both rely partly on weak sources, and neither explains how the NHS is funded (general taxation, free at point of use).
+s02 why income inequality is good for the economy
+   [baseline as A] overall EBD | cov EBD sup tie con tie use base
+      B covers more of the checklist: it defines income inequality and its measures, explains the growth-spell, human-capital and political channels, and includes a summary table and a section on redistribution trade-offs. A handles the pro-inequality case more precisely, notably the innovation and top-income evidence, and is more focused, but it omits a definition and has less on effects and trade-offs.
+   [rewrite-defs as A] overall base | cov tie sup base con base use base
+      A defines and measures inequality explicitly, while B gives a fuller and better-sourced account of the pro-inequality mechanisms, notably innovation, tournaments and Aghion–Bolton, so coverage roughly balances. B handles source disagreements more explicitly (IMF redistribution estimates, OECD vs Voitchovsky) and avoids A's internal numerical slip on the Gini change.
+s03 why do engineering students drop out
+   [baseline as A] overall tie | cov EBD sup tie con EBD use base
+      B covers more ground, with definitions, timing, the Freeman meta-analysis and a randomized mentoring experiment, and it handles the German figure conflicts and the work-dropout dispute more explicitly. A gives a more direct, well-organized answer with careful caveats, such as flagging the 50% figure as unverified, while B leans on weak sources like salary blogs and a 40–50% secondary estimate, so overall they balance.
+   [rewrite-defs as A] overall base | cov base sup EBD con base use tie
+      B gives a fuller account of causes, covering gateway courses, group differences, finances and mental health, and it handles contested points well, such as discounting the unsourced 50% US figure and comparing definitions across systems. A attributes its sources more carefully, while B appears to misattribute some studies (Mexican and Brazilian findings linked to papers A describes differently), and neither report really addresses the consequences of dropping out.
+s04 how did america change ww1
+   [baseline as A] overall EBD | cov EBD sup EBD con EBD use EBD
+      Report B covers all three checklist areas, including domestic social and political effects such as conscription, the Espionage and Sedition Acts, women's work and the Great Migration, which Report A leaves out almost entirely. B also flags weak sources, reconciles conflicting figures such as the troop arrivals and loan totals, and corrects the assumption that Versailles adopted the Fourteen Points, whereas A has some internal inconsistencies, including the AEF timing claim.
+   [rewrite-defs as A] overall EBD | cov EBD sup EBD con tie use EBD
+      Report A covers all three checklist areas, including the domestic political, economic and social impact of the war on America (conscription, the Espionage and Sedition Acts, women's work, the Great Migration), which Report B largely omits despite its stronger treatment of convoys and the armistice. Both handle source conflicts well, but A flags weak sources more consistently, while B includes a few questionable claims, such as a future-dated USNI article and an odd timeline for the AEF's early front-line role.
+s05 why do people oppose affirmative action
+   [rewrite-defs as A] overall base | cov base sup base con EBD use base
+      Report B covers more ground on why people oppose affirmative action: it adds a philosophical distinction (Pojman's weak vs. strong forms), gives a fuller demographic and wording breakdown of public opinion, and describes the organised opposition. It hedges its contested empirical claims carefully. Report A settles the SFFA vote-count conflict better (B states 6-2 uncritically), but B answers the 'why' question more directly and with richer, well-cited detail.
+   [baseline as A] overall base | cov tie sup tie con base use base
+      B defines affirmative action more clearly, but A covers more of who opposes it (party, race, age, gender), and both treat the evidence disputes carefully. A handles source conflicts better, such as whether SFFA overruled Grutter and the plaintiffs' versus the court's reading of the Maryland ruling, while B mishandles the SFFA vote count. A also answers the 'why' more directly through its principle-versus-merit framing.
+s06 how structured literacy instruction differs from typical literacy practices
+   [baseline as A] overall EBD | cov EBD sup tie con EBD use base
+      B covers more of what typical practice actually is: how prevalent it is, three-cueing, how much phonics balanced literacy includes, decodable versus leveled texts and assessment. It also handles conflicting sources and the question's assumption about 'typical' practice more explicitly, though A is more concise and stays closer to the core comparison. Both cite carefully and flag uncertainty, but B devotes much space to costs and policy that the question did not ask about.
+   [rewrite-defs as A] overall base | cov tie sup base con tie use base
+      Both reports define structured literacy, describe balanced practice and set out the differences with tables. A adds more on how common each approach is and on costs, but it spends much of its length on implementation details that wander from the question, and it carries some internal tensions, such as treating the Mississippi deck as the most official source. B centres on the differences and the outcome evidence and flags its uncertainty more carefully (NRP figures, the contested meta-analysis, NCTQ methods), which makes it more focused and more useful.
+s07 how did darwin explain the differences in traits?
+   [baseline as A] overall base | cov base sup base con tie use base
+      Report A stays on Darwin's own explanation and covers more of it: sources of variation, domestication, selection, divergence leading to speciation, sexual selection and heredity, all carefully cited. Report B spends much of its length on modern mutation-rate figures and a questionable 2026 preprint, and it barely covers divergence, speciation and sexual selection.
+   [rewrite-defs as A] overall base | cov base sup base con EBD use base
+      B answers the question more directly: it covers Darwin's view of where variation comes from, then natural selection, divergence into species and sexual selection, which together explain the differences in traits. A goes deeper on the Jenkin and Mendel disputes, but it drifts into modern mutation-rate figures and a questionable 2026 preprint while saying little about speciation and nothing about sexual selection.
+s08 why are there no laws yet to protect people from sociopaths
+   [baseline as A] overall tie | cov tie sup tie con base use tie
+      Both reports challenge the premise and cover definitions, existing conduct-based laws and the barriers to a personality-based law. A is richer on prediction error and human-rights limits and flags more conflicts between sources, though it says little directly about the harms; B is a little more readable and covers the DSPD history well, so overall they are roughly equal.
+   [rewrite-defs as A] overall base | cov base sup tie con base use tie
+      Both reports correct the premise and explain why law targets conduct rather than personality. B covers more of what the question needs: prevalence data, base-rate and false-positive problems, more jurisdictions, and specific gaps such as romance fraud and workplace abuse, and it handles more source conflicts, including Canada's commencement date and the CRPD versus ECHR positions.
+s09 how does economics play a role in african american culture
+   [baseline as A] overall EBD | cov EBD sup tie con EBD use base
+      B ties economics more directly to cultural life: churches, mutual aid, philanthropy, the Great Migration, the commodification of hip-hop, and the cultural-versus-structural debate over the wealth gap. It also sets out source conflicts more systematically. A is more focused around a clear ownership thesis and easier to act on, while B's long federal-policy section drifts from the question.
+   [rewrite-defs as A] overall base | cov tie sup base con tie use base
+      Both cover the economic history and current gaps broadly and handle conflicting figures well, but neither defines economics or culture in general. B's ownership thesis ties economics to cultural life more directly and separates measured facts from inference more carefully, while A spends a lot of space on federal policy detail and has a few loosely worded passages.
+s10 why is eugenics considered unethical
+   [baseline as A] overall EBD | cov base sup tie con EBD use EBD
+      Both reports are well cited and handle the core principles, history and the liberal-eugenics debate. A covers ethical theories more fully (Habermas, Sandel, procreative beneficence), but B defines eugenics explicitly, organizes the objections more clearly, and better handles the question's presumption that eugenics is universally condemned by separating coercive from voluntary forms.
+   [rewrite-defs as A] overall base | cov base sup tie con tie use EBD
+      B covers more of the checklist: it sets out Habermas, Sandel, the justice arguments, the expressivist objection, the scientific critiques of heritability and the legal and professional positions in more depth, which better addresses how different ethical theories evaluate eugenics. A is tighter and frames the answer to the question slightly more directly, but both are well cited and handle conflicting figures carefully, so B's broader treatment of ethical perspectives gives it the edge.
+s11 how did early american colonies contribute to the growth of capitalism?
+   [baseline as A] overall EBD | cov EBD sup tie con EBD use EBD
+      B defines capitalism and covers regional, imperial and wider-world influence, including the Williams debate, and ends with a conclusion. A is deeply sourced on colonial credit, courts and labour but never defines capitalism, gives little on wider-world influence and is cut off mid-sentence.
+   [rewrite-defs as A] overall EBD | cov EBD sup tie con tie use EBD
+      Report A covers definitions of capitalism, other European empires and the wider debate over the colonies' global weight, and it ends with a clear conclusion that reconciles the competing measures. Report B gives deep, well-sourced detail on credit, courts and labour, but it barely defines capitalism, says little about global influence, and is cut off before it concludes.
+s12 why do people declare bankruptcy
+   [baseline as A] overall EBD | cov EBD sup tie con tie use EBD
+      B covers more of the checklist: it defines key terms and touches on chapter types, and it adds alternatives such as DROs, IVAs, DMPs and credit counselling plus post-filing consequences like credit recovery, items A largely omits. Both reports handle the medical-bankruptcy dispute and source conflicts carefully, and A gives a sharper causal analysis of job loss.
+   [rewrite-defs as A] overall EBD | cov EBD sup base con tie use tie
+      Report A covers more of the checklist: it defines key terms, names Chapter 13 and the UK routes (DROs, IVAs), and covers post-filing consequences, demographics and non-court alternatives. Report B gives a deeper, better-sourced causal analysis but omits alternatives and says little about consequences or types of bankruptcy.

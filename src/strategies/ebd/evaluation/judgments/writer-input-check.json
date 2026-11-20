@@ -1,0 +1,425 @@
+{
+ "judge": "claude-opus-5-5",
+ "effort": "medium",
+ "arms": {
+  "new": "rewrite-defs",
+  "base": "baseline"
+ },
+ "baselineFolder": "final-sealed-20261120-023629",
+ "reports": {
+  "s01": {
+   "cand": "224921c1251dde02",
+   "base": "f1c1daa9be3b23fd"
+  },
+  "s02": {
+   "cand": "c5d56f2cf7cd57e3",
+   "base": "83a6c92031794c67"
+  },
+  "s03": {
+   "cand": "7ed049496e17f733",
+   "base": "53d6e236d6ceefcc"
+  },
+  "s04": {
+   "cand": "0cc40d9b69c977d3",
+   "base": "a7ddd969c97cfb1f"
+  },
+  "s05": {
+   "cand": "db23b1e73338ea42",
+   "base": "f589cb02b69fc2df"
+  },
+  "s06": {
+   "cand": "1337c17c4f9db864",
+   "base": "4ee3f7a80fa89043"
+  },
+  "s07": {
+   "cand": "9de413b7fd32c089",
+   "base": "f171f4ff484db86f"
+  },
+  "s08": {
+   "cand": "672b5962864c0ace",
+   "base": "d3ceda373c6eb9ef"
+  },
+  "s09": {
+   "cand": "f1d8e58043ee5373",
+   "base": "d71bb3162f7a72b5"
+  },
+  "s10": {
+   "cand": "20be4c3dd412bc20",
+   "base": "40a9611384cfe7eb"
+  },
+  "s11": {
+   "cand": "3951cb1a10f4759d",
+   "base": "b2752a13d8b656a9"
+  },
+  "s12": {
+   "cand": "9838f7473b454aeb",
+   "base": "8521b468781a6227"
+  }
+ },
+ "usage": {
+  "input": 375698,
+  "output": 8799
+ },
+ "results": [
+  {
+   "key": "pair|s02|baseline as A",
+   "kind": "pair",
+   "task": "s02",
+   "order": "baseline as A",
+   "verdict": {
+    "coverage": "rewrite-defs",
+    "support": "tie",
+    "conflicts": "tie",
+    "usefulness": "baseline",
+    "overall": "rewrite-defs"
+   },
+   "reason": "B covers more of the checklist: it defines income inequality and its measures, explains the growth-spell, human-capital and political channels, and includes a summary table and a section on redistribution trade-offs. A handles the pro-inequality case more precisely, notably the innovation and top-income evidence, and is more focused, but it omits a definition and has less on effects and trade-offs.",
+   "raw": "{\"coverage\":\"B\",\"support\":\"tie\",\"conflicts\":\"tie\",\"usefulness\":\"A\",\"overall\":\"B\",\"reason\":\"B covers more of the checklist: it defines income inequality and its measures, explains the growth-spell, human-capital and political channels, and includes a summary table and a section on redistribution trade-offs. A handles the pro-inequality case more precisely, notably the innovation and top-income evidence, and is more focused, but it omits a definition and has less on effects and trade-offs.\"}"
+  },
+  {
+   "key": "pair|s01|rewrite-defs as A",
+   "kind": "pair",
+   "task": "s01",
+   "order": "rewrite-defs as A",
+   "verdict": {
+    "coverage": "rewrite-defs",
+    "support": "baseline",
+    "conflicts": "baseline",
+    "usefulness": "baseline",
+    "overall": "baseline"
+   },
+   "reason": "Report A covers the full sequence of funding settlements from 2010 to 2026 and the service impacts in breadth, but leans on weaker sources such as aggregators and pay-calculator sites. Report B is more carefully sourced, reconciles conflicting growth figures and claims about what drove the waiting-list fall, and gives a clearer account of how the funding changes translated into specific impacts.",
+   "raw": "{\"coverage\":\"A\",\"support\":\"B\",\"conflicts\":\"B\",\"usefulness\":\"B\",\"overall\":\"B\",\"reason\":\"Report A covers the full sequence of funding settlements from 2010 to 2026 and the service impacts in breadth, but leans on weaker sources such as aggregators and pay-calculator sites. Report B is more carefully sourced, reconciles conflicting growth figures and claims about what drove the waiting-list fall, and gives a clearer account of how the funding changes translated into specific impacts.\"}"
+  },
+  {
+   "key": "pair|s01|baseline as A",
+   "kind": "pair",
+   "task": "s01",
+   "order": "baseline as A",
+   "verdict": {
+    "coverage": "rewrite-defs",
+    "support": "tie",
+    "conflicts": "rewrite-defs",
+    "usefulness": "baseline",
+    "overall": "rewrite-defs"
+   },
+   "reason": "B covers more of the question: it defines what NHS funding means, sets out the sequence of settlements from 2010 onward, and covers impacts on beds, social care, pay, deficits and mortality. It also handles source disagreements more explicitly, such as government versus BMA COVID totals, conflicting dates for the waiting-list peak, and funding-first versus reform-first views. A is more focused and easier to act on, but both rely partly on weak sources, and neither explains how the NHS is funded (general taxation, free at point of use).",
+   "raw": "{\"coverage\":\"B\",\"support\":\"tie\",\"conflicts\":\"B\",\"usefulness\":\"A\",\"overall\":\"B\",\"reason\":\"B covers more of the question: it defines what NHS funding means, sets out the sequence of settlements from 2010 onward, and covers impacts on beds, social care, pay, deficits and mortality. It also handles source disagreements more explicitly, such as government versus BMA COVID totals, conflicting dates for the waiting-list peak, and funding-first versus reform-first views. A is more focused and easier to act on, but both rely partly on weak sources, and neither explains how the NHS is funded (general taxation, free at point of use).\"}"
+  },
+  {
+   "key": "pair|s03|baseline as A",
+   "kind": "pair",
+   "task": "s03",
+   "order": "baseline as A",
+   "verdict": {
+    "coverage": "rewrite-defs",
+    "support": "tie",
+    "conflicts": "rewrite-defs",
+    "usefulness": "baseline",
+    "overall": "tie"
+   },
+   "reason": "B covers more ground, with definitions, timing, the Freeman meta-analysis and a randomized mentoring experiment, and it handles the German figure conflicts and the work-dropout dispute more explicitly. A gives a more direct, well-organized answer with careful caveats, such as flagging the 50% figure as unverified, while B leans on weak sources like salary blogs and a 40–50% secondary estimate, so overall they balance.",
+   "raw": "{\"coverage\":\"B\",\"support\":\"tie\",\"conflicts\":\"B\",\"usefulness\":\"A\",\"overall\":\"tie\",\"reason\":\"B covers more ground, with definitions, timing, the Freeman meta-analysis and a randomized mentoring experiment, and it handles the German figure conflicts and the work-dropout dispute more explicitly. A gives a more direct, well-organized answer with careful caveats, such as flagging the 50% figure as unverified, while B leans on weak sources like salary blogs and a 40–50% secondary estimate, so overall they balance.\"}"
+  },
+  {
+   "key": "pair|s04|baseline as A",
+   "kind": "pair",
+   "task": "s04",
+   "order": "baseline as A",
+   "verdict": {
+    "coverage": "rewrite-defs",
+    "support": "rewrite-defs",
+    "conflicts": "rewrite-defs",
+    "usefulness": "rewrite-defs",
+    "overall": "rewrite-defs"
+   },
+   "reason": "Report B covers all three checklist areas, including domestic social and political effects such as conscription, the Espionage and Sedition Acts, women's work and the Great Migration, which Report A leaves out almost entirely. B also flags weak sources, reconciles conflicting figures such as the troop arrivals and loan totals, and corrects the assumption that Versailles adopted the Fourteen Points, whereas A has some internal inconsistencies, including the AEF timing claim.",
+   "raw": "{\"coverage\":\"B\",\"support\":\"B\",\"conflicts\":\"B\",\"usefulness\":\"B\",\"overall\":\"B\",\"reason\":\"Report B covers all three checklist areas, including domestic social and political effects such as conscription, the Espionage and Sedition Acts, women's work and the Great Migration, which Report A leaves out almost entirely. B also flags weak sources, reconciles conflicting figures such as the troop arrivals and loan totals, and corrects the assumption that Versailles adopted the Fourteen Points, whereas A has some internal inconsistencies, including the AEF timing claim.\"}"
+  },
+  {
+   "key": "pair|s02|rewrite-defs as A",
+   "kind": "pair",
+   "task": "s02",
+   "order": "rewrite-defs as A",
+   "verdict": {
+    "coverage": "tie",
+    "support": "baseline",
+    "conflicts": "baseline",
+    "usefulness": "baseline",
+    "overall": "baseline"
+   },
+   "reason": "A defines and measures inequality explicitly, while B gives a fuller and better-sourced account of the pro-inequality mechanisms, notably innovation, tournaments and Aghion–Bolton, so coverage roughly balances. B handles source disagreements more explicitly (IMF redistribution estimates, OECD vs Voitchovsky) and avoids A's internal numerical slip on the Gini change.",
+   "raw": "{\"coverage\":\"tie\",\"support\":\"B\",\"conflicts\":\"B\",\"usefulness\":\"B\",\"overall\":\"B\",\"reason\":\"A defines and measures inequality explicitly, while B gives a fuller and better-sourced account of the pro-inequality mechanisms, notably innovation, tournaments and Aghion–Bolton, so coverage roughly balances. B handles source disagreements more explicitly (IMF redistribution estimates, OECD vs Voitchovsky) and avoids A's internal numerical slip on the Gini change.\"}"
+  },
+  {
+   "key": "pair|s05|rewrite-defs as A",
+   "kind": "pair",
+   "task": "s05",
+   "order": "rewrite-defs as A",
+   "verdict": {
+    "coverage": "baseline",
+    "support": "baseline",
+    "conflicts": "rewrite-defs",
+    "usefulness": "baseline",
+    "overall": "baseline"
+   },
+   "reason": "Report B covers more ground on why people oppose affirmative action: it adds a philosophical distinction (Pojman's weak vs. strong forms), gives a fuller demographic and wording breakdown of public opinion, and describes the organised opposition. It hedges its contested empirical claims carefully. Report A settles the SFFA vote-count conflict better (B states 6-2 uncritically), but B answers the 'why' question more directly and with richer, well-cited detail.",
+   "raw": "{\"coverage\":\"B\",\"support\":\"B\",\"conflicts\":\"A\",\"usefulness\":\"B\",\"overall\":\"B\",\"reason\":\"Report B covers more ground on why people oppose affirmative action: it adds a philosophical distinction (Pojman's weak vs. strong forms), gives a fuller demographic and wording breakdown of public opinion, and describes the organised opposition. It hedges its contested empirical claims carefully. Report A settles the SFFA vote-count conflict better (B states 6-2 uncritically), but B answers the 'why' question more directly and with richer, well-cited detail.\"}"
+  },
+  {
+   "key": "pair|s04|rewrite-defs as A",
+   "kind": "pair",
+   "task": "s04",
+   "order": "rewrite-defs as A",
+   "verdict": {
+    "coverage": "rewrite-defs",
+    "support": "rewrite-defs",
+    "conflicts": "tie",
+    "usefulness": "rewrite-defs",
+    "overall": "rewrite-defs"
+   },
+   "reason": "Report A covers all three checklist areas, including the domestic political, economic and social impact of the war on America (conscription, the Espionage and Sedition Acts, women's work, the Great Migration), which Report B largely omits despite its stronger treatment of convoys and the armistice. Both handle source conflicts well, but A flags weak sources more consistently, while B includes a few questionable claims, such as a future-dated USNI article and an odd timeline for the AEF's early front-line role.",
+   "raw": "{\"coverage\":\"A\",\"support\":\"A\",\"conflicts\":\"tie\",\"usefulness\":\"A\",\"overall\":\"A\",\"reason\":\"Report A covers all three checklist areas, including the domestic political, economic and social impact of the war on America (conscription, the Espionage and Sedition Acts, women's work, the Great Migration), which Report B largely omits despite its stronger treatment of convoys and the armistice. Both handle source conflicts well, but A flags weak sources more consistently, while B includes a few questionable claims, such as a future-dated USNI article and an odd timeline for the AEF's early front-line role.\"}"
+  },
+  {
+   "key": "pair|s03|rewrite-defs as A",
+   "kind": "pair",
+   "task": "s03",
+   "order": "rewrite-defs as A",
+   "verdict": {
+    "coverage": "baseline",
+    "support": "rewrite-defs",
+    "conflicts": "baseline",
+    "usefulness": "tie",
+    "overall": "baseline"
+   },
+   "reason": "B gives a fuller account of causes, covering gateway courses, group differences, finances and mental health, and it handles contested points well, such as discounting the unsourced 50% US figure and comparing definitions across systems. A attributes its sources more carefully, while B appears to misattribute some studies (Mexican and Brazilian findings linked to papers A describes differently), and neither report really addresses the consequences of dropping out.",
+   "raw": "{\"coverage\":\"B\",\"support\":\"A\",\"conflicts\":\"B\",\"usefulness\":\"tie\",\"overall\":\"B\",\"reason\":\"B gives a fuller account of causes, covering gateway courses, group differences, finances and mental health, and it handles contested points well, such as discounting the unsourced 50% US figure and comparing definitions across systems. A attributes its sources more carefully, while B appears to misattribute some studies (Mexican and Brazilian findings linked to papers A describes differently), and neither report really addresses the consequences of dropping out.\"}"
+  },
+  {
+   "key": "pair|s06|baseline as A",
+   "kind": "pair",
+   "task": "s06",
+   "order": "baseline as A",
+   "verdict": {
+    "coverage": "rewrite-defs",
+    "support": "tie",
+    "conflicts": "rewrite-defs",
+    "usefulness": "baseline",
+    "overall": "rewrite-defs"
+   },
+   "reason": "B covers more of what typical practice actually is: how prevalent it is, three-cueing, how much phonics balanced literacy includes, decodable versus leveled texts and assessment. It also handles conflicting sources and the question's assumption about 'typical' practice more explicitly, though A is more concise and stays closer to the core comparison. Both cite carefully and flag uncertainty, but B devotes much space to costs and policy that the question did not ask about.",
+   "raw": "{\"coverage\":\"B\",\"support\":\"tie\",\"conflicts\":\"B\",\"usefulness\":\"A\",\"overall\":\"B\",\"reason\":\"B covers more of what typical practice actually is: how prevalent it is, three-cueing, how much phonics balanced literacy includes, decodable versus leveled texts and assessment. It also handles conflicting sources and the question's assumption about 'typical' practice more explicitly, though A is more concise and stays closer to the core comparison. Both cite carefully and flag uncertainty, but B devotes much space to costs and policy that the question did not ask about.\"}"
+  },
+  {
+   "key": "pair|s05|baseline as A",
+   "kind": "pair",
+   "task": "s05",
+   "order": "baseline as A",
+   "verdict": {
+    "coverage": "tie",
+    "support": "tie",
+    "conflicts": "baseline",
+    "usefulness": "baseline",
+    "overall": "baseline"
+   },
+   "reason": "B defines affirmative action more clearly, but A covers more of who opposes it (party, race, age, gender), and both treat the evidence disputes carefully. A handles source conflicts better, such as whether SFFA overruled Grutter and the plaintiffs' versus the court's reading of the Maryland ruling, while B mishandles the SFFA vote count. A also answers the 'why' more directly through its principle-versus-merit framing.",
+   "raw": "{\"coverage\":\"tie\",\"support\":\"tie\",\"conflicts\":\"A\",\"usefulness\":\"A\",\"overall\":\"A\",\"reason\":\"B defines affirmative action more clearly, but A covers more of who opposes it (party, race, age, gender), and both treat the evidence disputes carefully. A handles source conflicts better, such as whether SFFA overruled Grutter and the plaintiffs' versus the court's reading of the Maryland ruling, while B mishandles the SFFA vote count. A also answers the 'why' more directly through its principle-versus-merit framing.\"}"
+  },
+  {
+   "key": "pair|s06|rewrite-defs as A",
+   "kind": "pair",
+   "task": "s06",
+   "order": "rewrite-defs as A",
+   "verdict": {
+    "coverage": "tie",
+    "support": "baseline",
+    "conflicts": "tie",
+    "usefulness": "baseline",
+    "overall": "baseline"
+   },
+   "reason": "Both reports define structured literacy, describe balanced practice and set out the differences with tables. A adds more on how common each approach is and on costs, but it spends much of its length on implementation details that wander from the question, and it carries some internal tensions, such as treating the Mississippi deck as the most official source. B centres on the differences and the outcome evidence and flags its uncertainty more carefully (NRP figures, the contested meta-analysis, NCTQ methods), which makes it more focused and more useful.",
+   "raw": "{\"coverage\":\"tie\",\"support\":\"B\",\"conflicts\":\"tie\",\"usefulness\":\"B\",\"overall\":\"B\",\"reason\":\"Both reports define structured literacy, describe balanced practice and set out the differences with tables. A adds more on how common each approach is and on costs, but it spends much of its length on implementation details that wander from the question, and it carries some internal tensions, such as treating the Mississippi deck as the most official source. B centres on the differences and the outcome evidence and flags its uncertainty more carefully (NRP figures, the contested meta-analysis, NCTQ methods), which makes it more focused and more useful.\"}"
+  },
+  {
+   "key": "pair|s07|baseline as A",
+   "kind": "pair",
+   "task": "s07",
+   "order": "baseline as A",
+   "verdict": {
+    "coverage": "baseline",
+    "support": "baseline",
+    "conflicts": "tie",
+    "usefulness": "baseline",
+    "overall": "baseline"
+   },
+   "reason": "Report A stays on Darwin's own explanation and covers more of it: sources of variation, domestication, selection, divergence leading to speciation, sexual selection and heredity, all carefully cited. Report B spends much of its length on modern mutation-rate figures and a questionable 2026 preprint, and it barely covers divergence, speciation and sexual selection.",
+   "raw": "{\"coverage\":\"A\",\"support\":\"A\",\"conflicts\":\"tie\",\"usefulness\":\"A\",\"overall\":\"A\",\"reason\":\"Report A stays on Darwin's own explanation and covers more of it: sources of variation, domestication, selection, divergence leading to speciation, sexual selection and heredity, all carefully cited. Report B spends much of its length on modern mutation-rate figures and a questionable 2026 preprint, and it barely covers divergence, speciation and sexual selection.\"}"
+  },
+  {
+   "key": "pair|s08|baseline as A",
+   "kind": "pair",
+   "task": "s08",
+   "order": "baseline as A",
+   "verdict": {
+    "coverage": "tie",
+    "support": "tie",
+    "conflicts": "baseline",
+    "usefulness": "tie",
+    "overall": "tie"
+   },
+   "reason": "Both reports challenge the premise and cover definitions, existing conduct-based laws and the barriers to a personality-based law. A is richer on prediction error and human-rights limits and flags more conflicts between sources, though it says little directly about the harms; B is a little more readable and covers the DSPD history well, so overall they are roughly equal.",
+   "raw": "{\"coverage\":\"tie\",\"support\":\"tie\",\"conflicts\":\"A\",\"usefulness\":\"tie\",\"overall\":\"tie\",\"reason\":\"Both reports challenge the premise and cover definitions, existing conduct-based laws and the barriers to a personality-based law. A is richer on prediction error and human-rights limits and flags more conflicts between sources, though it says little directly about the harms; B is a little more readable and covers the DSPD history well, so overall they are roughly equal.\"}"
+  },
+  {
+   "key": "pair|s07|rewrite-defs as A",
+   "kind": "pair",
+   "task": "s07",
+   "order": "rewrite-defs as A",
+   "verdict": {
+    "coverage": "baseline",
+    "support": "baseline",
+    "conflicts": "rewrite-defs",
+    "usefulness": "baseline",
+    "overall": "baseline"
+   },
+   "reason": "B answers the question more directly: it covers Darwin's view of where variation comes from, then natural selection, divergence into species and sexual selection, which together explain the differences in traits. A goes deeper on the Jenkin and Mendel disputes, but it drifts into modern mutation-rate figures and a questionable 2026 preprint while saying little about speciation and nothing about sexual selection.",
+   "raw": "{\"coverage\":\"B\",\"support\":\"B\",\"conflicts\":\"A\",\"usefulness\":\"B\",\"overall\":\"B\",\"reason\":\"B answers the question more directly: it covers Darwin's view of where variation comes from, then natural selection, divergence into species and sexual selection, which together explain the differences in traits. A goes deeper on the Jenkin and Mendel disputes, but it drifts into modern mutation-rate figures and a questionable 2026 preprint while saying little about speciation and nothing about sexual selection.\"}"
+  },
+  {
+   "key": "pair|s08|rewrite-defs as A",
+   "kind": "pair",
+   "task": "s08",
+   "order": "rewrite-defs as A",
+   "verdict": {
+    "coverage": "baseline",
+    "support": "tie",
+    "conflicts": "baseline",
+    "usefulness": "tie",
+    "overall": "baseline"
+   },
+   "reason": "Both reports correct the premise and explain why law targets conduct rather than personality. B covers more of what the question needs: prevalence data, base-rate and false-positive problems, more jurisdictions, and specific gaps such as romance fraud and workplace abuse, and it handles more source conflicts, including Canada's commencement date and the CRPD versus ECHR positions.",
+   "raw": "{\"coverage\":\"B\",\"support\":\"tie\",\"conflicts\":\"B\",\"usefulness\":\"tie\",\"overall\":\"B\",\"reason\":\"Both reports correct the premise and explain why law targets conduct rather than personality. B covers more of what the question needs: prevalence data, base-rate and false-positive problems, more jurisdictions, and specific gaps such as romance fraud and workplace abuse, and it handles more source conflicts, including Canada's commencement date and the CRPD versus ECHR positions.\"}"
+  },
+  {
+   "key": "pair|s10|baseline as A",
+   "kind": "pair",
+   "task": "s10",
+   "order": "baseline as A",
+   "verdict": {
+    "coverage": "baseline",
+    "support": "tie",
+    "conflicts": "rewrite-defs",
+    "usefulness": "rewrite-defs",
+    "overall": "rewrite-defs"
+   },
+   "reason": "Both reports are well cited and handle the core principles, history and the liberal-eugenics debate. A covers ethical theories more fully (Habermas, Sandel, procreative beneficence), but B defines eugenics explicitly, organizes the objections more clearly, and better handles the question's presumption that eugenics is universally condemned by separating coercive from voluntary forms.",
+   "raw": "{\"coverage\":\"A\",\"support\":\"tie\",\"conflicts\":\"B\",\"usefulness\":\"B\",\"overall\":\"B\",\"reason\":\"Both reports are well cited and handle the core principles, history and the liberal-eugenics debate. A covers ethical theories more fully (Habermas, Sandel, procreative beneficence), but B defines eugenics explicitly, organizes the objections more clearly, and better handles the question's presumption that eugenics is universally condemned by separating coercive from voluntary forms.\"}"
+  },
+  {
+   "key": "pair|s10|rewrite-defs as A",
+   "kind": "pair",
+   "task": "s10",
+   "order": "rewrite-defs as A",
+   "verdict": {
+    "coverage": "baseline",
+    "support": "tie",
+    "conflicts": "tie",
+    "usefulness": "rewrite-defs",
+    "overall": "baseline"
+   },
+   "reason": "B covers more of the checklist: it sets out Habermas, Sandel, the justice arguments, the expressivist objection, the scientific critiques of heritability and the legal and professional positions in more depth, which better addresses how different ethical theories evaluate eugenics. A is tighter and frames the answer to the question slightly more directly, but both are well cited and handle conflicting figures carefully, so B's broader treatment of ethical perspectives gives it the edge.",
+   "raw": "{\"coverage\":\"B\",\"support\":\"tie\",\"conflicts\":\"tie\",\"usefulness\":\"A\",\"overall\":\"B\",\"reason\":\"B covers more of the checklist: it sets out Habermas, Sandel, the justice arguments, the expressivist objection, the scientific critiques of heritability and the legal and professional positions in more depth, which better addresses how different ethical theories evaluate eugenics. A is tighter and frames the answer to the question slightly more directly, but both are well cited and handle conflicting figures carefully, so B's broader treatment of ethical perspectives gives it the edge.\"}"
+  },
+  {
+   "key": "pair|s09|baseline as A",
+   "kind": "pair",
+   "task": "s09",
+   "order": "baseline as A",
+   "verdict": {
+    "coverage": "rewrite-defs",
+    "support": "tie",
+    "conflicts": "rewrite-defs",
+    "usefulness": "baseline",
+    "overall": "rewrite-defs"
+   },
+   "reason": "B ties economics more directly to cultural life: churches, mutual aid, philanthropy, the Great Migration, the commodification of hip-hop, and the cultural-versus-structural debate over the wealth gap. It also sets out source conflicts more systematically. A is more focused around a clear ownership thesis and easier to act on, while B's long federal-policy section drifts from the question.",
+   "raw": "{\"coverage\":\"B\",\"support\":\"tie\",\"conflicts\":\"B\",\"usefulness\":\"A\",\"overall\":\"B\",\"reason\":\"B ties economics more directly to cultural life: churches, mutual aid, philanthropy, the Great Migration, the commodification of hip-hop, and the cultural-versus-structural debate over the wealth gap. It also sets out source conflicts more systematically. A is more focused around a clear ownership thesis and easier to act on, while B's long federal-policy section drifts from the question.\"}"
+  },
+  {
+   "key": "pair|s11|baseline as A",
+   "kind": "pair",
+   "task": "s11",
+   "order": "baseline as A",
+   "verdict": {
+    "coverage": "rewrite-defs",
+    "support": "tie",
+    "conflicts": "rewrite-defs",
+    "usefulness": "rewrite-defs",
+    "overall": "rewrite-defs"
+   },
+   "reason": "B defines capitalism and covers regional, imperial and wider-world influence, including the Williams debate, and ends with a conclusion. A is deeply sourced on colonial credit, courts and labour but never defines capitalism, gives little on wider-world influence and is cut off mid-sentence.",
+   "raw": "{\"coverage\":\"B\",\"support\":\"tie\",\"conflicts\":\"B\",\"usefulness\":\"B\",\"overall\":\"B\",\"reason\":\"B defines capitalism and covers regional, imperial and wider-world influence, including the Williams debate, and ends with a conclusion. A is deeply sourced on colonial credit, courts and labour but never defines capitalism, gives little on wider-world influence and is cut off mid-sentence.\"}"
+  },
+  {
+   "key": "pair|s09|rewrite-defs as A",
+   "kind": "pair",
+   "task": "s09",
+   "order": "rewrite-defs as A",
+   "verdict": {
+    "coverage": "tie",
+    "support": "baseline",
+    "conflicts": "tie",
+    "usefulness": "baseline",
+    "overall": "baseline"
+   },
+   "reason": "Both cover the economic history and current gaps broadly and handle conflicting figures well, but neither defines economics or culture in general. B's ownership thesis ties economics to cultural life more directly and separates measured facts from inference more carefully, while A spends a lot of space on federal policy detail and has a few loosely worded passages.",
+   "raw": "{\"coverage\":\"tie\",\"support\":\"B\",\"conflicts\":\"tie\",\"usefulness\":\"B\",\"overall\":\"B\",\"reason\":\"Both cover the economic history and current gaps broadly and handle conflicting figures well, but neither defines economics or culture in general. B's ownership thesis ties economics to cultural life more directly and separates measured facts from inference more carefully, while A spends a lot of space on federal policy detail and has a few loosely worded passages.\"}"
+  },
+  {
+   "key": "pair|s12|baseline as A",
+   "kind": "pair",
+   "task": "s12",
+   "order": "baseline as A",
+   "verdict": {
+    "coverage": "rewrite-defs",
+    "support": "tie",
+    "conflicts": "tie",
+    "usefulness": "rewrite-defs",
+    "overall": "rewrite-defs"
+   },
+   "reason": "B covers more of the checklist: it defines key terms and touches on chapter types, and it adds alternatives such as DROs, IVAs, DMPs and credit counselling plus post-filing consequences like credit recovery, items A largely omits. Both reports handle the medical-bankruptcy dispute and source conflicts carefully, and A gives a sharper causal analysis of job loss.",
+   "raw": "{\"coverage\":\"B\",\"support\":\"tie\",\"conflicts\":\"tie\",\"usefulness\":\"B\",\"overall\":\"B\",\"reason\":\"B covers more of the checklist: it defines key terms and touches on chapter types, and it adds alternatives such as DROs, IVAs, DMPs and credit counselling plus post-filing consequences like credit recovery, items A largely omits. Both reports handle the medical-bankruptcy dispute and source conflicts carefully, and A gives a sharper causal analysis of job loss.\"}"
+  },
+  {
+   "key": "pair|s11|rewrite-defs as A",
+   "kind": "pair",
+   "task": "s11",
+   "order": "rewrite-defs as A",
+   "verdict": {
+    "coverage": "rewrite-defs",
+    "support": "tie",
+    "conflicts": "tie",
+    "usefulness": "rewrite-defs",
+    "overall": "rewrite-defs"
+   },
+   "reason": "Report A covers definitions of capitalism, other European empires and the wider debate over the colonies' global weight, and it ends with a clear conclusion that reconciles the competing measures. Report B gives deep, well-sourced detail on credit, courts and labour, but it barely defines capitalism, says little about global influence, and is cut off before it concludes.",
+   "raw": "{\"coverage\":\"A\",\"support\":\"tie\",\"conflicts\":\"tie\",\"usefulness\":\"A\",\"overall\":\"A\",\"reason\":\"Report A covers definitions of capitalism, other European empires and the wider debate over the colonies' global weight, and it ends with a clear conclusion that reconciles the competing measures. Report B gives deep, well-sourced detail on credit, courts and labour, but it barely defines capitalism, says little about global influence, and is cut off before it concludes.\"}"
+  },
+  {
+   "key": "pair|s12|rewrite-defs as A",
+   "kind": "pair",
+   "task": "s12",
+   "order": "rewrite-defs as A",
+   "verdict": {
+    "coverage": "rewrite-defs",
+    "support": "baseline",
+    "conflicts": "tie",
+    "usefulness": "tie",
+    "overall": "rewrite-defs"
+   },
+   "reason": "Report A covers more of the checklist: it defines key terms, names Chapter 13 and the UK routes (DROs, IVAs), and covers post-filing consequences, demographics and non-court alternatives. Report B gives a deeper, better-sourced causal analysis but omits alternatives and says little about consequences or types of bankruptcy.",
+   "raw": "{\"coverage\":\"A\",\"support\":\"B\",\"conflicts\":\"tie\",\"usefulness\":\"tie\",\"overall\":\"A\",\"reason\":\"Report A covers more of the checklist: it defines key terms, names Chapter 13 and the UK routes (DROs, IVAs), and covers post-filing consequences, demographics and non-court alternatives. Report B gives a deeper, better-sourced causal analysis but omits alternatives and says little about consequences or types of bankruptcy.\"}"
+  }
+ ]
+}

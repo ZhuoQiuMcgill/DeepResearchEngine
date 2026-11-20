@@ -1,0 +1,53 @@
+/**
+ * A cheap scorer for reports on questions with a planted point (design section 37): the judge's
+ * coverage instruction, word for word, answered by Claude Haiku 5.5, each report against its one
+ * planted point (1 stated with a source, 0.5 stated without a source or in part, 0 missing), with the
+ * quote the score rests on. It is a screen: on the recorded reports of section 33 this scorer gave the
+ * Opus judge's score on 88 of 106 checklist items. Every quote is to be read by a person.
+ *
+ *   tsx local/ebd-heldout/planted-screen.ts <questions.json> <out.json> <folder prefix> [more prefixes]
+ */
+import "dotenv/config";
+import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { HumanMessage, SystemMessage } from "@langchain/core/messages";
+import { createChatModel, getProfile } from "../../src/config/models.js";
+
+const OUT = "local/ebd-heldout";
+const [questionsFile = "", outFile = "", ...prefixes] = process.argv.slice(2);
+type Q = { id: string; question: string; checklist: string[] };
+type Summary = { dir: string; status: string; strategy: { label: string }; tags: { task: string } };
+const QUESTIONS = JSON.parse(readFileSync(join(OUT, questionsFile), "utf8")) as Q[];
+const SUMMARIES: Summary[] = prefixes.flatMap((prefix) => {
+  const dirs = readdirSync(OUT).filter((d) => d.startsWith(prefix) && existsSync(join(OUT, d, "summaries.json"))).sort();
+  return dirs.length ? (JSON.parse(readFileSync(join(OUT, dirs.at(-1)!, "summaries.json"), "utf8")) as Summary[]) : [];
+});
+const COVERAGE_SYSTEM = /const COVERAGE_SYSTEM = `([\s\S]*?)`;/.exec(readFileSync(join(OUT, "judge.ts"), "utf8"))![1]!;
+const model = createChatModel(getProfile("haiku"));
+const usage = { input: 0, output: 0 };
+
+type Row = { task: string; arm: string; status: string; score: number | null; quote: string; wrong: boolean };
+async function score(s: Summary): Promise<Row> {
+  const q = QUESTIONS.find((x) => x.id === s.tags.task)!;
+  const path = join(s.dir, "report.md");
+  const base = { task: q.id, arm: s.strategy.label, status: s.status };
+  if (s.status !== "ok" || !existsSync(path)) return { ...base, score: null, quote: "", wrong: false };
+  const human = `Question:\n${q.question}\n\nChecklist:\n1. ${q.checklist[0]}\n\n<report>\n${readFileSync(path, "utf8")}\n</report>`;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const msg = await model.invoke([new SystemMessage(COVERAGE_SYSTEM), new HumanMessage(human)]);
+    const u = (msg as { usage_metadata?: { input_tokens?: number; output_tokens?: number } }).usage_metadata;
+    usage.input += u?.input_tokens ?? 0;
+    usage.output += u?.output_tokens ?? 0;
+    const raw = typeof msg.content === "string" ? msg.content : (msg.content as { type: string; text?: string }[]).filter((b) => b.type === "text").map((b) => b.text ?? "").join("");
+    try {
+      const item = (JSON.parse(raw.match(/\{[\s\S]*\}/)![0]) as { items: { score: number; quote?: string; wrong?: boolean }[] }).items[0]!;
+      return { ...base, score: Number(item.score), quote: String(item.quote ?? ""), wrong: Boolean(item.wrong) };
+    } catch { /* asked again */ }
+  }
+  return { ...base, score: null, quote: "no usable reply", wrong: false };
+}
+
+const rows = await Promise.all(SUMMARIES.filter((s) => QUESTIONS.some((q) => q.id === s.tags.task)).map(score));
+writeFileSync(join(OUT, outFile), JSON.stringify({ scorer: "claude-haiku-5-5", usage, rows }, null, 1));
+console.log(`${rows.length} reports scored by Haiku; tokens in ${usage.input}, out ${usage.output}; about $${((usage.input * 0.1 + usage.output * 0.5) / 1e6).toFixed(3)}`);
+for (const r of rows.sort((a, b) => (a.task + a.arm).localeCompare(b.task + b.arm))) console.log(`  ${r.task} ${r.arm.padEnd(8)} ${r.score ?? r.status}  ${r.quote.slice(0, 150)}`);

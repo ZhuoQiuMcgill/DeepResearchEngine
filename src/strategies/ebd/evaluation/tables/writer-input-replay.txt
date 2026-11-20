@@ -1,0 +1,17 @@
+1. 17 runs replayed before and after
+   every step (briefs, stop, rationale, goals, conflicts, map, log lines, call checks) equal: 17 of 17
+   the writer's material equal: 17 of 17
+   the writer's guidance changed: 17 of 17; runs that now get an outline: 16 of 17 (before: 0)
+   lines in the guidance, runs before -> after:
+      The question was read as:                                      14 -> 12
+      say so plainly early in the report                              6 ->  0
+      do not present it as established                                1 ->  0
+      The client did not state these                                 17 ->  0
+      assumption A                                                    1 ->  0
+      The question takes for granted:                                 0 ->  6
+      Early in the report, say what the question's main terms mean    0 -> 17
+      Build first on the strongest sources in the notes               0 -> 17
+   words of guidance a run: 186 -> 209
+
+2. Against the writer input of the judged reports (12 real queries)
+   outline equal: 12 of 12; guidance equal, but for the sentence left out and the claim's label: 12 of 12

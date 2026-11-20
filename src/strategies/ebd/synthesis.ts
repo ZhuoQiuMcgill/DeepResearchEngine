@@ -2,8 +2,8 @@
  * Writer input (design section 12). Material is whole researcher-notes lines,
  * grouped under one heading per goal and ordered by the synthesis questions they
  * feed; off-target lines are left out; nothing on-topic is dropped. The
- * analysis (assumption verdicts, conflicts, defaults, evidence status) goes to
- * the outline and the guidance, never into the material.
+ * analysis (verdicts on the question's claims, conflicts, evidence status) goes
+ * to the guidance, never into the material.
  *
  * The writer is told only what the notes do not show (design section 20): a
  * claim of the question that the evidence contradicts, and at most three critical

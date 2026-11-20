@@ -1,0 +1,85 @@
+/**
+ * Reports of the final test written again from what the run handed the writer (design section 33): the
+ * same notes, a different outline and guidance, the platform's own writer. No search and no strategy
+ * call: one writer call per report, about one cent.
+ *
+ *   tsx local/ebd-heldout/rewrite-final.ts <variant> [task ...]      -> rewrite-final-<variant>/<task>.md
+ *
+ * Variants:
+ *   rec    the approach's recorded writer input, written again: the control for the writer's own
+ *          difference from run to run
+ *   none   the approach's notes alone, with no guidance: what the baseline's writer gets in half its runs
+ *   full   the approach's notes with an outline of the plan's main parts and a guidance that asks for the
+ *          whole answer: a contradicted premise is corrected in the opening and the question is then
+ *          answered as asked; no reading of the question, no list of assumed defaults, no line for an
+ *          undecided premise; the lines for critical disagreements stay
+ *   lite   full without the line that asks to cover each part from the strongest sources: the outline,
+ *          and a guidance that only leaves out what narrowed the report
+ *   defs   full with one more line that asks to say what the question's main terms mean
+ *   base   the baseline's recorded writer input, written again: the control on the other side
+ */
+import "dotenv/config";
+import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { createChatModel, getProfile } from "../../src/config/models.js";
+import type { SynthesisInput } from "../../src/core/index.js";
+import { assumptionVerdicts } from "../../src/strategies/ebd/goals.js";
+import type { EbdState } from "../../src/strategies/ebd/state.js";
+import { CRITICAL_HEADING, READING_LABEL } from "../../src/strategies/ebd/synthesis.js";
+import { createWriter } from "../../src/writer/writer.js";
+
+const OUT = "local/ebd-heldout";
+const [variant = "rec", ...only] = process.argv.slice(2);
+const out = join(OUT, `rewrite-final-${variant}`);
+mkdirSync(out, { recursive: true });
+const model = createChatModel(getProfile("haiku"));
+type Summary = { dir: string; question: string; strategy: { label: string }; tags: { task: string } };
+const folder = readdirSync(OUT).filter((d) => d.startsWith("final-sealed-2")).sort().at(-1)!;
+const arm = variant === "base" ? "baseline" : "ebd-one";
+const runs = (JSON.parse(readFileSync(join(OUT, folder, "summaries.json"), "utf8")) as Summary[]).filter((s) => s.strategy.label === arm && (!only.length || only.includes(s.tags.task)));
+
+export const COVER_LINE =
+  "Cover each part of the outline. In each part, build first on the strongest sources in the notes: official statistics, peer-reviewed studies and primary documents before commentary. Give each figure with its year and what it measures, and say where the evidence is thin or disputed.";
+export const DEFINE_LINE =
+  "Early in the report, say what the question's main terms mean and how they are defined or measured, in a sentence or two each, with the source the notes give.";
+export const PREMISE_LINE =
+  "The evidence in the notes contradicts this. Say so in the opening paragraph, in one or two sentences with the source. Then answer the question the client asked as fully as the notes allow: the correction is not the subject of the report.";
+
+/** The writer input of the variant "full", built from the run's final state and its recorded input. */
+function full(state: EbdState, recorded: SynthesisInput, cover = true, define = false): SynthesisInput {
+  const blocks = (recorded.guidance ?? "").split("\n\n");
+  const keep = (prefix: string) => blocks.filter((b) => b.startsWith(prefix));
+  const verdicts = assumptionVerdicts(state);
+  const contradicted = state.analysis.assumptions.filter((x) => verdicts[x.id] === "contradicted");
+  const severalMeanings = state.analysis.rom.objects.some((o) => o.readings.length > 0);
+  const guidance = [
+    ...keep("Follow the client's directives:"),
+    ...keep("The client limits the length"),
+    ...(severalMeanings ? keep(READING_LABEL) : []),
+    ...(contradicted.length ? [`The question takes for granted:\n${contradicted.map((x) => `- "${x.claim}"`).join("\n")}\n${PREMISE_LINE}`] : []),
+    ...keep(CRITICAL_HEADING),
+    ...keep("Evidence to keep apart:"),
+    ...keep("No reliable source was found for these"),
+    ...keep("These questions could not be researched because of technical failures"),
+    ...(define ? [DEFINE_LINE] : []),
+    ...(cover ? [COVER_LINE] : []),
+    "Do not open the report with these notes, and do not mention the research process.",
+  ].join("\n\n");
+  // The plan's main parts that were researched, the necessary ones first, as the suggested outline.
+  const need = (goalId: string) => state.goals.find((g) => g.id === goalId)?.need;
+  const researched = (state.map?.events ?? []).filter((e) => (state.goals.find((g) => g.id === e.goalId)?.attempts ?? 0) > 0);
+  const outline = [...researched.filter((e) => need(e.goalId) === "necessary"), ...researched.filter((e) => need(e.goalId) !== "necessary")].slice(0, 5).map((e) => e.name);
+  return { material: recorded.material, ...(outline.length > 1 ? { outline } : {}), guidance };
+}
+
+await Promise.all(runs.map(async (s) => {
+  const recorded = (JSON.parse(readFileSync(join(s.dir, "synthesis.json"), "utf8")) as { synthesis: SynthesisInput }).synthesis;
+  const events = readFileSync(join(s.dir, "events.jsonl"), "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l) as { type: string; data: { strategyState?: EbdState } });
+  const state = events.filter((e) => e.type === "decision").at(-1)!.data.strategyState!;
+  const input: SynthesisInput = variant === "none" ? { material: recorded.material } : variant === "full" ? full(state, recorded) : variant === "lite" ? full(state, recorded, false) : variant === "defs" ? full(state, recorded, true, true) : recorded;
+  const t0 = Date.now();
+  const { report, diagnostics } = await createWriter(model, state.today ?? "2026-11-20")(s.question, input);
+  writeFileSync(join(out, `${s.tags.task}.md`), report);
+  writeFileSync(join(out, `${s.tags.task}.synthesis.json`), JSON.stringify({ outline: input.outline ?? [], guidance: input.guidance ?? "" }, null, 2));
+  console.log(`${s.tags.task}: ${report.split(/\s+/).length} words in ${Math.round((Date.now() - t0) / 1000)} s${diagnostics.length ? `; ${diagnostics.join("; ")}` : ""}`);
+}));

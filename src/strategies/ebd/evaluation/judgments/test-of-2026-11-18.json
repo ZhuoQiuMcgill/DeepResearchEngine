@@ -1,0 +1,1694 @@
+{
+ "judge": "claude-opus-5-5",
+ "effort": "medium",
+ "questions": [
+  {
+   "id": "r01",
+   "origin": "real",
+   "set": "sealed",
+   "type": "real user query (random draw)",
+   "question": "does population control lead to better child quality? evidence from china’s one-child policy enforcement",
+   "checklist": [
+    "What is population control and how is it implemented in different contexts?",
+    "What is China's one-child policy and how was it enforced?",
+    "What are the indicators of child quality and how are they measured?",
+    "What are the possible mechanisms or pathways that population control could affect child quality?",
+    "What are the potential confounding factors or biases that could affect the causal relationship between population control and child quality?",
+    "What are the existing empirical studies or data sources that examine the impact of population control on child quality, especially in China?",
+    "What are the main findings, limitations, and implications of these studies or data sources?"
+   ]
+  },
+  {
+   "id": "r03",
+   "origin": "real",
+   "set": "sealed",
+   "type": "real user query (random draw)",
+   "question": "how did industrial revolution affect people",
+   "checklist": [
+    "What is the industrial revolution?",
+    "How did the industrial revolution affect the production and distribution of goods and services?",
+    "How did the industrial revolution affect the social and political structures and movements of the time?",
+    "How did the industrial revolution affect the culture and values of the people?"
+   ]
+  },
+  {
+   "id": "r05",
+   "origin": "real",
+   "set": "sealed",
+   "type": "real user query (random draw)",
+   "question": "why was slavery important",
+   "checklist": [
+    "What is slavery?",
+    "When and where did slavery emerge and develop?",
+    "How did slavery affect the societies and economies that practiced it?",
+    "How did slavery end or persist in different places and times?"
+   ]
+  },
+  {
+   "id": "r07",
+   "origin": "real",
+   "set": "sealed",
+   "type": "real user query (random draw)",
+   "question": "why disability inclusion matters",
+   "checklist": [
+    "What is disability inclusion?",
+    "What are the benefits of disability inclusion?",
+    "What are the challenges and opportunities for disability inclusion?"
+   ]
+  },
+  {
+   "id": "r09",
+   "origin": "real",
+   "set": "sealed",
+   "type": "real user query (random draw)",
+   "question": "how did the internet spread to other areas",
+   "checklist": [
+    "What is the origin of the internet?",
+    "How did the internet expand within the US?",
+    "How did the internet spread to other countries and regions?"
+   ]
+  },
+  {
+   "id": "r11",
+   "origin": "real",
+   "set": "sealed",
+   "type": "real user query (random draw)",
+   "question": "how can social science solve social problems",
+   "checklist": [
+    "What is social science and what are its main disciplines and methods?",
+    "What are some examples of social problems and how are they defined and measured?",
+    "What are some existing or potential solutions to social problems and how are they evaluated and implemented?",
+    "How can social science communicate and collaborate with other fields and sectors to solve social problems?"
+   ]
+  },
+  {
+   "id": "d02",
+   "origin": "designed",
+   "set": "sealed",
+   "type": "quantity",
+   "question": "How many people in the world do not have access to electricity?",
+   "checklist": [
+    "The latest global figure, with its year and source.",
+    "How access to electricity is defined or measured.",
+    "Differences between the main sources' figures, if they differ.",
+    "Where the people without access live: the regions or countries with the largest numbers.",
+    "The trend over recent years.",
+    "The outlook against the goal of universal access, or the main obstacles."
+   ]
+  },
+  {
+   "id": "d04",
+   "origin": "designed",
+   "set": "sealed",
+   "type": "false premise (a wrong attribution)",
+   "question": "Why did Einstein win the Nobel Prize for the theory of relativity?",
+   "checklist": [
+    "Whether the prize was awarded for the theory of relativity, and what it was awarded for.",
+    "Why relativity was not the stated reason: the committee's reservations.",
+    "The circumstances of the award: the year of the prize and when it was awarded.",
+    "How relativity relates to the award, or where the belief comes from (for example his Nobel lecture)."
+   ]
+  },
+  {
+   "id": "d06",
+   "origin": "designed",
+   "set": "sealed",
+   "type": "several parts, with directives on format and sources",
+   "question": "Compare nuclear and solar power on cost, safety and land use. Present the result as a table and use only sources from 2023 or later.",
+   "checklist": [
+    "Cost: comparable figures for both, with year and source.",
+    "Safety: comparable measures for both, and the main risks.",
+    "Land use: comparable figures for both.",
+    "The result is presented as a table.",
+    "The sources cited are from 2023 or later, or the report says where it could not comply.",
+    "Caveats that change the comparison (for example storage, construction time, waste), or how the figures depend on assumptions."
+   ]
+  },
+  {
+   "id": "d08",
+   "origin": "designed",
+   "set": "sealed",
+   "type": "how a technology works",
+   "question": "How does HTTPS keep a connection secure?",
+   "checklist": [
+    "What HTTPS is: HTTP over an encrypted protocol.",
+    "Encryption: how the keys are agreed and what is encrypted.",
+    "Authentication: certificates, who issues them, and how the browser checks the server's identity.",
+    "Integrity: how tampering is detected.",
+    "What HTTPS does not protect against, or its common weaknesses.",
+    "The current protocol versions and the deprecated ones."
+   ]
+  },
+  {
+   "id": "d10",
+   "origin": "designed",
+   "set": "sealed",
+   "type": "same wording pattern as a development question, another subject",
+   "question": "What exercises can help with lower back pain?",
+   "checklist": [
+    "Specific exercises or kinds of exercise with evidence of benefit.",
+    "The strength of the evidence: guidelines, trials, reviews.",
+    "How to do them: amounts, frequency or progression, where sources give them.",
+    "Exercises or movements to avoid or to be careful with.",
+    "For whom the advice differs: acute against chronic pain, specific conditions.",
+    "Warning signs that need a clinician instead of exercise.",
+    "Other measures that go with exercise, briefly."
+   ]
+  },
+  {
+   "id": "d12",
+   "origin": "designed",
+   "set": "sealed",
+   "type": "a technical choice between two options",
+   "question": "Should a small business choose PostgreSQL or MongoDB for a new web application?",
+   "checklist": [
+    "What each is and how their data models differ.",
+    "Consistency and transactions.",
+    "Scaling and performance.",
+    "Schema flexibility and speed of development.",
+    "Costs and licensing, including managed services.",
+    "Ecosystem, tooling and the skills available.",
+    "Which suits which kind of application, or a decision rule; the client's unstated details are named as assumptions."
+   ]
+  }
+ ],
+ "usage": {
+  "input": 477783,
+  "output": 35696
+ },
+ "seconds": 90,
+ "results": [
+  {
+   "kind": "coverage",
+   "task": "r01",
+   "origin": "real",
+   "arm": "ebd-new",
+   "items": [
+    {
+     "n": 1,
+     "score": 0.5,
+     "quote": "The policy was national in name but local in practice.",
+     "wrong": false
+    },
+    {
+     "n": 2,
+     "score": 1,
+     "quote": "Brookings cites 1983 figures of 14.4 million abortions and 20.7 million, mostly female, sterilizations in a year with about 21 million births",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 1,
+     "quote": "an additional male sibling lowers height-for-age by about 0.17 z-score for under-8s, with effects concentrated in rural areas and absent for only children",
+     "wrong": false
+    },
+    {
+     "n": 4,
+     "score": 0.5,
+     "quote": "because stricter enforcement also raised sibling sex-ratio distortion, which harmed girls",
+     "wrong": false
+    },
+    {
+     "n": 5,
+     "score": 1,
+     "quote": "Liu notes that the policy could affect height through income, so the instrument may not be valid",
+     "wrong": false
+    },
+    {
+     "n": 6,
+     "score": 1,
+     "quote": "Rosenzweig and Zhang, using twin births, find that an extra child at parity one or two significantly reduces schooling progress",
+     "wrong": false
+    },
+    {
+     "n": 7,
+     "score": 1,
+     "quote": "since four designs point the same way and the dissenting design has a identified channel that cuts against it",
+     "wrong": true
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":0.5,\"quote\":\"The policy was national in name but local in practice.\",\"wrong\":false},{\"n\":2,\"score\":1,\"quote\":\"Brookings cites 1983 figures of 14.4 million abortions and 20.7 million, mostly female, sterilizations in a year with about 21 million births\",\"wrong\":false},{\"n\":3,\"score\":1,\"quote\":\"an additional male sibling lowers height-for-age by about 0.17 z-score for under-8s, with effects concentrated in rural areas and absent for only children\",\"wrong\":false},{\"n\":4,\"score\":0.5,\"quote\":\"because stricter enforcement also raised sibling sex-ratio distortion, which harmed girls\",\"wrong\":false},{\"n\":5,\"score\":1,\"quote\":\"Liu notes that the policy could affect height through income, so the instrument may not be valid\",\"wrong\":false},{\"n\":6,\"score\":1,\"quote\":\"Rosenzweig and Zhang, using twin births, find that an extra child at parity one or two significantly reduces schooling progress\",\"wrong\":false},{\"n\":7,\"score\":1,\"quote\":\"since four designs point the same way and the dissenting design has a identified channel that cuts against it\",\"wrong\":true}]}"
+  },
+  {
+   "kind": "coverage",
+   "task": "r01",
+   "origin": "real",
+   "arm": "baseline",
+   "items": [
+    {
+     "n": 1,
+     "score": 0,
+     "quote": "",
+     "wrong": false
+    },
+    {
+     "n": 2,
+     "score": 0.5,
+     "quote": "Out-of-quota children could be denied registration and with it immunization and health services, and one account cites about thirteen million such children",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 1,
+     "quote": "A Springer study of children under eight finds that an extra male sibling lowers height-for-age by about **0.17 z-score**",
+     "wrong": false
+    },
+    {
+     "n": 4,
+     "score": 1,
+     "quote": "which the authors attribute to son preference rather than rivalry",
+     "wrong": false
+    },
+    {
+     "n": 5,
+     "score": 1,
+     "quote": "Birth underreporting is correlated with enforcement: a 2024 analysis argues that child underreporting rose after the 1991 increase in enforcement and penalties",
+     "wrong": false
+    },
+    {
+     "n": 6,
+     "score": 1,
+     "quote": "Li, Zhang and Zhu find that family size lowers educational attainment, and that the effect is evident only in rural China",
+     "wrong": false
+    },
+    {
+     "n": 7,
+     "score": 1,
+     "quote": "The main enforcement study concludes that the policy makes \"only a modest contribution\" to human capital",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":0,\"quote\":\"\",\"wrong\":false},{\"n\":2,\"score\":0.5,\"quote\":\"Out-of-quota children could be denied registration and with it immunization and health services, and one account cites about thirteen million such children\",\"wrong\":false},{\"n\":3,\"score\":1,\"quote\":\"A Springer study of children under eight finds that an extra male sibling lowers height-for-age by about **0.17 z-score**\",\"wrong\":false},{\"n\":4,\"score\":1,\"quote\":\"which the authors attribute to son preference rather than rivalry\",\"wrong\":false},{\"n\":5,\"score\":1,\"quote\":\"Birth underreporting is correlated with enforcement: a 2024 analysis argues that child underreporting rose after the 1991 increase in enforcement and penalties\",\"wrong\":false},{\"n\":6,\"score\":1,\"quote\":\"Li, Zhang and Zhu find that family size lowers educational attainment, and that the effect is evident only in rural China\",\"wrong\":false},{\"n\":7,\"score\":1,\"quote\":\"The main enforcement study concludes that the policy makes \\\"only a modest contribution\\\" to human capital\",\"wrong\":false}]}"
+  },
+  {
+   "kind": "coverage",
+   "task": "r01",
+   "origin": "real",
+   "arm": "ebd-default",
+   "items": [
+    {
+     "n": 1,
+     "score": 0.5,
+     "quote": "The premise holds: China enforced a one-child policy as a national regime.",
+     "wrong": false
+    },
+    {
+     "n": 2,
+     "score": 1,
+     "quote": "the U.S. State Department reported social compensation fees of one-half to ten times local average annual household income",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 1,
+     "quote": "Only children in one CHNS-based study have a height-for-age z-score 0.12 standard deviations higher",
+     "wrong": false
+    },
+    {
+     "n": 4,
+     "score": 0.5,
+     "quote": "One study finds that an additional sibling reduces child nutrient intake by one-tenth to one-fifth of the recommended level",
+     "wrong": false
+    },
+    {
+     "n": 5,
+     "score": 1,
+     "quote": "A synthetic-control study attributes the schooling gap for 1973–1979 cohorts mainly to the Cultural Revolution school-year reduction, not the policy",
+     "wrong": false
+    },
+    {
+     "n": 6,
+     "score": 1,
+     "quote": "The strongest schooling evidence comes from Li and Zhang, who use regional enforcement intensity and census data.",
+     "wrong": false
+    },
+    {
+     "n": 7,
+     "score": 1,
+     "quote": "the effects are modest, vary by sex, region and outcome, and are not confirmed for cognition, survival or psychological health.",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":0.5,\"quote\":\"The premise holds: China enforced a one-child policy as a national regime.\",\"wrong\":false},{\"n\":2,\"score\":1,\"quote\":\"the U.S. State Department reported social compensation fees of one-half to ten times local average annual household income\",\"wrong\":false},{\"n\":3,\"score\":1,\"quote\":\"Only children in one CHNS-based study have a height-for-age z-score 0.12 standard deviations higher\",\"wrong\":false},{\"n\":4,\"score\":0.5,\"quote\":\"One study finds that an additional sibling reduces child nutrient intake by one-tenth to one-fifth of the recommended level\",\"wrong\":false},{\"n\":5,\"score\":1,\"quote\":\"A synthetic-control study attributes the schooling gap for 1973–1979 cohorts mainly to the Cultural Revolution school-year reduction, not the policy\",\"wrong\":false},{\"n\":6,\"score\":1,\"quote\":\"The strongest schooling evidence comes from Li and Zhang, who use regional enforcement intensity and census data.\",\"wrong\":false},{\"n\":7,\"score\":1,\"quote\":\"the effects are modest, vary by sex, region and outcome, and are not confirmed for cognition, survival or psychological health.\",\"wrong\":false}]}"
+  },
+  {
+   "kind": "coverage",
+   "task": "r03",
+   "origin": "real",
+   "arm": "ebd-new",
+   "items": [
+    {
+     "n": 1,
+     "score": 0.5,
+     "quote": "The period itself is usually dated from the mid-18th century to about 1830, 1840 or 1850, depending on the source",
+     "wrong": false
+    },
+    {
+     "n": 2,
+     "score": 0.5,
+     "quote": "British output per worker rose by 46% between about 1790 and 1840, while Feinstein's real-wage index rose by only 12%",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 0.5,
+     "quote": "Inequality rose: most economic historians agree that income distribution became more unequal between 1790 and 1840",
+     "wrong": false
+    },
+    {
+     "n": 4,
+     "score": 0.5,
+     "quote": "Schooling did not expand quickly for the working class.",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":0.5,\"quote\":\"The period itself is usually dated from the mid-18th century to about 1830, 1840 or 1850, depending on the source\",\"wrong\":false},{\"n\":2,\"score\":0.5,\"quote\":\"British output per worker rose by 46% between about 1790 and 1840, while Feinstein's real-wage index rose by only 12%\",\"wrong\":false},{\"n\":3,\"score\":0.5,\"quote\":\"Inequality rose: most economic historians agree that income distribution became more unequal between 1790 and 1840\",\"wrong\":false},{\"n\":4,\"score\":0.5,\"quote\":\"Schooling did not expand quickly for the working class.\",\"wrong\":false}]}"
+  },
+  {
+   "kind": "coverage",
+   "task": "r03",
+   "origin": "real",
+   "arm": "baseline",
+   "items": [
+    {
+     "n": 1,
+     "score": 0,
+     "quote": "",
+     "wrong": false
+    },
+    {
+     "n": 2,
+     "score": 0.5,
+     "quote": "From 1780 to 1840, output per worker rose about **46%** while real wages rose about **12%**",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 1,
+     "quote": "Chartism, from the People's Charter of 8 May 1838, demanded universal male suffrage, annual Parliaments and payment of MPs",
+     "wrong": false
+    },
+    {
+     "n": 4,
+     "score": 0.5,
+     "quote": "Factory work replaced home-paced labour with clock-timed shifts",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":0,\"quote\":\"\",\"wrong\":false},{\"n\":2,\"score\":0.5,\"quote\":\"From 1780 to 1840, output per worker rose about **46%** while real wages rose about **12%**\",\"wrong\":false},{\"n\":3,\"score\":1,\"quote\":\"Chartism, from the People's Charter of 8 May 1838, demanded universal male suffrage, annual Parliaments and payment of MPs\",\"wrong\":false},{\"n\":4,\"score\":0.5,\"quote\":\"Factory work replaced home-paced labour with clock-timed shifts\",\"wrong\":false}]}"
+  },
+  {
+   "kind": "coverage",
+   "task": "r03",
+   "origin": "real",
+   "arm": "ebd-default",
+   "items": [
+    {
+     "n": 1,
+     "score": 0.5,
+     "quote": "Britannica and History.com give the patent date as 1769",
+     "wrong": false
+    },
+    {
+     "n": 2,
+     "score": 0.5,
+     "quote": "output per worker rose 46% between 1780 and 1840, while real wages rose only 12%",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 1,
+     "quote": "the most powerful group was a small minority who owned factories, banks and large trading houses",
+     "wrong": false
+    },
+    {
+     "n": 4,
+     "score": 1,
+     "quote": "E.P. Thompson argued that the factory brought labour regulated by precise clock time, in place of task-oriented work",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":0.5,\"quote\":\"Britannica and History.com give the patent date as 1769\",\"wrong\":false},{\"n\":2,\"score\":0.5,\"quote\":\"output per worker rose 46% between 1780 and 1840, while real wages rose only 12%\",\"wrong\":false},{\"n\":3,\"score\":1,\"quote\":\"the most powerful group was a small minority who owned factories, banks and large trading houses\",\"wrong\":false},{\"n\":4,\"score\":1,\"quote\":\"E.P. Thompson argued that the factory brought labour regulated by precise clock time, in place of task-oriented work\",\"wrong\":false}]}"
+  },
+  {
+   "kind": "coverage",
+   "task": "r05",
+   "origin": "real",
+   "arm": "ebd-new",
+   "items": [
+    {
+     "n": 1,
+     "score": 1,
+     "quote": "Patterson's \"social death\" model, which defines slavery by natal alienation and dishonour, remains the most-cited general account",
+     "wrong": false
+    },
+    {
+     "n": 2,
+     "score": 0.5,
+     "quote": "calls Greece and Rome \"the first examples in world history of genuine slave societies\"",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 1,
+     "quote": "Slavery was important because it supplied labour, generated wealth, built political and military power, and defined who counted as a person in law.",
+     "wrong": false
+    },
+    {
+     "n": 4,
+     "score": 1,
+     "quote": "Britain's 1833 act gave owners £20 million and gave enslaved people no compensation",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":1,\"quote\":\"Patterson's \\\"social death\\\" model, which defines slavery by natal alienation and dishonour, remains the most-cited general account\",\"wrong\":false},{\"n\":2,\"score\":0.5,\"quote\":\"calls Greece and Rome \\\"the first examples in world history of genuine slave societies\\\"\",\"wrong\":false},{\"n\":3,\"score\":1,\"quote\":\"Slavery was important because it supplied labour, generated wealth, built political and military power, and defined who counted as a person in law.\",\"wrong\":false},{\"n\":4,\"score\":1,\"quote\":\"Britain's 1833 act gave owners £20 million and gave enslaved people no compensation\",\"wrong\":false}]}"
+  },
+  {
+   "kind": "coverage",
+   "task": "r05",
+   "origin": "real",
+   "arm": "baseline",
+   "items": [
+    {
+     "n": 1,
+     "score": 0.5,
+     "quote": "Patterson defined slavery as \"social death\" and as a relation of domination rather than an economic system",
+     "wrong": false
+    },
+    {
+     "n": 2,
+     "score": 0.5,
+     "quote": "In Greco-Roman antiquity, a speculative reconstruction puts slaves at roughly 10% of the imperial population",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 1,
+     "quote": "In the United States, more than 70% of enslaved people were involved in cotton production",
+     "wrong": false
+    },
+    {
+     "n": 4,
+     "score": 1,
+     "quote": "Brazil's Lei Áurea of 13 May 1888 declared slavery extinct in two articles, after partial laws in 1850, 1871 and 1885",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":0.5,\"quote\":\"Patterson defined slavery as \\\"social death\\\" and as a relation of domination rather than an economic system\",\"wrong\":false},{\"n\":2,\"score\":0.5,\"quote\":\"In Greco-Roman antiquity, a speculative reconstruction puts slaves at roughly 10% of the imperial population\",\"wrong\":false},{\"n\":3,\"score\":1,\"quote\":\"In the United States, more than 70% of enslaved people were involved in cotton production\",\"wrong\":false},{\"n\":4,\"score\":1,\"quote\":\"Brazil's Lei Áurea of 13 May 1888 declared slavery extinct in two articles, after partial laws in 1850, 1871 and 1885\",\"wrong\":false}]}"
+  },
+  {
+   "kind": "coverage",
+   "task": "r05",
+   "origin": "real",
+   "arm": "ebd-default",
+   "items": [
+    {
+     "n": 1,
+     "score": 0.5,
+     "quote": "Virginia's 1662 law made a child's status follow the mother's, so children of enslaved women were born enslaved regardless of the father",
+     "wrong": false
+    },
+    {
+     "n": 2,
+     "score": 0.5,
+     "quote": "Athens is estimated at around 120,000 slaves, more than a third of its population",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 1,
+     "quote": "Slavery's importance lay less in a single share of output than in its roles as an export engine, a source of wealth and credit",
+     "wrong": false
+    },
+    {
+     "n": 4,
+     "score": 1,
+     "quote": "Britain's 1833 act freed enslaved children under six at once and made older enslaved people apprentices until full emancipation on 1 August 1838",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":0.5,\"quote\":\"Virginia's 1662 law made a child's status follow the mother's, so children of enslaved women were born enslaved regardless of the father\",\"wrong\":false},{\"n\":2,\"score\":0.5,\"quote\":\"Athens is estimated at around 120,000 slaves, more than a third of its population\",\"wrong\":false},{\"n\":3,\"score\":1,\"quote\":\"Slavery's importance lay less in a single share of output than in its roles as an export engine, a source of wealth and credit\",\"wrong\":false},{\"n\":4,\"score\":1,\"quote\":\"Britain's 1833 act freed enslaved children under six at once and made older enslaved people apprentices until full emancipation on 1 August 1838\",\"wrong\":false}]}"
+  },
+  {
+   "kind": "coverage",
+   "task": "r07",
+   "origin": "real",
+   "arm": "ebd-new",
+   "items": [
+    {
+     "n": 1,
+     "score": 1,
+     "quote": "The UN defines disability inclusion as the meaningful participation of persons with disabilities in all their diversity, the promotion of their rights",
+     "wrong": false
+    },
+    {
+     "n": 2,
+     "score": 1,
+     "quote": "The organisational case is strongest on cost: accommodations are usually cheap and help retain staff.",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 1,
+     "quote": "Enforcement lags: 35 to 60 states parties are overdue on reports by five years or more",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":1,\"quote\":\"The UN defines disability inclusion as the meaningful participation of persons with disabilities in all their diversity, the promotion of their rights\",\"wrong\":false},{\"n\":2,\"score\":1,\"quote\":\"The organisational case is strongest on cost: accommodations are usually cheap and help retain staff.\",\"wrong\":false},{\"n\":3,\"score\":1,\"quote\":\"Enforcement lags: 35 to 60 states parties are overdue on reports by five years or more\",\"wrong\":false}]}"
+  },
+  {
+   "kind": "coverage",
+   "task": "r07",
+   "origin": "real",
+   "arm": "baseline",
+   "items": [
+    {
+     "n": 1,
+     "score": 0.5,
+     "quote": "The preamble describes disability as arising from the interaction between impairments and attitudinal and environmental barriers, so the remedy lies in removing barriers rather than fixing individuals",
+     "wrong": false
+    },
+    {
+     "n": 2,
+     "score": 1,
+     "quote": "A systematic review of **280 studies from 25 countries** reports clear short- and long-term benefits for students with and without disabilities",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 1,
+     "quote": "persons with disabilities are **not yet sufficiently included** in SDG implementation, monitoring and evaluation",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":0.5,\"quote\":\"The preamble describes disability as arising from the interaction between impairments and attitudinal and environmental barriers, so the remedy lies in removing barriers rather than fixing individuals\",\"wrong\":false},{\"n\":2,\"score\":1,\"quote\":\"A systematic review of **280 studies from 25 countries** reports clear short- and long-term benefits for students with and without disabilities\",\"wrong\":false},{\"n\":3,\"score\":1,\"quote\":\"persons with disabilities are **not yet sufficiently included** in SDG implementation, monitoring and evaluation\",\"wrong\":false}]}"
+  },
+  {
+   "kind": "coverage",
+   "task": "r07",
+   "origin": "real",
+   "arm": "ebd-default",
+   "items": [
+    {
+     "n": 1,
+     "score": 0.5,
+     "quote": "Those gaps are not explained by impairment alone, which is why the WHO and the CRPD frame exclusion as a product of barriers.",
+     "wrong": false
+    },
+    {
+     "n": 2,
+     "score": 1,
+     "quote": "85% of surveyed employers said providing an accommodation helped them retain a valued employee",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 1,
+     "quote": "persons with disability are up to 6 times more likely to face barriers in accessing health care",
+     "wrong": true
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":0.5,\"quote\":\"Those gaps are not explained by impairment alone, which is why the WHO and the CRPD frame exclusion as a product of barriers.\",\"wrong\":false},{\"n\":2,\"score\":1,\"quote\":\"85% of surveyed employers said providing an accommodation helped them retain a valued employee\",\"wrong\":false},{\"n\":3,\"score\":1,\"quote\":\"persons with disability are up to 6 times more likely to face barriers in accessing health care\",\"wrong\":true}]}"
+  },
+  {
+   "kind": "coverage",
+   "task": "r09",
+   "origin": "real",
+   "arm": "ebd-new",
+   "items": [
+    {
+     "n": 1,
+     "score": 1,
+     "quote": "The original ARPANET had four sites: UCLA, SRI, UC Santa Barbara and the University of Utah",
+     "wrong": false
+    },
+    {
+     "n": 2,
+     "score": 1,
+     "quote": "NSFNET launched in 1986 at 56 kbit/s ... and by April 1995 its backbone had grown to connect more than 50,000 networks",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 1,
+     "quote": "Its first foreign connection came in 1973, when NORSAR in Norway became the first non-US site, reached by satellite through Sweden",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":1,\"quote\":\"The original ARPANET had four sites: UCLA, SRI, UC Santa Barbara and the University of Utah\",\"wrong\":false},{\"n\":2,\"score\":1,\"quote\":\"NSFNET launched in 1986 at 56 kbit/s ... and by April 1995 its backbone had grown to connect more than 50,000 networks\",\"wrong\":false},{\"n\":3,\"score\":1,\"quote\":\"Its first foreign connection came in 1973, when NORSAR in Norway became the first non-US site, reached by satellite through Sweden\",\"wrong\":false}]}"
+  },
+  {
+   "kind": "coverage",
+   "task": "r09",
+   "origin": "real",
+   "arm": "baseline",
+   "items": [
+    {
+     "n": 1,
+     "score": 0.5,
+     "quote": "The first non-US ARPANET sites were in Norway (NORSAR, June 1973) and at University College London",
+     "wrong": false
+    },
+    {
+     "n": 2,
+     "score": 0.5,
+     "quote": "NSFNET began operating in 1986 using TCP/IP, and its upgraded backbone came online in July 1988",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 1,
+     "quote": "10 to 12 countries were added each year from 1989 to 1993, and 21 in 1994",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":0.5,\"quote\":\"The first non-US ARPANET sites were in Norway (NORSAR, June 1973) and at University College London\",\"wrong\":false},{\"n\":2,\"score\":0.5,\"quote\":\"NSFNET began operating in 1986 using TCP/IP, and its upgraded backbone came online in July 1988\",\"wrong\":false},{\"n\":3,\"score\":1,\"quote\":\"10 to 12 countries were added each year from 1989 to 1993, and 21 in 1994\",\"wrong\":false}]}"
+  },
+  {
+   "kind": "coverage",
+   "task": "r09",
+   "origin": "real",
+   "arm": "ebd-default",
+   "items": [
+    {
+     "n": 1,
+     "score": 1,
+     "quote": "It began as a US research network, and its first foreign links were to the UK and Norway in 1973",
+     "wrong": false
+    },
+    {
+     "n": 2,
+     "score": 1,
+     "quote": "ARPANET grew from four sites in late 1969 to 24 sites by the end of 1972 and 37 by the end of 1973, including a satellite link to Hawaii",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 1,
+     "quote": "NSFNET links from 1988 brought networks in Europe, Canada, Australia and Asia onto the US backbone",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":1,\"quote\":\"It began as a US research network, and its first foreign links were to the UK and Norway in 1973\",\"wrong\":false},{\"n\":2,\"score\":1,\"quote\":\"ARPANET grew from four sites in late 1969 to 24 sites by the end of 1972 and 37 by the end of 1973, including a satellite link to Hawaii\",\"wrong\":false},{\"n\":3,\"score\":1,\"quote\":\"NSFNET links from 1988 brought networks in Europe, Canada, Australia and Asia onto the US backbone\",\"wrong\":false}]}"
+  },
+  {
+   "kind": "coverage",
+   "task": "r11",
+   "origin": "real",
+   "arm": "ebd-new",
+   "items": [
+    {
+     "n": 1,
+     "score": 0.5,
+     "quote": "Randomised trials are presented as the most reliable design for estimating effects, with cluster, stepped-wedge and waitlist variants used when individual randomisation is impractical",
+     "wrong": false
+    },
+    {
+     "n": 2,
+     "score": 1,
+     "quote": "the official poverty measure compares pretax money income with a national threshold adjusted for family composition, and the 2025 official poverty rate was 10.2%",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 1,
+     "quote": "Focused deterrence: about 23% crime reduction across 50 controlled evaluations",
+     "wrong": false
+    },
+    {
+     "n": 4,
+     "score": 0.5,
+     "quote": "Personal contact between researchers and policymakers is the most frequently reported facilitator",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":0.5,\"quote\":\"Randomised trials are presented as the most reliable design for estimating effects, with cluster, stepped-wedge and waitlist variants used when individual randomisation is impractical\",\"wrong\":false},{\"n\":2,\"score\":1,\"quote\":\"the official poverty measure compares pretax money income with a national threshold adjusted for family composition, and the 2025 official poverty rate was 10.2%\",\"wrong\":false},{\"n\":3,\"score\":1,\"quote\":\"Focused deterrence: about 23% crime reduction across 50 controlled evaluations\",\"wrong\":false},{\"n\":4,\"score\":0.5,\"quote\":\"Personal contact between researchers and policymakers is the most frequently reported facilitator\",\"wrong\":false}]}"
+  },
+  {
+   "kind": "coverage",
+   "task": "r11",
+   "origin": "real",
+   "arm": "baseline",
+   "items": [
+    {
+     "n": 1,
+     "score": 0.5,
+     "quote": "Randomised and quasi-experimental designs are the strongest tools for this.",
+     "wrong": false
+    },
+    {
+     "n": 2,
+     "score": 0.5,
+     "quote": "Outcomes measured as proximate results, such as days housed, consumption or vaccine timeliness, respond more consistently than long-run outcomes such as poverty or crime.",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 1,
+     "quote": "Housing First participants spent 73% of follow-up time stably housed, against 32% for usual-service controls",
+     "wrong": false
+    },
+    {
+     "n": 4,
+     "score": 1,
+     "quote": "the What Works Network comprises 9 independent What Works Centres, 3 affiliate members and 1 What Works Programme",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":0.5,\"quote\":\"Randomised and quasi-experimental designs are the strongest tools for this.\",\"wrong\":false},{\"n\":2,\"score\":0.5,\"quote\":\"Outcomes measured as proximate results, such as days housed, consumption or vaccine timeliness, respond more consistently than long-run outcomes such as poverty or crime.\",\"wrong\":false},{\"n\":3,\"score\":1,\"quote\":\"Housing First participants spent 73% of follow-up time stably housed, against 32% for usual-service controls\",\"wrong\":false},{\"n\":4,\"score\":1,\"quote\":\"the What Works Network comprises 9 independent What Works Centres, 3 affiliate members and 1 What Works Programme\",\"wrong\":false}]}"
+  },
+  {
+   "kind": "coverage",
+   "task": "r11",
+   "origin": "real",
+   "arm": "ebd-default",
+   "items": [
+    {
+     "n": 1,
+     "score": 0.5,
+     "quote": "Textbook methods are surveys, secondary analysis of existing records, interviews, ethnography and experiments",
+     "wrong": false
+    },
+    {
+     "n": 2,
+     "score": 1,
+     "quote": "Sociology treats a social problem as a condition with negative consequences for many people that is generally seen as needing attention",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 1,
+     "quote": "The strongest evidence comes from randomised trials, and their results are uneven.",
+     "wrong": false
+    },
+    {
+     "n": 4,
+     "score": 1,
+     "quote": "In the UK, the What Works Centres are intermediaries that advise rather than decide.",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":0.5,\"quote\":\"Textbook methods are surveys, secondary analysis of existing records, interviews, ethnography and experiments\",\"wrong\":false},{\"n\":2,\"score\":1,\"quote\":\"Sociology treats a social problem as a condition with negative consequences for many people that is generally seen as needing attention\",\"wrong\":false},{\"n\":3,\"score\":1,\"quote\":\"The strongest evidence comes from randomised trials, and their results are uneven.\",\"wrong\":false},{\"n\":4,\"score\":1,\"quote\":\"In the UK, the What Works Centres are intermediaries that advise rather than decide.\",\"wrong\":false}]}"
+  },
+  {
+   "kind": "coverage",
+   "task": "d02",
+   "origin": "designed",
+   "arm": "ebd-new",
+   "items": [
+    {
+     "n": 1,
+     "score": 1,
+     "quote": "The best current estimate is **655 million people without electricity in 2024**, about 8% of the world's population, from the World Bank-led Tracking SDG7 2026 report",
+     "wrong": false
+    },
+    {
+     "n": 2,
+     "score": 1,
+     "quote": "The World Bank counts a household as having access when it reaches **Tier 1 of the Multi-Tier Framework**, the minimum level of service",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 1,
+     "quote": "The International Energy Agency (IEA) uses a different method and reports **about 730 million** for 2024",
+     "wrong": false
+    },
+    {
+     "n": 4,
+     "score": 1,
+     "quote": "**Sub-Saharan Africa was home to 563 million of the 655 million people** without electricity in 2024",
+     "wrong": false
+    },
+    {
+     "n": 5,
+     "score": 1,
+     "quote": "The global count rose in 2022, to 685 million, the first increase in over a decade",
+     "wrong": true
+    },
+    {
+     "n": 6,
+     "score": 1,
+     "quote": "At the current pace, the deficit is not closing fast enough to reach universal access on time.",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":1,\"quote\":\"The best current estimate is **655 million people without electricity in 2024**, about 8% of the world's population, from the World Bank-led Tracking SDG7 2026 report\",\"wrong\":false},{\"n\":2,\"score\":1,\"quote\":\"The World Bank counts a household as having access when it reaches **Tier 1 of the Multi-Tier Framework**, the minimum level of service\",\"wrong\":false},{\"n\":3,\"score\":1,\"quote\":\"The International Energy Agency (IEA) uses a different method and reports **about 730 million** for 2024\",\"wrong\":false},{\"n\":4,\"score\":1,\"quote\":\"**Sub-Saharan Africa was home to 563 million of the 655 million people** without electricity in 2024\",\"wrong\":false},{\"n\":5,\"score\":1,\"quote\":\"The global count rose in 2022, to 685 million, the first increase in over a decade\",\"wrong\":true},{\"n\":6,\"score\":1,\"quote\":\"At the current pace, the deficit is not closing fast enough to reach universal access on time.\",\"wrong\":false}]}"
+  },
+  {
+   "kind": "coverage",
+   "task": "d02",
+   "origin": "designed",
+   "arm": "baseline",
+   "items": [
+    {
+     "n": 1,
+     "score": 1,
+     "quote": "The most recent authoritative count is **655 million people without electricity in 2024**, according to the Tracking SDG7 2026 report",
+     "wrong": false
+    },
+    {
+     "n": 2,
+     "score": 1,
+     "quote": "The SDG 7.1.1 count uses Tier 1 as the minimum, which the report treats as aligned with the IEA's basic bundle",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 1,
+     "quote": "The IEA uses a stricter basic-bundle threshold and reports a higher figure of **730 million**",
+     "wrong": true
+    },
+    {
+     "n": 4,
+     "score": 1,
+     "quote": "The region held **563 million** of the 655 million people without access in 2024, roughly **86%** of the global total",
+     "wrong": false
+    },
+    {
+     "n": 5,
+     "score": 1,
+     "quote": "The number of people without electricity fell from about **1.1 billion in 2010** to 655 million in 2024",
+     "wrong": false
+    },
+    {
+     "n": 6,
+     "score": 1,
+     "quote": "Universal access by 2030 would require about 1.35 percentage points of access gain a year, more than three times the 2020–2024 pace",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":1,\"quote\":\"The most recent authoritative count is **655 million people without electricity in 2024**, according to the Tracking SDG7 2026 report\",\"wrong\":false},{\"n\":2,\"score\":1,\"quote\":\"The SDG 7.1.1 count uses Tier 1 as the minimum, which the report treats as aligned with the IEA's basic bundle\",\"wrong\":false},{\"n\":3,\"score\":1,\"quote\":\"The IEA uses a stricter basic-bundle threshold and reports a higher figure of **730 million**\",\"wrong\":true},{\"n\":4,\"score\":1,\"quote\":\"The region held **563 million** of the 655 million people without access in 2024, roughly **86%** of the global total\",\"wrong\":false},{\"n\":5,\"score\":1,\"quote\":\"The number of people without electricity fell from about **1.1 billion in 2010** to 655 million in 2024\",\"wrong\":false},{\"n\":6,\"score\":1,\"quote\":\"Universal access by 2030 would require about 1.35 percentage points of access gain a year, more than three times the 2020–2024 pace\",\"wrong\":false}]}"
+  },
+  {
+   "kind": "coverage",
+   "task": "d04",
+   "origin": "designed",
+   "arm": "ebd-new",
+   "items": [
+    {
+     "n": 1,
+     "score": 1,
+     "quote": "The official citation credits him \"for his services to Theoretical Physics, and especially for his discovery of the law of the photoelectric effect\"",
+     "wrong": false
+    },
+    {
+     "n": 2,
+     "score": 1,
+     "quote": "The committee's 1922 report stated that it \"considered itself unable to propose Einstein for the Nobel Prize for his theories of relativity and gravitation,\"",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 1,
+     "quote": "The prize was for the 1921 year, but the Royal Swedish Academy of Sciences announced it on **9 November 1922**, and Einstein received it one year later",
+     "wrong": true
+    },
+    {
+     "n": 4,
+     "score": 0.5,
+     "quote": "Relativity is absent from the formal wording, although the presentation speech discusses it at length",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":1,\"quote\":\"The official citation credits him \\\"for his services to Theoretical Physics, and especially for his discovery of the law of the photoelectric effect\\\"\",\"wrong\":false},{\"n\":2,\"score\":1,\"quote\":\"The committee's 1922 report stated that it \\\"considered itself unable to propose Einstein for the Nobel Prize for his theories of relativity and gravitation,\\\"\",\"wrong\":false},{\"n\":3,\"score\":1,\"quote\":\"The prize was for the 1921 year, but the Royal Swedish Academy of Sciences announced it on **9 November 1922**, and Einstein received it one year later\",\"wrong\":true},{\"n\":4,\"score\":0.5,\"quote\":\"Relativity is absent from the formal wording, although the presentation speech discusses it at length\",\"wrong\":false}]}"
+  },
+  {
+   "kind": "coverage",
+   "task": "d04",
+   "origin": "designed",
+   "arm": "baseline",
+   "items": [
+    {
+     "n": 1,
+     "score": 1,
+     "quote": "Einstein did not win the Nobel Prize for relativity. The official citation for the 1921 Nobel Prize in Physics, awarded in 1922, honours his \"services to Theoretical Physics,",
+     "wrong": false
+    },
+    {
+     "n": 2,
+     "score": 1,
+     "quote": "Gullstrand argued the effects of relativity lay \"below the limits of experimental error\"",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 1,
+     "quote": "The Foundation says the prize was announced on **9 November 1922**, and that Einstein could not attend the Stockholm ceremony on 10 December that year",
+     "wrong": false
+    },
+    {
+     "n": 4,
+     "score": 1,
+     "quote": "Relativity appears officially only in Einstein's Nobel lecture, which he delivered in Gothenburg on **11 July 1923**",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":1,\"quote\":\"Einstein did not win the Nobel Prize for relativity. The official citation for the 1921 Nobel Prize in Physics, awarded in 1922, honours his \\\"services to Theoretical Physics,\",\"wrong\":false},{\"n\":2,\"score\":1,\"quote\":\"Gullstrand argued the effects of relativity lay \\\"below the limits of experimental error\\\"\",\"wrong\":false},{\"n\":3,\"score\":1,\"quote\":\"The Foundation says the prize was announced on **9 November 1922**, and that Einstein could not attend the Stockholm ceremony on 10 December that year\",\"wrong\":false},{\"n\":4,\"score\":1,\"quote\":\"Relativity appears officially only in Einstein's Nobel lecture, which he delivered in Gothenburg on **11 July 1923**\",\"wrong\":false}]}"
+  },
+  {
+   "kind": "coverage",
+   "task": "d06",
+   "origin": "designed",
+   "arm": "ebd-new",
+   "items": [
+    {
+     "n": 1,
+     "score": 1,
+     "quote": "with [2026 ranges of $175–255/MWh for nuclear and $40–98/MWh for solar]",
+     "wrong": false
+    },
+    {
+     "n": 2,
+     "score": 1,
+     "quote": "[Nuclear is listed at 0.03 deaths/TWh and solar at 0.02]",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 1,
+     "quote": "[a Colorado study gives 1 square mile per GW for conventional nuclear and 11.3 square miles per GW for solar]",
+     "wrong": true
+    },
+    {
+     "n": 4,
+     "score": 1,
+     "quote": "| Measure | Nuclear | Solar |",
+     "wrong": false
+    },
+    {
+     "n": 5,
+     "score": 1,
+     "quote": "Older NEA figures, from 2019 and outside the window, put [system costs at $8–50/MWh for intermittent renewables",
+     "wrong": false
+    },
+    {
+     "n": 6,
+     "score": 1,
+     "quote": "Because the cost ranking depends on discount rates, subsidies and whether system costs are included, a decision-maker should state the assumptions behind any figure.",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":1,\"quote\":\"with [2026 ranges of $175–255/MWh for nuclear and $40–98/MWh for solar]\",\"wrong\":false},{\"n\":2,\"score\":1,\"quote\":\"[Nuclear is listed at 0.03 deaths/TWh and solar at 0.02]\",\"wrong\":false},{\"n\":3,\"score\":1,\"quote\":\"[a Colorado study gives 1 square mile per GW for conventional nuclear and 11.3 square miles per GW for solar]\",\"wrong\":true},{\"n\":4,\"score\":1,\"quote\":\"| Measure | Nuclear | Solar |\",\"wrong\":false},{\"n\":5,\"score\":1,\"quote\":\"Older NEA figures, from 2019 and outside the window, put [system costs at $8–50/MWh for intermittent renewables\",\"wrong\":false},{\"n\":6,\"score\":1,\"quote\":\"Because the cost ranking depends on discount rates, subsidies and whether system costs are included, a decision-maker should state the assumptions behind any figure.\",\"wrong\":false}]}"
+  },
+  {
+   "kind": "coverage",
+   "task": "d06",
+   "origin": "designed",
+   "arm": "baseline",
+   "items": [
+    {
+     "n": 1,
+     "score": 1,
+     "quote": "Lazard's July 2026 analysis puts unsubsidised US utility-scale solar at $40–98/MWh against $175–255/MWh for US nuclear",
+     "wrong": false
+    },
+    {
+     "n": 2,
+     "score": 1,
+     "quote": "the best available per-TWh estimates put nuclear at 0.03 and solar at 0.02 deaths per TWh",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 1,
+     "quote": "On that basis nuclear needs roughly 100 times less land, but that ratio rests on one nuclear site.",
+     "wrong": false
+    },
+    {
+     "n": 4,
+     "score": 1,
+     "quote": "| Metric | Nuclear | Solar PV (utility-scale) |",
+     "wrong": false
+    },
+    {
+     "n": 5,
+     "score": 1,
+     "quote": "the only share estimate (about 10%) comes from a 2022 PLOS ONE study and so falls outside the date window.",
+     "wrong": false
+    },
+    {
+     "n": 6,
+     "score": 1,
+     "quote": "Nuclear's cost is dominated by capital, so its LCOE rises sharply with the discount rate",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":1,\"quote\":\"Lazard's July 2026 analysis puts unsubsidised US utility-scale solar at $40–98/MWh against $175–255/MWh for US nuclear\",\"wrong\":false},{\"n\":2,\"score\":1,\"quote\":\"the best available per-TWh estimates put nuclear at 0.03 and solar at 0.02 deaths per TWh\",\"wrong\":false},{\"n\":3,\"score\":1,\"quote\":\"On that basis nuclear needs roughly 100 times less land, but that ratio rests on one nuclear site.\",\"wrong\":false},{\"n\":4,\"score\":1,\"quote\":\"| Metric | Nuclear | Solar PV (utility-scale) |\",\"wrong\":false},{\"n\":5,\"score\":1,\"quote\":\"the only share estimate (about 10%) comes from a 2022 PLOS ONE study and so falls outside the date window.\",\"wrong\":false},{\"n\":6,\"score\":1,\"quote\":\"Nuclear's cost is dominated by capital, so its LCOE rises sharply with the discount rate\",\"wrong\":false}]}"
+  },
+  {
+   "kind": "coverage",
+   "task": "d08",
+   "origin": "designed",
+   "arm": "ebd-new",
+   "items": [
+    {
+     "n": 1,
+     "score": 0.5,
+     "quote": "HTTPS keeps a connection secure in two stages. First, a TLS handshake authenticates the server with a certificate that chains to a trusted root",
+     "wrong": false
+    },
+    {
+     "n": 2,
+     "score": 1,
+     "quote": "TLS 1.3 accepts only AEAD ciphers and removes static RSA and static Diffie-Hellman, so every connection gets an ephemeral key exchange and therefore forward secrecy",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 1,
+     "quote": "The server sends its leaf certificate with any intermediates, the client walks the chain to a root in its trust store, and a CertificateVerify signature",
+     "wrong": false
+    },
+    {
+     "n": 4,
+     "score": 1,
+     "quote": "Application data is protected by AEAD, which provides both confidentiality and integrity for each record",
+     "wrong": false
+    },
+    {
+     "n": 5,
+     "score": 1,
+     "quote": "TLS does not hide the length of transmitted data, and endpoints may only pad to obscure it",
+     "wrong": false
+    },
+    {
+     "n": 6,
+     "score": 1,
+     "quote": "TLS 1.2 is not formally deprecated, with no published retirement date",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":0.5,\"quote\":\"HTTPS keeps a connection secure in two stages. First, a TLS handshake authenticates the server with a certificate that chains to a trusted root\",\"wrong\":false},{\"n\":2,\"score\":1,\"quote\":\"TLS 1.3 accepts only AEAD ciphers and removes static RSA and static Diffie-Hellman, so every connection gets an ephemeral key exchange and therefore forward secrecy\",\"wrong\":false},{\"n\":3,\"score\":1,\"quote\":\"The server sends its leaf certificate with any intermediates, the client walks the chain to a root in its trust store, and a CertificateVerify signature\",\"wrong\":false},{\"n\":4,\"score\":1,\"quote\":\"Application data is protected by AEAD, which provides both confidentiality and integrity for each record\",\"wrong\":false},{\"n\":5,\"score\":1,\"quote\":\"TLS does not hide the length of transmitted data, and endpoints may only pad to obscure it\",\"wrong\":false},{\"n\":6,\"score\":1,\"quote\":\"TLS 1.2 is not formally deprecated, with no published retirement date\",\"wrong\":false}]}"
+  },
+  {
+   "kind": "coverage",
+   "task": "d08",
+   "origin": "designed",
+   "arm": "baseline",
+   "items": [
+    {
+     "n": 1,
+     "score": 0.5,
+     "quote": "HTTPS keeps a connection secure through three layers that work together: a handshake that creates fresh session keys, a certificate check",
+     "wrong": false
+    },
+    {
+     "n": 2,
+     "score": 1,
+     "quote": "the client places an ephemeral public key share in its first message, and the server answers with its own share, after which both sides can derive",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 1,
+     "quote": "The browser's identity check compares the hostname with the certificate's Subject Alternative Name list, not the Common Name.",
+     "wrong": false
+    },
+    {
+     "n": 4,
+     "score": 1,
+     "quote": "by passing the record header as additional data, so the header is covered by the tag",
+     "wrong": false
+    },
+    {
+     "n": 5,
+     "score": 1,
+     "quote": "TLS 1.3 gives no replay protection for 0-RTT data and suggests countermeasures at other layers",
+     "wrong": false
+    },
+    {
+     "n": 6,
+     "score": 0.5,
+     "quote": "RFC 10015 now deprecates RSA and finite-field DH key exchange in TLS 1.2",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":0.5,\"quote\":\"HTTPS keeps a connection secure through three layers that work together: a handshake that creates fresh session keys, a certificate check\",\"wrong\":false},{\"n\":2,\"score\":1,\"quote\":\"the client places an ephemeral public key share in its first message, and the server answers with its own share, after which both sides can derive\",\"wrong\":false},{\"n\":3,\"score\":1,\"quote\":\"The browser's identity check compares the hostname with the certificate's Subject Alternative Name list, not the Common Name.\",\"wrong\":false},{\"n\":4,\"score\":1,\"quote\":\"by passing the record header as additional data, so the header is covered by the tag\",\"wrong\":false},{\"n\":5,\"score\":1,\"quote\":\"TLS 1.3 gives no replay protection for 0-RTT data and suggests countermeasures at other layers\",\"wrong\":false},{\"n\":6,\"score\":0.5,\"quote\":\"RFC 10015 now deprecates RSA and finite-field DH key exchange in TLS 1.2\",\"wrong\":false}]}"
+  },
+  {
+   "kind": "coverage",
+   "task": "d10",
+   "origin": "designed",
+   "arm": "ebd-new",
+   "items": [
+    {
+     "n": 1,
+     "score": 1,
+     "quote": "network meta-analyses rank Tai Chi, yoga, Pilates and core or strength work differently, and most rankings rest on low-certainty evidence",
+     "wrong": false
+    },
+    {
+     "n": 2,
+     "score": 1,
+     "quote": "The Cochrane review pooled **249 trials and 24,486 people** and found moderate-certainty evidence of pain reduction versus no treatment at earliest follow-up",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 1,
+     "quote": "the 2025 network analysis favoured sessions of **15–30 minutes**, **three times weekly**, for **at least 16 weeks**",
+     "wrong": false
+    },
+    {
+     "n": 4,
+     "score": 0.5,
+     "quote": "few studies reported adverse effects, most often increased back pain and muscle soreness, and that four exercise groups reported major events including disc herniation",
+     "wrong": false
+    },
+    {
+     "n": 5,
+     "score": 1,
+     "quote": "For acute low back pain, the reviews find no clinically relevant benefit",
+     "wrong": false
+    },
+    {
+     "n": 6,
+     "score": 1,
+     "quote": "Loss of bladder or bowel control and saddle numbness can signal cauda equina syndrome and need urgent care",
+     "wrong": false
+    },
+    {
+     "n": 7,
+     "score": 0.5,
+     "quote": "it notes low-certainty evidence of small improvements and recommends continuing usual low-impact activity",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":1,\"quote\":\"network meta-analyses rank Tai Chi, yoga, Pilates and core or strength work differently, and most rankings rest on low-certainty evidence\",\"wrong\":false},{\"n\":2,\"score\":1,\"quote\":\"The Cochrane review pooled **249 trials and 24,486 people** and found moderate-certainty evidence of pain reduction versus no treatment at earliest follow-up\",\"wrong\":false},{\"n\":3,\"score\":1,\"quote\":\"the 2025 network analysis favoured sessions of **15–30 minutes**, **three times weekly**, for **at least 16 weeks**\",\"wrong\":false},{\"n\":4,\"score\":0.5,\"quote\":\"few studies reported adverse effects, most often increased back pain and muscle soreness, and that four exercise groups reported major events including disc herniation\",\"wrong\":false},{\"n\":5,\"score\":1,\"quote\":\"For acute low back pain, the reviews find no clinically relevant benefit\",\"wrong\":false},{\"n\":6,\"score\":1,\"quote\":\"Loss of bladder or bowel control and saddle numbness can signal cauda equina syndrome and need urgent care\",\"wrong\":false},{\"n\":7,\"score\":0.5,\"quote\":\"it notes low-certainty evidence of small improvements and recommends continuing usual low-impact activity\",\"wrong\":false}]}"
+  },
+  {
+   "kind": "coverage",
+   "task": "d10",
+   "origin": "designed",
+   "arm": "baseline",
+   "items": [
+    {
+     "n": 1,
+     "score": 1,
+     "quote": "Pilates, motor control exercise, tai chi, yoga, walking and McKenzie-based programmes all have supporting evidence, but network meta-analyses rank them differently and with low certainty.",
+     "wrong": false
+    },
+    {
+     "n": 2,
+     "score": 1,
+     "quote": "The 2021 Cochrane review of 249 trials and about 24,486 adults found moderate-certainty evidence that exercise probably reduces pain compared with no treatment, usual care or placebo",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 1,
+     "quote": "A 2025 network meta-analysis favoured 15–30 minute sessions, three sessions per week, and programmes of at least 16 weeks",
+     "wrong": false
+    },
+    {
+     "n": 4,
+     "score": 1,
+     "quote": "No authoritative source lists exercises to avoid for uncomplicated non-specific back pain. The restrictions that do exist are context-specific.",
+     "wrong": false
+    },
+    {
+     "n": 5,
+     "score": 1,
+     "quote": "The 2007 ACP guideline found supervised exercise and home exercise regimens ineffective for acute pain",
+     "wrong": false
+    },
+    {
+     "n": 6,
+     "score": 1,
+     "quote": "The NHS says emergency care is needed for pain, tingling, weakness or numbness in both legs, loss of genital or anal sensation, bladder or bowel changes",
+     "wrong": false
+    },
+    {
+     "n": 7,
+     "score": 1,
+     "quote": "NICE advises that manual therapy be considered only as part of a package that includes exercise",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":1,\"quote\":\"Pilates, motor control exercise, tai chi, yoga, walking and McKenzie-based programmes all have supporting evidence, but network meta-analyses rank them differently and with low certainty.\",\"wrong\":false},{\"n\":2,\"score\":1,\"quote\":\"The 2021 Cochrane review of 249 trials and about 24,486 adults found moderate-certainty evidence that exercise probably reduces pain compared with no treatment, usual care or placebo\",\"wrong\":false},{\"n\":3,\"score\":1,\"quote\":\"A 2025 network meta-analysis favoured 15–30 minute sessions, three sessions per week, and programmes of at least 16 weeks\",\"wrong\":false},{\"n\":4,\"score\":1,\"quote\":\"No authoritative source lists exercises to avoid for uncomplicated non-specific back pain. The restrictions that do exist are context-specific.\",\"wrong\":false},{\"n\":5,\"score\":1,\"quote\":\"The 2007 ACP guideline found supervised exercise and home exercise regimens ineffective for acute pain\",\"wrong\":false},{\"n\":6,\"score\":1,\"quote\":\"The NHS says emergency care is needed for pain, tingling, weakness or numbness in both legs, loss of genital or anal sensation, bladder or bowel changes\",\"wrong\":false},{\"n\":7,\"score\":1,\"quote\":\"NICE advises that manual therapy be considered only as part of a package that includes exercise\",\"wrong\":false}]}"
+  },
+  {
+   "kind": "coverage",
+   "task": "d12",
+   "origin": "designed",
+   "arm": "ebd-new",
+   "items": [
+    {
+     "n": 1,
+     "score": 1,
+     "quote": "A practical guide puts product listings with varying attributes in documents, and user details, orders and payments in relational tables",
+     "wrong": false
+    },
+    {
+     "n": 2,
+     "score": 1,
+     "quote": "MongoDB supports multi-document ACID transactions, but its own guidance says related data should be stored together in one document",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 1,
+     "quote": "For PostgreSQL, the sources point to a bigger server, then read replicas, and sharding only when writes outgrow one node.",
+     "wrong": true
+    },
+    {
+     "n": 4,
+     "score": 1,
+     "quote": "Flexibility is where MongoDB has a real edge. Its schema is flexible by default, and validation is optional.",
+     "wrong": false
+    },
+    {
+     "n": 5,
+     "score": 1,
+     "quote": "Atlas M10 lists at about $56.94 per month",
+     "wrong": false
+    },
+    {
+     "n": 6,
+     "score": 1,
+     "quote": "55.6% of Stack Overflow 2025 respondents using it against 24% for MongoDB",
+     "wrong": false
+    },
+    {
+     "n": 7,
+     "score": 1,
+     "quote": "Choose MongoDB instead only when the central data is document-shaped and varies widely by record, or when the team already has MongoDB expertise.",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":1,\"quote\":\"A practical guide puts product listings with varying attributes in documents, and user details, orders and payments in relational tables\",\"wrong\":false},{\"n\":2,\"score\":1,\"quote\":\"MongoDB supports multi-document ACID transactions, but its own guidance says related data should be stored together in one document\",\"wrong\":false},{\"n\":3,\"score\":1,\"quote\":\"For PostgreSQL, the sources point to a bigger server, then read replicas, and sharding only when writes outgrow one node.\",\"wrong\":true},{\"n\":4,\"score\":1,\"quote\":\"Flexibility is where MongoDB has a real edge. Its schema is flexible by default, and validation is optional.\",\"wrong\":false},{\"n\":5,\"score\":1,\"quote\":\"Atlas M10 lists at about $56.94 per month\",\"wrong\":false},{\"n\":6,\"score\":1,\"quote\":\"55.6% of Stack Overflow 2025 respondents using it against 24% for MongoDB\",\"wrong\":false},{\"n\":7,\"score\":1,\"quote\":\"Choose MongoDB instead only when the central data is document-shaped and varies widely by record, or when the team already has MongoDB expertise.\",\"wrong\":false}]}"
+  },
+  {
+   "kind": "coverage",
+   "task": "d12",
+   "origin": "designed",
+   "arm": "baseline",
+   "items": [
+    {
+     "n": 1,
+     "score": 1,
+     "quote": "PostgreSQL gives structure by default through typed columns such as integer, date, boolean and numeric",
+     "wrong": false
+    },
+    {
+     "n": 2,
+     "score": 1,
+     "quote": "MongoDB supports multi-document ACID transactions, but standalone deployments do not support them and a replica set is required",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 1,
+     "quote": "MongoDB's sharding is built in, but a sharded cluster requires 3-member config server and shard replica sets plus mongos routers",
+     "wrong": false
+    },
+    {
+     "n": 4,
+     "score": 0.5,
+     "quote": "Without a validator, documents in the same collection can have entirely different fields",
+     "wrong": false
+    },
+    {
+     "n": 5,
+     "score": 1,
+     "quote": "MongoDB Community Server releases from 16 October 2018 onward use the SSPL, which the MongoDB FAQ says is not approved by the OSI",
+     "wrong": true
+    },
+    {
+     "n": 6,
+     "score": 1,
+     "quote": "In the Django Developers Survey 2025, 76% of respondents used PostgreSQL and 6% used MongoDB",
+     "wrong": false
+    },
+    {
+     "n": 7,
+     "score": 0.5,
+     "quote": "MongoDB makes sense in narrower cases, such as a product whose core records are genuinely self-contained documents, a team with deep MongoDB experience",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":1,\"quote\":\"PostgreSQL gives structure by default through typed columns such as integer, date, boolean and numeric\",\"wrong\":false},{\"n\":2,\"score\":1,\"quote\":\"MongoDB supports multi-document ACID transactions, but standalone deployments do not support them and a replica set is required\",\"wrong\":false},{\"n\":3,\"score\":1,\"quote\":\"MongoDB's sharding is built in, but a sharded cluster requires 3-member config server and shard replica sets plus mongos routers\",\"wrong\":false},{\"n\":4,\"score\":0.5,\"quote\":\"Without a validator, documents in the same collection can have entirely different fields\",\"wrong\":false},{\"n\":5,\"score\":1,\"quote\":\"MongoDB Community Server releases from 16 October 2018 onward use the SSPL, which the MongoDB FAQ says is not approved by the OSI\",\"wrong\":true},{\"n\":6,\"score\":1,\"quote\":\"In the Django Developers Survey 2025, 76% of respondents used PostgreSQL and 6% used MongoDB\",\"wrong\":false},{\"n\":7,\"score\":0.5,\"quote\":\"MongoDB makes sense in narrower cases, such as a product whose core records are genuinely self-contained documents, a team with deep MongoDB experience\",\"wrong\":false}]}"
+  },
+  {
+   "kind": "pair",
+   "task": "r01",
+   "origin": "real",
+   "order": "baseline as A",
+   "verdict": {
+    "coverage": "ebd-new",
+    "support": "baseline",
+    "conflicts": "tie",
+    "usefulness": "tie",
+    "overall": "baseline"
+   },
+   "reason": "B covers more of the checklist: it describes enforcement variation and explicitly discusses confounding from income and healthcare, while A adds adult-outcome studies and measurement and underreporting bias. A states its claims more carefully, flagging unrefereed sources and magnitudes it did not retrieve, whereas B relies on some oddly dated sources and makes conclusion claims (e.g., harms to children without hukou) that its body never supports.",
+   "raw": "{\"coverage\":\"B\",\"support\":\"A\",\"conflicts\":\"tie\",\"usefulness\":\"tie\",\"overall\":\"A\",\"reason\":\"B covers more of the checklist: it describes enforcement variation and explicitly discusses confounding from income and healthcare, while A adds adult-outcome studies and measurement and underreporting bias. A states its claims more carefully, flagging unrefereed sources and magnitudes it did not retrieve, whereas B relies on some oddly dated sources and makes conclusion claims (e.g., harms to children without hukou) that its body never supports.\"}"
+  },
+  {
+   "kind": "pair",
+   "task": "r01",
+   "origin": "real",
+   "order": "ebd-new as A",
+   "verdict": {
+    "coverage": "baseline",
+    "support": "baseline",
+    "conflicts": "baseline",
+    "usefulness": "baseline",
+    "overall": "baseline"
+   },
+   "reason": "Report B covers more of the evidence base, including adult-cohort studies, sex-ratio side effects, underreporting and measurement issues, and the debate over how many births were averted. It handles the disagreement between Qian and Zhang and the different identification strategies with more care, and it notes uncertainty, unretrieved magnitudes and unrefereed sources. Report A is solid but narrower, and it contains a few oddities, such as citing 2026 papers and describing four designs as pointing the same way when its own table shows otherwise.",
+   "raw": "{\"coverage\":\"B\",\"support\":\"B\",\"conflicts\":\"B\",\"usefulness\":\"B\",\"overall\":\"B\",\"reason\":\"Report B covers more of the evidence base, including adult-cohort studies, sex-ratio side effects, underreporting and measurement issues, and the debate over how many births were averted. It handles the disagreement between Qian and Zhang and the different identification strategies with more care, and it notes uncertainty, unretrieved magnitudes and unrefereed sources. Report A is solid but narrower, and it contains a few oddities, such as citing 2026 papers and describing four designs as pointing the same way when its own table shows otherwise.\"}"
+  },
+  {
+   "kind": "pair",
+   "task": "r03",
+   "origin": "real",
+   "order": "baseline as A",
+   "verdict": {
+    "coverage": "baseline",
+    "support": "tie",
+    "conflicts": "tie",
+    "usefulness": "baseline",
+    "overall": "baseline"
+   },
+   "reason": "A covers the checklist more fully: it goes beyond work and wages to political and social movements (Luddism, Chartism, unions, the Reform Acts) and to class formation, while B leaves out political structures almost entirely, though it adds a definition of the period and international breadth. Both reports cite carefully and flag source disagreements well, but A's structure answers 'how people were affected' more directly across social and political dimensions.",
+   "raw": "{\"coverage\":\"A\",\"support\":\"tie\",\"conflicts\":\"tie\",\"usefulness\":\"A\",\"overall\":\"A\",\"reason\":\"A covers the checklist more fully: it goes beyond work and wages to political and social movements (Luddism, Chartism, unions, the Reform Acts) and to class formation, while B leaves out political structures almost entirely, though it adds a definition of the period and international breadth. Both reports cite carefully and flag source disagreements well, but A's structure answers 'how people were affected' more directly across social and political dimensions.\"}"
+  },
+  {
+   "kind": "pair",
+   "task": "r03",
+   "origin": "real",
+   "order": "ebd-new as A",
+   "verdict": {
+    "coverage": "baseline",
+    "support": "tie",
+    "conflicts": "tie",
+    "usefulness": "baseline",
+    "overall": "baseline"
+   },
+   "reason": "B covers the social and political movements (Luddism, Chartism, unions, reform acts) and cultural changes such as factory time-discipline and class formation, which the checklist asks for and A largely omits. A goes deeper on wages and mortality and has an international section, but it gives little on politics and culture.",
+   "raw": "{\"coverage\":\"B\",\"support\":\"tie\",\"conflicts\":\"tie\",\"usefulness\":\"B\",\"overall\":\"B\",\"reason\":\"B covers the social and political movements (Luddism, Chartism, unions, reform acts) and cultural changes such as factory time-discipline and class formation, which the checklist asks for and A largely omits. A goes deeper on wages and mortality and has an international section, but it gives little on politics and culture.\"}"
+  },
+  {
+   "kind": "pair",
+   "task": "r05",
+   "origin": "real",
+   "order": "baseline as A",
+   "verdict": {
+    "coverage": "baseline",
+    "support": "tie",
+    "conflicts": "ebd-new",
+    "usefulness": "baseline",
+    "overall": "baseline"
+   },
+   "reason": "A covers more of the checklist: it treats abolition and persistence across Britain, France, Brazil and the US, and traces lasting legacies such as the racial wealth gap and racial ideology, while also covering economic, political and demographic effects. B ranges further across non-Atlantic systems and is careful in weighing contested figures, but it is weaker on how slavery ended and is somewhat diffuse, with tangents on Kongo and Athenian agriculture.",
+   "raw": "{\"coverage\":\"A\",\"support\":\"tie\",\"conflicts\":\"B\",\"usefulness\":\"A\",\"overall\":\"A\",\"reason\":\"A covers more of the checklist: it treats abolition and persistence across Britain, France, Brazil and the US, and traces lasting legacies such as the racial wealth gap and racial ideology, while also covering economic, political and demographic effects. B ranges further across non-Atlantic systems and is careful in weighing contested figures, but it is weaker on how slavery ended and is somewhat diffuse, with tangents on Kongo and Athenian agriculture.\"}"
+  },
+  {
+   "kind": "pair",
+   "task": "r05",
+   "origin": "real",
+   "order": "ebd-new as A",
+   "verdict": {
+    "coverage": "baseline",
+    "support": "tie",
+    "conflicts": "tie",
+    "usefulness": "baseline",
+    "overall": "baseline"
+   },
+   "reason": "B covers more checklist ground: it treats emergence and development across systems (Atlantic, Greco-Roman, Islamic, Indian Ocean), works through how abolition happened in several countries, and follows legacies after abolition, while A is thinner on how slavery ended and on its origins. Both reports cite carefully and flag contested estimates, but B's structure answers the 'why' more clearly across economic, political and social dimensions.",
+   "raw": "{\"coverage\":\"B\",\"support\":\"tie\",\"conflicts\":\"tie\",\"usefulness\":\"B\",\"overall\":\"B\",\"reason\":\"B covers more checklist ground: it treats emergence and development across systems (Atlantic, Greco-Roman, Islamic, Indian Ocean), works through how abolition happened in several countries, and follows legacies after abolition, while A is thinner on how slavery ended and on its origins. Both reports cite carefully and flag contested estimates, but B's structure answers the 'why' more clearly across economic, political and social dimensions.\"}"
+  },
+  {
+   "kind": "pair",
+   "task": "r07",
+   "origin": "real",
+   "order": "baseline as A",
+   "verdict": {
+    "coverage": "ebd-new",
+    "support": "tie",
+    "conflicts": "ebd-new",
+    "usefulness": "tie",
+    "overall": "ebd-new"
+   },
+   "reason": "B gives an explicit definition of disability inclusion and covers challenges and opportunities more broadly, including laws, quotas, accommodation costs, enforcement and accessibility markets. It also weighs conflicting studies explicitly, although its choice of 191 states parties over the more recent 194 is questionable, and A remains strong on the rights, education and health benefits.",
+   "raw": "{\"coverage\":\"B\",\"support\":\"tie\",\"conflicts\":\"B\",\"usefulness\":\"tie\",\"overall\":\"B\",\"reason\":\"B gives an explicit definition of disability inclusion and covers challenges and opportunities more broadly, including laws, quotas, accommodation costs, enforcement and accessibility markets. It also weighs conflicting studies explicitly, although its choice of 191 states parties over the more recent 194 is questionable, and A remains strong on the rights, education and health benefits.\"}"
+  },
+  {
+   "kind": "pair",
+   "task": "r07",
+   "origin": "real",
+   "order": "ebd-new as A",
+   "verdict": {
+    "coverage": "baseline",
+    "support": "tie",
+    "conflicts": "baseline",
+    "usefulness": "baseline",
+    "overall": "baseline"
+   },
+   "reason": "Report B covers more of the checklist: what inclusion is in rights terms (CRPD principles, the social model), benefits across employment, poverty, health, education and design, and the contested points, while Report A barely defines inclusion and focuses mostly on employment and law. Both are careful about correlational evidence, but A settles the CRPD count on 191 even though it reports UN DESA's 194, whereas B weighs the conflicting counts and prefers the most recent one, giving it the edge on conflicts.",
+   "raw": "{\"coverage\":\"B\",\"support\":\"tie\",\"conflicts\":\"B\",\"usefulness\":\"B\",\"overall\":\"B\",\"reason\":\"Report B covers more of the checklist: what inclusion is in rights terms (CRPD principles, the social model), benefits across employment, poverty, health, education and design, and the contested points, while Report A barely defines inclusion and focuses mostly on employment and law. Both are careful about correlational evidence, but A settles the CRPD count on 191 even though it reports UN DESA's 194, whereas B weighs the conflicting counts and prefers the most recent one, giving it the edge on conflicts.\"}"
+  },
+  {
+   "kind": "pair",
+   "task": "r09",
+   "origin": "real",
+   "order": "baseline as A",
+   "verdict": {
+    "coverage": "ebd-new",
+    "support": "ebd-new",
+    "conflicts": "tie",
+    "usefulness": "ebd-new",
+    "overall": "ebd-new"
+   },
+   "reason": "B covers all three checklist items: the ARPANET origin and TCP/IP, US expansion through NSFNET and commercialization, and international spread. A barely addresses the origin and expansion within the US. Both cite heavily and flag conflicting sources, but B's reasoning on disputed dates is more careful, and A's policy conclusions about device taxes go somewhat beyond its sources.",
+   "raw": "{\"coverage\":\"B\",\"support\":\"B\",\"conflicts\":\"tie\",\"usefulness\":\"B\",\"overall\":\"B\",\"reason\":\"B covers all three checklist items: the ARPANET origin and TCP/IP, US expansion through NSFNET and commercialization, and international spread. A barely addresses the origin and expansion within the US. Both cite heavily and flag conflicting sources, but B's reasoning on disputed dates is more careful, and A's policy conclusions about device taxes go somewhat beyond its sources.\"}"
+  },
+  {
+   "kind": "pair",
+   "task": "r09",
+   "origin": "real",
+   "order": "ebd-new as A",
+   "verdict": {
+    "coverage": "ebd-new",
+    "support": "tie",
+    "conflicts": "tie",
+    "usefulness": "ebd-new",
+    "overall": "ebd-new"
+   },
+   "reason": "Report A covers all three checklist items, including the original ARPANET sites, TCP/IP and the commercialization of the US network, alongside regional spread abroad. Report B barely addresses US expansion and drifts into tangents such as Starlink, BharatNet and gender gaps; both cite sources carefully and flag conflicting dates.",
+   "raw": "{\"coverage\":\"A\",\"support\":\"tie\",\"conflicts\":\"tie\",\"usefulness\":\"A\",\"overall\":\"A\",\"reason\":\"Report A covers all three checklist items, including the original ARPANET sites, TCP/IP and the commercialization of the US network, alongside regional spread abroad. Report B barely addresses US expansion and drifts into tangents such as Starlink, BharatNet and gender gaps; both cite sources carefully and flag conflicting dates.\"}"
+  },
+  {
+   "kind": "pair",
+   "task": "r11",
+   "origin": "real",
+   "order": "baseline as A",
+   "verdict": {
+    "coverage": "ebd-new",
+    "support": "tie",
+    "conflicts": "ebd-new",
+    "usefulness": "baseline",
+    "overall": "ebd-new"
+   },
+   "reason": "B covers more of the checklist: it shows how problems are defined and measured (poverty measures), explains the field's main functions, and addresses barriers to research use, and it challenges the question's premise directly while laying out conflicting findings (Sure Start, Head Start, NFP, nudges). A is more practically oriented on scaling and institutions but says little on defining or measuring problems, and both cite carefully and flag uncertainty.",
+   "raw": "{\"coverage\":\"B\",\"support\":\"tie\",\"conflicts\":\"B\",\"usefulness\":\"A\",\"overall\":\"B\",\"reason\":\"B covers more of the checklist: it shows how problems are defined and measured (poverty measures), explains the field's main functions, and addresses barriers to research use, and it challenges the question's premise directly while laying out conflicting findings (Sure Start, Head Start, NFP, nudges). A is more practically oriented on scaling and institutions but says little on defining or measuring problems, and both cite carefully and flag uncertainty.\"}"
+  },
+  {
+   "kind": "pair",
+   "task": "r11",
+   "origin": "real",
+   "order": "ebd-new as A",
+   "verdict": {
+    "coverage": "baseline",
+    "support": "baseline",
+    "conflicts": "tie",
+    "usefulness": "baseline",
+    "overall": "baseline"
+   },
+   "reason": "Report B covers more of the checklist, including methods such as RCTs, natural experiments, DiD and data quality, plus a wider set of interventions, scale-up and transfer problems, and the institutional and funding channels that link research to policy. Both reports cite carefully and flag source conflicts, but A rests its central framing on rejecting the question's premise and covers definitions, disciplines and collaboration less fully, so B is more directly useful.",
+   "raw": "{\"coverage\":\"B\",\"support\":\"B\",\"conflicts\":\"tie\",\"usefulness\":\"B\",\"overall\":\"B\",\"reason\":\"Report B covers more of the checklist, including methods such as RCTs, natural experiments, DiD and data quality, plus a wider set of interventions, scale-up and transfer problems, and the institutional and funding channels that link research to policy. Both reports cite carefully and flag source conflicts, but A rests its central framing on rejecting the question's premise and covers definitions, disciplines and collaboration less fully, so B is more directly useful.\"}"
+  },
+  {
+   "kind": "pair",
+   "task": "d02",
+   "origin": "designed",
+   "order": "baseline as A",
+   "verdict": {
+    "coverage": "baseline",
+    "support": "tie",
+    "conflicts": "ebd-new",
+    "usefulness": "baseline",
+    "overall": "baseline"
+   },
+   "reason": "Report A covers all checklist items more fully, especially the 2030 projections, the investment needs and the country and subregion breakdown, which B largely omits in favour of off-topic health material. B handles the 655 vs 730 million discrepancy more rigorously, with method differences, the Oxford study and the IEA's internal inconsistency, whereas A's 'stricter threshold' explanation conflicts with its own Tier 1 alignment claim.",
+   "raw": "{\"coverage\":\"A\",\"support\":\"tie\",\"conflicts\":\"B\",\"usefulness\":\"A\",\"overall\":\"A\",\"reason\":\"Report A covers all checklist items more fully, especially the 2030 projections, the investment needs and the country and subregion breakdown, which B largely omits in favour of off-topic health material. B handles the 655 vs 730 million discrepancy more rigorously, with method differences, the Oxford study and the IEA's internal inconsistency, whereas A's 'stricter threshold' explanation conflicts with its own Tier 1 alignment claim.\"}"
+  },
+  {
+   "kind": "pair",
+   "task": "d02",
+   "origin": "designed",
+   "order": "ebd-new as A",
+   "verdict": {
+    "coverage": "baseline",
+    "support": "tie",
+    "conflicts": "baseline",
+    "usefulness": "baseline",
+    "overall": "baseline"
+   },
+   "reason": "B covers every checklist item, including detailed outlook projections, investment needs, top-20 country concentration and subregional breakdowns, while A treats the outlook only briefly and spends space on health studies. A flags useful inconsistencies, but it misreads the survey-versus-utility data as conflicting with the 655 vs 730 million gap, when it is actually consistent with it; B handles revisions and the diverging projections more coherently.",
+   "raw": "{\"coverage\":\"B\",\"support\":\"tie\",\"conflicts\":\"B\",\"usefulness\":\"B\",\"overall\":\"B\",\"reason\":\"B covers every checklist item, including detailed outlook projections, investment needs, top-20 country concentration and subregional breakdowns, while A treats the outlook only briefly and spends space on health studies. A flags useful inconsistencies, but it misreads the survey-versus-utility data as conflicting with the 655 vs 730 million gap, when it is actually consistent with it; B handles revisions and the diverging projections more coherently.\"}"
+  },
+  {
+   "kind": "pair",
+   "task": "d04",
+   "origin": "designed",
+   "order": "baseline as A",
+   "verdict": {
+    "coverage": "baseline",
+    "support": "baseline",
+    "conflicts": "tie",
+    "usefulness": "baseline",
+    "overall": "baseline"
+   },
+   "reason": "A covers all four checklist items, including the 1923 Nobel lecture on relativity that explains where the popular belief comes from, while B mentions only the presentation speech and spends space on general relativity physics and fringe modern critiques. Both correct the false premise and flag date and causation disputes well, but A's material bears more directly on the question.",
+   "raw": "{\"coverage\":\"A\",\"support\":\"A\",\"conflicts\":\"tie\",\"usefulness\":\"A\",\"overall\":\"A\",\"reason\":\"A covers all four checklist items, including the 1923 Nobel lecture on relativity that explains where the popular belief comes from, while B mentions only the presentation speech and spends space on general relativity physics and fringe modern critiques. Both correct the false premise and flag date and causation disputes well, but A's material bears more directly on the question.\"}"
+  },
+  {
+   "kind": "pair",
+   "task": "d04",
+   "origin": "designed",
+   "order": "ebd-new as A",
+   "verdict": {
+    "coverage": "baseline",
+    "support": "tie",
+    "conflicts": "tie",
+    "usefulness": "baseline",
+    "overall": "baseline"
+   },
+   "reason": "Report B covers all four checklist items, including the Nobel lecture on relativity as the source of the popular belief, which A omits; B also explains why the photoelectric law offered an acceptable basis. Both cite their sources carefully and flag disputes over dates and over bias versus caution, but A spends space on relativity's present-day tests that do little to answer the question.",
+   "raw": "{\"coverage\":\"B\",\"support\":\"tie\",\"conflicts\":\"tie\",\"usefulness\":\"B\",\"overall\":\"B\",\"reason\":\"Report B covers all four checklist items, including the Nobel lecture on relativity as the source of the popular belief, which A omits; B also explains why the photoelectric law offered an acceptable basis. Both cite their sources carefully and flag disputes over dates and over bias versus caution, but A spends space on relativity's present-day tests that do little to answer the question.\"}"
+  },
+  {
+   "kind": "pair",
+   "task": "d06",
+   "origin": "designed",
+   "order": "baseline as A",
+   "verdict": {
+    "coverage": "tie",
+    "support": "baseline",
+    "conflicts": "tie",
+    "usefulness": "baseline",
+    "overall": "baseline"
+   },
+   "reason": "Both reports cover cost, safety and land and include a table, and both are candid about pre-2023 underlying data. A gives a land comparison per unit of energy (per GWh-yr) with clear caveats, while B's table compares land only per unit of capacity, which ignores the gap in capacity factors; B also cites a Colorado think-tank figure and a solar range for 'existing plants' that is mislabelled.",
+   "raw": "{\"coverage\":\"tie\",\"support\":\"A\",\"conflicts\":\"tie\",\"usefulness\":\"A\",\"overall\":\"A\",\"reason\":\"Both reports cover cost, safety and land and include a table, and both are candid about pre-2023 underlying data. A gives a land comparison per unit of energy (per GWh-yr) with clear caveats, while B's table compares land only per unit of capacity, which ignores the gap in capacity factors; B also cites a Colorado think-tank figure and a solar range for 'existing plants' that is mislabelled.\"}"
+  },
+  {
+   "kind": "pair",
+   "task": "d06",
+   "origin": "designed",
+   "order": "ebd-new as A",
+   "verdict": {
+    "coverage": "baseline",
+    "support": "tie",
+    "conflicts": "baseline",
+    "usefulness": "baseline",
+    "overall": "baseline"
+   },
+   "reason": "B adds discount-rate sensitivity, capacity factors, real project overruns and firming/system costs, and its table puts land use for both technologies on a per-GWh-yr basis. B also reconciles conflicting figures more explicitly (NEA ranges, Hinkley estimates, contested GenCost), though its conclusion that solar's cost advantage may reverse slightly overreaches its own admission that no like-for-like system study exists.",
+   "raw": "{\"coverage\":\"B\",\"support\":\"tie\",\"conflicts\":\"B\",\"usefulness\":\"B\",\"overall\":\"B\",\"reason\":\"B adds discount-rate sensitivity, capacity factors, real project overruns and firming/system costs, and its table puts land use for both technologies on a per-GWh-yr basis. B also reconciles conflicting figures more explicitly (NEA ranges, Hinkley estimates, contested GenCost), though its conclusion that solar's cost advantage may reverse slightly overreaches its own admission that no like-for-like system study exists.\"}"
+  },
+  {
+   "kind": "pair",
+   "task": "d08",
+   "origin": "designed",
+   "order": "baseline as A",
+   "verdict": {
+    "coverage": "tie",
+    "support": "tie",
+    "conflicts": "ebd-new",
+    "usefulness": "ebd-new",
+    "overall": "ebd-new"
+   },
+   "reason": "A goes deeper on key exchange, integrity and certificate checks, but B covers protocol versions better (TLS 1.0/1.1 deprecated by RFC 8996) and adds practical limits such as the padlock not proving legitimacy, length leakage and configuration failures. B handles source conflicts more explicitly (downgrade, length concealment, eMudhra) and answers the question more directly.",
+   "raw": "{\"coverage\":\"tie\",\"support\":\"tie\",\"conflicts\":\"B\",\"usefulness\":\"B\",\"overall\":\"B\",\"reason\":\"A goes deeper on key exchange, integrity and certificate checks, but B covers protocol versions better (TLS 1.0/1.1 deprecated by RFC 8996) and adds practical limits such as the padlock not proving legitimacy, length leakage and configuration failures. B handles source conflicts more explicitly (downgrade, length concealment, eMudhra) and answers the question more directly.\"}"
+  },
+  {
+   "kind": "pair",
+   "task": "d08",
+   "origin": "designed",
+   "order": "ebd-new as A",
+   "verdict": {
+    "coverage": "baseline",
+    "support": "tie",
+    "conflicts": "ebd-new",
+    "usefulness": "ebd-new",
+    "overall": "ebd-new"
+   },
+   "reason": "B goes deeper on the cryptographic mechanisms (key schedule, nonces, 0-RTT, CT, HSTS), but it never states the deprecated versions (TLS 1.0/1.1) and gives no deployment figures, while A covers all checklist items including version status. A also handles the source conflicts more explicitly (length concealment, downgrade, eMudhra) and answers more concisely.",
+   "raw": "{\"coverage\":\"B\",\"support\":\"tie\",\"conflicts\":\"A\",\"usefulness\":\"A\",\"overall\":\"A\",\"reason\":\"B goes deeper on the cryptographic mechanisms (key schedule, nonces, 0-RTT, CT, HSTS), but it never states the deprecated versions (TLS 1.0/1.1) and gives no deployment figures, while A covers all checklist items including version status. A also handles the source conflicts more explicitly (length concealment, downgrade, eMudhra) and answers more concisely.\"}"
+  },
+  {
+   "kind": "pair",
+   "task": "d10",
+   "origin": "designed",
+   "order": "baseline as A",
+   "verdict": {
+    "coverage": "baseline",
+    "support": "tie",
+    "conflicts": "tie",
+    "usefulness": "baseline",
+    "overall": "baseline"
+   },
+   "reason": "Report A covers more of the checklist: example exercises with sets, reps and progression, movements to avoid in osteoporosis, after surgery and in pregnancy, flare-up adjustment, and red flags. Report B has strong evidence critique, including the trial-size sensitivity analysis and the acute-pain reviews, but gives little practical guidance on how to exercise or what to avoid.",
+   "raw": "{\"coverage\":\"A\",\"support\":\"tie\",\"conflicts\":\"tie\",\"usefulness\":\"A\",\"overall\":\"A\",\"reason\":\"Report A covers more of the checklist: example exercises with sets, reps and progression, movements to avoid in osteoporosis, after surgery and in pregnancy, flare-up adjustment, and red flags. Report B has strong evidence critique, including the trial-size sensitivity analysis and the acute-pain reviews, but gives little practical guidance on how to exercise or what to avoid.\"}"
+  },
+  {
+   "kind": "pair",
+   "task": "d10",
+   "origin": "designed",
+   "order": "ebd-new as A",
+   "verdict": {
+    "coverage": "baseline",
+    "support": "baseline",
+    "conflicts": "tie",
+    "usefulness": "baseline",
+    "overall": "baseline"
+   },
+   "reason": "Report B covers several checklist items that A lacks or only touches: concrete exercise examples with sets and repetitions, movements to be careful with in specific conditions (osteoporosis, after surgery, pregnancy), how to adjust during flare-ups, supervision, and fuller red flags, and it flags its weaker sources. A handles the disagreement over effect size well but says little on how to do the exercises or what to avoid, so it is less practical for the question asked.",
+   "raw": "{\"coverage\":\"B\",\"support\":\"B\",\"conflicts\":\"tie\",\"usefulness\":\"B\",\"overall\":\"B\",\"reason\":\"Report B covers several checklist items that A lacks or only touches: concrete exercise examples with sets and repetitions, movements to be careful with in specific conditions (osteoporosis, after surgery, pregnancy), how to adjust during flare-ups, supervision, and fuller red flags, and it flags its weaker sources. A handles the disagreement over effect size well but says little on how to do the exercises or what to avoid, so it is less practical for the question asked.\"}"
+  },
+  {
+   "kind": "pair",
+   "task": "d12",
+   "origin": "designed",
+   "order": "baseline as A",
+   "verdict": {
+    "coverage": "ebd-new",
+    "support": "tie",
+    "conflicts": "ebd-new",
+    "usefulness": "ebd-new",
+    "overall": "ebd-new"
+   },
+   "reason": "B covers more of the checklist: operations, default security, performance evidence with its vendor bias flagged, hosting options beyond AWS, staffing and outsourcing, and it names the unstated assumptions about order volume, catalogue shape and in-house skills. B also resolves conflicts better, for example reconciling the SSPL sources, and stays focused, while A spends a lot of space on time-sensitive CVE and version-release detail that matters less to the choice.",
+   "raw": "{\"coverage\":\"B\",\"support\":\"tie\",\"conflicts\":\"B\",\"usefulness\":\"B\",\"overall\":\"B\",\"reason\":\"B covers more of the checklist: operations, default security, performance evidence with its vendor bias flagged, hosting options beyond AWS, staffing and outsourcing, and it names the unstated assumptions about order volume, catalogue shape and in-house skills. B also resolves conflicts better, for example reconciling the SSPL sources, and stays focused, while A spends a lot of space on time-sensitive CVE and version-release detail that matters less to the choice.\"}"
+  },
+  {
+   "kind": "pair",
+   "task": "d12",
+   "origin": "designed",
+   "order": "ebd-new as A",
+   "verdict": {
+    "coverage": "ebd-new",
+    "support": "ebd-new",
+    "conflicts": "tie",
+    "usefulness": "ebd-new",
+    "overall": "ebd-new"
+   },
+   "reason": "Report A covers every checklist item, including contested performance evidence and the operational defaults of each database. It handles costs and SSPL more consistently, whereas B calls hosting costs 'similar' despite its own $14 vs $57 figures and spends space on time-sensitive CVEs and version news. Both flag source conflicts well, but A stays more focused and gives a clearer, actionable decision rule with named assumptions to check.",
+   "raw": "{\"coverage\":\"A\",\"support\":\"A\",\"conflicts\":\"tie\",\"usefulness\":\"A\",\"overall\":\"A\",\"reason\":\"Report A covers every checklist item, including contested performance evidence and the operational defaults of each database. It handles costs and SSPL more consistently, whereas B calls hosting costs 'similar' despite its own $14 vs $57 figures and spends space on time-sensitive CVEs and version news. Both flag source conflicts well, but A stays more focused and gives a clearer, actionable decision rule with named assumptions to check.\"}"
+  }
+ ]
+}

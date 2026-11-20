@@ -1,0 +1,175 @@
+[
+ {
+  "id": "s01",
+  "origin": "real",
+  "set": "final",
+  "type": "real user query (sealed draw)",
+  "offset": 1353,
+  "question": "how changes to funding have impacted the nhs",
+  "checklist": [
+   "What is the NHS and how is it funded?",
+   "How has the funding for the NHS changed over time?",
+   "How have the changes to funding impacted the NHS?"
+  ]
+ },
+ {
+  "id": "s02",
+  "origin": "real",
+  "set": "final",
+  "type": "real user query (sealed draw)",
+  "offset": 1780,
+  "question": "why income inequality is good for the economy",
+  "checklist": [
+   "What is income inequality?",
+   "What are the possible effects of income inequality on the economy?",
+   "What are the arguments for why income inequality is good for the economy?",
+   "What are the counterarguments or limitations of why income inequality is good for the economy?",
+   "How can the trade-offs and balances between income inequality and economic performance be evaluated and addressed?"
+  ]
+ },
+ {
+  "id": "s03",
+  "origin": "real",
+  "set": "final",
+  "type": "real user query (sealed draw)",
+  "offset": 5547,
+  "question": "why do engineering students drop out",
+  "checklist": [
+   "What is the definition and scope of engineering students?",
+   "What is the definition and measurement of drop out?",
+   "What are the factors or causes of drop out for engineering students?",
+   "What are the effects or consequences of drop out for engineering students?",
+   "What are the possible solutions or interventions to prevent or reduce drop out for engineering students?"
+  ]
+ },
+ {
+  "id": "s04",
+  "origin": "real",
+  "set": "final",
+  "type": "real user query (sealed draw)",
+  "offset": 28,
+  "question": "how did america change ww1",
+  "checklist": [
+   "In what ways did America participate in WW1?",
+   "What were the political, economic, and social impacts of WW1 on America?",
+   "How did America influence the outcome and aftermath of WW1?"
+  ]
+ },
+ {
+  "id": "s05",
+  "origin": "real",
+  "set": "final",
+  "type": "real user query (sealed draw)",
+  "offset": 1877,
+  "question": "why do people oppose affirmative action",
+  "checklist": [
+   "What is affirmative action and what are its goals and methods?",
+   "What are the main arguments or reasons that people oppose affirmative action?",
+   "How prevalent or influential is the opposition to affirmative action in different sectors, regions, or groups?",
+   "How do proponents of affirmative action respond to or counter the opposition?"
+  ]
+ },
+ {
+  "id": "s06",
+  "origin": "real",
+  "set": "final",
+  "type": "real user query (sealed draw)",
+  "offset": 4453,
+  "question": "how structured literacy instruction differs from typical literacy practices",
+  "checklist": [
+   "What is structured literacy instruction?",
+   "What are typical literacy practices?",
+   "How do structured literacy instruction and typical literacy practices differ?"
+  ]
+ },
+ {
+  "id": "s07",
+  "origin": "real",
+  "set": "final",
+  "type": "real user query (sealed draw)",
+  "offset": 438,
+  "question": "how did darwin explain the differences in traits?",
+  "checklist": [
+   "What are traits and how do they vary among organisms?",
+   "What is Darwin's theory of evolution by natural selection?",
+   "What are the sources of variation in traits?",
+   "How does variation in traits lead to adaptation and speciation?"
+  ]
+ },
+ {
+  "id": "s08",
+  "origin": "real",
+  "set": "final",
+  "type": "real user query (sealed draw)",
+  "offset": 3031,
+  "question": "why are there no laws yet to protect people from sociopaths",
+  "checklist": [
+   "What is the definition of a sociopath?",
+   "What are the harms and risks that sociopaths pose to others?",
+   "What are the current legal or social mechanisms to deal with sociopaths?",
+   "What are the challenges or barriers to creating laws to protect people from sociopaths?"
+  ]
+ },
+ {
+  "id": "s09",
+  "origin": "real",
+  "set": "final",
+  "type": "real user query (sealed draw)",
+  "offset": 51,
+  "question": "how does economics play a role in african american culture",
+  "checklist": [
+   "What is economics?",
+   "What is African American culture?",
+   "How does economics affect culture in general?",
+   "How does economics affect African American culture specifically?"
+  ]
+ },
+ {
+  "id": "s10",
+  "origin": "real",
+  "set": "final",
+  "type": "real user query (sealed draw)",
+  "offset": 1706,
+  "question": "why is eugenics considered unethical",
+  "checklist": [
+   "What is eugenics?",
+   "What are the ethical principles and values that are relevant to eugenics?",
+   "What are the consequences and impacts of eugenics on individuals and society?",
+   "How do different ethical theories and perspectives evaluate eugenics?"
+  ]
+ },
+ {
+  "id": "s11",
+  "origin": "real",
+  "set": "final",
+  "type": "real user query (sealed draw)",
+  "offset": 2256,
+  "question": "how did early american colonies contribute to the growth of capitalism?",
+  "checklist": [
+   "What is capitalism and how is it defined?",
+   "What are the main features or characteristics of capitalism, e.g. private property, markets, competition, profit, etc.?",
+   "What were the early American colonies and when and how were they established?",
+   "What were the economic activities and systems of the early American colonies, e.g. agriculture, trade, slavery, etc.?",
+   "How did the early American colonies interact with or depend on other regions, e.g. Europe, Africa, Native America, etc.?",
+   "How did the early American colonies develop or adopt the features or characteristics of capitalism in their economic activities and systems?",
+   "What were the benefits or challenges of capitalism for the early American colonists, e.g. wealth, inequality, innovation, conflict, etc.?",
+   "How did the early American colonies influence or shape the growth of capitalism in the wider world, e.g. through trade, expansion, revolution, etc.?"
+  ]
+ },
+ {
+  "id": "s12",
+  "origin": "real",
+  "set": "final",
+  "type": "real user query (sealed draw)",
+  "offset": 2912,
+  "question": "why do people declare bankruptcy",
+  "checklist": [
+   "What is bankruptcy?",
+   "What are the different types of bankruptcy?",
+   "What are the legal and financial consequences of declaring bankruptcy?",
+   "What are the common causes or reasons for declaring bankruptcy?",
+   "How prevalent is bankruptcy among different groups of people or regions?",
+   "What are the alternatives or solutions to avoid or overcome bankruptcy?"
+  ]
+ }
+]

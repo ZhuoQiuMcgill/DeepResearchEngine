@@ -1,0 +1,35 @@
+p01 baseline: ok; researchers 3, rounds 1, $0.21, 131 s; diagnostics 0
+p01 ebd-one: ok; researchers allowed 3, used 3; plan 3 parts [n4 n4 c4], 2 claim(s) to check, 0 given; round 1: Q1,Q3:5 | Q4:4 | Q5:4; the check rides; later: none; conflicts 8 (critical 2, with a settle goal 1); verdicts {'A1': 'contradicted', 'A2': 'supported'}; stop complete; strategy calls 4; $0.25, 203 s
+p02 baseline: ok; researchers 3, rounds 1, $0.25, 104 s; diagnostics 2
+p02 ebd-one: ok; researchers allowed 3, used 3; plan 3 parts [n4 n5 c4], 1 claim(s) to check, 1 given; round 1: Q1,Q3:5 | Q4:5 | Q5:4; the check rides; later: none; conflicts 6 (critical 2, with a settle goal 1); verdicts {'A1': 'contradicted'}; stop complete; strategy calls 4; $0.33, 174 s
+p03 baseline: ok; researchers 1, rounds 1, $0.04, 37 s; diagnostics 0
+p03 ebd-one: ok; researchers allowed 1, used 1; plan 1 parts [n4], 0 claim(s) to check, 1 given; round 1: Q2:4; later: none; conflicts 2 (critical 1, with a settle goal 0); verdicts -; stop complete; strategy calls 4; $0.07, 89 s
+p04 baseline: ok; researchers 3, rounds 1, $0.29, 95 s; diagnostics 5
+p04 ebd-one: ok; researchers allowed 3, used 3; plan 3 parts [n5 n4 c4], 0 claim(s) to check, 0 given; round 1: Q2:5 | Q3:4 | Q4:4; later: none; conflicts 7 (critical 1, with a settle goal 0); verdicts -; stop complete; strategy calls 3; $0.31, 164 s
+s01 baseline: ok; researchers 4, rounds 1, $0.45, 153 s; diagnostics 1
+s01 ebd-one: ok; researchers allowed 4, used 4; plan 4 parts [n5 n5 c5 c4], 2 claim(s) to check, 0 given; round 1: Q1,Q3:6 | Q4:5 | Q5:5 | Q6:4; the check rides; later: none; conflicts 6 (critical 0, with a settle goal 0); verdicts {'A1': 'supported', 'A2': 'supported'}; stop complete; strategy calls 3; $0.45, 257 s
+s02 baseline: ok; researchers 3, rounds 1, $0.29, 113 s; diagnostics 1
+s02 ebd-one: ok; researchers allowed 3, used 3; plan 3 parts [n4 n4 n4], 1 claim(s) to check, 0 given; round 1: Q1,Q3:5 | Q4:4 | Q5:4; the check rides; later: none; conflicts 7 (critical 5, with a settle goal 3); verdicts {'A1': 'contradicted'}; stop budget; strategy calls 5; $0.33, 166 s
+s03 baseline: ok; researchers 3, rounds 1, $0.36, 149 s; diagnostics 3
+s03 ebd-one: FAULT; researchers allowed 3, used 3; plan 4 parts [n5 c4 c5 c4], 0 claim(s) to check, 1 given; round 1: Q2:5 | Q3,Q5:5 | Q4:5; later: none; conflicts 7 (critical 1, with a settle goal 0); verdicts -; stop complete; strategy calls 3; $0.31, 185 s
+      FAULT: problem recorded: round 1 r1-b2: some sections had no goal ID in the heading and were mapped to every goal of the brief
+s04 baseline: ok; researchers 3, rounds 1, $0.30, 123 s; diagnostics 0
+s04 ebd-one: ok; researchers allowed 3, used 3; plan 4 parts [n4 n4 c3 c3], 2 claim(s) to check, 0 given; round 1: Q1,Q3:5 | Q4:4 | Q5,Q6:6; the check rides; later: none; conflicts 4 (critical 2, with a settle goal 2); verdicts {'A1': 'supported', 'A2': 'supported'}; stop budget; strategy calls 4; $0.28, 189 s
+s05 baseline: ok; researchers 4, rounds 1, $0.42, 134 s; diagnostics 2
+s05 ebd-one: ok; researchers allowed 4, used 4; plan 4 parts [n5 n4 c4 c4], 0 claim(s) to check, 1 given; round 1: Q2:5 | Q3:4 | Q4:4 | Q5:4; later: none; conflicts 6 (critical 4, with a settle goal 0); verdicts -; stop complete; strategy calls 4; $0.43, 227 s
+s06 baseline: ok; researchers 4, rounds 1, $0.41, 125 s; diagnostics 2
+s06 ebd-one: ok; researchers allowed 4, used 4; plan 4 parts [n5 n5 n4 c4], 1 claim(s) to check, 1 given; round 1: Q3:5 | Q4:5 | Q1,Q5:5 | Q6:4; the check rides; later: none; conflicts 7 (critical 4, with a settle goal 1); verdicts {'A2': 'contradicted'}; stop budget; strategy calls 4; $0.43, 229 s
+s07 baseline: ok; researchers 3, rounds 1, $0.25, 105 s; diagnostics 3
+s07 ebd-one: ok; researchers allowed 3, used 3; plan 3 parts [n5 n4 c4], 1 claim(s) to check, 0 given; round 1: Q3:5 | Q1,Q4:5 | Q5:4; the check rides; later: none; conflicts 6 (critical 0, with a settle goal 0); verdicts {'A1': 'supported'}; stop budget; strategy calls 3; $0.25, 170 s
+s08 baseline: ok; researchers 3, rounds 1, $0.32, 139 s; diagnostics 2
+s08 ebd-one: ok; researchers allowed 3, used 3; plan 3 parts [n4 n4 c4], 1 claim(s) to check, 1 given; round 1: Q1,Q3:5 | Q4:4 | Q5:4; the check rides; later: none; conflicts 3 (critical 1, with a settle goal 1); verdicts {'A1': 'contradicted'}; stop budget; strategy calls 5; $0.33, 167 s
+s09 baseline: ok; researchers 4, rounds 1, $0.42, 137 s; diagnostics 2
+s09 ebd-one: ok; researchers allowed 4, used 4; plan 4 parts [n4 n4 c4 c3], 0 claim(s) to check, 2 given; round 1: Q2:4 | Q3:4 | Q4:4 | Q5:3; later: none; conflicts 6 (critical 1, with a settle goal 0); verdicts -; stop budget; strategy calls 3; $0.44, 206 s
+s10 baseline: ok; researchers 3, rounds 1, $0.33, 117 s; diagnostics 0
+s10 ebd-one: ok; researchers allowed 3, used 3; plan 3 parts [n5 c4 c4], 1 claim(s) to check, 0 given; round 1: Q1,Q3:6 | Q4:4 | Q5:4; the check rides; later: none; conflicts 6 (critical 1, with a settle goal 1); verdicts {'A1': 'unsettled'}; stop budget; strategy calls 3; $0.34, 183 s
+s11 baseline: ok; researchers 4, rounds 1, $0.42, 162 s; diagnostics 3
+s11 ebd-one: ok; researchers allowed 4, used 4; plan 4 parts [n5 n5 c4 c3], 0 claim(s) to check, 1 given; round 1: Q2:5 | Q3:5 | Q4:4 | Q5:3; later: none; conflicts 6 (critical 1, with a settle goal 0); verdicts -; stop complete; strategy calls 5; $0.44, 267 s
+s12 baseline: ok; researchers 3, rounds 1, $0.29, 125 s; diagnostics 0
+s12 ebd-one: ok; researchers allowed 3, used 3; plan 3 parts [n4 n4 c4], 0 claim(s) to check, 1 given; round 1: Q2:4 | Q3:4 | Q4:4; later: none; conflicts 6 (critical 3, with a settle goal 0); verdicts -; stop budget; strategy calls 3; $0.35, 200 s
+
+1 fault(s)

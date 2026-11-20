@@ -1,0 +1,60 @@
+FINAL TEST: baseline against ebd-one; 12 real queries, 4 planted questions; 32 runs; judge results 56
+runs that did not end ok: none
+
+(1) Blind pairs in both orders, real queries. A question counts for an arm only when both orders name it.
+   s01 not decided (as A: ebd-one -> baseline; baseline -> ebd-one)  how changes to funding have impacted the nhs
+   s02 baseline    (as A: ebd-one -> baseline; baseline -> baseline)  why income inequality is good for the economy
+   s03 baseline    (as A: baseline -> baseline; ebd-one -> baseline)  why do engineering students drop out
+   s04 ebd-one     (as A: baseline -> ebd-one; ebd-one -> ebd-one)  how did america change ww1
+   s05 not decided (as A: baseline -> ebd-one; ebd-one -> baseline)  why do people oppose affirmative action
+   s06 ebd-one     (as A: baseline -> ebd-one; ebd-one -> ebd-one)  how structured literacy instruction differs from typical literac
+   s07 baseline    (as A: baseline -> baseline; ebd-one -> baseline)  how did darwin explain the differences in traits?
+   s08 baseline    (as A: ebd-one -> baseline; baseline -> baseline)  why are there no laws yet to protect people from sociopaths
+   s09 ebd-one     (as A: baseline -> ebd-one; ebd-one -> ebd-one)  how does economics play a role in african american culture
+   s10 baseline    (as A: ebd-one -> baseline; baseline -> baseline)  why is eugenics considered unethical
+   s11 ebd-one     (as A: baseline -> ebd-one; ebd-one -> ebd-one)  how did early american colonies contribute to the growth of capi
+   s12 not decided (as A: baseline -> ebd-one; ebd-one -> baseline)  why do people declare bankruptcy
+   overall    ebd-one  4, baseline  5, not decided  3; exact sign test on the decided p = 1.000; the two orders named opposite reports on 3
+   coverage   ebd-one  3, baseline  4, not decided  5
+   support    ebd-one  0, baseline  4, not decided  8
+   conflicts  ebd-one  3, baseline  2, not decided  7
+   usefulness ebd-one  4, baseline  4, not decided  4
+
+(2) The planted points (score 1: stated with a source; 0.5: stated without a source or in part; 0: absent)
+   p01 Why did the Chernobyl nuclear accident happen in 1989?
+        must say: States that the accident happened in 1986 (26 April 1986), not in 1989.
+        baseline  score 0.5  "The Chernobyl accident occurred on 26 April 1986, not 1989."
+        ebd-one   score 1  "The Chernobyl accident happened on 26 April 1986, not in 1989."
+   p02 How did Alexander Fleming's discovery of insulin change the treatment of diabetes?
+        must say: States that Fleming did not discover insulin, and names Banting (with Best, at Toronto, 1921 to 1922) as its discoverer.
+        baseline  score 1  "Insulin is credited to Frederick Banting, Charles Best, John Macleod and James Collip at the University of Toronto in 1921, not to Alexander Fleming"
+        ebd-one   score 1  "Alexander Fleming did not discover insulin. The 1923 Nobel Prize for insulin went to Frederick Banting and John Macleod, working with Charles Best"
+   p03 How tall is Mount Everest?
+        must say: Gives 8,848.86 m as the height announced by Nepal and China in 2020, and says that at least one earlier figure differs (8,848 m or 8,850 m) and why.
+        baseline  score 0.5  "it is about 0.86 m above the long-used 8,848 m. The gap most likely reflects improved measurement rather than a physical change in the summit"
+        ebd-one   score 1  "The older figures differ mainly because of method, datum and the snow-versus-rock choice, not because the mountain changed."
+   p04 Do I need a visa to visit the United Kingdom for a week?
+        must say: Says that the answer depends on nationality, and covers both visitors who need a visa and visitors who need only an electronic travel authorisation; does not answer for one nationality alone.
+        baseline  score 1  "For a one-week trip, the answer depends on your nationality."
+        ebd-one   score 1  "For most travellers, the answer is yes, though the type of permission depends on nationality. British and Irish citizens need no visa or ETA"
+   planted points said in full: ebd-one 4 of 4, baseline 2 of 4; sum of scores ebd-one 4, baseline 3
+
+(3) From the records, all questions
+   baseline  runs 16: $5.07 ($0.317 a run; strategy calls $0.07), 122 s a run, researchers 3.19 a run, rounds 1.00, searches 23.0, strategy calls 2.0 a run, report 1904 words
+   ebd-one   runs 16: $5.35 ($0.334 a run; strategy calls $0.29), 192 s a run, researchers 3.19 a run, rounds 1.00, searches 23.4, strategy calls 3.8 a run, report 1750 words
+   cost of ebd-one relative to baseline: +5%
+   researchers (question: baseline used / approach allowed / approach used): s01 4/4/4, s02 3/3/3, s03 3/3/3, s04 3/3/3, s05 4/4/4, s06 4/4/4, s07 3/3/3, s08 3/3/3, s09 4/4/4, s10 3/3/3, s11 4/4/4, s12 3/3/3, p01 3/3/3, p02 3/3/3, p03 1/1/1, p04 3/3/3
+
+(4) The platform's citation check
+   baseline  links in reports 756, of them not among the researchers' sources 1; cited statements checked 487, not bound to a source 29
+   ebd-one   links in reports 706, of them not among the researchers' sources 0; cited statements checked 450, not bound to a source 34
+
+(5) Checklist items covered, real queries (mean score; an item counts as covered at 0.5 or more)
+   baseline  all items 0.77 mean, 47 of 53 covered; items that only ask what a term is: 0.57 mean, 12 of 14 covered; other items: 0.85 mean, 35 of 39 covered; flagged wrong 2
+   ebd-one   all items 0.77 mean, 47 of 53 covered; items that only ask what a term is: 0.50 mean, 11 of 14 covered; other items: 0.87 mean, 36 of 39 covered; flagged wrong 0
+
+By the rules fixed before the test
+   the baseline wins fewer than 10 of the questions decided: yes (5 of 9 decided)
+   the approach says at least as many planted points as the baseline: yes (4 against 2)
+   the approach costs no more than 15% above the baseline: yes (+5%)
+   => the approach is KEPT; shown to be better (10 or more wins): no (4 wins)

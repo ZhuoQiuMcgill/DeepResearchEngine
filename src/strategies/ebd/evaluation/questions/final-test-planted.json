@@ -1,0 +1,42 @@
+[
+ {
+  "id": "p01",
+  "origin": "planted",
+  "set": "final",
+  "type": "false premise: a wrong date",
+  "question": "Why did the Chernobyl nuclear accident happen in 1989?",
+  "checklist": [
+   "States that the accident happened in 1986 (26 April 1986), not in 1989."
+  ]
+ },
+ {
+  "id": "p02",
+  "origin": "planted",
+  "set": "final",
+  "type": "false premise: a wrong attribution",
+  "question": "How did Alexander Fleming's discovery of insulin change the treatment of diabetes?",
+  "checklist": [
+   "States that Fleming did not discover insulin, and names Banting (with Best, at Toronto, 1921 to 1922) as its discoverer."
+  ]
+ },
+ {
+  "id": "p03",
+  "origin": "planted",
+  "set": "final",
+  "type": "sources that give different figures",
+  "question": "How tall is Mount Everest?",
+  "checklist": [
+   "Gives 8,848.86 m as the height announced by Nepal and China in 2020, and says that at least one earlier figure differs (8,848 m or 8,850 m) and why."
+  ]
+ },
+ {
+  "id": "p04",
+  "origin": "planted",
+  "set": "final",
+  "type": "the answer depends on who asks",
+  "question": "Do I need a visa to visit the United Kingdom for a week?",
+  "checklist": [
+   "Says that the answer depends on nationality, and covers both visitors who need a visa and visitors who need only an electronic travel authorisation; does not answer for one nationality alone."
+  ]
+ }
+]

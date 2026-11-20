@@ -1,0 +1,367 @@
+[
+ {
+  "id": "r01",
+  "origin": "real",
+  "set": "sealed",
+  "type": "real user query (random draw)",
+  "question": "does population control lead to better child quality? evidence from china’s one-child policy enforcement",
+  "checklist": [
+   "What is population control and how is it implemented in different contexts?",
+   "What is China's one-child policy and how was it enforced?",
+   "What are the indicators of child quality and how are they measured?",
+   "What are the possible mechanisms or pathways that population control could affect child quality?",
+   "What are the potential confounding factors or biases that could affect the causal relationship between population control and child quality?",
+   "What are the existing empirical studies or data sources that examine the impact of population control on child quality, especially in China?",
+   "What are the main findings, limitations, and implications of these studies or data sources?"
+  ]
+ },
+ {
+  "id": "r02",
+  "origin": "real",
+  "set": "check",
+  "type": "real user query (random draw)",
+  "question": "how will system design impact health care projects",
+  "checklist": [
+   "What is system design and why is it important for health care projects?",
+   "What are some examples of health care projects that involve system design?",
+   "How does system design impact the outcomes and performance of health care projects?"
+  ]
+ },
+ {
+  "id": "r03",
+  "origin": "real",
+  "set": "sealed",
+  "type": "real user query (random draw)",
+  "question": "how did industrial revolution affect people",
+  "checklist": [
+   "What is the industrial revolution?",
+   "How did the industrial revolution affect the production and distribution of goods and services?",
+   "How did the industrial revolution affect the social and political structures and movements of the time?",
+   "How did the industrial revolution affect the culture and values of the people?"
+  ]
+ },
+ {
+  "id": "r04",
+  "origin": "real",
+  "set": "check",
+  "type": "real user query (random draw)",
+  "question": "how will innovation in pharma be encouraged?",
+  "checklist": [
+   "What is innovation in pharma?",
+   "What are the factors that influence innovation in pharma?",
+   "What are the potential policies or interventions that could encourage innovation in pharma?"
+  ]
+ },
+ {
+  "id": "r05",
+  "origin": "real",
+  "set": "sealed",
+  "type": "real user query (random draw)",
+  "question": "why was slavery important",
+  "checklist": [
+   "What is slavery?",
+   "When and where did slavery emerge and develop?",
+   "How did slavery affect the societies and economies that practiced it?",
+   "How did slavery end or persist in different places and times?"
+  ]
+ },
+ {
+  "id": "r06",
+  "origin": "real",
+  "set": "check",
+  "type": "real user query (random draw)",
+  "question": "is juvenile crime a big problem",
+  "checklist": [
+   "What is the definition of juvenile crime?",
+   "What are the trends and patterns of juvenile crime in different regions, countries, and contexts?",
+   "What are the impacts and consequences of juvenile crime on individuals, communities, and society?",
+   "What are the causes and risk factors of juvenile crime?",
+   "What are the possible solutions and interventions to prevent or reduce juvenile crime?"
+  ]
+ },
+ {
+  "id": "r07",
+  "origin": "real",
+  "set": "sealed",
+  "type": "real user query (random draw)",
+  "question": "why disability inclusion matters",
+  "checklist": [
+   "What is disability inclusion?",
+   "What are the benefits of disability inclusion?",
+   "What are the challenges and opportunities for disability inclusion?"
+  ]
+ },
+ {
+  "id": "r08",
+  "origin": "real",
+  "set": "check",
+  "type": "real user query (random draw)",
+  "question": "can we survive climate change",
+  "checklist": [
+   "What is climate change and what are its main causes and effects?",
+   "What are the current and projected impacts of climate change on different regions and sectors of the world?",
+   "What are the possible scenarios and pathways for mitigating and adapting to climate change?",
+   "How likely and feasible are the different scenarios and pathways for mitigating and adapting to climate change?",
+   "Based on the above sub-questions, what are the main challenges and opportunities for human survival and well-being in the face of climate change?"
+  ]
+ },
+ {
+  "id": "r09",
+  "origin": "real",
+  "set": "sealed",
+  "type": "real user query (random draw)",
+  "question": "how did the internet spread to other areas",
+  "checklist": [
+   "What is the origin of the internet?",
+   "How did the internet expand within the US?",
+   "How did the internet spread to other countries and regions?"
+  ]
+ },
+ {
+  "id": "r10",
+  "origin": "real",
+  "set": "check",
+  "type": "real user query (random draw)",
+  "question": "are wet markets safe",
+  "checklist": [
+   "What is a wet market?",
+   "What are the potential health risks associated with wet markets?",
+   "What are the benefits of wet markets?",
+   "How can wet markets be made safer?"
+  ]
+ },
+ {
+  "id": "r11",
+  "origin": "real",
+  "set": "sealed",
+  "type": "real user query (random draw)",
+  "question": "how can social science solve social problems",
+  "checklist": [
+   "What is social science and what are its main disciplines and methods?",
+   "What are some examples of social problems and how are they defined and measured?",
+   "What are some existing or potential solutions to social problems and how are they evaluated and implemented?",
+   "How can social science communicate and collaborate with other fields and sectors to solve social problems?"
+  ]
+ },
+ {
+  "id": "r12",
+  "origin": "real",
+  "set": "check",
+  "type": "real user query (random draw)",
+  "question": "how did nat turner show resistance to slavery?",
+  "checklist": [
+   "Who was Nat Turner and what was his role in slavery?",
+   "What was the context and motivation for Nat Turner's rebellion?",
+   "What were the main events and outcomes of Nat Turner's rebellion?",
+   "How did Nat Turner's rebellion demonstrate resistance to slavery?",
+   "How did Nat Turner's rebellion affect the abolitionist movement and the slave system?"
+  ]
+ },
+ {
+  "id": "r13",
+  "origin": "real",
+  "set": "reserve",
+  "type": "real user query (random draw)",
+  "question": "how can the legislative branch check the power of the executive branch?",
+  "checklist": [
+   "What are the main powers and responsibilities of the executive branch?",
+   "What are the main powers and responsibilities of the legislative branch?",
+   "What are the constitutional provisions that allow the legislative branch to check the power of the executive branch?",
+   "What are some historical examples of the legislative branch checking the power of the executive branch?"
+  ]
+ },
+ {
+  "id": "r14",
+  "origin": "real",
+  "set": "reserve",
+  "type": "real user query (random draw)",
+  "question": "should parents limit screen time for teens",
+  "checklist": [
+   "What is screen time and how is it measured?",
+   "What are the effects of screen time on teens' physical and mental health?",
+   "What are the benefits of screen time for teens?",
+   "What are the recommended guidelines for screen time for teens?",
+   "How can parents limit screen time for teens effectively and respectfully?"
+  ]
+ },
+ {
+  "id": "d01",
+  "origin": "designed",
+  "set": "check",
+  "type": "procedure, details not stated",
+  "question": "How do I register a trademark?",
+  "checklist": [
+   "What a trademark is and what can be registered.",
+   "Where to file: it depends on the country or region; the main routes are named (a national office, a regional one, the international system).",
+   "Steps before filing: a search for existing marks, and the classes of goods and services.",
+   "The filing itself: what the application contains and who can file.",
+   "Fees, for at least one named office.",
+   "What happens after filing: examination, publication or opposition, registration, and the typical time.",
+   "After registration: how long it lasts, renewal and use requirements.",
+   "The client's unstated details (country, individual or company) are named as assumptions where they change the answer."
+  ]
+ },
+ {
+  "id": "d02",
+  "origin": "designed",
+  "set": "sealed",
+  "type": "quantity",
+  "question": "How many people in the world do not have access to electricity?",
+  "checklist": [
+   "The latest global figure, with its year and source.",
+   "How access to electricity is defined or measured.",
+   "Differences between the main sources' figures, if they differ.",
+   "Where the people without access live: the regions or countries with the largest numbers.",
+   "The trend over recent years.",
+   "The outlook against the goal of universal access, or the main obstacles."
+  ]
+ },
+ {
+  "id": "d03",
+  "origin": "designed",
+  "set": "check",
+  "type": "abbreviation with several meanings, none given",
+  "question": "What is SLA?",
+  "checklist": [
+   "The report recognises that the abbreviation has several meanings and names the main ones.",
+   "The most common meaning in business and computing (service level agreement): what it is.",
+   "What such an agreement typically contains: measures, targets, and remedies or penalties.",
+   "At least one other major meaning is explained.",
+   "How to tell which meaning applies (by field or context)."
+  ]
+ },
+ {
+  "id": "d04",
+  "origin": "designed",
+  "set": "sealed",
+  "type": "false premise (a wrong attribution)",
+  "question": "Why did Einstein win the Nobel Prize for the theory of relativity?",
+  "checklist": [
+   "Whether the prize was awarded for the theory of relativity, and what it was awarded for.",
+   "Why relativity was not the stated reason: the committee's reservations.",
+   "The circumstances of the award: the year of the prize and when it was awarded.",
+   "How relativity relates to the award, or where the belief comes from (for example his Nobel lecture)."
+  ]
+ },
+ {
+  "id": "d05",
+  "origin": "designed",
+  "set": "check",
+  "type": "true premise with a date",
+  "question": "Why did Switzerland not give women the right to vote in federal elections until 1971?",
+  "checklist": [
+   "Whether the premise holds: when and how women got the federal vote.",
+   "The mechanism that made it late: a constitutional change that the male electorate had to approve in a referendum.",
+   "Earlier attempts, including a national vote that failed.",
+   "Other causes named by historians (for example federalism, conservative attitudes, the link between the vote and military service).",
+   "What had changed by 1971.",
+   "What followed in the cantons, including the last one."
+  ]
+ },
+ {
+  "id": "d06",
+  "origin": "designed",
+  "set": "sealed",
+  "type": "several parts, with directives on format and sources",
+  "question": "Compare nuclear and solar power on cost, safety and land use. Present the result as a table and use only sources from 2023 or later.",
+  "checklist": [
+   "Cost: comparable figures for both, with year and source.",
+   "Safety: comparable measures for both, and the main risks.",
+   "Land use: comparable figures for both.",
+   "The result is presented as a table.",
+   "The sources cited are from 2023 or later, or the report says where it could not comply.",
+   "Caveats that change the comparison (for example storage, construction time, waste), or how the figures depend on assumptions."
+  ]
+ },
+ {
+  "id": "d07",
+  "origin": "designed",
+  "set": "check",
+  "type": "one simple fact",
+  "question": "What is the boiling point of water at the top of Mount Everest?",
+  "checklist": [
+   "The boiling point at the summit, as a value with units.",
+   "Why: the lower air pressure at altitude, with the pressure at the summit.",
+   "How the value varies or how it is obtained, or a practical consequence."
+  ]
+ },
+ {
+  "id": "d08",
+  "origin": "designed",
+  "set": "sealed",
+  "type": "how a technology works",
+  "question": "How does HTTPS keep a connection secure?",
+  "checklist": [
+   "What HTTPS is: HTTP over an encrypted protocol.",
+   "Encryption: how the keys are agreed and what is encrypted.",
+   "Authentication: certificates, who issues them, and how the browser checks the server's identity.",
+   "Integrity: how tampering is detected.",
+   "What HTTPS does not protect against, or its common weaknesses.",
+   "The current protocol versions and the deprecated ones."
+  ]
+ },
+ {
+  "id": "d09",
+  "origin": "designed",
+  "set": "check",
+  "type": "a decision that depends on place, time and the person",
+  "question": "Is it better to rent or buy a home in Toronto right now?",
+  "checklist": [
+   "Current home prices in Toronto, with date and source.",
+   "Current rents in Toronto, with date and source.",
+   "Current mortgage rates and the costs of buying (down payment, closing costs, taxes).",
+   "A comparison of the cost of renting and of owning, with its assumptions.",
+   "The market's recent trend or outlook as of the run date.",
+   "The factors that depend on the person (time horizon, savings), named as assumptions where they change the answer.",
+   "A verdict or a decision rule that follows from the points above."
+  ]
+ },
+ {
+  "id": "d10",
+  "origin": "designed",
+  "set": "sealed",
+  "type": "same wording pattern as a development question, another subject",
+  "question": "What exercises can help with lower back pain?",
+  "checklist": [
+   "Specific exercises or kinds of exercise with evidence of benefit.",
+   "The strength of the evidence: guidelines, trials, reviews.",
+   "How to do them: amounts, frequency or progression, where sources give them.",
+   "Exercises or movements to avoid or to be careful with.",
+   "For whom the advice differs: acute against chronic pain, specific conditions.",
+   "Warning signs that need a clinician instead of exercise.",
+   "Other measures that go with exercise, briefly."
+  ]
+ },
+ {
+  "id": "d11",
+  "origin": "designed",
+  "set": "check",
+  "type": "a person",
+  "question": "Who was Rosalind Franklin and what was her role in the discovery of the structure of DNA?",
+  "checklist": [
+   "Who she was: her dates, training and where she worked.",
+   "Her experimental work on DNA and its main results.",
+   "How her data reached the model builders, and the part it played in their model.",
+   "The publications of 1953 and how credit was given.",
+   "The Nobel Prize for the discovery and why she was not included.",
+   "The debate over her recognition, including more recent reassessments.",
+   "Her other work, and her death."
+  ]
+ },
+ {
+  "id": "d12",
+  "origin": "designed",
+  "set": "sealed",
+  "type": "a technical choice between two options",
+  "question": "Should a small business choose PostgreSQL or MongoDB for a new web application?",
+  "checklist": [
+   "What each is and how their data models differ.",
+   "Consistency and transactions.",
+   "Scaling and performance.",
+   "Schema flexibility and speed of development.",
+   "Costs and licensing, including managed services.",
+   "Ecosystem, tooling and the skills available.",
+   "Which suits which kind of application, or a decision rule; the client's unstated details are named as assumptions."
+  ]
+ }
+]

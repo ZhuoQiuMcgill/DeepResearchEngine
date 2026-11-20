@@ -62,7 +62,7 @@ const roundSchema = <P extends z.ZodRawShape>(part: P) => z.object({
     }),
   ),
 });
-/** The schema sent without a map: unchanged, so a run with `extend` off is the earlier EBD. */
+/** The schema sent without a map of main parts, which happens only with the plan of last resort. */
 export const RoundApiSchema = roundSchema(PART);
 export const RoundMapSchema = roundSchema(MAP_PART);
 export type RoundReply = z.infer<typeof RoundMapSchema>;

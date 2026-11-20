@@ -1,0 +1,103 @@
+/**
+ * What the strategy decides on recorded runs, with no model call: for the consolidation of design
+ * section 29.1. Each recorded run of the one approach is replayed step by step: the recorded replies
+ * of its own model calls are fed back in order, and the recorded researcher results are passed in.
+ * Written out: the briefs, stop and rationale of every decision, the goals, conflicts and problems
+ * after every step, and what the writer is given. The same script is run before and after the
+ * consolidation (before: with the settings of the approach; after: with no settings), and the two
+ * files must be equal.
+ *
+ *   tsx local/ebd-heldout/golden.ts '<options json>' <out file> <experiment folder or run folder> [more]
+ */
+import { createHash } from "node:crypto";
+import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { AIMessage } from "@langchain/core/messages";
+import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
+import type { ResearchResult, StrategyContext } from "../../src/core/index.js";
+import ebd from "../../src/strategies/ebd/index.js";
+import type { CallRecord, EbdState } from "../../src/strategies/ebd/state.js";
+
+const [optionsJson = "{}", outFile = "", ...folders] = process.argv.slice(2);
+const options = JSON.parse(optionsJson) as Record<string, unknown>;
+type Decision = { phase: string; round: number; budgetBefore: number; accepted: Record<string, unknown>[]; stop: boolean; strategyState: EbdState };
+type Summary = { dir: string; researchersBudget: number; strategy: { name: string; label: string }; tags: { task?: string }; status: string };
+
+/** A model that gives each tool its recorded replies in order. */
+function recorded(calls: CallRecord[]): BaseChatModel {
+  const queue = new Map<string, CallRecord[]>();
+  const toolOf: Record<string, string> = { environment_analyst: "submit_plan", conflict_checker: "submit_conflicts", round_analyst: "submit_round_analysis" };
+  for (const c of calls) {
+    const tool = toolOf[c.role];
+    if (!tool) throw new Error(`no tool known for the role ${c.role}`);
+    queue.set(tool, [...(queue.get(tool) ?? []), c]);
+  }
+  return {
+    bindTools: (tools: { function: { name: string } }[]) => ({
+      invoke: async () => {
+        const name = tools[0]!.function.name;
+        const rec = queue.get(name)?.shift();
+        if (!rec) throw new Error(`no recorded reply left for ${name}`);
+        try {
+          return new AIMessage({ content: "", tool_calls: [{ id: "c", name, args: JSON.parse(rec.reply) as Record<string, unknown>, type: "tool_call" }] });
+        } catch {
+          return new AIMessage({ content: rec.reply });
+        }
+      },
+    }),
+  } as unknown as BaseChatModel;
+}
+
+const sha = (text: string) => createHash("sha256").update(text, "utf8").digest("hex").slice(0, 12);
+const brief = (b: Record<string, unknown>) => ({ objective: b.objective, keyQuestions: b.keyQuestions, constraints: b.constraints, sourceHints: b.sourceHints, instructions: b.instructions, priority: b.priority, tag: b.tag });
+const stateOf = (s: EbdState) => ({
+  goals: s.goals.map((g) => ({ id: g.id, need: g.need, kind: g.kind, status: g.status, attempts: g.attempts, level: g.level, text: g.text, missing: g.missing, verdicts: g.verdicts, settles: g.settles, waitingOn: g.waitingOn, origin: g.origin, partsMet: g.partsMet, partsTotal: g.partsTotal })),
+  conflicts: s.conflicts.map((c) => ({ id: c.id, type: c.type, status: c.status, critical: c.critical, claim: c.claim, settleGoal: c.settleGoal, about: c.about, statement: c.statement })),
+  map: s.map ? s.map.events.map((e) => ({ id: e.id, goalId: e.goalId, parts: e.parts.map((p) => `${p.id} ${p.status} ${p.evidence.join(",")}`) })) : null,
+  evidence: s.evidence.length,
+  problems: s.problems,
+  stop: s.stop,
+  events: s.step.events,
+  callChecks: s.step.calls.map((c) => ({ role: c.role, attempt: c.attempt, accepted: c.accepted, errors: c.errors.map((e) => e.message), warnings: c.warnings.map((e) => e.message), input: sha(c.input) })),
+});
+
+function runDirs(folder: string): { dir: string; total: number; task: string }[] {
+  if (existsSync(join(folder, "summaries.json"))) {
+    return (JSON.parse(readFileSync(join(folder, "summaries.json"), "utf8")) as Summary[]).filter((s) => s.strategy.name === "ebd" && s.status === "ok").map((s) => ({ dir: s.dir, total: s.researchersBudget, task: s.tags.task ?? "" }));
+  }
+  const s = JSON.parse(readFileSync(join(folder, "summary.json"), "utf8")) as Summary;
+  return [{ dir: folder, total: s.researchersBudget, task: "check" }];
+}
+
+const out: Record<string, unknown> = {};
+let same = 0;
+let differ = 0;
+for (const folder of folders) {
+  for (const run of runDirs(folder)) {
+    const decisions = readFileSync(join(run.dir, "events.jsonl"), "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l) as { type: string; data: Decision }).filter((e) => e.type === "decision").map((e) => e.data);
+    const results = (round: number) => readdirSync(join(run.dir, "results")).filter((f) => new RegExp(`^r${round}-b\\d+\\.json$`).test(f)).sort().map((f) => JSON.parse(readFileSync(join(run.dir, "results", f), "utf8")) as ResearchResult);
+    const question = decisions[0]!.strategyState.question;
+    const strategy = ebd.create(options as never);
+    const steps: unknown[] = [];
+    let state: EbdState | null = null;
+    let faithful = true;
+    for (const [i, d] of decisions.entries()) {
+      const ctx: StrategyContext = { model: recorded(d.strategyState.step.calls), budget: { researchersTotal: run.total, researchersUsed: run.total - d.budgetBefore, researchersRemaining: d.budgetBefore, toolCallsPerResearcher: 12 }, round: d.round, runId: `golden-${run.task}`, today: d.strategyState.today };
+      const step = i === 0 ? await strategy.init({ question }, ctx) : await strategy.observe(state!, results(d.round - 1), ctx);
+      state = step.state as EbdState;
+      const briefs = step.decision.briefs.map((b) => brief(b as unknown as Record<string, unknown>));
+      // The record holds what the platform accepted; with researchers left, that is every brief the strategy asked for.
+      const recordedBriefs = d.accepted.map(brief);
+      if (d.budgetBefore > 0 && JSON.stringify(briefs.slice(0, recordedBriefs.length)) !== JSON.stringify(recordedBriefs)) faithful = false;
+      if (step.decision.stop !== d.stop) faithful = false;
+      steps.push({ phase: d.phase, round: d.round, briefs, stop: step.decision.stop, rationale: step.decision.rationale, state: stateOf(state) });
+    }
+    const synthesis = await strategy.finalize(state!, { model: recorded([]), budget: { researchersTotal: run.total, researchersUsed: run.total, researchersRemaining: 0, toolCallsPerResearcher: 12 }, round: decisions.at(-1)!.round, runId: `golden-${run.task}`, today: state!.today });
+    const recordedSynthesis = existsSync(join(run.dir, "synthesis.json")) ? (JSON.parse(readFileSync(join(run.dir, "synthesis.json"), "utf8")) as { synthesis?: { guidance?: string; outline?: string[] } }).synthesis : undefined;
+    if (recordedSynthesis && (recordedSynthesis.guidance ?? "") !== (synthesis.guidance ?? "")) faithful = false;
+    faithful ? same++ : differ++;
+    out[`${run.task} ${run.dir.split(/[\\/]/).at(-1)}`] = { sameAsRecorded: faithful, steps, synthesis: { guidance: synthesis.guidance ?? null, outline: synthesis.outline ?? null, material: synthesis.material.map((m) => ({ label: m.label, notes: sha(m.notes) })) } };
+  }
+}
+writeFileSync(outFile, JSON.stringify(out, null, 1), "utf8");
+console.log(`${same + differ} runs replayed with options ${optionsJson}; decisions and writer guidance equal to the record in ${same}, different in ${differ}; written to ${outFile} (${sha(JSON.stringify(out))})`);

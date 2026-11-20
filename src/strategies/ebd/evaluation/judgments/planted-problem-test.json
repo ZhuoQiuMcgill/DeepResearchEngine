@@ -1,0 +1,398 @@
+{
+ "judge": "claude-opus-5-5",
+ "effort": "medium",
+ "arms": {
+  "new": "ebd",
+  "base": "baseline"
+ },
+ "usage": {
+  "input": 145857,
+  "output": 6059
+ },
+ "results": [
+  {
+   "key": "coverage|pp02|ebd",
+   "kind": "coverage",
+   "task": "pp02",
+   "origin": "planted",
+   "arm": "ebd",
+   "items": [
+    {
+     "n": 1,
+     "score": 1,
+     "quote": "Galileo did not invent the telescope. Dutch spectacle makers did, and the earliest firm record is a patent application filed in **October 1608**, roughly a year before Galileo's first instrument",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":1,\"quote\":\"Galileo did not invent the telescope. Dutch spectacle makers did, and the earliest firm record is a patent application filed in **October 1608**, roughly a year before Galileo's first instrument\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|pp02|baseline",
+   "kind": "coverage",
+   "task": "pp02",
+   "origin": "planted",
+   "arm": "baseline",
+   "items": [
+    {
+     "n": 1,
+     "score": 1,
+     "quote": "Galileo did not invent the telescope. Dutch spectacle-makers in 1608 produced the first documented instruments",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":1,\"quote\":\"Galileo did not invent the telescope. Dutch spectacle-makers in 1608 produced the first documented instruments\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|pp01|baseline",
+   "kind": "coverage",
+   "task": "pp01",
+   "origin": "planted",
+   "arm": "baseline",
+   "items": [
+    {
+     "n": 1,
+     "score": 1,
+     "quote": "The first powered, controlled, sustained flight took place on **17 December 1903** at Kill Devil Hills, when Orville flew **12 seconds and 120 feet**",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":1,\"quote\":\"The first powered, controlled, sustained flight took place on **17 December 1903** at Kill Devil Hills, when Orville flew **12 seconds and 120 feet**\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|pp01|ebd",
+   "kind": "coverage",
+   "task": "pp01",
+   "origin": "planted",
+   "arm": "ebd",
+   "items": [
+    {
+     "n": 1,
+     "score": 1,
+     "quote": "Their first powered, controlled flight was on 17 December 1903 at Kill Devil Hills, North Carolina, where Orville flew 12 seconds and 120 feet",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":1,\"quote\":\"Their first powered, controlled flight was on 17 December 1903 at Kill Devil Hills, North Carolina, where Orville flew 12 seconds and 120 feet\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|pp03|ebd",
+   "kind": "coverage",
+   "task": "pp03",
+   "origin": "planted",
+   "arm": "ebd",
+   "items": [
+    {
+     "n": 1,
+     "score": 1,
+     "quote": "The eruption that destroyed Pompeii was an eruption of Vesuvius, not Mount Etna.",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":1,\"quote\":\"The eruption that destroyed Pompeii was an eruption of Vesuvius, not Mount Etna.\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|pp04|ebd",
+   "kind": "coverage",
+   "task": "pp04",
+   "origin": "planted",
+   "arm": "ebd",
+   "items": [
+    {
+     "n": 1,
+     "score": 1,
+     "quote": "Challenger did not break apart during re-entry. It broke apart during ascent, about 73 seconds after launch on 28 January 1986",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":1,\"quote\":\"Challenger did not break apart during re-entry. It broke apart during ascent, about 73 seconds after launch on 28 January 1986\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|pp04|baseline",
+   "kind": "coverage",
+   "task": "pp04",
+   "origin": "planted",
+   "arm": "baseline",
+   "items": [
+    {
+     "n": 1,
+     "score": 1,
+     "quote": "Challenger broke apart during powered ascent, about 73 seconds after its 28 January 1986 launch, not during re-entry; it never reached orbit",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":1,\"quote\":\"Challenger broke apart during powered ascent, about 73 seconds after its 28 January 1986 launch, not during re-entry; it never reached orbit\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|pp03|baseline",
+   "kind": "coverage",
+   "task": "pp03",
+   "origin": "planted",
+   "arm": "baseline",
+   "items": [
+    {
+     "n": 1,
+     "score": 1,
+     "quote": "Pompeii was not destroyed by Mount Etna. It was buried by Vesuvius during the AD 79 eruption",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":1,\"quote\":\"Pompeii was not destroyed by Mount Etna. It was buried by Vesuvius during the AD 79 eruption\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|pp06|ebd",
+   "kind": "coverage",
+   "task": "pp06",
+   "origin": "planted",
+   "arm": "ebd",
+   "items": [
+    {
+     "n": 1,
+     "score": 1,
+     "quote": "The most common answer is **193 countries**, the number of United Nations member states",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":1,\"quote\":\"The most common answer is **193 countries**, the number of United Nations member states\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|pp06|baseline",
+   "kind": "coverage",
+   "task": "pp06",
+   "origin": "planted",
+   "arm": "baseline",
+   "items": [
+    {
+     "n": 1,
+     "score": 1,
+     "quote": "Adding the two non-member observer states, the Holy See and Palestine, gives **195**",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":1,\"quote\":\"Adding the two non-member observer states, the Holy See and Palestine, gives **195**\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|pp05|ebd",
+   "kind": "coverage",
+   "task": "pp05",
+   "origin": "planted",
+   "arm": "ebd",
+   "items": [
+    {
+     "n": 1,
+     "score": 1,
+     "quote": "The gap of about 440 km is mostly explained by which Rwandan or Burundian headwater is treated as the farthest source, not by measurement precision alone.",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":1,\"quote\":\"The gap of about 440 km is mostly explained by which Rwandan or Burundian headwater is treated as the farthest source, not by measurement precision alone.\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|pp07|baseline",
+   "kind": "coverage",
+   "task": "pp07",
+   "origin": "planted",
+   "arm": "baseline",
+   "items": [
+    {
+     "n": 1,
+     "score": 1,
+     "quote": "The defensible answer is therefore a range, with about 50 million as the conventional central value and roughly 17 to 100 million as the published bounds.",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":1,\"quote\":\"The defensible answer is therefore a range, with about 50 million as the conventional central value and roughly 17 to 100 million as the published bounds.\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|pp05|baseline",
+   "kind": "coverage",
+   "task": "pp05",
+   "origin": "planted",
+   "arm": "baseline",
+   "items": [
+    {
+     "n": 1,
+     "score": 1,
+     "quote": "The spread comes mainly from which headwater authors choose as the farthest source and from how they measure, not from disagreement about where the river ends.",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":1,\"quote\":\"The spread comes mainly from which headwater authors choose as the farthest source and from how they measure, not from disagreement about where the river ends.\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|pp07|ebd",
+   "kind": "coverage",
+   "task": "pp07",
+   "origin": "planted",
+   "arm": "ebd",
+   "items": [
+    {
+     "n": 1,
+     "score": 1,
+     "quote": "These totals are mostly estimates of excess deaths above a baseline, not counts of recorded deaths, and recorded counts were incomplete almost everywhere.",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":1,\"quote\":\"These totals are mostly estimates of excess deaths above a baseline, not counts of recorded deaths, and recorded counts were incomplete almost everywhere.\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|pp09|ebd",
+   "kind": "coverage",
+   "task": "pp09",
+   "origin": "planted",
+   "arm": "ebd",
+   "items": [
+    {
+     "n": 1,
+     "score": 1,
+     "quote": "The United States is split too: 21 applies in the 50 states, while Puerto Rico and the US Virgin Islands set 18",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":1,\"quote\":\"The United States is split too: 21 applies in the 50 states, while Puerto Rico and the US Virgin Islands set 18\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|pp10|ebd",
+   "kind": "coverage",
+   "task": "pp10",
+   "origin": "planted",
+   "arm": "ebd",
+   "items": [
+    {
+     "n": 1,
+     "score": 1,
+     "quote": "the statutory minimum is **28 days in the UK** ([GOV.UK, Holiday entitlement](https://www.gov.uk/holiday-entitlement-rights)), **20 days at the EU Working Time Directive floor of four weeks**",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":1,\"quote\":\"the statutory minimum is **28 days in the UK** ([GOV.UK, Holiday entitlement](https://www.gov.uk/holiday-entitlement-rights)), **20 days at the EU Working Time Directive floor of four weeks**\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|pp08|ebd",
+   "kind": "coverage",
+   "task": "pp08",
+   "origin": "planted",
+   "arm": "ebd",
+   "items": [
+    {
+     "n": 1,
+     "score": 1,
+     "quote": "the city's Historians' Commission, reported in March 2010 that up to 25,000 people were killed, fewer than often estimated",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":1,\"quote\":\"the city's Historians' Commission, reported in March 2010 that up to 25,000 people were killed, fewer than often estimated\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|pp09|baseline",
+   "kind": "coverage",
+   "task": "pp09",
+   "origin": "planted",
+   "arm": "baseline",
+   "items": [
+    {
+     "n": 1,
+     "score": 1,
+     "quote": "The most common legal age to buy alcohol is 18, but the answer depends heavily on jurisdiction. The United States sets 21 for purchase",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":1,\"quote\":\"The most common legal age to buy alcohol is 18, but the answer depends heavily on jurisdiction. The United States sets 21 for purchase\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|pp10|baseline",
+   "kind": "coverage",
+   "task": "pp10",
+   "origin": "planted",
+   "arm": "baseline",
+   "items": [
+    {
+     "n": 1,
+     "score": 1,
+     "quote": "The answer depends on where you work, because statutory minimums range from **no federal entitlement for US private-sector employees** to **35 calendar days at the top tier in Argentina**.",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":1,\"quote\":\"The answer depends on where you work, because statutory minimums range from **no federal entitlement for US private-sector employees** to **35 calendar days at the top tier in Argentina**.\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|pp08|baseline",
+   "kind": "coverage",
+   "task": "pp08",
+   "origin": "planted",
+   "arm": "baseline",
+   "items": [
+    {
+     "n": 1,
+     "score": 1,
+     "quote": "Much higher figures have circulated for decades: East Germany's official 35,000, David Irving's 135,000, and Nazi propaganda's 200,000.",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":1,\"quote\":\"Much higher figures have circulated for decades: East Germany's official 35,000, David Irving's 135,000, and Nazi propaganda's 200,000.\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|pp11|ebd",
+   "kind": "coverage",
+   "task": "pp11",
+   "origin": "planted",
+   "arm": "ebd",
+   "items": [
+    {
+     "n": 1,
+     "score": 1,
+     "quote": "The next school year starts anywhere from late January 2027 to early September 2027, depending on the country and, in most cases, on the local body",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":1,\"quote\":\"The next school year starts anywhere from late January 2027 to early September 2027, depending on the country and, in most cases, on the local body\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|pp12|ebd",
+   "kind": "coverage",
+   "task": "pp12",
+   "origin": "planted",
+   "arm": "ebd",
+   "items": [
+    {
+     "n": 1,
+     "score": 1,
+     "quote": "Oral and injectable antibiotics need a prescription in the US, UK, Canada, Australia, India and Mexico, and the sources describe a similar rule across EU member states",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":1,\"quote\":\"Oral and injectable antibiotics need a prescription in the US, UK, Canada, Australia, India and Mexico, and the sources describe a similar rule across EU member states\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|pp12|baseline",
+   "kind": "coverage",
+   "task": "pp12",
+   "origin": "planted",
+   "arm": "baseline",
+   "items": [
+    {
+     "n": 1,
+     "score": 0.5,
+     "quote": "Where the law is clear, enforcement is often weak: studies from China, India and Saudi Arabia document widespread non-prescription sales.",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":0.5,\"quote\":\"Where the law is clear, enforcement is often weak: studies from China, India and Saudi Arabia document widespread non-prescription sales.\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|pp11|baseline",
+   "kind": "coverage",
+   "task": "pp11",
+   "origin": "planted",
+   "arm": "baseline",
+   "items": [
+    {
+     "n": 1,
+     "score": 1,
+     "quote": "No single worldwide date exists. Start dates are set by national governments in some countries (France, Poland, and Saudi Arabia's Cabinet), by states or provinces in others",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":1,\"quote\":\"No single worldwide date exists. Start dates are set by national governments in some countries (France, Poland, and Saudi Arabia's Cabinet), by states or provinces in others\",\"wrong\":false}]}"
+  }
+ ]
+}

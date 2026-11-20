@@ -7,14 +7,35 @@ main parts a full answer needs, sends one researcher to each part, checks the fi
 for disagreements and for false claims in the question, and researches again only what
 the answer still lacks. A writer then turns the findings into a cited report.
 
-This guide says how to run it and how to read what it produces. How it works and why
-is in [DESIGN.md](DESIGN.md); the plug-in contract is in
-[docs/strategy-modules.md](../../../docs/strategy-modules.md).
+**Status: final for the comparison with the baseline (2026-11-20).** The strategy is one
+approach, with no setting that switches to another planner or to other follow-up rules.
+It passes the platform's acceptance check on Claude Haiku 5.5 and on GPT-6 Luna. With the
+same number of researchers it is level with the baseline, not better; the results are
+summarised [below](#how-it-compares-with-the-baseline).
 
-Since 2026-11-19 the strategy is one approach, with no setting that switches to another
-planner or to other follow-up rules (DESIGN.md section 32). The request analysis, the
-premise sorter and the problem extension that made the first plan before are no longer
-part of it.
+## Where things are
+
+| Read | For |
+|---|---|
+| This guide | How to run the strategy, what a run does, how to read its records |
+| [evaluation/README.md](evaluation/README.md) | Every test against the baseline: method, results, limits, and the data behind them |
+| [DESIGN.md](DESIGN.md) | Why the strategy is built this way, and the record of each change and test. Its section 1 describes the final design and says which later sections still apply |
+| [viewer/README.md](viewer/README.md) | The run viewer: stepping through a run and checking each agent |
+| [docs/strategy-modules.md](../../../docs/strategy-modules.md) | The platform's plug-in contract |
+
+| File | Holds |
+|---|---|
+| `index.ts` | The strategy: `init` (the plan), `observe` (after each round), `finalize` (what the writer gets) |
+| `environment.ts` | The environment analyst: its prompt, the checks on its reply, the plan turned into goals |
+| `briefs.ts` | From goals to researcher briefs: who is sent where, with which key questions |
+| `rounds/evidence.ts`, `rounds/conflicts.ts`, `rounds/analyst.ts` | Reading the researchers' notes; the conflict checker; the round analyst |
+| `goals.ts`, `map.ts`, `state.ts`, `analysis.ts` | The goal table and stop rules; the plan's main parts during a run; the state kept between steps |
+| `synthesis.ts` | The writer's input: material, suggested outline, guidance |
+| `options.ts`, `llm.ts` | The settings; the one helper for model calls with a checked, structured reply |
+| `*.test.ts`, `fixtures.ts` | The tests (no network) |
+| `viewer/` | The run viewer |
+| `evaluation/` | The evaluation record: questions, judge output, reports, tables |
+| `request/` | The earlier request analysis. The strategy no longer calls it (see Known limits) |
 
 ## Before the first run
 
@@ -22,9 +43,10 @@ part of it.
 - A `.env` file at the repository root (copy `.env.example`) with the key of the model
   you use: `ANTHROPIC_API_KEY` for Claude Haiku 5.5 (profile `haiku`), `OPENAI_API_KEY`
   for GPT-6 Luna (profile `luna`). The `LANGFUSE_*` keys are optional; with them, every
-  model call is also traced to the team's self-hosted Langfuse.
-- Every run uses real models and real web searches. A run costs about $0.08 to $0.60 on
-  Haiku, almost all of it the researchers (about $0.09 each).
+  model call is also traced to the self-hosted Langfuse.
+- Every run uses real models and real web searches. A run costs about $0.08 to $0.55 on
+  Haiku 5.5, most of it the search fee of the researchers (about $0.09 a researcher). The
+  one run made on Luna so far cost $0.04.
 
 ## Run a question
 
@@ -44,6 +66,11 @@ strategy returned), use
 `npm run check-strategy -- --strategy ebd --model haiku --task ebd`. Its records go
 to `local/checks/`.
 
+In an experiment spec, the strategy entry is `"ebd"` or
+`{ "name": "ebd", "label": "ebd-matched", "matchResearchersTo": "baseline" }`, which gives
+EBD the number of researchers the baseline used on the same question. Every comparison
+since 2026-11-19 was run that way.
+
 ## What happens in a run
 
 | Step | Who | What it does |
@@ -54,6 +81,10 @@ to `local/checks/`.
 | Judge | Round analyst (a model) | For each main part, which key questions the findings answer; a verdict on each checked claim; and new goals: a main part of the answer that the findings leave out, or a detail |
 | Decide | Code | After the first round a researcher goes only to a main part of the answer or to a claim of the question: a part that is mostly unanswered, a part the analyst found missing (at most two a round), or a disagreement that decides a claim. A disagreement between sources that decides no claim is not researched again; when it is critical the writer is told. A detail gets no researcher. The run stops when nothing of that kind is left, or when no researcher is left |
 | Write | Writer (the platform) | Writes the report from the researchers' notes. EBD suggests the researched main parts as the outline and tells the writer only a few things: a claim of the question that the evidence contradicts (to be corrected in a sentence or two before the question is answered as asked), at most three critical disagreements, to say what the question's main terms mean, and to build first on the strongest sources |
+
+The model makes narrow judgments (a plan, a list of disagreements, a verdict); code turns
+them into who is sent where and when the run stops. Every reply of a model is checked by
+code and asked again once when it fails the checks.
 
 ## How a run ends
 
@@ -71,8 +102,8 @@ shown in the viewer.
 ## Settings
 
 Set in `--options` or in an experiment spec's strategy entry. All have defaults. The
-first two are the switches the platform's comparison experiment uses; the others are
-limits.
+first two are the switches the platform's comparison experiment uses
+(`experiments/compare.json`); the others are limits.
 
 | Setting | Default | What it changes |
 |---|---|---|
@@ -90,7 +121,8 @@ limits.
 An unknown setting is rejected. That includes the settings that existed until
 2026-11-19 and chose a planner or a follow-up rule (`init`, `extend`, `completeMap`,
 `partQuestions`, `premiseSort`, `premiseRides`, `stepsFirst`, `focusFollowUp`,
-`leanGuidance`, `mainPartsFirst`, `uncitedParts`, `strictFollowUp`, `extraRound`).
+`leanGuidance`, `mainPartsFirst`, `uncitedParts`, `strictFollowUp`, `extraRound`). No
+experiment spec in the repository uses one of them.
 
 ## Reading a run
 
@@ -103,9 +135,9 @@ npx tsx src/strategies/ebd/viewer/build.ts
 It shows every step: the plan, each researcher's brief and notes, each model call with
 its exact input and reply, what the code decided, the goal table, the disagreements,
 what the writer received and the report. With the `LANGFUSE_*` keys set, runs are also
-traced to the team's self-hosted Langfuse, and the viewer adds each run's trace: a
-timeline of the graph steps and model calls, the calls of each step with their latency
-and tokens, a check that the trace matches the run record, and links into Langfuse.
+traced to the self-hosted Langfuse, and the viewer adds each run's trace: a timeline of
+the graph steps and model calls, the calls of each step with their latency and tokens, a
+check that the trace matches the run record, and links into Langfuse.
 [viewer/README.md](viewer/README.md) lists the pages and how to verify a run.
 
 The files of a run record:
@@ -123,43 +155,55 @@ IDs in the records: goals are `Q1`, `Q2`, …; the question's claims are `A1`, �
 questions of the plan are `M1`, …; disagreements are `C1`, …; a finding is `r2-b1-f3`
 (round 2, brief 1, finding 3) and a gap the researcher reported is `r2-b1-g1`.
 
+What changed in the records with the final version, for tools that read them: the state
+no longer has `map.replaced`, `map.questions` or `extraRoundServed`; the roles of the
+strategy's model calls are `environment_analyst`, `conflict_checker` and `round_analyst`;
+and `synthesis.json` now has an `outline` in most runs. Goals, disagreements, findings and
+the question's claims are recorded as before.
+
+## How it compares with the baseline
+
+The full record is in [evaluation/README.md](evaluation/README.md). In short, with the
+same number of researchers on both sides, on Claude Haiku 5.5:
+
+| Test | Result, EBD against the baseline |
+|---|---|
+| Final test (2026-11-19): 12 new real queries, blind judge, both orders | The judge preferred EBD on 4 questions and the baseline on 5, with 3 undecided. Checklist coverage 0.77 against 0.77 |
+| The same reports with the final writer input (2026-11-20) | 3 to 2, with 7 undecided |
+| Planted-problem test (2026-11-20): 12 new questions with a false fact, sources that disagree, or an answer that depends on who asks | The planted point stated in full in 12 of 12 reports against 11 of 12 |
+| Cost and time | 5% more on real queries and 15% less on the planted-problem questions; about half as long again a run |
+| On a weaker model (GPT-5 nano, a side run of six questions with a false fact) | The correction stated in 6 of 6 reports against 4 of 6 |
+
+EBD is level with the baseline on Haiku 5.5. Both sides get the same researchers, who
+find the same things whatever the plan says, and this model already does unasked what
+EBD's rules demand, such as correcting a well-known false fact. What EBD adds is on
+record: the claims of the question with a verdict, the disagreements between sources and
+the plan's parts, which the run viewer shows step by step.
+
 ## Known limits
 
-- **Compared with the baseline once** (2026-11-19, DESIGN.md section 31): with the same
-  number of researchers, on 12 new real queries and 4 questions with a planted problem,
-  rules fixed beforehand. A blind judge preferred EBD on 4 questions and the baseline on
-  5, with 3 undecided. EBD stated all four planted points in full; the baseline stated two
-  in full and two in part. EBD cost 5% more and took 57% longer a run. By the rules it
-  was kept; it is not shown to be better. Twelve questions, one run each and a model as
-  the judge can only tell a large difference from chance.
-- **The question's own premise.** In that test EBD lost three questions of the form "why
-  is X good" or "why are there no laws against X". It checked the opinion the question
-  starts from, the evidence contradicted it or left it open, and the report was framed
-  by that verdict, where the baseline gave a fuller answer. The sort of such claims has
-  not been changed since.
-- **Support.** The judge found the baseline's claims more carefully stated and cited on 4
-  of the 12 questions, and EBD's on none.
-- **Time.** EBD spends about 86 seconds a run in its own three kinds of calls. In 9 of
-  16 runs the conflict checker's first reply was rejected by the code checks and asked
-  again.
-- **Fewer researchers than main parts** (DESIGN.md section 30). With one or two
-  researchers a plan of four parts does not fit: the necessary parts and the check of
-  the claims are asked, and some completing parts are not.
-- **The follow-up rules have hardly run with searches.** In all 16 runs of the test the
-  first round used every researcher, so no follow-up round took place. One earlier live
-  run had one.
-- **The code as it stands has run with searches on 12 questions.** The strategy was
-  consolidated to this one approach after the test, and on 2026-11-20 what it tells the
-  writer and two passages of the planning prompt were changed (`DESIGN.md`, section 34).
-  The 12 runs of the planted-problem test of that day (section 35) all ended ok; the
-  platform's `check-strategy` run has not been made on this code.
-- **It is level with the baseline, not better.** With the same number of researchers a
-  judge does not tell its reports from the baseline's on ordinary questions, and both
-  state a planted problem (a false fact in the question, sources that disagree, an answer
-  that depends on who asks) in nearly every report (sections 31, 33 and 35).
-- Tested live on Claude Haiku 5.5, and on 2026-11-20 on the OpenAI adapter with the older
-  GPT-5 nano in a side run of six questions (`DESIGN.md`, section 37). GPT-6 Luna is
-  checked offline only (`providers.test.ts`); run `check-strategy` with `--model luna`.
+- **Not shown to be better than the baseline.** Twelve questions with one run each and a
+  model as the judge can only tell a large difference from chance. No fact and no citation
+  was checked, and no person has rated the reports.
+- **The follow-up rounds have hardly run.** With the baseline's number of researchers all
+  of them go out in the first round, so the analysis after it could rarely send anyone:
+  one follow-up round in EBD's 28 runs of the two tests.
+- **Time.** EBD spends about 85 seconds a run in its own calls. Some first replies of the
+  conflict checker fail the code checks and are asked again (9 of 16 runs of the final
+  test).
+- **Weaker models strain it.** On GPT-5 nano almost half of EBD's own replies failed the
+  code checks and were asked again, and the round analysis had to be repaired by the code
+  in 5 of 6 runs. The runs still ended ok.
+- **Luna has an acceptance run only.** On the fixed EBD question Luna planned one main
+  part and used one researcher. The comparison with the baseline on Luna has not been run.
+- **Fewer researchers than main parts** (DESIGN.md, section 30). With one or two
+  researchers a plan of four parts does not fit: the necessary parts and the check of the
+  claims are asked, and some completing parts are not.
+- **The plan lists a term with several meanings more often than its prompt asks for**, so
+  the restated question still reaches the writer in most runs (DESIGN.md, section 34.1).
+- **The writer's output limit is the platform's** (21,000 tokens). EBD's writer calls use
+  more of it than the baseline's (17,800 at most in the planted-problem test); no report
+  of the final code was cut off.
 - When the plan is rejected twice, its valid parts are used. When nothing usable is left,
   the step is run again; if that happens twice in one run, the run plans the request
   itself as one question and records "minimal plan" under `init` in `events.jsonl`. This
@@ -169,9 +213,20 @@ questions of the plan are `M1`, …; disagreements are `C1`, …; a finding is `
   source.
 - Questions are researched in English, from the open web: no paywalled content, no
   attached files.
-- The results of the earlier planner (the five development questions, the 12 questions of
-  2026-11-18) are in DESIGN.md sections 20 to 27. They do not describe this code.
 - `request/` holds the request analysis that made the first plan until 2026-11-19. The
-  strategy no longer calls it. It is still in the folder because scripts of Lab 3 on
-  the behaviour design lead's machine import it; whether it moves there or goes is the
-  lead's decision.
+  strategy no longer calls it and nothing else in the repository uses it. It is kept
+  because scripts of an earlier lab on the behaviour design lead's machine import it; it
+  can be ignored.
+
+## Changing the strategy
+
+- Work only inside `src/strategies/ebd/`, and import platform types only from
+  `src/core/index.ts` (the platform's rule for strategy modules).
+- The texts sent to a model are approved by the behaviour design lead and pinned by a
+  test (`approach.test.ts`, "the prompt texts"): a changed text fails the test until its
+  new fingerprint is entered. Show the text, now and proposed, before changing it.
+- Before a change of behaviour, replay recorded runs with no model call to see what it
+  moves (`evaluation/scripts/golden.ts.txt` shows how), then run `npm test`,
+  `npm run typecheck` and `npm run check-strategy -- --strategy ebd`.
+- New test questions must not have been read before the run; the questions in
+  `evaluation/questions/` are used and count as development data.

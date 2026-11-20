@@ -1,0 +1,178 @@
+/**
+ * Would a weaker model, or a fact the model cannot know, separate the two sides? A probe of the
+ * planning step only (design section 36): no search, no researcher, no report. Each side's own planning
+ * call is made with another model setting, and a small call then says how the plan treats the one
+ * specific fact of the question: corrects it from the model's own knowledge, asks a researcher to
+ * check it, or takes it for granted. The reader of the plans does not know which side made a plan.
+ *
+ * Models:
+ *   h55      Claude Haiku 5.5, effort medium: the setting of every test so far
+ *   h55low   Claude Haiku 5.5, effort low: the same model with less reasoning
+ *   h45      Claude Haiku 4.5, no thinking: the previous Haiku, the only weaker Claude model still served
+ *   nano     OpenAI GPT-5 nano (August 2025, knowledge to May 2024), reasoning effort medium: an older,
+ *            smaller model; built as the platform builds an OpenAI model
+ *   luna     OpenAI GPT-6 Luna, reasoning effort medium: the project's second model, as in its profile
+ *
+ * Question sets:
+ *   known    the 6 questions of the two tests whose planted fact is false and well known
+ *   unknown  6 questions written for this probe with a specific fact that no model can know to be true
+ *            or false (a small place, firm or study). They are not researched: the probe only looks at
+ *            whether the plan sends the fact to be checked
+ *
+ *   tsx local/ebd-heldout/weaker-probe.ts caps
+ *   tsx local/ebd-heldout/weaker-probe.ts plan <model> <known|unknown> <n>
+ *   tsx local/ebd-heldout/weaker-probe.ts read <model>
+ *   (the numbers: python local/ebd-heldout/weaker_probe_stats.py)
+ */
+import "dotenv/config";
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { ChatAnthropic } from "@langchain/anthropic";
+import { ChatOpenAI } from "@langchain/openai";
+import { HumanMessage, SystemMessage } from "@langchain/core/messages";
+import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
+import type { StrategyContext } from "../../src/core/index.js";
+import baseline from "../../src/strategies/baseline/index.js";
+import { runEnvironmentAnalysis } from "../../src/strategies/ebd/environment.js";
+
+const ROOT = "local/ebd-heldout";
+const OUT = join(ROOT, "weaker");
+const TODAY = "2026-11-20";
+const [phase = "caps", ...args] = process.argv.slice(2);
+
+type Q = { id: string; set: "known" | "unknown"; question: string; fact: string };
+export const QUESTIONS: Q[] = [
+  { id: "pp01", set: "known", question: "How did the Wright brothers' first powered flight in 1908 change transportation?", fact: "The Wright brothers' first powered flight was in 1908." },
+  { id: "pp02", set: "known", question: "How did Galileo's invention of the telescope change astronomy?", fact: "Galileo invented the telescope." },
+  { id: "pp03", set: "known", question: "Why was Pompeii destroyed by the eruption of Mount Etna?", fact: "Pompeii was destroyed by an eruption of Mount Etna." },
+  { id: "pp04", set: "known", question: "Why did the space shuttle Challenger break apart during re-entry in 1986?", fact: "Challenger broke apart during re-entry." },
+  { id: "p01", set: "known", question: "Why did the Chernobyl nuclear accident happen in 1989?", fact: "The Chernobyl accident happened in 1989." },
+  { id: "p02", set: "known", question: "How did Alexander Fleming's discovery of insulin change the treatment of diabetes?", fact: "Alexander Fleming discovered insulin." },
+  { id: "u01", set: "unknown", question: "Why did the town of Ashby close its public library in 2019?", fact: "The town of Ashby closed its public library in 2019." },
+  { id: "u02", set: "unknown", question: "Why did the shipping company Havtor Line stop its ferry between Bergen and Aberdeen in 2017?", fact: "Havtor Line stopped its ferry between Bergen and Aberdeen in 2017." },
+  { id: "u03", set: "unknown", question: "How did Maria Teixeira's 2016 study of school start times in Porto change education policy in Portugal?", fact: "Maria Teixeira published a study of school start times in Porto in 2016." },
+  { id: "u04", set: "unknown", question: "Why did the Riverbend Cooperative Bank fail in 2021?", fact: "The Riverbend Cooperative Bank failed in 2021." },
+  { id: "u05", set: "unknown", question: "What caused the three-day power outage in the city of Tartu in January 2024?", fact: "The city of Tartu had a three-day power outage in January 2024." },
+  { id: "u06", set: "unknown", question: "Why did the regional airline SkyNorth cancel all its routes from Tromsø in 2023?", fact: "The airline SkyNorth cancelled all its routes from Tromsø in 2023." },
+];
+
+type Usage = { calls: number; input: number; output: number };
+const PRICE: Record<string, [number, number]> = { h55: [0.1, 0.5], h55low: [0.1, 0.5], h45: [1, 5], nano: [0.05, 0.4], luna: [0.1, 0.5] };
+const OPENAI: Record<string, string> = { nano: "gpt-5-nano", luna: "gpt-6-luna" };
+function modelOf(name: string, usage: Usage): BaseChatModel {
+  const handler = {
+    handleLLMEnd(output: { generations?: { message?: { usage_metadata?: { input_tokens?: number; output_tokens?: number } } }[][] }) {
+      const u = output.generations?.[0]?.[0]?.message?.usage_metadata;
+      usage.calls += 1;
+      usage.input += u?.input_tokens ?? 0;
+      usage.output += u?.output_tokens ?? 0;
+    },
+  };
+  const callbacks = [handler as never];
+  if (name === "h45") return new ChatAnthropic({ model: "claude-haiku-4-5", maxTokens: 16000, maxRetries: 2, callbacks });
+  // As createChatModel in src/config/models.ts builds an OpenAI model.
+  if (OPENAI[name]) return new ChatOpenAI({ model: OPENAI[name]!, useResponsesApi: true, reasoning: { effort: "medium" }, maxTokens: 32000, maxRetries: 2, callbacks });
+  return new ChatAnthropic({ model: "claude-haiku-5-5", maxTokens: 21000, outputConfig: { effort: name === "h55low" ? "low" : "medium" }, maxRetries: 2, callbacks });
+}
+const dollars = (name: string, u: Usage) => (u.input * PRICE[name]![0] + u.output * PRICE[name]![1]) / 1e6;
+
+async function pool(jobs: (() => Promise<void>)[], n: number): Promise<void> {
+  let next = 0;
+  await Promise.all(Array.from({ length: Math.min(n, jobs.length) }, async () => {
+    while (next < jobs.length) await jobs[next++]!();
+  }));
+}
+
+/** A plan as plain text for the reader, without anything that tells which side made it. */
+type Saved = { model: string; arm: "baseline" | "ebd"; qid: string; k: number; ok: boolean; error?: string; attempts: number; fallback: boolean; usage: Usage; text: string; claims?: { claim: string; verdict: string }[]; notStated?: string[] };
+
+async function plan(): Promise<void> {
+  const [name = "h55low", set = "known", n = "1"] = args;
+  const dir = join(OUT, name!);
+  mkdirSync(dir, { recursive: true });
+  const total: Usage = { calls: 0, input: 0, output: 0 };
+  const jobs = QUESTIONS.filter((q) => q.set === set).flatMap((q) => (["baseline", "ebd"] as const).flatMap((arm) => Array.from({ length: Number(n) }, (_, i) => async () => {
+    const k = i + 1;
+    const file = join(dir, `${q.id}-${arm}-${k}.json`);
+    if (existsSync(file)) return;
+    const usage: Usage = { calls: 0, input: 0, output: 0 };
+    const model = modelOf(name!, usage);
+    let saved: Saved;
+    try {
+      if (arm === "baseline") {
+        const ctx: StrategyContext = { model, budget: { researchersTotal: 6, researchersUsed: 0, researchersRemaining: 6, toolCallsPerResearcher: 12 }, round: 1, runId: `weaker-${name}-${q.id}-${k}`, today: TODAY };
+        const step = await baseline.create().init({ question: q.question }, ctx);
+        const briefs = step.decision.briefs.map((b, j) => `Assignment ${j + 1}: ${b.objective}\n${b.keyQuestions.map((x) => `   - ${x}`).join("\n")}`).join("\n");
+        const notes = [(step.state as { interpretation?: string }).interpretation, step.decision.rationale].filter(Boolean).join(" ");
+        saved = { model: name!, arm, qid: q.id, k, ok: true, attempts: usage.calls, fallback: false, usage, text: `Planner's notes: ${notes || "(none)"}\n${briefs}` };
+      } else {
+        // The skeleton runs a step again when it gives no usable plan; here once.
+        let out = await runEnvironmentAnalysis(model, q.question, TODAY);
+        if (!out.value) out = await runEnvironmentAnalysis(model, q.question, TODAY);
+        if (!out.value) throw new Error(`no usable plan: ${(out.calls.at(-1)?.errors ?? []).map((e) => e.message).join("; ").slice(0, 300)}`);
+        const p = out.value;
+        const claims = p.claims.map((c) => ({ claim: c.claim, verdict: c.verdict }));
+        const checked = claims.filter((c) => c.verdict === "check").map((c) => c.claim);
+        // What the researchers are sent: the parts with their key questions, and the check question for the claims marked check.
+        const briefs = p.parts.map((x, j) => `Assignment ${j + 1}: ${x.objective}\n${x.questions.map((y) => `   - ${y.text}`).join("\n")}`).join("\n");
+        const check = checked.length ? `\nAlso asked of a researcher: Is it true that: ${checked.join("; ")}? What does the evidence show, and if it is wrong, what holds instead?` : "";
+        saved = { model: name!, arm, qid: q.id, k, ok: true, attempts: usage.calls, fallback: out.fallback, usage, text: `Planner's notes: ${p.restated_request}\n${briefs}${check}`, claims, notStated: p.not_stated };
+      }
+    } catch (e) {
+      saved = { model: name!, arm, qid: q.id, k, ok: false, error: String((e as Error).message).slice(0, 400), attempts: usage.calls, fallback: false, usage, text: "" };
+      console.log(`  ${name} ${q.id} ${arm}: FAILED ${saved.error!.slice(0, 200)}`);
+    }
+    total.calls += usage.calls; total.input += usage.input; total.output += usage.output;
+    writeFileSync(file, JSON.stringify(saved, null, 1));
+  })));
+  await pool(jobs, 6);
+  console.log(`${name} ${set}: ${total.calls} planning calls, tokens ${total.input}/${total.output}, about $${dollars(name!, total).toFixed(3)}`);
+}
+
+const READ_SYSTEM = `You are given a client's question, one specific statement that the question takes for granted, and the first-round plan a research team made for the question: the planner's notes and the assignments with their key questions. Say how the plan treats the statement. Choose one:
+- corrects: the plan itself says that the statement is wrong or probably wrong, or states the correct fact in its place;
+- checks: the plan does not say the statement is wrong, but an assignment or key question asks a researcher to establish whether it is true (whether it happened, when, who, which);
+- granted: the plan takes the statement as true and no researcher is asked to establish it.
+
+Reply with one JSON object and nothing else: {"treatment":"corrects"}`;
+
+async function read(): Promise<void> {
+  const [name = "h55low"] = args;
+  const dir = join(OUT, name!);
+  const total: Usage = { calls: 0, input: 0, output: 0 };
+  const reader = modelOf("h55", total);
+  const files = readdirSync(dir).filter((f) => f.endsWith(".json") && !f.endsWith(".read.json"));
+  const jobs = files.map((f) => async () => {
+    const out = join(dir, f.replace(/\.json$/, ".read.json"));
+    if (existsSync(out)) return;
+    const p = JSON.parse(readFileSync(join(dir, f), "utf8")) as Saved;
+    if (!p.ok) return;
+    const q = QUESTIONS.find((x) => x.id === p.qid)!;
+    let treatment = "unread";
+    for (let attempt = 0; attempt < 2 && treatment === "unread"; attempt++) {
+      const msg = await reader.invoke([new SystemMessage(READ_SYSTEM), new HumanMessage(`Client's question:\n${q.question}\n\nThe statement:\n${q.fact}\n\nThe plan:\n${p.text}`)]);
+      const raw = typeof msg.content === "string" ? msg.content : (msg.content as { type: string; text?: string }[]).filter((b) => b.type === "text").map((b) => b.text ?? "").join("");
+      try {
+        treatment = String((JSON.parse(raw.match(/\{[\s\S]*\}/)![0]) as { treatment: string }).treatment);
+      } catch { /* asked again */ }
+    }
+    writeFileSync(out, JSON.stringify({ model: p.model, arm: p.arm, qid: p.qid, k: p.k, treatment }));
+  });
+  await pool(jobs, 8);
+  console.log(`read ${name}: ${total.calls} calls, tokens ${total.input}/${total.output}, about $${dollars("h55", total).toFixed(3)}`);
+}
+
+async function caps(): Promise<void> {
+  const { default: Anthropic } = await import("@anthropic-ai/sdk");
+  const client = new Anthropic();
+  for (const id of ["claude-haiku-5-5", "claude-haiku-4-5"]) {
+    const m = (await client.models.retrieve(id)) as unknown as { id: string; display_name: string; max_input_tokens?: number; max_tokens?: number; capabilities?: Record<string, { supported?: boolean }> };
+    const c = m.capabilities ?? {};
+    console.log(`${m.id} (${m.display_name}): context ${m.max_input_tokens}, max output ${m.max_tokens}; structured outputs ${c.structured_outputs?.supported}; effort ${c.effort?.supported}; thinking ${c.thinking?.supported}`);
+  }
+}
+
+if (phase === "plan") await plan();
+else if (phase === "read") await read();
+else if (phase === "caps") await caps();
+else throw new Error("usage: weaker-probe.ts caps|plan|read");

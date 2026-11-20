@@ -1,0 +1,13 @@
+Run record: local\checks\20261120-170955-ebd-luna-b06a5d-5ebe  cost ≈ $0.039
+PASS  module loads (ebd, contract 1)
+PASS  run completes with a report
+PASS  init returns at least one valid brief
+PASS  every brief is valid
+PASS  no briefs returned together with stop: true
+PASS  every decision has a rationale
+PASS  stops on its own before the round safety cap — strategy-stop
+PASS  finalize returns a valid SynthesisInput
+PASS  finalize passes material to the writer
+PASS  material consists of researcher notes lines
+PASS  report cites only URLs from the research
+exit 0

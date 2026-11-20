@@ -1,0 +1,268 @@
+/**
+ * Plan-level check of reworded planner rules (design section 33), with no search. For each question
+ * the one-call plan is made with the accepted wording ("now") and with a proposed one ("next"); the
+ * strategy's own init then turns each reply into the briefs it would send with three researchers, the
+ * number most runs of the final test had. The baseline's briefs are the ones recorded in that test.
+ *
+ * Two small model calls then read each plan: one labels every key question by what it asks for,
+ * relative to the client's question (direct, check, definition, around); one says which checklist
+ * items the plan asks a researcher about. The labeller does not know which method made a plan.
+ *
+ * The proposed wording is NOT in the strategy: it is passed to the strategy's planning call from here.
+ *
+ *   tsx local/ebd-heldout/plancheck.ts plan <now|next|def> <final|planted|premise> <n>
+ *   tsx local/ebd-heldout/plancheck.ts base                    the baseline's recorded briefs, as plans
+ *   tsx local/ebd-heldout/plancheck.ts run                     the approach's recorded briefs of the test, as plans
+ *   tsx local/ebd-heldout/plancheck.ts label <now|next|base|run>
+ *   tsx local/ebd-heldout/plancheck.ts score <now|next|base|run>
+ *   tsx local/ebd-heldout/plancheck.ts wording                 prints the passages, now and proposed
+ *   (the numbers: python local/ebd-heldout/plancheck_stats.py)
+ */
+import "dotenv/config";
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { AIMessage, HumanMessage, SystemMessage } from "@langchain/core/messages";
+import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
+import type { ResearchBriefInput, StrategyContext } from "../../src/core/index.js";
+import { createChatModel, getProfile } from "../../src/config/models.js";
+import { PLAN_SYSTEM, PLAN_TOOL, runEnvironmentAnalysis, type PlanReply } from "../../src/strategies/ebd/environment.js";
+import ebd from "../../src/strategies/ebd/index.js";
+
+const ROOT = "local/ebd-heldout";
+const OUT = join(ROOT, "plancheck");
+const TODAY = "2026-11-20";
+const RESEARCHERS = 3;
+const [phase = "wording", ...args] = process.argv.slice(2);
+
+/** The proposed passages: [accepted, proposed]. Each accepted passage occurs once in the planning prompt. */
+export const REWORD: [string, string][] = [
+  [
+    "List each claim that the wording treats as settled, as a full sentence, and give it a verdict from the wording alone, never from what you believe to be true:",
+    'List each claim that the wording treats as settled, as a full sentence that says no more than the wording does ("is considered" does not become "is considered by most people"), and give it a verdict from the wording alone, never from what you believe to be true:',
+  ],
+  [
+    "A question that asks whether, which, what or how much takes at most a possibility for granted: given.",
+    "A question that asks whether, which, what or how much takes at most a possibility for granted: given. A question that asks how one thing affected, changed or contributed to another takes for granted only that it did so in some way: given.",
+  ],
+  [
+    "   - the question itself: the part that answers it most directly comes first;",
+    "   - the question itself: the direct answer comes first and gets the most room. Split it into its main kinds (the kinds of reasons or causes, the steps of an explanation, the fields of an effect, the sides of a comparison) and give each kind a part of its own: at least two of the first three parts answer the question itself;",
+  ],
+  [
+    "   Do not make a part out of what a word means, or out of general background that the question does not ask for: a definition that the answer needs is one key question of the part that needs it. Leave out side topics, however much could be found about them.",
+    "   The other sides get a part of their own only where the answer depends on them; otherwise a side is one key question inside a part that answers the question. Do not make a part out of what a word means, or out of general background that the question does not ask for. Where the answer depends on what the question's main term means or on how it is measured (a diagnosis, a legal status, an economic system, a rate), the first part has one key question that asks for it. Leave out side topics, however much could be found about them.",
+  ],
+];
+/**
+ * The low-risk part alone ("def"): the two passages on claims, and a definition question in every
+ * plan. The rule that the direct answer gets the most room is left out: it trades parts around the
+ * answer, which won questions in the test, for depth on the answer.
+ */
+export const REWORD_DEF: [string, string][] = [
+  REWORD[0]!,
+  REWORD[1]!,
+  [
+    "   Do not make a part out of what a word means, or out of general background that the question does not ask for: a definition that the answer needs is one key question of the part that needs it. Leave out side topics, however much could be found about them.",
+    "   Do not make a part out of what a word means, or out of general background that the question does not ask for. But a reader must be told what the question is about: one key question of the first part asks what the question's main terms mean and how they are defined or measured. Leave out side topics, however much could be found about them.",
+  ],
+];
+export function nextWording(pairs: [string, string][] = REWORD): string {
+  let text = PLAN_SYSTEM;
+  for (const [now, next] of pairs) {
+    if (text.split(now).length !== 2) throw new Error(`passage not found once: ${now.slice(0, 70)}`);
+    text = text.replace(now, next);
+  }
+  return text;
+}
+
+type Q = { id: string; question: string; checklist: string[]; kind?: string };
+/** The questions written for the premise sorter (design section 27.6): a false specific fact, a general question, a true specific fact. */
+const PREMISE: Q[] = (
+  [
+    ["n01", "false", "Why did the Soviet Union land the first humans on the Moon in 1969?"],
+    ["n02", "false", "How did Thomas Edison's invention of the telephone change communication?"],
+    ["n03", "false", "Why did the Berlin Wall fall in 1991?"],
+    ["n04", "false", "Why is the Great Wall of China visible from the Moon with the naked eye?"],
+    ["n05", "false", "Why did the World Health Organization end the COVID-19 emergency in 2021?"],
+    ["n06", "false", "Why do humans use only 10% of their brains?"],
+    ["n07", "false", "Why does sugar make children hyperactive?"],
+    ["n08", "false", "How did Marie Curie win three Nobel Prizes?"],
+    ["tel", "false", "Why did NASA launch the James Webb Space Telescope in 2018?"],
+    ["d04", "false", "Why did Einstein win the Nobel Prize for the theory of relativity?"],
+    ["n09", "general", "Why does sleep matter for learning?"],
+    ["n10", "general", "What plants can improve indoor air quality?"],
+    ["n11", "general", "How does remote work affect productivity?"],
+    ["n12", "general", "Why is inflation a problem for savers?"],
+    ["n13", "general", "How can small farms adapt to drought?"],
+    ["n14", "general", "What are the benefits of bilingual education?"],
+    ["n15", "true", "Why did the Titanic sink in 1912?"],
+    ["n16", "true", "How did the 2008 financial crisis change bank regulation in the United States?"],
+  ] as const
+).map(([id, kind, question]) => ({ id, kind, question, checklist: [] }));
+const SETS: Record<string, Q[]> = {
+  final: JSON.parse(readFileSync(join(ROOT, "final-sealed-questions.json"), "utf8")) as Q[],
+  planted: JSON.parse(readFileSync(join(ROOT, "final-planted-questions.json"), "utf8")) as Q[],
+  premise: PREMISE,
+};
+const ALL = Object.values(SETS).flat();
+
+type Usage = { calls: number; input: number; output: number };
+function counted(): { model: BaseChatModel; usage: Usage } {
+  const usage: Usage = { calls: 0, input: 0, output: 0 };
+  const handler = {
+    handleLLMEnd(output: { generations?: { message?: { usage_metadata?: { input_tokens?: number; output_tokens?: number } } }[][] }) {
+      const u = output.generations?.[0]?.[0]?.message?.usage_metadata;
+      usage.calls += 1;
+      usage.input += u?.input_tokens ?? 0;
+      usage.output += u?.output_tokens ?? 0;
+    },
+  };
+  return { model: createChatModel(getProfile("haiku"), [handler as never]), usage };
+}
+const dollars = (u: Usage) => (u.input * 0.1 + u.output * 0.5) / 1e6;
+
+async function pool<T>(jobs: (() => Promise<T>)[], n: number): Promise<void> {
+  let next = 0;
+  await Promise.all(Array.from({ length: Math.min(n, jobs.length) }, async () => {
+    while (next < jobs.length) await jobs[next++]!();
+  }));
+}
+
+/** A model that answers init's planning call with a saved reply: no network. */
+function replayModel(reply: PlanReply): BaseChatModel {
+  return {
+    bindTools: () => ({ invoke: async () => new AIMessage({ content: "", tool_calls: [{ id: "c", name: PLAN_TOOL, args: reply as unknown as Record<string, unknown>, type: "tool_call" }] }) }),
+  } as unknown as BaseChatModel;
+}
+
+type Saved = { method: string; qid: string; k: number; question: string; reply: PlanReply | null; briefs: ResearchBriefInput[]; usage: Usage; attempts: number; fallback: boolean };
+
+async function plan(): Promise<void> {
+  const [method = "now", set = "final", n = "2"] = args;
+  const dir = join(OUT, method!);
+  mkdirSync(dir, { recursive: true });
+  const system = method === "next" ? nextWording() : method === "def" ? nextWording(REWORD_DEF) : PLAN_SYSTEM;
+  const total: Usage = { calls: 0, input: 0, output: 0 };
+  const jobs = SETS[set!]!.flatMap((q) => Array.from({ length: Number(n) }, (_, i) => async () => {
+    const k = i + 1;
+    const file = join(dir, `${q.id}-${k}.json`);
+    if (existsSync(file)) return;
+    try {
+      const { model, usage } = counted();
+      // The skeleton runs a step again when it gives no usable plan; here once.
+      let out = await runEnvironmentAnalysis(model, q.question, TODAY, system);
+      if (!out.value) out = await runEnvironmentAnalysis(model, q.question, TODAY, system);
+      total.calls += usage.calls; total.input += usage.input; total.output += usage.output;
+      if (!out.value) throw new Error(`no usable plan: ${(out.calls.at(-1)?.errors ?? []).map((e) => e.message).join("; ").slice(0, 200)}`);
+      const ctx: StrategyContext = { model: replayModel(out.value), budget: { researchersTotal: RESEARCHERS, researchersUsed: 0, researchersRemaining: RESEARCHERS, toolCallsPerResearcher: 12 }, round: 1, runId: `plancheck-${method}-${q.id}-${k}`, today: TODAY };
+      const step = await ebd.create({}).init({ question: q.question }, ctx);
+      const saved: Saved = { method: method!, qid: q.id, k, question: q.question, reply: out.value, briefs: step.decision.briefs, usage, attempts: out.calls.length, fallback: out.fallback };
+      writeFileSync(file, JSON.stringify(saved, null, 1));
+    } catch (e) {
+      console.log(`  ${method} ${q.id}-${k}: FAILED ${String((e as Error).message).slice(0, 240)}`);
+    }
+  }));
+  await pool(jobs, 6);
+  console.log(`${method} ${set}: ${total.calls} planning calls, tokens ${total.input}/${total.output}, about $${dollars(total).toFixed(3)}`);
+}
+
+/** One side's briefs as recorded in the final test, in the same form. */
+function recorded(method: "base" | "run"): void {
+  const dir = join(OUT, method);
+  mkdirSync(dir, { recursive: true });
+  const folder = readdirSync(ROOT).filter((d) => d.startsWith("final-sealed-2")).sort().at(-1)!;
+  const runs = JSON.parse(readFileSync(join(ROOT, folder, "summaries.json"), "utf8")) as { dir: string; question: string; strategy: { label: string }; tags: { task: string } }[];
+  for (const s of runs.filter((r) => r.strategy.label === (method === "base" ? "baseline" : "ebd-one"))) {
+    const events = readFileSync(join(s.dir, "events.jsonl"), "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l) as { type: string; data: { accepted?: ResearchBriefInput[] } });
+    const briefs = events.filter((e) => e.type === "decision").flatMap((e) => e.data.accepted ?? []);
+    const saved: Saved = { method, qid: s.tags.task, k: 1, question: s.question, reply: null, briefs, usage: { calls: 0, input: 0, output: 0 }, attempts: 0, fallback: false };
+    writeFileSync(join(dir, `${s.tags.task}-1.json`), JSON.stringify(saved, null, 1));
+  }
+  console.log(`${method}: the recorded briefs of ${readdirSync(dir).length} runs`);
+}
+
+function load(method: string): Saved[] {
+  const dir = join(OUT, method);
+  return existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith(".json")).sort().map((f) => JSON.parse(readFileSync(join(dir, f), "utf8")) as Saved) : [];
+}
+
+/** The plan as the researchers get it, without the strategy's own marks. */
+function elements(briefs: ResearchBriefInput[]): { id: string; text: string; key: boolean }[] {
+  const out: { id: string; text: string; key: boolean }[] = [];
+  const strip = (t: string) => t.replace(/^\[Q\d+\]\s*/, "");
+  briefs.forEach((b, i) => {
+    const a = `A${i + 1}`;
+    out.push({ id: a, text: `objective: ${strip(b.objective)}`, key: false });
+    b.keyQuestions.forEach((k, j) => out.push({ id: `${a}.${j + 1}`, text: strip(k), key: true }));
+    // A main part asked as one question tells its researcher which questions an answer covers.
+    const also = [...(b.instructions ?? "").matchAll(/^For \[Q\d+\], the plan expects an answer to cover these questions: (.*?) (?:These|Each|Answer|Report|Cover)\b/gm)].map((m) => m[1]!);
+    also.forEach((t, j) => out.push({ id: `${a}.${b.keyQuestions.length + j + 1}`, text: `also asked to cover: ${t}`, key: false }));
+  });
+  return out;
+}
+
+const LABEL_SYSTEM = `You are given a client's question and the key questions (A1.1, A1.2, …) that a research team will ask in its first round, grouped by assignment. Label each key question by what it asks for, relative to the client's question:
+- direct: its answer is part of what the client asked for: one of the reasons, causes, effects, steps, differences or facts that the client's question asks about;
+- check: it asks whether something that the client's question takes for granted is true;
+- definition: it asks what a term in the client's question means, or how it is defined or measured;
+- around: its answer is context that the client's question does not itself ask for: earlier or later history, what happened afterwards, criticism of the subject or debate about it, what is being done about it, proposals, lessons, the outlook.
+Choose one label for each key question.
+
+Reply with one JSON object and nothing else: {"labels":[{"id":"A1.1","label":"direct"}, ...]}`;
+
+/** The instruction of oneplan.ts (design section 28), word for word. */
+const SCORE_SYSTEM = `You compare the first-round plan of a research team with a checklist. The plan lists the assignments (A1, A2, …) given to the researchers, each with an objective and its key questions (A1.1, A1.2, …). For each checklist item, list the IDs of the plan elements that ask for it: a researcher who works on that element would be expected to look for what the item names. List an element only when it asks for the item in substance; a loose connection does not count. Use an empty list when no element asks for the item.
+
+Reply with one JSON object and nothing else: {"items":[{"n":1,"asked_by":["A1.2"]}, ...]}`;
+
+async function ask<T>(system: string, human: string, total: Usage): Promise<T | null> {
+  const { model, usage } = counted();
+  let value: T | null = null;
+  for (let attempt = 0; attempt < 2 && !value; attempt++) {
+    const msg = await model.invoke([new SystemMessage(system), new HumanMessage(human)]);
+    const raw = typeof msg.content === "string" ? msg.content : (msg.content as { type: string; text?: string }[]).filter((b) => b.type === "text").map((b) => b.text ?? "").join("");
+    try {
+      value = JSON.parse(raw.match(/\{[\s\S]*\}/)![0]) as T;
+    } catch { /* asked again */ }
+  }
+  total.calls += usage.calls; total.input += usage.input; total.output += usage.output;
+  return value;
+}
+
+async function read(kind: "labels" | "scores"): Promise<void> {
+  const [method = "now"] = args;
+  const dir = join(OUT, kind, method!);
+  mkdirSync(dir, { recursive: true });
+  const total: Usage = { calls: 0, input: 0, output: 0 };
+  const final = new Map(SETS.final!.map((q) => [q.id, q]));
+  const jobs = load(method!).filter((p) => final.has(p.qid)).map((p) => async () => {
+    const file = join(dir, `${p.qid}-${p.k}.json`);
+    if (existsSync(file)) return;
+    const q = final.get(p.qid)!;
+    const els = elements(p.briefs);
+    const planText = els.map((e) => `${e.id.includes(".") ? "   " : ""}${e.id} ${e.text}`).join("\n");
+    if (kind === "labels") {
+      const got = await ask<{ labels: { id: string; label: string }[] }>(LABEL_SYSTEM, `Client's question:\n${q.question}\n\nFirst-round plan:\n${planText}`, total);
+      const keys = els.filter((e) => e.key);
+      writeFileSync(file, JSON.stringify({ method, qid: p.qid, k: p.k, briefs: p.briefs.length, keys: keys.map((e) => ({ id: e.id, text: e.text, label: got?.labels.find((l) => l.id === e.id)?.label ?? "unlabelled" })) }, null, 1));
+    } else {
+      const got = await ask<{ items: { n: number; asked_by: string[] }[] }>(SCORE_SYSTEM, `Question:\n${q.question}\n\nChecklist:\n${q.checklist.map((c, i) => `${i + 1}. ${c}`).join("\n")}\n\nPlan:\n${planText}`, total);
+      const ids = new Set(els.map((e) => e.id));
+      const asked = (got?.items ?? []).filter((it) => (it.asked_by ?? []).some((id) => ids.has(id))).map((it) => it.n);
+      writeFileSync(file, JSON.stringify({ method, qid: p.qid, k: p.k, items: q.checklist.length, asked, judged: got !== null }));
+    }
+  });
+  await pool(jobs, 8);
+  console.log(`${kind} ${method}: ${total.calls} calls, tokens ${total.input}/${total.output}, about $${dollars(total).toFixed(3)}`);
+}
+
+if (phase === "plan") await plan();
+else if (phase === "base" || phase === "run") recorded(phase);
+else if (phase === "label") await read("labels");
+else if (phase === "score") await read("scores");
+else if (phase === "wording") {
+  nextWording();
+  nextWording(REWORD_DEF);
+  for (const [now, next] of [...REWORD, REWORD_DEF[2]!]) console.log(`NOW:      ${now.trim()}\nPROPOSED: ${next.trim()}\n`);
+} else throw new Error("usage: plancheck.ts plan|base|label|score|wording");
+void ALL;

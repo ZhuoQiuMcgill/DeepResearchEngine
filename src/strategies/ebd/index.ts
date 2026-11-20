@@ -6,9 +6,9 @@
  * - observe, once per round: map notes to goals and index evidence lines →
  *   conflict checker → round analyst → settle goals, accept new goals, make goals
  *   moot, set which settle goals are necessary → stop rules → rank → pack briefs.
- * - finalize: material grouped by goal, outline from the synthesis questions,
- *   guidance with only what the notes do not show (section 20): the verdicts on the
- *   question's claims and the critical conflicts.
+ * - finalize: material grouped by goal, the researched main parts as a suggested outline,
+ *   and a short guidance (sections 20 and 34): a claim of the question that the evidence
+ *   contradicts, the critical conflicts, and the lines on the main terms and on sources.
  *
  * The model makes narrow, categorical judgments; code turns them into priorities
  * and stop decisions. Every step records its model calls and code actions in
