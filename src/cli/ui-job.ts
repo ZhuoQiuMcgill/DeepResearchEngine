@@ -1,7 +1,6 @@
 import "dotenv/config";
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
-import { runFixtureReplay, runLiveEvaluation } from "../evaluation/index.js";
 import { shutdownTracing } from "../observability/langfuse.js";
 import { runOne } from "../platform/run.js";
 
@@ -14,11 +13,6 @@ type ResearchJob = {
   profile: string;
   researchers: number;
 };
-type EvaluationJob =
-  | { kind: "evaluation"; mode: "fixture" }
-  | { kind: "evaluation"; mode: "live"; caseId: string; profile: string };
-type Job = ResearchJob | EvaluationJob;
-
 const chunks: Buffer[] = [];
 let bytes = 0;
 for await (const chunk of process.stdin) {
@@ -27,34 +21,24 @@ for await (const chunk of process.stdin) {
   if (bytes > 40_000) throw new Error("Job input is too large.");
   chunks.push(buffer);
 }
-const job = JSON.parse(Buffer.concat(chunks).toString("utf8")) as Job;
+const job = JSON.parse(Buffer.concat(chunks).toString("utf8")) as ResearchJob;
+if (job.kind !== "research") throw new Error("Expected a research job.");
 const outDir = resolve("local", "ui-runs");
 await mkdir(outDir, { recursive: true });
 
 let result: unknown;
 try {
-  if (job.kind === "research") {
-    const summary = await runOne({
-      question: job.question,
-      strategy: { name: job.strategy },
-      profile: job.profile,
-      researchersTotal: job.researchers,
-      maxRounds: 8,
-      concurrency: 4,
-      researcherTimeoutMs: 8 * 60_000,
-      outDir,
-    });
-    result = { runId: summary.runId, status: summary.status };
-  } else if (job.mode === "fixture") {
-    result = runFixtureReplay();
-  } else {
-    result = await runLiveEvaluation({
-      caseId: job.caseId,
-      profile: job.profile,
-      researchersTotal: 4,
-      outDir,
-    });
-  }
+  const summary = await runOne({
+    question: job.question,
+    strategy: { name: job.strategy },
+    profile: job.profile,
+    researchersTotal: job.researchers,
+    maxRounds: 8,
+    concurrency: 4,
+    researcherTimeoutMs: 8 * 60_000,
+    outDir,
+  });
+  result = { runId: summary.runId, status: summary.status };
 } finally {
   await shutdownTracing();
 }

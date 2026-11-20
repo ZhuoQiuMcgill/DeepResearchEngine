@@ -1,6 +1,6 @@
 # INSE 691 EBD DeepResearch presentation and defense
 
-**Core claim:** The browser now runs the course research engine and opens the record it produced. We can show what the strategy decided, what the safeguards did, and how each evaluation result was scored.
+The app runs the course research engine and opens its cited report and run record. Use the app for the research demo. Use the evaluation output and local guardrail audit to answer questions about scoring and safeguards.
 
 ## Twelve-minute presentation
 
@@ -10,12 +10,11 @@ This outline fits a 10–15 minute presentation. For a 30-minute session, use th
 | --- | --- | --- |
 | 0:00–1:00 | Research question and project objective | “We built a research system that answers open-web questions with a cited report. It also gives us a way to study how the orchestration method changes what gets researched.” |
 | 1:00–3:00 | Engine flow and strategy boundary | “Both engine strategies use the same execution framework. EBD revises research goals and addresses conflicts as evidence comes in. Baseline is the comparison strategy on that same framework.” |
-| 3:00–5:00 | Guardrail checkpoints and the audit record | “We reject invalid launch settings, keep instruction-like lines out of downstream prompts, and flag report issues for review. The original researcher notes remain available to the reviewer.” |
-| 5:00–8:00 | Research and run review demo | Submit a question, show the chosen strategy and budget, then open a completed record. Follow one decision to a research brief, its source notes, and the report or review flag. |
-| 8:00–11:00 | Two fixture replays and live comparison design | Show each case's expected outcome and score evidence. Explain which claims the controlled fixture can support and what a live comparison would measure. |
+| 3:00–8:00 | Research and run review demo | Submit a question, show the chosen strategy and budget, then open a completed record. Follow one decision to a research brief and its source notes. |
+| 8:00–11:00 | Report and source review | Open the cited report and trace one claim to its source. If the app flags an issue, explain what the user can verify. |
 | 11:00–12:00 | Scope and interpretation | “The trace tells us what happened on this run. Estimating reliability takes repeated runs across cases, and isolating the value of EBD takes the same-engine comparison.” |
 
-For a 30-minute defense, use minutes 12–17 to trace one Engine decision from brief to notes to report, minutes 17–22 to walk through a criterion and its evidence in each evaluation case, and minutes 22–30 for questions. If a live run is still in progress, use the time to explain its settings or open a saved record.
+For a 30-minute defense, use the remaining time for questions. Have a scored fixture and the local guardrail audit available in case the panel asks for evidence. If an app run is still in progress, explain its settings or open a saved run record.
 
 ## Architecture in one minute
 
@@ -24,15 +23,15 @@ For a 30-minute defense, use minutes 12–17 to trace one Engine decision from b
 3. The EBD strategy models the request as objects, relationships, claims, and goals. It examines new findings for conflicts and reassesses goals each round. Deterministic rules turn these assessments into brief priorities and a stop decision. The Baseline strategy uses simpler planning and follow-up rules on the same engine.
 4. The five EBD model roles are Request Analyst, Researcher, Conflict Checker, Round Analyst, and Writer. Rank and pack, and update and stop, are code rules. A model profile can serve multiple roles. The number of researchers and calls varies per run.
 
-The existing workflow canvas is also available as a local workflow editor. For the official strategy and guardrail demo, use **Engine & Evaluation** and open the record from its Engine run. Source: Group 7 System Architecture v2, §§2–7, 12–13 and 17.
+The existing workflow canvas is also available as a local workflow editor. To run an engine strategy, use **Research engine** and open its completed run record. Source: Group 7 System Architecture v2, §§2–7, 12–13 and 17.
 
 ## Research and review demo
 
-1. Open **Engine & Evaluation → Research**. Enter the question exactly as you want it researched. Select **EBD** or **Baseline**, a configured **Model profile**, and the **Researcher budget**. Click **Start research**.
+1. Open **Research engine**. Enter the question exactly as you want it researched. Select **EBD** or **Baseline**, a configured **Model profile**, and the **Researcher budget**. Click **Start research**.
 2. When the run finishes, click **Review run record**. Show **Overview** and name the strategy, model, budget, and stop reason. “Complete” describes the stop condition. Use the source notes to assess factual support.
 3. Open **Decisions** and pick one brief or decision with a clear reason. On an EBD record that contains them, show the goals and a recorded conflict. Open **Sources & notes** to locate the supporting researcher notes and source URLs.
 4. Open **Report** alongside the supporting record. If the run has a flag, open **Review** and show **Things to check** and the reviewer decision. Quote the evidence or result associated with a flag. An unverified citation or unbound number is a reason to inspect the source.
-5. If the provider is slow or the live call fails, open a previously completed Engine record. Say when it was generated. If you demonstrate fixture replay, label it separately from the recorded live run.
+5. If the provider is slow or the live call fails, open a previously completed Engine record. Say when it was generated. Name the question, strategy and model that produced the saved report.
 
 A useful question from the architecture document is “Why did NASA launch the James Webb Space Telescope in 2018?” In a documented run the report corrected the launch date to December 25, 2021. For the live demo, let the record show what this particular run found. Source: Group 7 System Architecture v2, §§14.2 and 17.
 
@@ -44,7 +43,7 @@ A useful question from the architecture document is “Why did NASA launch the J
 | After a researcher returns | The raw result is recorded. A narrow pattern check replaces direct instruction-like lines with a fixed quarantine notice in the copy passed to the strategy. Synthesis notes are screened again before the Writer receives them. | Matching phase, brief ID and count in the audit; raw result and screened downstream material |
 | After the Writer returns | Rules record findings for an empty report, unknown citation URLs, unbound numbers, and direct instruction-like report lines. These findings annotate the review record while the report text remains available as produced. | Report text, citation diagnostics, and the corresponding guardrail finding |
 
-The audit records rule, phase, action, count, and brief ID where available, with a fixed description. Inspect `guardrails.json` and the summary alongside the run data. Quarantine is a narrow heuristic. It protects the downstream stages from the matched lines. A researcher can still encounter unfamiliar instructions while reading a page, and even an ordinary source can contain errors. Citation checks compare the report against recorded research. Factual verification requires reading the sources.
+The audit records rule, phase, action, count, and brief ID where available, with a fixed description. Inspect `guardrails.json` in the local run folder. The app shows findings that require attention when reviewing the report. Quarantine is a narrow heuristic. It protects the downstream stages from the matched lines. A researcher can still encounter unfamiliar instructions while reading a page, and even an ordinary source can contain errors. Citation checks compare the report against recorded research. Factual verification requires reading the sources.
 
 M06 distinguishes three layers. **Guardrails** check validity or acceptable behavior. **Risk controls** restrict which actions are available, such as researcher-only web access, read-only tools, and bounded runs. **Human approval** is a prior authorization for a consequential action. This system produces a report within read-only authority. Its interface supports post-run human review and records the review separately from automatic findings. Source: M06, slides 5–7, 12–13, 18–19 and 31; Group 7 System Architecture v2, §12.
 
@@ -59,9 +58,9 @@ M06 distinguishes three layers. **Guardrails** check validity or acceptable beha
 
 For free-form answers, state the expected semantic properties and check the relevant evidence. Report the numerator and denominator for any pass rate. Use the trace for behavioral rules, such as zero prohibited actions, and keep model-quality judgments separate from deterministic checks. Repeated trials across cases are needed to assess variability. Source: M07, slides 7, 11–12, 17, 20–25, 28–30, 36–39 and 41–44.
 
-## Evaluation demo and interpretation
+## Evaluation cases and interpretation
 
-In **Engine & Evaluation → Evaluation**, choose **Fixture replay**, select a case, and click **Run evaluation**. Inspect the score table and open each reference response. Explain the input, conditions, expected results, and evidence for any pass or fail.
+From the repository root, run `npm run evaluate` to score the saved reference answers for both fixtures. For a live comparison with configured provider credentials, run `npm run evaluate -- --case dated-conflict --profile haiku`. The live command also accepts `untrusted-report`. Use the per-criterion results to explain why an answer passed or missed each check.
 
 | Case | Fixed inputs | Expected answer |
 | --- | --- | --- |
@@ -88,7 +87,7 @@ The same-engine comparison addresses the strategy contribution. The single-turn 
 The rubric should say what counts as success before viewing results. A clear answer that attaches the wrong source still fails the grounding criterion. Repeat cases before claiming a stable advantage.
 
 **Is a fixture replay an agent run?**  
-The interface re-scores saved outputs. A live run is generated by executing the selected system. Use the fixture to explain grading or reproduce a scenario, and use fresh executions to measure model behavior.
+The fixture command re-scores saved outputs. A live comparison executes both systems to generate new outputs. Use the fixture to explain grading or reproduce a scenario, and use fresh executions to measure model behavior.
 
 **Does a flagged number tell us that it is false?**  
 The check flags a number that cannot be bound to the recorded notes for the citation. Inspect the original source and the context of the statement before making a factual judgment.

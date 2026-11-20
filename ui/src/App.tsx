@@ -760,7 +760,7 @@ export default function App() {
           <div className="run-controls">
             <button onClick={() => setShowOfficialEngine(true)}>
               <FlaskConical size={16} />
-              Engine &amp; evaluation
+              Research engine
             </button>
             <button
               onClick={() => {

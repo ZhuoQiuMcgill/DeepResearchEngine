@@ -4,7 +4,6 @@ import { readdir, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import type { IncomingMessage } from "node:http";
 import type { Connect, Plugin } from "vite";
-import { evaluationCases } from "../../src/evaluation/cases";
 
 const profiles = ["haiku", "luna"] as const;
 const keyForProfile = {
@@ -23,19 +22,15 @@ const recordNames = [
   "events.jsonl",
   "report.md",
   "synthesis.json",
-  "guardrails.json",
 ];
 type Profile = (typeof profiles)[number];
-type JobRequest =
-  | {
-      kind: "research";
-      question: string;
-      strategy: "ebd" | "baseline";
-      profile: Profile;
-      researchers: number;
-    }
-  | { kind: "evaluation"; mode: "fixture" }
-  | { kind: "evaluation"; mode: "live"; caseId: string; profile: Profile };
+type JobRequest = {
+  kind: "research";
+  question: string;
+  strategy: "ebd" | "baseline";
+  profile: Profile;
+  researchers: number;
+};
 type Job = {
   id: string;
   kind: JobRequest["kind"];
@@ -68,29 +63,17 @@ function validate(
   value: Record<string, unknown>,
   liveProfiles: readonly Profile[],
 ): JobRequest {
-  if (value.kind === "evaluation" && value.mode === "fixture")
-    return { kind: "evaluation", mode: "fixture" };
   const profile = value.profile;
-  if (!isProfile(profile) || !liveProfiles.includes(profile))
-    throw new Error(
-      "Configure the selected model profile on the engine server.",
-    );
-  if (value.kind === "evaluation") {
-    if (
-      value.mode !== "live" ||
-      typeof value.caseId !== "string" ||
-      !evaluationCases.some((entry) => entry.id === value.caseId)
-    ) {
-      throw new Error("Choose an evaluation case.");
-    }
-    return { kind: "evaluation", mode: "live", caseId: value.caseId, profile };
-  }
   const { question, researchers, strategy } = value;
   if (
     value.kind !== "research" ||
     (strategy !== "ebd" && strategy !== "baseline")
   )
     throw new Error("Choose EBD or Baseline research.");
+  if (!isProfile(profile) || !liveProfiles.includes(profile))
+    throw new Error(
+      "Configure the selected model profile on the engine server.",
+    );
   if (
     typeof question !== "string" ||
     !question.trim() ||
@@ -139,6 +122,7 @@ async function recordFiles(
       let content = redact(await readFile(path, "utf8"));
       if (name === "summary.json") {
         const summary = JSON.parse(content);
+        delete summary.guardrails;
         if (summary.error)
           summary.error =
             "The engine reported a failure. Inspect the local run folder for diagnostics.";
@@ -244,17 +228,13 @@ export function officialEnginePlugin(
           .split(/\r?\n/)
           .findLast((line) => line.startsWith(frame));
         const result = JSON.parse(redact(line?.slice(frame.length) ?? ""));
-        if (input.kind === "research") {
-          if (
-            typeof result?.runId !== "string" ||
-            !runIdPattern.test(result.runId)
-          )
-            throw new Error();
-          job.runId = result.runId;
-          job.result = { runId: job.runId, runStatus: result.status };
-        } else {
-          job.result = result;
-        }
+        if (
+          typeof result?.runId !== "string" ||
+          !runIdPattern.test(result.runId)
+        )
+          throw new Error();
+        job.runId = result.runId;
+        job.result = { runId: job.runId, runStatus: result.status };
         finish();
       } catch {
         finish("The engine did not return a readable result.");
@@ -282,19 +262,7 @@ export function officialEnginePlugin(
       return send(403, { error: "Origin not allowed." });
     }
     if (req.method === "GET" && path === "/api/engine") {
-      return send(200, {
-        profiles,
-        liveProfiles,
-        cases: evaluationCases.map(({ id, objective, question }) => ({
-          id,
-          title:
-            id === "dated-conflict"
-              ? "Dated evidence conflict"
-              : "Untrusted report instructions",
-          objective,
-          question,
-        })),
-      });
+      return send(200, { profiles, liveProfiles });
     }
     if (req.method === "POST" && path === "/api/engine/jobs") {
       if (

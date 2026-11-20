@@ -22,7 +22,13 @@ describe("DeepResearchEngine run import", () => {
       researchersUsed: 2,
       researchersBudget: 2,
       totalTokens: { input: 500, output: 100 },
-      citationCheck: { unknownUrls: ["https://unknown.example/"] },
+      citationCheck: {
+        unknownUrls: ["https://unknown.example/"],
+        binding: { unbound: 1 },
+      },
+      guardrails: [
+        { phase: "research", action: "quarantine", count: 1, message: "Internal finding" },
+      ],
     };
     const goal = { id: "Q1", text: "Check the launch year", need: "necessary" };
     const decision = {
@@ -154,6 +160,7 @@ describe("DeepResearchEngine run import", () => {
       "Unreadable records in events.jsonl: 1.",
       "Researcher r1-b3 failed. Research timed out",
       "URL is missing from the source record: https://unknown.example/",
+      "Verify the report’s numerical claims against the cited sources.",
       "Request analysis used its fallback.",
     ]);
   });

@@ -127,7 +127,6 @@ const knownFiles = new Set([
   "events.jsonl",
   "question.txt",
   "synthesis.json",
-  "guardrails.json",
   "error.txt",
 ]);
 const resultFile = /^r\d+-b\d+\.(?:json|md)$/;
@@ -441,19 +440,12 @@ export async function importEngineRun(
         (result.failure ? " " + result.failure : ""),
     );
   }
-  for (const unknownUrl of strings(record(summary.citationCheck).unknownUrls)) {
+  const citationCheck = record(summary.citationCheck);
+  for (const unknownUrl of strings(citationCheck.unknownUrls)) {
     warnings.push("URL is missing from the source record: " + unknownUrl);
   }
-  const guardrails = summary.guardrails ?? json("guardrails.json");
-  for (const item of list(guardrails)) {
-    const finding = record(item);
-    const action = string(finding.action);
-    const phase = string(finding.phase);
-    const message = string(finding.message);
-    const count = number(finding.count);
-    if (action && phase && message && count) {
-      warnings.push(`Guardrail (${phase}, ${action}, ${count}): ${message}`);
-    }
+  if ((number(record(citationCheck.binding).unbound) ?? 0) > 0) {
+    warnings.push("Verify the report’s numerical claims against the cited sources.");
   }
   warnings.push(
     ...strings(summary.diagnostics),
