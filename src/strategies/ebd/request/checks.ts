@@ -8,7 +8,7 @@
  * every submission.
  */
 import type { z } from "zod";
-import { AnalysisApiSchema, AnalysisFullSchema, type Analysis, type Issue, type ScanResult } from "./schema.js";
+import { AnalysisApiSchema, AnalysisFullSchema, LIMITS, type Analysis, type Issue, type ScanResult } from "./schema.js";
 import { spanWords, words } from "./scan.js";
 
 const GUIDELINES_FOR: Record<string, string[]> = {
@@ -21,7 +21,7 @@ const GUIDELINES_FOR: Record<string, string[]> = {
   T7: ["G7"],
 };
 const ROUTE_RANK = { search: 0, synthesis: 1 } as const;
-const BACK_REFERENCE = /\bQ\d+\b|\b(?:previous|earlier|first|second|preceding|above) (?:search )?questions?\b|\bthe ones identified\b/i;
+export const BACK_REFERENCE = /\bQ\d+\b|\b(?:previous|earlier|first|second|preceding|above) (?:search )?questions?\b|\bthe ones identified\b/i;
 const DEPENDENCY_ROUTES = { search: ["search"], synthesis: ["search", "synthesis"] } as const;
 
 export type CheckContext = {
@@ -118,6 +118,13 @@ function sameStem(word: string, requestWords: string[]): boolean {
  * calendar words, places, common abbreviations, IDs, and allowed (grounded) names.
  */
 export function newNames(analysis: Analysis, request: string, allow: string[] = []): string[] {
+  const texts = [analysis.restated_request, ...analysis.rom.objects.map((o) => o.meaning)];
+  for (const q of analysis.questions) texts.push(q.text, q.done_when, ...q.source_hints);
+  return namesIn(texts, request, allow);
+}
+
+/** The same test on any texts: the extension step applies it to its events, parts and questions. */
+export function namesIn(texts: string[], request: string, allow: string[] = []): string[] {
   const requestWords = norm(request).match(/[a-z0-9][a-z0-9'-]*/g) ?? [];
   const known = new Set<string>([
     ...requestWords,
@@ -135,8 +142,6 @@ export function newNames(analysis: Analysis, request: string, allow: string[] = 
     ...(request.match(/\b[A-Z][A-Z0-9]+s?\b/g) ?? []).map((t) => t.replace(/S$/, "")),
     ...(request.match(/\b[A-Z][A-Z0-9]+s\b/g) ?? []).map((t) => t.replace(/s$/, "").toUpperCase()),
   ]);
-  const texts = [analysis.restated_request, ...analysis.rom.objects.map((o) => o.meaning)];
-  for (const q of analysis.questions) texts.push(q.text, q.done_when, ...q.source_hints);
   const found = new Set<string>();
   for (const text of texts) {
     const expanded = acronymExpansions(text, acronyms);
@@ -377,6 +382,49 @@ export function counts(a: Analysis) {
   };
 }
 
+/** The wording of a question: the two long texts a length limit applies to. */
+const WORDING = ["text", "done_when"] as const;
+
+/** Cut a text at a limit: after its last full sentence when that keeps most of it, otherwise after its last whole word. */
+export function cutAt(text: string, max: number): string {
+  if (text.length <= max) return text;
+  const head = text.slice(0, max);
+  const sentence = Math.max(head.lastIndexOf(". "), head.lastIndexOf("? "));
+  if (sentence >= max * 0.6) return head.slice(0, sentence + 1);
+  const space = head.lastIndexOf(" ");
+  return (space > 0 ? head.slice(0, space) : head).replace(/[\s,;:(]+$/, "");
+}
+
+/**
+ * The last resort when the request analysis leaves nothing usable a second time in one run (design
+ * section 24.4): the request itself as the one search question and the one synthesis question, so
+ * that every request in scope gets a plan. Nothing is modelled: one object (the request), no assumption, no directive, the
+ * default time frame. The problem extension then builds its events on it as on any analysis.
+ */
+export function minimalAnalysis(question: string, today: string): Analysis {
+  const none = { value: null, basis: "unknown" as const, evidence: [] };
+  const shared = { object_ids: ["O1"], template: "T1" as const, guideline: "G1" as const, need: "necessary" as const, verifies: [], source_hints: [] };
+  return {
+    flags: [],
+    client_directives: [],
+    restated_request: question,
+    status: "ok",
+    status_reason: null,
+    frame: { purpose: none, time_frame: { value: `Latest available evidence as of ${today}.`, basis: "default", evidence: [] }, place: none },
+    rom: {
+      objects: [{ id: "O1", text: question, kind: "other", role: "environment", status: "needs_question", meaning: "The client's request as a whole; the request analysis gave no usable model of it.", readings: [] }],
+      relations: [],
+      central_object_ids: ["O1"],
+    },
+    assumptions: [],
+    questions: [
+      { ...shared, id: "Q1", text: question, route: "search", depends_on: [], done_when: "Answers the request in full: each main part a reader would expect, with its sources." },
+      { ...shared, id: "Q2", text: question, route: "synthesis", depends_on: ["Q1"], done_when: "Answers the request from the evidence, and says what could not be established." },
+    ],
+    grounding: [],
+  };
+}
+
 /**
  * Fallback after the last failed attempt (design section 5.3 step 5): drop the
  * questions, assumptions and grounding entries an error points to, and every
@@ -384,14 +432,23 @@ export function counts(a: Analysis) {
  */
 export function salvage(a: Analysis, errors: Issue[]): Analysis | null {
   if (a.status !== "ok") return errors.length ? null : a;
-  const index = (prefix: string) => {
+  const index = (prefix: string, among: Issue[] = errors) => {
     const re = new RegExp(`^${prefix}\\[(\\d+)\\]`);
-    return new Set(errors.flatMap((e) => {
+    return new Set(among.flatMap((e) => {
       const m = re.exec(e.path);
       return m ? [Number(m[1])] : [];
     }));
   };
-  const badQ = index("questions");
+  // A question whose only fault is the length of its own wording is kept, with that wording cut at
+  // the limit (design section 24.4). Dropping it loses a planned question for a formatting fault, and
+  // when it was the only search question nothing usable was left and the whole step had to run again:
+  // 1 of 102 analyses of new questions on 2026-11-18, and 6 of the 9 fallbacks there were for this limit.
+  const tooLong = (e: Issue): (typeof WORDING)[number] | null => {
+    const m = e.code === "limit" ? /^questions\[(\d+)\]\.(text|done_when)$/.exec(e.path) : null;
+    const field = m ? (m[2] as (typeof WORDING)[number]) : null;
+    return field && (a.questions[Number(m![1])]?.[field].length ?? 0) > LIMITS.long ? field : null;
+  };
+  const badQ = index("questions", errors.filter((e) => !tooLong(e)));
   const badA = index("assumptions");
   const badG = index("grounding");
   const dropped = new Set(a.questions.filter((_, i) => badQ.has(i)).map((q) => q.id));
@@ -405,7 +462,9 @@ export function salvage(a: Analysis, errors: Issue[]): Analysis | null {
     }
   }
   const droppedA = new Set(a.assumptions.filter((_, i) => badA.has(i)).map((x) => x.id));
-  const questions = a.questions.filter((q) => !dropped.has(q.id)).map((q) => ({ ...q, verifies: q.verifies.filter((v) => !droppedA.has(v)) }));
+  const questions = a.questions
+    .filter((q) => !dropped.has(q.id))
+    .map((q) => ({ ...q, text: cutAt(q.text, LIMITS.long), done_when: cutAt(q.done_when, LIMITS.long), verifies: q.verifies.filter((v) => !droppedA.has(v)) }));
   if (!questions.some((q) => q.route === "search")) return null;
   return {
     ...a,

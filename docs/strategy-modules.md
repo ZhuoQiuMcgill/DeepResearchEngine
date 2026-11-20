@@ -160,7 +160,7 @@ labels to compare configurations of the same strategy:
   "strategies": [
     "baseline",
     { "name": "ebd", "label": "ebd" },
-    { "name": "ebd", "label": "ebd-no-conflicts", "options": { "conflicts": false } }
+    { "name": "ebd", "label": "ebd-three-a-round", "options": { "maxPerRound": 3 } }
   ],
   "models": ["haiku", "luna"],
   "repeats": 3,
@@ -177,9 +177,9 @@ its runs record `matchedTo` and `matchedRun` in their tags:
 { "name": "ebd", "label": "ebd-matched", "matchResearchersTo": "baseline" }
 ```
 
-`experiments/compare.json` is the comparison spec (all arms, ceiling 6, the
-matched control and the EBD ablations); `experiments/checklists.md` holds the
-coverage checklists for judging it.
+`experiments/compare.json` is the comparison spec (all arms, ceiling 6 and the
+matched control); `experiments/checklists.md` holds the coverage checklists for
+judging it.
 
 ## Reading the baseline
 

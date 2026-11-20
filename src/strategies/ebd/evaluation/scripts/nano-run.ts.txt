@@ -1,0 +1,42 @@
+/**
+ * A side run on a weaker model (design section 37): the platform's experiment runner with a model
+ * profile that is not in the platform's file. The profile is added to the running process only;
+ * src/config/models.ts is not changed, and the project's models stay Haiku 5.5 and Luna.
+ *
+ * GPT-5 nano (OpenAI, August 2025, knowledge to May 2024; $0.05 and $0.40 a million tokens; web search
+ * $0.01 a call): reasoning effort medium as in the project's profiles, at most 8 tool calls a
+ * researcher, which is what a Haiku researcher uses in practice (8 searches, 0.3 page reads).
+ *
+ *   tsx local/ebd-heldout/nano-run.ts <spec.json> [--dry-run]
+ */
+import "dotenv/config";
+import { readFileSync } from "node:fs";
+import { PROFILES } from "../../src/config/models.js";
+import { shutdownTracing } from "../../src/observability/langfuse.js";
+import { planJobs, resultsTable, runExperiment } from "../../src/platform/experiment.js";
+
+PROFILES.nano = {
+  name: "nano",
+  provider: "openai",
+  model: "gpt-5-nano",
+  maxOutputTokens: 32000,
+  reasoningEffort: "medium",
+  webSearch: { searchContextSize: "medium", maxToolCalls: 8 },
+  toolCallsPerResearcher: 8,
+  pricing: { inputPerM: () => 0.05, outputPerM: () => 0.4, perSearch: 0.01 },
+};
+
+const file = process.argv[2];
+if (!file) throw new Error("usage: nano-run.ts <spec.json> [--dry-run]");
+const spec = JSON.parse(readFileSync(file, "utf8"));
+if (process.argv.includes("--dry-run")) {
+  const { jobs } = planJobs(spec);
+  for (const j of jobs) console.log(`${j.taskId} | ${j.strategy.label} | ${j.model} | #${j.repeat}`);
+  console.log(`${jobs.length} run(s)`);
+  process.exit(0);
+}
+const result = await runExperiment(spec, (l) => console.error(l));
+console.log(resultsTable(result.summaries));
+console.log(`Records: ${result.dir}`);
+await shutdownTracing();
+process.exit(result.summaries.every((s) => s.status === "ok") ? 0 : 1);

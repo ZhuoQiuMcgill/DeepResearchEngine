@@ -1,0 +1,188 @@
+/**
+ * Judge pass of the final test (design section 29.6): the baseline against the one EBD approach
+ * ("ebd-one") on the 12 sealed real queries (experiment final-sealed) and the 4 questions with a
+ * planted problem (experiment final-planted). Same judge (Claude Opus 5.5, effort medium) and the same
+ * two instructions, word for word, as local/ebd-heldout/judge.ts; the script stops if they differ.
+ *
+ * Calls: checklist coverage of every report (32; for a planted question the checklist is its one
+ * planted point), and the two reports of each real query against each other in both orders (24).
+ * Reports are blind (A and B only). Each result is saved when it arrives, and a second start asks
+ * only for what is missing, so a failed call is not paid for twice.
+ *
+ *   npx tsx local/ebd-heldout/judge-final.ts --plan    list the reports and the calls; no model call
+ *   npx tsx local/ebd-heldout/judge-final.ts           the pass
+ *
+ * For a trial without cost on the saved runs of 2026-11-18 (canned replies, nothing written to the
+ * results of the test):
+ *   npx tsx local/ebd-heldout/judge-final.ts --dry --folders sealed-new-,sealed-baseline- --new ebd-new --questions questions.json:sealed --out judge-final-dry.json
+ */
+import "dotenv/config";
+import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { ChatAnthropic } from "@langchain/anthropic";
+import { HumanMessage, SystemMessage } from "@langchain/core/messages";
+import { shutdownTracing, startTracing } from "../../src/observability/langfuse.js";
+
+const OUT = "local/ebd-heldout";
+const JUDGE_MODEL = "claude-opus-5-5";
+const flag = (name: string, fallback: string) => {
+  const i = process.argv.indexOf(`--${name}`);
+  return i > 0 ? (process.argv[i + 1] ?? fallback) : fallback;
+};
+const DRY = process.argv.includes("--dry");
+const PLAN = process.argv.includes("--plan");
+const NEW = flag("new", "ebd-one");
+const BASE = flag("base", "baseline");
+const FOLDERS = flag("folders", "final-sealed-,final-planted-").split(",");
+const QUESTION_FILES = flag("questions", "final-sealed-questions.json,final-planted-questions.json").split(",");
+const RESULTS = join(OUT, flag("out", "judge-final-results.json"));
+
+type Q = { id: string; origin: string; set: string; type: string; question: string; checklist: string[] };
+const QUESTIONS: Q[] = QUESTION_FILES.flatMap((entry) => {
+  const [file, set] = entry.split(":");
+  const path = join(OUT, file!);
+  if (!existsSync(path)) return [];
+  return (JSON.parse(readFileSync(path, "utf8")) as Q[]).filter((q) => !set || q.set === set);
+});
+
+type Summary = { dir: string; question: string; status: string; strategy: { label: string }; tags: { task: string } };
+/** The newest experiment folder for each prefix. */
+const SUMMARIES: Summary[] = FOLDERS.flatMap((prefix) => {
+  const dirs = readdirSync(OUT).filter((d) => d.startsWith(prefix) && existsSync(join(OUT, d, "summaries.json"))).sort();
+  return dirs.length ? (JSON.parse(readFileSync(join(OUT, dirs.at(-1)!, "summaries.json"), "utf8")) as Summary[]) : [];
+});
+const runOf = (task: string, arm: string) => SUMMARIES.find((s) => s.tags.task === task && s.strategy.label === arm && s.status === "ok" && existsSync(join(s.dir, "report.md")));
+const has = (task: string, arm: string) => Boolean(runOf(task, arm));
+const report = (task: string, arm: string) => readFileSync(join(runOf(task, arm)!.dir, "report.md"), "utf8");
+const checklistText = (q: Q) => q.checklist.map((c, i) => `${i + 1}. ${c}`).join("\n");
+
+/** The two instructions of local/ebd-heldout/judge.ts, word for word (checked below). */
+const COVERAGE_SYSTEM = `You check a research report against a checklist of what a full answer contains. The checklist was written from the question before the report existed. Judge only the report's text; you cannot open its links.
+
+For each item:
+- score 1: the report states it and cites a source for it;
+- score 0.5: the report states it without a citation, or covers it only in part;
+- score 0: the report does not cover it.
+- quote: up to 25 words copied exactly from the report that cover the item; an empty string for score 0.
+- wrong: true if what the report says on this item looks factually wrong or contradicts itself; otherwise false.
+
+Reply with one JSON object and nothing else: {"items":[{"n":1,"score":1,"quote":"...","wrong":false}, ...]}`;
+
+const PAIR_SYSTEM = `You compare two research reports, A and B, that answer the same question. You do not know how they were produced. Judge only their text; you cannot open their links.
+
+Criteria:
+- coverage: which covers more of what the question needs (the checklist lists the main items);
+- support: which states its claims more carefully: key facts, numbers and dates carry citations, nothing is asserted beyond its sources, and uncertainty is stated where it exists;
+- conflicts: which better handles disagreements between sources and any false assumption in the question;
+- usefulness: which answers the question more directly and is easier to act on, at a length that suits the question.
+
+For each criterion answer "A", "B" or "tie"; use "tie" when the difference is small. Do not prefer a report for being longer. Then give an overall verdict ("A", "B" or "tie") and at most two sentences of reasons.
+
+Reply with one JSON object and nothing else: {"coverage":"A","support":"B","conflicts":"tie","usefulness":"A","overall":"A","reason":"..."}`;
+
+const earlier = readFileSync(join(OUT, "judge.ts"), "utf8");
+if (!earlier.includes(COVERAGE_SYSTEM) || !earlier.includes(PAIR_SYSTEM)) throw new Error("the judge's instructions differ from those of judge.ts");
+
+type Job = { key: string; kind: "coverage" | "pair"; q: Q; arm?: string; first?: string; second?: string };
+const jobs: Job[] = [
+  ...QUESTIONS.flatMap((q) => [NEW, BASE].filter((arm) => has(q.id, arm)).map((arm): Job => ({ key: `coverage|${q.id}|${arm}`, kind: "coverage", q, arm }))),
+  ...QUESTIONS.filter((q) => q.origin !== "planted" && has(q.id, NEW) && has(q.id, BASE)).flatMap((q): Job[] => [
+    { key: `pair|${q.id}|${BASE} as A`, kind: "pair", q, first: BASE, second: NEW },
+    { key: `pair|${q.id}|${NEW} as A`, kind: "pair", q, first: NEW, second: BASE },
+  ]),
+];
+
+type Result = { key: string; kind: string; task: string; origin: string; error?: string; [k: string]: unknown };
+type Saved = { judge: string; effort: string; arms: { new: string; base: string }; usage: { input: number; output: number }; results: Result[] };
+const saved: Saved = existsSync(RESULTS) ? (JSON.parse(readFileSync(RESULTS, "utf8")) as Saved) : { judge: JUDGE_MODEL, effort: "medium", arms: { new: NEW, base: BASE }, usage: { input: 0, output: 0 }, results: [] };
+const done = new Set(saved.results.filter((r) => !r.error).map((r) => r.key));
+const todo = jobs.filter((j) => !done.has(j.key));
+
+if (PLAN) {
+  for (const q of QUESTIONS) console.log(`${q.id} ${[NEW, BASE].map((arm) => (has(q.id, arm) ? `${arm} ${report(q.id, arm).split(/\s+/).length} words` : `${arm} -`)).join(" | ")}  ${q.origin === "planted" ? "[planted] " : ""}${q.question.slice(0, 70)}`);
+  const words = jobs.reduce((n, j) => n + (j.kind === "coverage" ? report(j.q.id, j.arm!).split(/\s+/).length : report(j.q.id, j.first!).split(/\s+/).length + report(j.q.id, j.second!).split(/\s+/).length), 0);
+  console.log(`questions ${QUESTIONS.length}; runs found ${SUMMARIES.length}; calls: ${jobs.filter((j) => j.kind === "coverage").length} coverage + ${jobs.filter((j) => j.kind === "pair").length} pairs; already saved ${jobs.length - todo.length}; report words to read ${words}`);
+  process.exit(0);
+}
+
+const judge = DRY ? null : new ChatAnthropic({ model: JUDGE_MODEL, maxTokens: 20000, outputConfig: { effort: "medium" }, maxRetries: 2 });
+/** Since 2026-11-20 the judge's calls are traced to the self-hosted Langfuse when its keys are set. The judgments do not depend on it. */
+const tracing = DRY ? null : await startTracing({ runId: `judge-${flag("out", "final").replace(/\.json$/, "")}-${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 12)}`, tags: ["judge"] });
+
+function textOf(content: unknown): string {
+  if (typeof content === "string") return content;
+  return (content as { type: string; text?: string }[]).filter((b) => b.type === "text").map((b) => b.text ?? "").join("");
+}
+
+/** Without cost: a canned reply of the right shape, so the whole pass can be tried on saved runs. */
+function canned(system: string, human: string): string {
+  if (system === PAIR_SYSTEM) return JSON.stringify({ coverage: "A", support: "tie", conflicts: "B", usefulness: "A", overall: human.length % 2 ? "A" : "B", reason: "dry run" });
+  const n = (human.match(/^\d+\. /gm) ?? []).length;
+  return JSON.stringify({ items: Array.from({ length: n }, (_, i) => ({ n: i + 1, score: i % 3 === 0 ? 1 : 0.5, quote: "", wrong: false })) });
+}
+
+async function ask(system: string, human: string): Promise<{ json: any; raw: string }> {
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    let raw: string;
+    if (judge) {
+      const msg = await judge.invoke([new SystemMessage(system), new HumanMessage(human)], tracing?.handler ? { callbacks: [tracing.handler] } : {});
+      const u = (msg as { usage_metadata?: { input_tokens?: number; output_tokens?: number } }).usage_metadata;
+      saved.usage.input += u?.input_tokens ?? 0;
+      saved.usage.output += u?.output_tokens ?? 0;
+      raw = textOf(msg.content);
+    } else {
+      raw = canned(system, human);
+    }
+    const m = raw.match(/\{[\s\S]*\}/);
+    if (m) {
+      try {
+        return { json: JSON.parse(m[0]), raw };
+      } catch {
+        // retry below
+      }
+    }
+    if (attempt === 2) throw new Error(`no JSON in reply: ${raw.slice(0, 300)}`);
+  }
+  throw new Error("unreachable");
+}
+
+async function runJob(j: Job): Promise<Result> {
+  const base = { key: j.key, kind: j.kind, task: j.q.id, origin: j.q.origin };
+  if (j.kind === "coverage") {
+    const human = `Question:\n${j.q.question}\n\nChecklist:\n${checklistText(j.q)}\n\n<report>\n${report(j.q.id, j.arm!)}\n</report>`;
+    const { json, raw } = await ask(COVERAGE_SYSTEM, human);
+    if (!Array.isArray(json.items) || json.items.length !== j.q.checklist.length) throw new Error(`${json.items?.length ?? "no"} items for a checklist of ${j.q.checklist.length}`);
+    return { ...base, arm: j.arm, items: json.items, raw };
+  }
+  const human = `Question:\n${j.q.question}\n\nChecklist of the main items:\n${checklistText(j.q)}\n\n<report_A>\n${report(j.q.id, j.first!)}\n</report_A>\n\n<report_B>\n${report(j.q.id, j.second!)}\n</report_B>`;
+  const { json, raw } = await ask(PAIR_SYSTEM, human);
+  const who = (v: string) => (v === "A" ? j.first! : v === "B" ? j.second! : "tie");
+  const verdict = Object.fromEntries(["coverage", "support", "conflicts", "usefulness", "overall"].map((k) => [k, who(String(json[k]))]));
+  return { ...base, order: `${j.first} as A`, verdict, reason: json.reason, raw };
+}
+
+const started = Date.now();
+let next = 0;
+let failed = 0;
+const save = () => writeFileSync(RESULTS, JSON.stringify(saved, null, 2), "utf8");
+await Promise.all(
+  Array.from({ length: Math.min(4, todo.length) }, async () => {
+    while (next < todo.length) {
+      const j = todo[next++]!;
+      let result: Result;
+      try {
+        result = await runJob(j);
+      } catch (e) {
+        failed += 1;
+        result = { key: j.key, kind: j.kind, task: j.q.id, origin: j.q.origin, error: String((e as Error).message).slice(0, 400) };
+      }
+      saved.results = [...saved.results.filter((r) => r.key !== j.key), result];
+      save();
+    }
+  }),
+);
+save();
+await tracing?.flush().catch(() => {});
+await shutdownTracing();
+console.log(`wrote ${RESULTS}; calls now ${todo.length} (${failed} failed), saved before ${jobs.length - todo.length}; tokens in ${saved.usage.input}, out ${saved.usage.output}; ${Math.round((Date.now() - started) / 1000)} s${DRY ? "; DRY RUN, canned replies" : ""}`);
+if (failed) process.exit(1);

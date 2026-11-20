@@ -1,0 +1,96 @@
+1. WHAT THE KEY QUESTIONS ASK FOR (12 questions of the final test, three researchers)
+                           plans  key questions  direct  check  definition  around  | briefs mostly direct (of 3)  | plans with a definition question
+baseline (recorded)          12         15.8     66%     4%        4%      27%  |       2.50                   | 5 of 12
+EBD, present wording         24         14.0     56%     9%        1%      33%  |       1.92                   | 5 of 24
+EBD, proposed wording        24         14.1     61%     5%        4%      30%  |       2.04                   | 8 of 24
+
+   by question: share of key questions labelled direct (base | now | next), and the test's result
+   s01   88% |  72% |  83%   undecided     how changes to funding have impacted the nhs
+   s02   53% |  46% |  47%   baseline won  why income inequality is good for the economy
+   s03   58% |  32% |  63%   baseline won  why do engineering students drop out
+   s04   73% |  72% |  64%   EBD won       how did america change ww1
+   s05   55% |  61% |  67%   undecided     why do people oppose affirmative action
+   s06   56% |  40% |  48%   EBD won       how structured literacy instruction differs from typical liter
+   s07   73% |  41% |  52%   baseline won  how did darwin explain the differences in traits?
+   s08   47% |  48% |  60%   baseline won  why are there no laws yet to protect people from sociopaths
+   s09   90% |  80% |  81%   EBD won       how does economics play a role in african american culture
+   s10   36% |  39% |  40%   baseline won  why is eugenics considered unethical
+   s11   71% |  81% |  70%   EBD won       how did early american colonies contribute to the growth of ca
+   s12   80% |  68% |  61%   undecided     why do people declare bankruptcy
+
+2. CHECKLIST ITEMS THE PLAN ASKS A RESEARCHER ABOUT (12 questions)
+   baseline (recorded)        all items  79%   definition items  57% (14)   other items  87% (39)
+   EBD, present wording       all items  75%   definition items  50% (28)   other items  85% (78)
+   EBD, proposed wording      all items  82%   definition items  54% (28)   other items  92% (78)
+
+3. THE CLAIMS OF THE 12 QUESTIONS: checked or taken as given
+   s01 how changes to funding have impacted the nhs
+        now  #1: [check] Funding for the NHS has changed in recent years. [check] Those funding changes have had an impact on the NHS.
+        now  #2: [check] Funding for the NHS has changed in recent years. [given] Changes to NHS funding have had an impact on the NHS.
+        next #1: [given] Changes to funding have had an impact on the NHS.
+        next #2: [check] Funding for the NHS has changed in recent years. [given] Changes to NHS funding have affected the NHS in some way.
+   s02 why income inequality is good for the economy
+        now  #1: [check] Income inequality is good for the economy.
+        now  #2: [check] Income inequality is good for the economy.
+        next #1: [check] Income inequality is good for the economy.
+        next #2: [check] Income inequality is good for the economy.
+   s03 why do engineering students drop out
+        now  #1: [given] Engineering students drop out of their degree programmes.
+        now  #2: [given] Engineering students drop out of their degree programmes before graduating.
+        next #1: [given] Engineering students drop out of their studies.
+        next #2: [given] Engineering students drop out of their programmes.
+   s04 how did america change ww1
+        now  #1: [check] The United States changed the course or outcome of the First World War.
+        now  #2: [given] The United States changed the course of World War I. [check] The United States took part in World War I, entering it in 1917.
+        next #1: [given] The United States changed the First World War in some way.
+        next #2: [given] The United States changed the First World War in some way.
+   s05 why do people oppose affirmative action
+        now  #1: [given] Many people oppose affirmative action.
+        now  #2: [given] Some people oppose affirmative action.
+        next #1: [given] People oppose affirmative action.
+        next #2: [given] People oppose affirmative action.
+   s06 how structured literacy instruction differs from typical literacy practices
+        now  #1: [check] Typical literacy practices differ from structured literacy instruction in what they teach and how they teach it. [check] There is a common set of typical literacy practices that most schools use. [check] Structured literac
+        now  #2: [given] Structured literacy instruction differs from typical literacy practices. [check] Most schools use literacy practices that structured literacy instruction departs from.
+        next #1: [given] Structured literacy instruction differs in some way from typical literacy practices.
+        next #2: [given] Structured literacy instruction differs from typical literacy practices in some way. [check] There is a typical set of literacy practices against which structured literacy is compared.
+   s07 how did darwin explain the differences in traits?
+        now  #1: [check] Charles Darwin offered an explanation for why individuals differ in their traits. [given] Individuals of the same kind differ in their traits.
+        now  #2: [check] Charles Darwin explained the differences in traits among organisms. [given] Traits differ among individuals and species.
+        next #1: [check] Darwin offered an explanation for differences in traits among organisms. [given] Differences in traits among organisms exist and need explaining.
+        next #2: [check] Charles Darwin explained the differences in traits among organisms.
+   s08 why are there no laws yet to protect people from sociopaths
+        now  #1: [check] There are no laws yet to protect people from sociopaths.
+        now  #2: [check] There are no laws yet to protect people from sociopaths. [given] People need legal protection from harm caused by people with sociopathic traits.
+        next #1: [check] There are no laws yet to protect people from sociopaths. [given] Sociopaths can harm people, so people need protection from them.
+        next #2: [check] There are no laws yet to protect people from sociopaths. [given] Sociopaths can harm other people.
+   s09 how does economics play a role in african american culture
+        now  #1: [given] Economics plays a role in African American culture.
+        now  #2: [given] Economics plays a role in African American culture.
+        next #1: [given] Economics plays a role in African American culture.
+        next #2: [given] Economics plays a role in African American culture. [given] African American culture is a distinct culture that can be studied.
+   s10 why is eugenics considered unethical
+        now  #1: [check] Eugenics is considered unethical.
+        now  #2: [check] Eugenics is considered unethical by ethicists and other authorities. [given] There are identifiable reasons that support judging eugenics unethical.
+        next #1: [check] Eugenics is considered unethical.
+        next #2: [check] Eugenics is considered unethical.
+   s11 how did early american colonies contribute to the growth of capitalism?
+        now  #1: [given] Early American colonies contributed to the growth of capitalism.
+        now  #2: [given] The early American colonies contributed to the growth of capitalism.
+        next #1: [given] The early American colonies contributed to the growth of capitalism in some way.
+        next #2: [given] The early American colonies contributed to the growth of capitalism.
+   s12 why do people declare bankruptcy
+        now  #1: [given] People declare bankruptcy because they cannot pay their debts.
+        now  #2: [given] People declare bankruptcy.
+        next #1: [given] People declare bankruptcy.
+        next #2: [given] People declare bankruptcy.
+   EBD, present wording: a claim is checked in 14 of 24 plans; a brief carries the check question in 14
+   EBD, proposed wording: a claim is checked in 10 of 24 plans; a brief carries the check question in 10
+
+4. QUESTIONS WRITTEN WITH A FALSE OR A TRUE SPECIFIC FACT, OR NONE (premise set and planted set)
+   EBD, present wording: false specific fact checked in 24 of 24 plans; true specific fact checked in 4 of 4; general question with nothing checked in 12 of 12
+   EBD, proposed wording: false specific fact checked in 24 of 24 plans; true specific fact checked in 4 of 4; general question with nothing checked in 12 of 12
+
+5. SIZE OF THE PLANS (12 questions)
+   EBD, present wording: parts 3.75 (necessary 1.92); key questions sent with three researchers 14.0; planning calls 1.00 a plan; fallback plans 0; $0.0025 a plan
+   EBD, proposed wording: parts 3.83 (necessary 2.17); key questions sent with three researchers 14.1; planning calls 1.00 a plan; fallback plans 0; $0.0028 a plan

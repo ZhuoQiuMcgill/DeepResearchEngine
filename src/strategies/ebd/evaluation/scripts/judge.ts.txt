@@ -1,0 +1,138 @@
+/**
+ * Judge pass on the sealed held-out questions of 2026-11-18: EBD with the five options ("ebd-new"),
+ * the baseline, and EBD with its default options ("ebd-default", the six real queries only). Same
+ * judge (Claude Opus 5.5, effort medium) and the same two instructions as local/ebd-parts/judge.ts,
+ * so the result can be set beside the pass on the development questions of the same day.
+ *
+ * One pass: checklist coverage of every report (30 calls), and each new EBD report against the
+ * baseline report of the same question in both orders (24 calls). Reports are blind (A and B only).
+ * The checklist of a real query is the dataset's own list of sub-questions; the checklist of a
+ * designed question was written from the question before any run.
+ *
+ *   npx tsx local/ebd-heldout/judge.ts            the whole pass
+ *   npx tsx local/ebd-heldout/judge.ts --plan     list the reports and calls, no model call
+ */
+import "dotenv/config";
+import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { ChatAnthropic } from "@langchain/anthropic";
+import { HumanMessage, SystemMessage } from "@langchain/core/messages";
+
+const OUT = "local/ebd-heldout";
+const JUDGE_MODEL = "claude-opus-5-5";
+type Q = { id: string; origin: string; set: string; type: string; question: string; checklist: string[] };
+const QUESTIONS = (JSON.parse(readFileSync(join(OUT, "questions.json"), "utf8")) as Q[]).filter((q) => q.set === "sealed");
+const NEW = "ebd-new";
+const BASE = "baseline";
+const OLD = "ebd-default";
+
+type Summary = { dir: string; question: string; status: string; strategy: { label: string }; tags: { task: string } };
+function latest(prefix: string): Summary[] {
+  const dirs = readdirSync(OUT).filter((d) => d.startsWith(prefix) && existsSync(join(OUT, d, "summaries.json"))).sort();
+  return dirs.length ? (JSON.parse(readFileSync(join(OUT, dirs.at(-1)!, "summaries.json"), "utf8")) as Summary[]) : [];
+}
+const ARMS: Record<string, Summary[]> = { [NEW]: latest("sealed-new-"), [BASE]: latest("sealed-baseline-"), [OLD]: latest("sealed-default-") };
+const has = (task: string, arm: string) => ARMS[arm]!.some((s) => s.tags.task === task && s.status === "ok");
+const run = (task: string, arm: string) => {
+  const r = ARMS[arm]!.find((s) => s.tags.task === task && s.status === "ok");
+  if (!r) throw new Error(`no run for ${task} / ${arm}`);
+  return r;
+};
+const report = (task: string, arm: string) => readFileSync(join(run(task, arm).dir, "report.md"), "utf8");
+const checklistText = (q: Q) => q.checklist.map((c, i) => `${i + 1}. ${c}`).join("\n");
+
+/** The two instructions of local/ebd-parts/judge.ts, word for word. */
+const COVERAGE_SYSTEM = `You check a research report against a checklist of what a full answer contains. The checklist was written from the question before the report existed. Judge only the report's text; you cannot open its links.
+
+For each item:
+- score 1: the report states it and cites a source for it;
+- score 0.5: the report states it without a citation, or covers it only in part;
+- score 0: the report does not cover it.
+- quote: up to 25 words copied exactly from the report that cover the item; an empty string for score 0.
+- wrong: true if what the report says on this item looks factually wrong or contradicts itself; otherwise false.
+
+Reply with one JSON object and nothing else: {"items":[{"n":1,"score":1,"quote":"...","wrong":false}, ...]}`;
+
+const PAIR_SYSTEM = `You compare two research reports, A and B, that answer the same question. You do not know how they were produced. Judge only their text; you cannot open their links.
+
+Criteria:
+- coverage: which covers more of what the question needs (the checklist lists the main items);
+- support: which states its claims more carefully: key facts, numbers and dates carry citations, nothing is asserted beyond its sources, and uncertainty is stated where it exists;
+- conflicts: which better handles disagreements between sources and any false assumption in the question;
+- usefulness: which answers the question more directly and is easier to act on, at a length that suits the question.
+
+For each criterion answer "A", "B" or "tie"; use "tie" when the difference is small. Do not prefer a report for being longer. Then give an overall verdict ("A", "B" or "tie") and at most two sentences of reasons.
+
+Reply with one JSON object and nothing else: {"coverage":"A","support":"B","conflicts":"tie","usefulness":"A","overall":"A","reason":"..."}`;
+
+const coverageJobs = QUESTIONS.flatMap((q) => [NEW, BASE, OLD].filter((arm) => has(q.id, arm)).map((arm) => ({ q, arm })));
+const pairJobs = QUESTIONS.filter((q) => has(q.id, NEW) && has(q.id, BASE)).flatMap((q) => [{ q, first: BASE, second: NEW }, { q, first: NEW, second: BASE }]);
+
+if (process.argv.includes("--plan")) {
+  for (const q of QUESTIONS) console.log(`${q.id} ${[NEW, BASE, OLD].map((arm) => (has(q.id, arm) ? `${arm} ${report(q.id, arm).split(/\s+/).length} words` : `${arm} -`)).join(" | ")}  ${q.question.slice(0, 60)}`);
+  console.log(`calls: ${coverageJobs.length} coverage + ${pairJobs.length} pairs`);
+  process.exit(0);
+}
+
+const judge = new ChatAnthropic({ model: JUDGE_MODEL, maxTokens: 20000, outputConfig: { effort: "medium" }, maxRetries: 2 });
+const usage = { input: 0, output: 0 };
+
+function textOf(content: unknown): string {
+  if (typeof content === "string") return content;
+  return (content as { type: string; text?: string }[]).filter((b) => b.type === "text").map((b) => b.text ?? "").join("");
+}
+
+async function ask(system: string, human: string): Promise<{ json: any; raw: string }> {
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const msg = await judge.invoke([new SystemMessage(system), new HumanMessage(human)]);
+    const u = (msg as { usage_metadata?: { input_tokens?: number; output_tokens?: number } }).usage_metadata;
+    usage.input += u?.input_tokens ?? 0;
+    usage.output += u?.output_tokens ?? 0;
+    const raw = textOf(msg.content);
+    const m = raw.match(/\{[\s\S]*\}/);
+    if (m) {
+      try {
+        return { json: JSON.parse(m[0]), raw };
+      } catch {
+        // retry below
+      }
+    }
+    if (attempt === 2) throw new Error(`no JSON in reply: ${raw.slice(0, 300)}`);
+  }
+  throw new Error("unreachable");
+}
+
+async function coverage(q: Q, arm: string) {
+  const human = `Question:\n${q.question}\n\nChecklist:\n${checklistText(q)}\n\n<report>\n${report(q.id, arm)}\n</report>`;
+  const { json, raw } = await ask(COVERAGE_SYSTEM, human);
+  return { kind: "coverage", task: q.id, origin: q.origin, arm, items: json.items, raw };
+}
+
+async function pair(q: Q, first: string, second: string) {
+  const human = `Question:\n${q.question}\n\nChecklist of the main items:\n${checklistText(q)}\n\n<report_A>\n${report(q.id, first)}\n</report_A>\n\n<report_B>\n${report(q.id, second)}\n</report_B>`;
+  const { json, raw } = await ask(PAIR_SYSTEM, human);
+  const who = (v: string) => (v === "A" ? first : v === "B" ? second : "tie");
+  const verdict = Object.fromEntries(["coverage", "support", "conflicts", "usefulness", "overall"].map((k) => [k, who(String(json[k]))]));
+  return { kind: "pair", task: q.id, origin: q.origin, order: `${first} as A`, verdict, reason: json.reason, raw };
+}
+
+async function pool<T>(jobs: (() => Promise<T>)[], n: number): Promise<T[]> {
+  const out: T[] = new Array(jobs.length);
+  let next = 0;
+  await Promise.all(
+    Array.from({ length: n }, async () => {
+      while (next < jobs.length) {
+        const i = next++;
+        out[i] = await jobs[i]!();
+      }
+    }),
+  );
+  return out;
+}
+
+const jobs: (() => Promise<unknown>)[] = [...coverageJobs.map((j) => () => coverage(j.q, j.arm)), ...pairJobs.map((j) => () => pair(j.q, j.first, j.second))];
+const started = Date.now();
+const results = await pool(jobs, 4);
+const file = join(OUT, "judge-results.json");
+writeFileSync(file, JSON.stringify({ judge: JUDGE_MODEL, effort: "medium", questions: QUESTIONS, usage, seconds: Math.round((Date.now() - started) / 1000), results }, null, 2), "utf8");
+console.log(`wrote ${file}; calls ${jobs.length}; tokens in ${usage.input}, out ${usage.output}; ${Math.round((Date.now() - started) / 1000)} s`);

@@ -1,0 +1,71 @@
+12 runs
+         side      status  researchers  searches  pages  tokens in/out        cost    seconds  report words  planted point
+   p01   baseline  ok      3/3           13       11      140986/ 45061   $0.265     153      585         1
+   p01   ebd       ok      3/3           13        4      128651/ 71794   $0.205     374     1010         1
+   p02   baseline  ok      3/3           19        5      129963/ 51840   $0.267     200     1985         1
+   p02   ebd       ok      3/3           15        9      158740/ 63658   $0.273     275     1298         1
+   pp01  baseline  ok      3/3           18        1      109594/ 45656   $0.214     210     1262         0
+   pp01  ebd       ok      3/3           16        3      149648/ 69943   $0.225     381     1273         1
+   pp02  baseline  ok      3/3           13        8      111837/ 52051   $0.236     178     1506         0.5
+   pp02  ebd       ok      3/3            8        1      110101/ 66468   $0.122     303     2197         1
+   pp03  baseline  ok      3/3           10       10       98301/ 37117   $0.220     137      970         1
+   pp03  ebd       ok      3/3           12        5      130270/ 70436   $0.205     311     1399         1
+   pp04  baseline  ok      3/3            6       18      128205/ 45992   $0.265     172     2070         1
+   pp04  ebd       ok      3/3            4       13      114143/ 67324   $0.203     312     1064         1
+   cost: baseline $1.47, EBD $1.23, together $2.70
+
+Planted point on the 6 questions scored on both sides: in full baseline 4, EBD 6; in part 1 and 0; missing 1 and 0
+   pp01 baseline  0: 
+   pp01 ebd       1: The strongest evidence locates the Wright brothers’ first powered flight on December 17, 1903 at Kill Devil Hills near Kitty Hawk, North Carolina
+   pp02 baseline  0.5: Readers should note that the focus here is on Galileo’s enhancements to the telescope, his initial observations, and the ensuing changes in astronomical practice—not on t
+   pp02 ebd       1: The earliest documentary record of the spyglass is Hans Lippershey’s 1608 activity and a recognized patent discussion in The Hague, documenting the instrument’s origin in
+   pp03 baseline  1: The destruction of Pompeii is anchored to the AD 79 eruption of Mount Vesuvius, not Mount Etna.
+   pp03 ebd       1: Pompeii was destroyed by the AD 79 eruption of Mount Vesuvius. Contemporary eyewitness accounts and modern dating place the destruction with Vesuvius in AD 79
+   pp04 baseline  1: The sequence culminates in the orbiter's breakup around 73 seconds into flight.
+   pp04 ebd       1: **Breakup occurred about 73 seconds after liftoff during ascent, not during re-entry.**
+   p01 baseline  1: The Chernobyl disaster occurred in 1986, not 1989
+   p01 ebd       1: it occurred on 26 April 1986 at Unit 4 of the Chernobyl Nuclear Power Plant in the Ukrainian SSR, Soviet Union
+   p02 baseline  1: Insulin’s discovery and its early clinical use arose from a four-person Toronto team in 1921–1923, not Alexander Fleming.
+   p02 ebd       1: Alexander Fleming did not discover insulin; the discovery and early clinical use are widely attributed to Banting, Best, Collip, and Macleod
+
+What each side's own steps recorded
+   p01 baseline: briefs [3, 0]; planner's notes: The user wants the causes and contributing factors of the Chernobyl disaster; I will address the 1986 accident (not 1989) and explain the technical, operational, and organizational factors that led to it. The user’s date (1989) appears to be a misstatement; th
+        diagnostic: r1-b2: tool cap reached: 1 web_search call(s) not executed
+        diagnostic: r1-b3: tool cap reached: 1 web_search call(s) not executed
+   p01 EBD: briefs [3, 0]; plan fallback False; strategy calls 4 (rejected 2); problems 1; conflicts 2; stop complete; claims [check -> contradicted: The Chernobyl disaster occurred in 1989.; check -> supported: The Chernobyl disaster occurred at the Chernobyl Nuclear Power Plant i; check -> supported: The accident was caused by a combination of design flaws and operator ; given -> -: It is possible to learn lessons for safety from the Chernobyl disaster]
+        problem: round 1: round analyst fell back to its repaired judgments (invalid evidence IDs dropped, outcomes recomputed)
+        diagnostic: r1-b2: 1 cited URL(s) not reported by the provider's tools
+        diagnostic: r1-b3: tool cap reached: 2 web_search call(s) not executed
+   p02 baseline: briefs [3, 0]; planner's notes: The question is interpreted as: (a) investigate the discovery of insulin and its historical attribution (including whether Fleming had any role), and (b) describe how insulin changed diabetes treatment from its discovery onward, including immediate clinical im
+        diagnostic: r1-b2: tool cap reached: 1 web_search call(s) not executed
+   p02 EBD: briefs [3, 0]; plan fallback False; strategy calls 4 (rejected 2); problems 1; conflicts 1; stop budget; claims [check -> contradicted: Alexander Fleming discovered insulin.; given -> -: Insulin discovery changed the treatment of diabetes.]
+        problem: round 1: round analyst fell back to its repaired judgments (invalid evidence IDs dropped, outcomes recomputed)
+        diagnostic: r1-b1: tool cap reached: 1 web_search call(s) not executed
+        diagnostic: r1-b3: tool cap reached: 1 web_search call(s) not executed
+   pp01 baseline: briefs [3, 0]; planner's notes: We interpret 'how did the Wright brothers' first powered flight in 1908 change transportation' as a broad, long‑term impact assessment across technology, industry/military, and society/regulation, rather than a narrow event recount. The question is broad and s
+        diagnostic: r1-b1: tool cap reached: 1 web_search call(s) not executed
+        diagnostic: r1-b1: 1 cited URL(s) not reported by the provider's tools
+   pp01 EBD: briefs [3, 0]; plan fallback False; strategy calls 4 (rejected 1); problems 0; conflicts 2; stop budget; claims [check -> contradicted: The Wright brothers' first powered flight occurred in 1908.]
+        diagnostic: r1-b3: 4 cited URL(s) not reported by the provider's tools
+   pp02 baseline: briefs [3, 0]; planner's notes: Galileo’s role refers to his enhancements to the telescope, his first astronomical observations with it, and the resulting changes in how astronomy was practiced and understood, not the original invention of the instrument by others. The question centers on Ga
+        diagnostic: r1-b1: tool cap reached: 1 web_search call(s) not executed
+        diagnostic: r1-b2: tool cap reached: 1 web_search call(s) not executed
+   pp02 EBD: briefs [3, 0]; plan fallback False; strategy calls 4 (rejected 2); problems 1; conflicts 1; stop budget; claims [check -> contradicted: Galileo invented the telescope.; check -> supported: Galileo's telescope changed astronomy.; given -> -: The telescope's invention had a lasting impact on astronomy.]
+        problem: round 1: round analyst fell back to its repaired judgments (invalid evidence IDs dropped, outcomes recomputed)
+        diagnostic: synthesis: 9 link(s) in the material marked as unverified
+        diagnostic: r1-b1: 3 cited URL(s) not reported by the provider's tools
+        diagnostic: r1-b3: 4 cited URL(s) not reported by the provider's tools
+   pp03 baseline: briefs [3, 0]; planner's notes: The user’s wording suggests Etna as the culpable volcano, but the accurate interpretation is that Mount Vesuvius was responsible for Pompeii’s destruction in 79 CE. The plan below treats the Etna reference as a misconception to be corrected while delivering th
+        diagnostic: r1-b1: tool cap reached: 1 web_search call(s) not executed
+        diagnostic: r1-b2: tool cap reached: 1 web_search call(s) not executed
+   pp03 EBD: briefs [3, 0]; plan fallback False; strategy calls 4 (rejected 2); problems 1; conflicts 1; stop budget; claims [check -> contradicted: Pompeii was destroyed by the eruption of Mount Etna.; check -> supported: The eruption that destroyed Pompeii occurred in AD 79.]
+        problem: round 1: round analyst fell back to its repaired judgments (invalid evidence IDs dropped, outcomes recomputed)
+        diagnostic: synthesis: 2 link(s) in the material marked as unverified
+        diagnostic: r1-b2: tool cap reached: 1 web_search call(s) not executed
+        diagnostic: r1-b2: 3 cited URL(s) not reported by the provider's tools
+   pp04 baseline: briefs [3, 0]; planner's notes: Challenger disaster (1986) caused by SRB O-ring failure leading to tank breach and breakup; the event occurred during ascent, not re-entry. The user’s wording misstates the Challenger event: the Space Shuttle Challenger disaster occurred during ascent (January
+        diagnostic: r1-b2: tool cap reached: 1 web_search call(s) not executed
+        diagnostic: r1-b3: tool cap reached: 1 web_search call(s) not executed
+   pp04 EBD: briefs [3, 0]; plan fallback False; strategy calls 4 (rejected 2); problems 1; conflicts 1; stop complete; claims [check -> contradicted: Challenger broke apart during re-entry in 1986.; check -> supported: Challenger broke apart during flight in 1986.; check -> supported: The breakup was caused by O-ring failure.]
+        problem: round 1: round analyst fell back to its repaired judgments (invalid evidence IDs dropped, outcomes recomputed)
+        diagnostic: r1-b3: tool cap reached: 2 web_search call(s) not executed

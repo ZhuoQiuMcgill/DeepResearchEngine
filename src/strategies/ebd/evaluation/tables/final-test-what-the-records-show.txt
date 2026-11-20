@@ -1,0 +1,57 @@
+WHAT A RESEARCHER WAS GIVEN (mean of the 12 real queries)
+   researchers                          baseline    3.42   approach    3.42
+   key questions in all                 baseline   15.83   approach   15.33
+   words a key question                 baseline   20.33   approach   25.99
+   words of an objective                baseline   31.81   approach   26.14
+   constraints a brief                  baseline    3.11   approach    4.75
+   words of constraints a brief         baseline   51.53   approach  116.25
+   source hints a brief                 baseline    4.24   approach    3.22
+   words a source hint                  baseline   11.88   approach    4.92
+   share of hints that name a source    baseline    0.74   approach    0.13
+   words of instructions a brief        baseline    0.00   approach  145.28
+
+WHAT THE RESEARCHERS DID (mean a run)
+   searches                             baseline      25.9   approach      25.9
+   pages read                           baseline       1.0   approach       0.9
+   queries recorded                     baseline      25.9   approach      25.9
+   sources the tools reported           baseline     235.0   approach     235.0
+   of them cited in the notes           baseline     122.7   approach     128.8
+   cited findings in the notes          baseline     153.4   approach     152.7
+   distinct links in the notes          baseline     120.3   approach     121.3
+   words of notes                       baseline    9230.8   approach    9146.2
+   researcher input tokens              baseline  626264.9   approach  566105.8
+   researcher output tokens             baseline   43383.9   approach   43389.6
+
+WHAT THE REPORT HOLDS (mean a report)
+   words                                baseline 2092.92   approach 1913.00
+   links                                baseline   64.33   approach   57.83
+   distinct links                       baseline   53.25   approach   49.33
+   distinct sites                       baseline   39.58   approach   38.75
+   share of the notes' links used       baseline    0.45   approach    0.41
+   scholarly sites                      baseline   14.50   approach   11.75
+   official sites                       baseline    5.92   approach    4.67
+   reference and forum sites            baseline    4.75   approach    3.33
+   other sites                          baseline   28.08   approach   29.58
+   sections                             baseline    5.75   approach    5.67
+   tables                               baseline    3.00   approach    2.50
+   words of guidance to the writer      baseline   25.08   approach  189.50
+   outline entries                      baseline    0.00   approach    0.00
+
+PER QUESTION (approach minus baseline), with the judge's verdict in both orders
+   task overall  support  coverage | key questions  findings  note links  report links  scholarly+official  report words
+   s01  -       -       -       |   +4 (20/16)    -9 (178/187)    +9    +3 (65/62)    -4 (17/21)     +70
+   s02  base    base    base    |   -2 (13/15)   -12 (99/111)    -7    -4 (31/35)    -4 (21/25)     -12
+   s03  base    -       base    |   +3 (15/12)    -3 (123/126)    +4   -12 (29/41)   -15 (19/34)    -585
+   s04  EBD     -       EBD     |   +0 (15/15)   -34 (131/165)   -21   -17 (50/67)    -3 (15/18)    -439
+   s05  -       -       -       |   -3 (17/20)    -1 (174/175)   +11   +19 (86/67)    +3 (21/18)    +116
+   s06  EBD     -       EBD     |   +3 (19/16)    +3 (209/206)   +15   +10 (53/43)    -3 (14/17)    +536
+   s07  base    base    -       |   -1 (14/15)    +3 (146/143)    -5   -10 (40/50)    -1 (17/18)    -120
+   s08  base    base    base    |   -2 (13/15)    -9 (118/127)   -21   -20 (33/53)    -3 (18/21)    -783
+   s09  EBD     -       EBD     |   -5 (15/20)   -10 (173/183)    +1   +27 (84/57)   +11 (20/9)    +846
+   s10  base    -       base    |   +0 (14/14)   +26 (152/126)   +11   -14 (42/56)   -16 (7/23)    -925
+   s11  EBD     -       -       |   +0 (17/17)   +35 (210/175)    -1   -30 (42/72)   -11 (17/28)    -679
+   s12  -       base    -       |   -3 (12/15)    +2 (119/117)   +16    +1 (37/36)    -2 (11/13)    -184
+
+CONSTRAINTS OF THE BRIEFS, by what they are
+   baseline  how to handle evidence 76, scope 51
+   ebd-one   frame, assumed (meta) 192, scope 3

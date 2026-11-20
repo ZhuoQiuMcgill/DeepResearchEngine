@@ -1,0 +1,168 @@
+/**
+ * The one approach (design sections 29 and 30) with the number of researchers the final test gives it:
+ * the baseline's, 3 to 5 a question, where every check so far ran with 6. No model call and no search: each
+ * saved one-call plan of the revised wording (oneplan/env2, 72 plans on 24 questions) is replayed by
+ * its shape (the parts with their need and number of key questions, the claims with their verdicts)
+ * through a whole run in the skeleton, with researchers that answer every key question, a conflict
+ * checker that finds nothing and a round analyst that judges every key question answered and proposes
+ * nothing. Counted: how each planned main part is asked, and whether it is researched at all.
+ *
+ *   tsx local/ebd-heldout/matched-round1.ts [budgets, default 3,4,5,6]
+ */
+import { readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
+import { AIMessage, type BaseMessage } from "@langchain/core/messages";
+import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
+import type { ResearchBrief, ResearchResult } from "../../src/core/index.js";
+import { buildResearchGraph, initialState, type DecisionRecord } from "../../src/graph/skeleton.js";
+import { PLAN_TOOL, type PlanReply } from "../../src/strategies/ebd/environment.js";
+import ebd from "../../src/strategies/ebd/index.js";
+import type { EbdState } from "../../src/strategies/ebd/state.js";
+
+/** No settings: since the consolidation of design section 32 the strategy is the one approach. */
+const APPROACH = {};
+const DIR = "local/ebd-heldout/oneplan/env2";
+const TODAY = "2026-11-19";
+type Saved = { question: string; qid: string; k: number; status: string; claims: { claim: string; verdict: "check" | "given" }[]; notStated: string[]; parts: { name: string; need: "necessary" | "completing"; questions: number }[] };
+const budgets = (process.argv[2] ?? "3,4,5,6").split(",").map(Number);
+const verbose = process.argv.includes("--show");
+
+/** A plan with the saved plan's shape; the texts of objectives and key questions are placeholders. */
+function planOf(s: Saved): PlanReply {
+  const none = { value: null, basis: "unknown" as const };
+  return {
+    status: "ok",
+    status_reason: null,
+    restated_request: s.question,
+    subject: "the subject of the question",
+    purpose: none,
+    time_frame: none,
+    place: none,
+    directives: [],
+    not_stated: s.notStated,
+    terms: [],
+    claims: s.claims.map((c) => ({ claim: c.claim, verdict: c.verdict, reason: "saved verdict" })),
+    parts: s.parts.map((p, i) => ({
+      name: p.name,
+      need: p.need,
+      objective: `Establish what the sources report on main part ${i + 1} of the answer.`,
+      questions: Array.from({ length: p.questions }, (_, k) => ({ text: `What do the sources report on point ${k + 1} of main part ${i + 1}?`, kind: "social" as const })),
+      source_hints: [],
+    })),
+  };
+}
+
+const research = async (_q: string, brief: ResearchBrief): Promise<ResearchResult> => ({
+  brief,
+  status: "ok",
+  notes: brief.keyQuestions
+    .map((k, i) => [`## ${k}`, "### Takeaway", `Takeaway ${i + 1}.`, "### Cited Findings", `- A finding for key question ${i + 1}. — [Source](https://a${i}.example/${brief.id})`, `- A second finding for key question ${i + 1}. — [Source](https://b${i}.example/${brief.id})`, "### Gaps", "- Nothing more was found."].join("\n"))
+    .join("\n\n"),
+  sources: [],
+  queries: [],
+  usage: { inputTokens: 0, outputTokens: 0, searches: 1, pageReads: 0 },
+  model: "fake",
+  durationMs: 0,
+  unlistedCitations: [],
+  diagnostics: [],
+});
+
+function block(message: string, tag: string): string {
+  return new RegExp(`<${tag}>\\n([\\s\\S]*?)\\n</${tag}>`).exec(message)?.[1] ?? "";
+}
+
+/** Every served goal answered from its own findings; every claim supported; nothing proposed. */
+function judge(message: string) {
+  const judgments = block(message, "served_goals")
+    .split(/\n(?=### )/)
+    .filter((g) => /^### (Q\d+)/.test(g))
+    .map((g) => {
+      const id = /^### (Q\d+)/.exec(g)![1]!;
+      const all = [...g.matchAll(/^(r\d+-b\d+-f\d+) /gm)].map((m) => m[1]!);
+      const first = all[0];
+      const claims = [...g.matchAll(/^- (A\d+): /gm)].map((m) => m[1]!);
+      const listed = /^Judge only: (.*)$/m.exec(g)?.[1];
+      const parts = listed !== undefined ? listed.split(", ").filter((p) => /^M\d+$/.test(p)).map((p) => ({ part: `${p} answered`, met: Boolean(first), evidence: first ? [first] : [] })) : [{ part: "the question", met: Boolean(first), evidence: all }];
+      return { goal_id: id, parts, outcome: first ? "answered" : "not_found", verdicts: claims.map((c) => ({ claim_id: c, verdict: "supported" })), missing: [] };
+    });
+  return { judgments, proposals: [] };
+}
+
+type PartRow = { need: string; questions: number; round: number | null; how: "one by one" | "as one question" | "not researched"; alone: boolean };
+type Row = { file: string; budget: number; parts: PartRow[]; used: number; rounds: number; stop: string; check: "none" | "rides" | "own researcher" | "not asked"; perBrief: number[]; problems: string[]; tags: string[][] };
+
+async function run(file: string, s: Saved, researchersTotal: number): Promise<Row> {
+  const plan = planOf(s);
+  const model = {
+    bindTools: (tools: { function: { name: string } }[]) => ({
+      invoke: async (messages: BaseMessage[]) => {
+        const name = tools[0]!.function.name;
+        const args = name === PLAN_TOOL ? plan : name === "submit_conflicts" ? { conflicts: [] } : judge(String(messages.at(-1)!.content));
+        return new AIMessage({ content: "", tool_calls: [{ id: "c", name, args: args as Record<string, unknown>, type: "tool_call" }] });
+      },
+    }),
+  } as unknown as BaseChatModel;
+  const decisions: DecisionRecord[] = [];
+  const graph = buildResearchGraph({
+    strategy: ebd.create(APPROACH as never),
+    strategyModel: model,
+    research,
+    write: async () => ({ report: "report", diagnostics: [] }),
+    limits: { researchersTotal, toolCallsPerResearcher: 12 },
+    maxRounds: 8,
+    concurrency: 4,
+    runId: "replay",
+    today: TODAY,
+    hooks: { onDecision: (d) => void decisions.push(d) },
+  });
+  const final = await graph.invoke(initialState(s.question), { recursionLimit: 100 });
+  const state = final.strategyState as EbdState;
+  const rounds = decisions.map((d) => d.accepted).filter((a) => a.length);
+  const served = (goalId: string) => {
+    for (let r = 0; r < rounds.length; r++) {
+      const brief = rounds[r]!.find((b) => (b.tag ?? "").split(",").includes(goalId));
+      if (brief) return { round: r + 1, own: brief.keyQuestions.filter((k) => k.startsWith(`[${goalId}] `)).length, alone: (brief.tag ?? "").split(",").filter((id) => state.map!.events.some((e) => e.goalId === id)).length === 1 };
+    }
+    return null;
+  };
+  const parts: PartRow[] = state.map!.events.map((e) => {
+    const goal = state.goals.find((g) => g.id === e.goalId)!;
+    const at = served(e.goalId);
+    return { need: goal.need, questions: e.parts.length, round: at?.round ?? null, how: !at ? "not researched" : at.own > 1 ? "one by one" : "as one question", alone: at?.alone ?? false };
+  });
+  const checkGoal = state.goals.find((g) => g.kind === "verify" && g.verifies.length && !g.settles);
+  const checkAt = checkGoal ? rounds.flat().find((b) => (b.tag ?? "").split(",").includes(checkGoal.id)) : undefined;
+  const check = !checkGoal ? "none" : !checkAt ? "not asked" : (checkAt.tag ?? "").includes(",") ? "rides" : "own researcher";
+  return { file, budget: researchersTotal, parts, used: state.results.length, rounds: rounds.length, stop: state.stop?.kind ?? String(final.stopReason), check, perBrief: rounds.flat().map((b) => b.keyQuestions.length), problems: state.problems, tags: rounds.map((r) => r.map((b) => `${(b.tag ?? "").split(",").map((id) => { const i = state.map!.events.findIndex((e) => e.goalId === id); if (i < 0) return "check"; const own = b.keyQuestions.filter((k) => k.startsWith(`[${id}] `)).length; return `${state.goals.find((g) => g.id === id)!.need[0]}${i + 1}${own > 1 ? "" : "(as one)"}`; }).join("+")} [${b.keyQuestions.length}]`)) };
+}
+
+const files = readdirSync(DIR).filter((f) => f.endsWith(".json")).sort();
+const saved = files.map((f) => ({ f, s: JSON.parse(readFileSync(join(DIR, f), "utf8")) as Saved })).filter((x) => x.s.status === "ok" && x.s.parts.length);
+const shape = new Map<number, number>();
+for (const { s } of saved) shape.set(s.parts.length, (shape.get(s.parts.length) ?? 0) + 1);
+console.log(`${saved.length} saved plans with a plan (of ${files.length}); main parts a plan: ${[...shape].sort((a, b) => a[0] - b[0]).map(([n, c]) => `${n} parts in ${c}`).join(", ")}`);
+console.log(`necessary parts a plan: ${(saved.reduce((n, x) => n + x.s.parts.filter((p) => p.need === "necessary").length, 0) / saved.length).toFixed(2)}; completing: ${(saved.reduce((n, x) => n + x.s.parts.filter((p) => p.need === "completing").length, 0) / saved.length).toFixed(2)}; plans with a claim to check: ${saved.filter((x) => x.s.claims.some((c) => c.verdict === "check")).length}`);
+
+for (const budget of budgets) {
+  const rows: Row[] = [];
+  for (const { f, s } of saved) rows.push(await run(f, s, budget));
+  const all = rows.flatMap((r) => r.parts);
+  const count = (pred: (p: PartRow) => boolean) => all.filter(pred).length;
+  const questions = (pred: (p: PartRow) => boolean) => all.filter(pred).reduce((n, p) => n + p.questions, 0);
+  const pct = (a: number, b: number) => `${a} of ${b} (${b ? Math.round((100 * a) / b) : 0}%)`;
+  console.log(`\n=== ${budget} researchers ===`);
+  console.log(`researchers used a run ${(rows.reduce((n, r) => n + r.used, 0) / rows.length).toFixed(2)}; runs with a second round ${rows.filter((r) => r.rounds > 1).length}; stops: ${[...new Set(rows.map((r) => r.stop))].map((k) => `${k} ${rows.filter((r) => r.stop === k).length}`).join(", ")}`);
+  console.log(`main parts: ${all.length}; asked key question by key question in round 1: ${pct(count((p) => p.round === 1 && p.how === "one by one"), all.length)}; as one question in round 1: ${count((p) => p.round === 1 && p.how === "as one question")}; first asked in a later round: ${count((p) => (p.round ?? 0) > 1)}; never researched: ${count((p) => p.round === null)}`);
+  for (const need of ["necessary", "completing"]) {
+    const of = (pred: (p: PartRow) => boolean) => count((p) => p.need === need && pred(p));
+    console.log(`  ${need}: ${of(() => true)}; one by one in round 1 ${of((p) => p.round === 1 && p.how === "one by one")}, as one question in round 1 ${of((p) => p.round === 1 && p.how === "as one question")}, later round ${of((p) => (p.round ?? 0) > 1)}, never ${of((p) => p.round === null)}; with a researcher to itself ${of((p) => p.alone)}`);
+  }
+  console.log(`key questions of the plans: ${questions(() => true)}; asked as key questions of their own: ${pct(questions((p) => p.how === "one by one"), questions(() => true))}; only listed in an instruction: ${questions((p) => p.how === "as one question")}; in a part never researched: ${questions((p) => p.round === null)}`);
+  const per = rows.flatMap((r) => r.perBrief);
+  console.log(`key questions a brief: mean ${(per.reduce((a, b) => a + b, 0) / per.length).toFixed(1)}, most ${Math.max(...per)}; the check of the claims: ${["rides", "own researcher", "not asked"].map((k) => `${k} ${rows.filter((r) => r.check === k).length}`).join(", ")}`);
+  const withProblems = rows.filter((r) => r.problems.length);
+  if (withProblems.length) console.log(`runs with a recorded problem: ${withProblems.length}; first: ${withProblems[0]!.problems[0]}`);
+  const starved = rows.filter((r) => r.parts.some((p) => p.round === null));
+  console.log(`runs in which a planned main part is never researched: ${starved.length} of ${rows.length}; of them with a researcher left unused: ${starved.filter((r) => r.used < budget).length}`);
+  if (verbose) for (const r of rows) console.log(`  B${budget} ${r.file.padEnd(12)} parts ${r.parts.map((p) => `${p.need[0]}${p.questions}`).join(" ")} | ${r.tags.map((t, i) => `r${i + 1}: ${t.join(" | ")}`).join("  ;  ")} | used ${r.used}, ${r.stop}${r.parts.some((p) => p.round === null) ? "  <-- a part is never researched" : ""}`);
+}

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { checkAnalysis, pageKey, salvage } from "./checks.js";
+import { checkAnalysis, cutAt, minimalAnalysis, pageKey, salvage } from "./checks.js";
 import { EXAMPLES } from "./examples.js";
 import { scanRequest } from "./scan.js";
-import type { Analysis, ScanResult } from "./schema.js";
+import { AnalysisFullSchema, LIMITS, type Analysis, type ScanResult } from "./schema.js";
 
 const E1 = EXAMPLES[0]!;
 const scanE1 = scanRequest(E1.request, E1.runDate);
@@ -109,6 +109,41 @@ describe("request analysis checks", () => {
     const kept = salvage(a, [{ code: "x", path: "questions[0].text", message: "" }]);
     expect(kept?.questions.map((q) => q.id)).toEqual(["Q2", "Q3", "Q5", "Q8"]);
     expect(salvage(a, [0, 1, 2, 4].map((i) => ({ code: "x", path: `questions[${i}]`, message: "" })))).toBeNull();
+  });
+
+  it("salvage keeps a question whose only fault is its length, cut at the limit (section 24.4)", () => {
+    const a = clone();
+    const filler = " It also states the range of values that each source reports and the period that each value covers.";
+    a.questions[0]!.done_when = `${a.questions[0]!.done_when}${filler.repeat(5)}`;
+    const { errors } = checkAnalysis(a, { request: E1.request, scan: scanE1 });
+    expect(errors.map((e) => [e.code, e.path])).toEqual([["limit", "questions[0].done_when"]]);
+    const kept = salvage(a, errors)!;
+    expect(kept.questions.map((q) => q.id)).toEqual(a.questions.map((q) => q.id));
+    const cut = kept.questions[0]!.done_when;
+    expect(cut.length).toBeLessThanOrEqual(LIMITS.long);
+    expect(a.questions[0]!.done_when.startsWith(cut)).toBe(true);
+    expect(cut.endsWith(".")).toBe(true);
+    // The cut analysis passes the checks it failed.
+    expect(checkAnalysis(kept, { request: E1.request, scan: scanE1 }).errors).toEqual([]);
+    // A question with another fault besides its length is dropped as before, with its dependents.
+    const both = salvage(a, [...errors, { code: "x", path: "questions[0].text", message: "" }]);
+    expect(both?.questions.map((q) => q.id)).toEqual(["Q2", "Q3", "Q5", "Q8"]);
+  });
+
+  it("cut a text after its last full sentence, or after its last whole word", () => {
+    expect(cutAt("short", 10)).toBe("short");
+    expect(cutAt("One sentence here. Another sentence follows it.", 28)).toBe("One sentence here.");
+    // A full stop early in the text would lose most of it, so the cut falls after the last whole word.
+    expect(cutAt("One. Another sentence follows it here", 30)).toBe("One. Another sentence follows");
+    expect(cutAt("a long run of words without any full stop in it", 20)).toBe("a long run of words");
+  });
+
+  it("the minimal plan is a valid analysis with the request as its one search question (section 24.4)", () => {
+    const a = minimalAnalysis("How can I study medicine in Germany?", "2026-11-18");
+    expect(AnalysisFullSchema.safeParse(a).success).toBe(true);
+    expect(a.questions.map((q) => [q.id, q.route, q.text])).toEqual([["Q1", "search", "How can I study medicine in Germany?"], ["Q2", "synthesis", "How can I study medicine in Germany?"]]);
+    expect(a.assumptions).toEqual([]);
+    expect(salvage(a, [])).toEqual(a);
   });
 
   it("compare URLs by page", () => {

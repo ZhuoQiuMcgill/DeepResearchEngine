@@ -7,8 +7,8 @@ import { assumptionVerdicts, endedByFailures, goalsFromAnalysis, isComplete, isR
 import { byBrief } from "./index.js";
 import { decodeNested, structuredCall, wrapLists } from "./llm.js";
 import { parseOptions } from "./options.js";
-import type { Analysis } from "./request/index.js";
-import { EXAMPLES } from "./request/examples.js";
+import type { Analysis } from "./analysis.js";
+import { EXAMPLES } from "./fixtures.js";
 import { acceptProposals, analystMessage, applyJudgments, checkRound, repairRound, RoundApiSchema } from "./rounds/analyst.js";
 import { applyConflicts, checkConflicts, resolveClaimChecks, settleBlock, settlePriority } from "./rounds/conflicts.js";
 import { headingGoals, hostsIn, readResult, splitNotes } from "./rounds/evidence.js";
@@ -23,15 +23,15 @@ function stateOf(analysis: Analysis = structuredClone(E1.analysis)): EbdState {
   return {
     question: E1.request,
     today: E1.runDate,
-    init: { mode: "fixed", accepted: true, fallback: false, attempts: 1, stopReason: "accepted" },
+    init: { mode: "environment", accepted: true, fallback: false, attempts: 1, stopReason: "accepted" },
     analysis,
     goals,
     objectsFound: [],
+    map: null,
     conflicts: [],
     evidence: [],
     results: [],
     roundsObserved: 0,
-    extraRoundServed: false,
     stop: null,
     tree: treeMetrics(goals),
     step: { phase: "init", round: 0, calls: [], events: [] },
@@ -310,7 +310,8 @@ describe("conflict checker and round analyst checks (sections 9 and 10)", () => 
 
   it("gives a goal at most one settle goal, within the new-goal limits, and disputes the rest", () => {
     const { s } = withEvidence();
-    const c = (side: string) => ({ type: "source_vs_source" as const, about: "Q2", statement: "They differ.", side_a: ["r1-b1-f1"], side_b: [side], settle_by: "The official release.", condition: "", claim: "" });
+    // Section 29: only a disagreement that decides a claim of the question gets a settle goal.
+    const c = (side: string) => ({ type: "source_vs_source" as const, about: "Q2", statement: "They differ.", side_a: ["r1-b1-f1"], side_b: [side], settle_by: "The official release.", condition: "", claim: "A2" });
     const log: string[] = [];
     applyConflicts(s, { conflicts: [c("r1-b1-f2"), c("r1-b1-f3")] }, 1, options, (l) => log.push(l));
     expect(s.conflicts.map((x) => x.status)).toEqual(["open", "disputed"]);
@@ -324,33 +325,24 @@ describe("conflict checker and round analyst checks (sections 9 and 10)", () => 
     expect(settleBlock(s, { ...q3, status: "answered" }, options, 1)).toBeNull();
   });
 
-  it("marks a goal disputed when its disagreement cannot get a settle goal", () => {
-    const { s } = withEvidence();
-    const q3 = s.goals.find((g) => g.id === "Q3")!;
-    q3.need = "completing";
-    s.conflicts.push({ id: "C1", type: "source_vs_source", about: "Q3", statement: "s", sideA: ["r1-b1-f1"], sideB: ["r1-b1-f2"], settleBy: "x", condition: "", claim: null, status: "disputed", createdRound: 1, settledRound: 1, settleGoal: null, checkedBy: null });
-    const reply = { judgments: [{ goal_id: "Q3", parts: [{ part: "p", met: false, evidence: [] }], outcome: "conflicting" as const, verdicts: [], missing: ["which value holds"] }], proposals: [] };
-    const applied = applyJudgments(s, reply, [q3], 1, options, () => {});
-    expect(q3.status).toBe("disputed");
-    expect(applied.settled).toEqual(["Q3"]);
-  });
-
   it("lets a settle goal check a claim only when the disagreement decides it (review of 2026-10-21)", () => {
     const { s, evidence } = withEvidence();
     const c = { type: "source_vs_source" as const, about: "Q2", statement: "They differ.", side_a: ["r1-b1-f1"], side_b: ["r1-b1-f2"], settle_by: "The official release.", condition: "" };
     // A reply without the claim field decides no assumption.
     expect(checkConflicts({ conflicts: [c] }, s, evidence).errors).toEqual([]);
     expect(checkConflicts({ conflicts: [{ ...c, claim: "A9" }] }, s, evidence).errors[0]!.message).toContain("unknown assumption A9");
+    // Section 29: a disagreement that decides no claim is recorded as disputed and gets no goal.
     applyConflicts(s, { conflicts: [{ ...c, claim: "" }] }, 1, options, () => {});
-    expect(s.goals.find((g) => g.id === s.conflicts[0]!.settleGoal)!.verifies).toEqual([]);
+    expect(s.conflicts[0]).toMatchObject({ status: "disputed", settleGoal: null, claim: null });
+    expect(s.goals.some((g) => g.settles)).toBe(false);
     const other = stateOf();
     applyConflicts(other, { conflicts: [{ ...c, claim: "A2" }, { ...c, type: "evidence_vs_assumption", about: "Q1", side_b: ["A1"], claim: "" }] }, 1, options, () => {});
     expect(other.conflicts.map((x) => x.claim)).toEqual(["A2", "A1"]);
     expect(other.goals.filter((g) => g.settles).map((g) => g.verifies)).toEqual([["A2"], ["A1"]]);
   });
 
-  it("changes the waiting goal's verdict only when its settle goal judged the claim", () => {
-    for (const [claim, verdict] of [["", "supported"], ["A2", "unsettled"]] as const) {
+  it("changes the waiting goal's verdict when its settle goal judged the claim", () => {
+    for (const [claim, verdict] of [["A2", "unsettled"]] as const) {
       const { s } = withEvidence();
       const c = { type: "source_vs_source" as const, about: "Q2", statement: "They differ.", side_a: ["r1-b1-f1"], side_b: ["r1-b1-f2"], settle_by: "The official release.", condition: "", claim };
       applyConflicts(s, { conflicts: [c] }, 1, options, () => {});
@@ -396,7 +388,10 @@ describe("conflict checker and round analyst checks (sections 9 and 10)", () => 
     s.goals.find((g) => g.id === "Q1")!.verdicts = { A1: "contradicted" };
     resolveClaimChecks(s, 1, options, (l) => log.push(l));
     expect(s.conflicts[0]).toMatchObject({ status: "settled", settleGoal: "Q1" });
-    expect(buildGuidance(s)).toContain(`the notes for "${plain(s.goals.find((g) => g.id === "Q1")!.text)}" show which account holds`);
+    // Section 20: once the check is settled, the writer is told about the claim, not about the conflict.
+    s.goals.find((g) => g.id === "Q1")!.status = "answered";
+    expect(buildGuidance(s)).toContain("The evidence in the notes contradicts this. Say so in the opening paragraph, in one or two sentences with the source. Then answer the question the client asked as fully as the notes allow: the correction is not the subject of the report.");
+    expect(buildGuidance(s)).not.toContain("The evidence says no tariffs were imposed.");
     // A finding of another goal is not being judged against A1, so it still gets a settle goal.
     const other = withEvidence().s;
     applyConflicts(other, { conflicts: [{ ...premise, side_a: ["r1-b1-f1"] }] }, 1, options, () => {});
@@ -448,28 +443,23 @@ describe("conflict checker and round analyst checks (sections 9 and 10)", () => 
     expect(q1!.status).toBe("answered");
   });
 
-  it("keeps a settle goal necessary only while it decides a claim or a goal waits for it (Lab 4 review)", () => {
+  it("gives a disagreement about a detail no settle goal, and one that decides a claim a necessary one (sections 20 and 29)", () => {
     const { s } = withEvidence();
     const detail = { type: "source_vs_source" as const, about: "Q2", statement: "One source gives 4%, another 3%.", side_a: ["r1-b1-f1"], side_b: ["r1-b1-f2"], settle_by: "The official release.", condition: "", claim: "" };
-    applyConflicts(s, { conflicts: [detail] }, 1, options, () => {});
-    const settleGoal = s.goals.find((g) => g.settles)!;
     const log: string[] = [];
-    settlePriority(s, (l) => log.push(l));
-    expect(settleGoal).toMatchObject({ need: "completing", level: 4 });
-    expect(log[0]).toContain("decides no claim and no goal waits for it");
-    // Its open conflict does not hold up the stop.
-    for (const g of s.goals.filter((x) => !x.settles)) Object.assign(g, { status: "answered", verdicts: Object.fromEntries(g.verifies.map((c) => [c, "supported"])) });
+    applyConflicts(s, { conflicts: [detail] }, 1, options, (l) => log.push(l));
+    expect(s.goals.some((g) => g.settles)).toBe(false);
+    expect(s.conflicts[0]).toMatchObject({ status: "disputed", critical: false });
+    expect(log[0]).toContain("not critical, so it gets no settle goal");
+    // The disagreement does not hold up the stop.
+    for (const g of s.goals) Object.assign(g, { status: "answered", verdicts: Object.fromEntries(g.verifies.map((c) => [c, "supported"])) });
     expect(isComplete(s).complete).toBe(true);
-    // When the round analyst judges the goal conflicting, the goal waits for it and it is necessary again.
-    Object.assign(s.goals.find((g) => g.id === "Q2")!, { status: "conflicting", waitingOn: settleGoal.id });
-    settlePriority(s, () => {});
-    expect(settleGoal).toMatchObject({ need: "necessary", level: 1 });
-    expect(isComplete(s).complete).toBe(false);
-    // A disagreement that decides a claim keeps a necessary settle goal.
+    // A disagreement that decides a claim gets a necessary settle goal.
     const claimed = withEvidence().s;
     applyConflicts(claimed, { conflicts: [{ ...detail, claim: "A2" }] }, 1, options, () => {});
     settlePriority(claimed, () => {});
     expect(claimed.goals.find((g) => g.settles)).toMatchObject({ need: "necessary", level: 1 });
+    expect(isComplete(claimed).complete).toBe(false);
   });
 
   it("keeps parts met in earlier rounds and judges only the missing ones (Lab 5 review, change 1)", () => {
@@ -690,30 +680,26 @@ describe("writer input (section 12)", () => {
     );
   });
 
-  it("tells the writer which goals were only partly established, and which found nothing", () => {
+  it("tells the writer which necessary goals found nothing, and gives a partly established goal no line (section 20)", () => {
     const s = stateOf();
     Object.assign(s.goals[0]!, { status: "exhausted", partsMet: 1, partsTotal: 3, missing: ["the rates"] });
     Object.assign(s.goals[2]!, { status: "exhausted", partsMet: 0, partsTotal: 2 });
     const guidance = buildGuidance(s);
-    expect(guidance).toContain(`only partly established. Use their notes, and where the report covers them, say what the evidence does not establish:
-- ${s.goals[0]!.text} Not established: the rates`);
+    expect(guidance).not.toContain("only partly established");
+    expect(guidance).not.toContain("the rates");
     expect(guidance).toContain(`No reliable source was found for these; say so where relevant instead of guessing:
 - ${s.goals[2]!.text}`);
   });
 
-  it("follows a length limit and passes the planned contents to the writer (review of 2026-10-21)", () => {
+  it("follows a length limit, and gives the writer neither the planned contents nor a section for disagreements (section 20)", () => {
     const s = stateOf();
-    s.conflicts.push({ id: "C1", type: "source_vs_source", about: "Q2", statement: "One source says 4%, another 1%.", sideA: [], sideB: [], settleBy: "x", condition: "", claim: null, status: "disputed", createdRound: 1, settledRound: 1, settleGoal: null, checkedBy: null });
-    const q7 = s.analysis.questions.find((q) => q.id === "Q7")!;
-    expect(buildGuidance(s)).toContain(`What each part of the report must contain, as planned:\n- ${q7.text} ${q7.done_when}`);
-    expect(buildOutline(s)).toContain("Where the sources disagree");
-    expect(buildGuidance(s)).toContain('under "Where the sources disagree"');
+    s.conflicts.push({ id: "C1", type: "source_vs_source", about: "Q2", statement: "One source says 4%, another 1%.", sideA: [], sideB: [], settleBy: "x", condition: "", claim: null, critical: false, status: "disputed", createdRound: 1, settledRound: 1, settleGoal: null, checkedBy: null });
+    expect(buildGuidance(s)).not.toContain("What each part of the report must contain");
+    expect(buildGuidance(s)).not.toContain("One source says 4%, another 1%.");
+    expect(buildOutline(s)).not.toContain("Where the sources disagree");
     s.analysis.client_directives = [{ kind: "report_format", text: "Deliver a one-page summary.", evidence: ["a one-page summary"] }];
     expect(lengthLimit(s.analysis)).toBe("a one-page summary");
-    const guidance = buildGuidance(s);
-    expect(guidance).toContain('The client limits the length ("a one-page summary"). This comes before everything below');
-    expect(guidance).toContain("Give both sides in one sentence");
-    expect(buildOutline(s)).not.toContain("Where the sources disagree");
+    expect(buildGuidance(s)).toContain('The client limits the length ("a one-page summary"). This comes before everything below');
     expect(lengthLimit({ ...s.analysis, client_directives: [{ kind: "report_format", text: "Use bullet points.", evidence: [] }] })).toBeNull();
   });
 

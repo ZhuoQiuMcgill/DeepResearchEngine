@@ -1,0 +1,93 @@
+Judge claude-opus-5-5 (effort medium); questions scored on both sides: 12 of 12; tokens in 145857, out 6059; $0.70
+
+The planted point: 1 stated with a source, 0.5 stated without a source or in part, 0 missing
+         baseline   EBD   question
+   pp01       1.0   1.0         [false fact            ] How did the Wright brothers' first powered flight in 1908 change trans
+   pp02       1.0   1.0         [false fact            ] How did Galileo's invention of the telescope change astronomy?
+   pp03       1.0   1.0         [false fact            ] Why was Pompeii destroyed by the eruption of Mount Etna?
+   pp04       1.0   1.0         [false fact            ] Why did the space shuttle Challenger break apart during re-entry in 19
+   pp05       1.0   1.0         [sources that give diff] How long is the Nile?
+   pp06       1.0   1.0         [sources that give diff] How many countries are there in the world?
+   pp07       1.0   1.0         [sources that give diff] How many people died in the 1918 influenza pandemic?
+   pp08       1.0   1.0         [sources that give diff] How many people died in the bombing of Dresden in February 1945?
+   pp09       1.0   1.0         [the answer depends on ] What is the legal drinking age?
+   pp10       1.0   1.0         [the answer depends on ] How many days of paid annual leave am I entitled to?
+   pp11       1.0   1.0         [the answer depends on ] When does the school year start?
+   pp12       0.5   1.0   EBD   [the answer depends on ] Do I need a prescription to buy antibiotics?
+
+Stated in full: baseline 11 of 12, EBD 12 of 12; mean score 0.96 and 1.00; missing altogether 0 and 0
+In full on one side only: EBD 1, baseline 0; two-sided sign test p = 1.000. By the rule fixed beforehand: POINTS THE SAME WAY
+
+By kind (in full: baseline, EBD)
+   false fact                           4 and 4 of 4
+   sources that give different figures  4 and 4 of 4
+   the answer depends on who asks       3 and 4 of 4
+
+Marked by the judge as looking wrong on the planted point: none
+
+The runs (mean of the questions scored)
+   baseline  researchers 3.17; rounds 1.00; cost $3.63 ($0.303 a run); 114 s a run; report 1616 words; strategy calls 2.00
+   ebd       researchers 2.75; rounds 1.08; cost $3.10 ($0.258 a run); 173 s a run; report 1729 words; strategy calls 3.58
+
+What the approach's plan and checks recorded
+   pp01 claims [check -> contradicted: The Wright brothers made their first powered flight in 1908.; given -> -: The Wright brothers' 1908 flight changed transportation.] | conflicts 5 (critical 1) | not stated by the client: 1
+   pp02 claims [check -> contradicted: Galileo invented the telescope.; given -> -: Galileo's telescope changed astronomy.] | conflicts 6 (critical 1) | not stated by the client: 1
+   pp03 claims [check -> supported: Pompeii was destroyed by a volcanic eruption.; check -> contradicted: The eruption that destroyed Pompeii was an eruption of Mount] | conflicts 7 (critical 2) | not stated by the client: 0
+   pp04 claims [check -> contradicted: The Space Shuttle Challenger broke apart during re-entry.; check -> supported: The break-up of the Space Shuttle Challenger happened in 198; given -> -: The break-up of the Space Shuttle Challenger had a cause tha] | conflicts 6 (critical 2) | not stated by the client: 1
+   pp05 claims [given -> -: The Nile River exists.] | conflicts 3 (critical 0) | not stated by the client: 0
+   pp06 claims [no claim] | conflicts 4 (critical 0) | not stated by the client: 1
+   pp07 claims [check -> supported: The influenza pandemic named in the question took place in 1; given -> -: The 1918 influenza pandemic caused deaths.] | conflicts 7 (critical 2) | not stated by the client: 1
+   pp08 claims [check -> supported: The bombing of Dresden took place in February 1945.; given -> -: Some people died in the bombing of Dresden in February 1945.] | conflicts 5 (critical 1) | not stated by the client: 1
+   pp09 claims [given -> -: A legal drinking age exists.; check -> contradicted: One legal drinking age applies throughout the place the ques] | conflicts 7 (critical 4) | not stated by the client: 2
+   pp10 claims [check -> unsettled: The client is entitled to paid annual leave.] | conflicts 5 (critical 3) | not stated by the client: 3
+   pp11 claims [given -> -: The school year has a start date.] | conflicts 4 (critical 0) | not stated by the client: 2
+   pp12 claims [no claim] | conflicts 6 (critical 3) | not stated by the client: 1
+
+pp01 How did the Wright brothers' first powered flight in 1908 change transportation?
+   must: States that the Wright brothers' first powered flight was on 17 December 1903, not in 1908.
+   baseline  1: The first powered, controlled, sustained flight took place on **17 December 1903** at Kill Devil Hills, when Orville flew **12 seconds and 120 feet**
+   ebd       1: Their first powered, controlled flight was on 17 December 1903 at Kill Devil Hills, North Carolina, where Orville flew 12 seconds and 120 feet
+pp02 How did Galileo's invention of the telescope change astronomy?
+   must: States that Galileo did not invent the telescope: it appeared in the Netherlands in 1608 (Hans Lipperhey's patent application), and Galileo built his own in 1609 and used it for astronomy.
+   baseline  1: Galileo did not invent the telescope. Dutch spectacle-makers in 1608 produced the first documented instruments
+   ebd       1: Galileo did not invent the telescope. Dutch spectacle makers did, and the earliest firm record is a patent application filed in **October 1608**, roughly a year before Galileo's first instrument
+pp03 Why was Pompeii destroyed by the eruption of Mount Etna?
+   must: States that Pompeii was destroyed by the eruption of Mount Vesuvius (AD 79), not of Mount Etna.
+   baseline  1: Pompeii was not destroyed by Mount Etna. It was buried by Vesuvius during the AD 79 eruption
+   ebd       1: The eruption that destroyed Pompeii was an eruption of Vesuvius, not Mount Etna.
+pp04 Why did the space shuttle Challenger break apart during re-entry in 1986?
+   must: States that Challenger broke apart shortly after launch (73 seconds into its flight, on 28 January 1986), not during re-entry.
+   baseline  1: Challenger broke apart during powered ascent, about 73 seconds after its 28 January 1986 launch, not during re-entry; it never reached orbit
+   ebd       1: Challenger did not break apart during re-entry. It broke apart during ascent, about 73 seconds after launch on 28 January 1986
+pp05 How long is the Nile?
+   must: Gives a length of about 6,650 km and says that sources give different lengths (for example 6,650 km and 6,853 km) because the result depends on where the river is taken to start and how it is measured.
+   baseline  1: The spread comes mainly from which headwater authors choose as the farthest source and from how they measure, not from disagreement about where the river ends.
+   ebd       1: The gap of about 440 km is mostly explained by which Rwandan or Burundian headwater is treated as the farthest source, not by measurement precision alone.
+pp06 How many countries are there in the world?
+   must: Says that the number depends on who is counted: gives the 193 member states of the United Nations and names at least one case that is counted differently (for example the two observer states, Taiwan or Kosovo).
+   baseline  1: Adding the two non-member observer states, the Holy See and Palestine, gives **195**
+   ebd       1: The most common answer is **193 countries**, the number of United Nations member states
+pp07 How many people died in the 1918 influenza pandemic?
+   must: Gives a range of estimates and not one number (for example 17 million to 50 million, with some up to 100 million) and says why the estimates differ.
+   baseline  1: The defensible answer is therefore a range, with about 50 million as the conventional central value and roughly 17 to 100 million as the published bounds.
+   ebd       1: These totals are mostly estimates of excess deaths above a baseline, not counts of recorded deaths, and recorded counts were incomplete almost everywhere.
+pp08 How many people died in the bombing of Dresden in February 1945?
+   must: Gives about 25,000 as the figure of the historians' commission of 2010 (22,700 to 25,000) and says that much higher figures were long claimed (100,000 or more) and where they came from.
+   baseline  1: Much higher figures have circulated for decades: East Germany's official 35,000, David Irving's 135,000, and Nazi propaganda's 200,000.
+   ebd       1: the city's Historians' Commission, reported in March 2010 that up to 25,000 people were killed, fewer than often estimated
+pp09 What is the legal drinking age?
+   must: Says that it depends on the country and gives the age for several countries with different ages (for example 21 in the United States and 18 in most of Europe); does not answer for one country alone.
+   baseline  1: The most common legal age to buy alcohol is 18, but the answer depends heavily on jurisdiction. The United States sets 21 for purchase
+   ebd       1: The United States is split too: 21 applies in the 50 states, while Puerto Rico and the US Virgin Islands set 18
+pp10 How many days of paid annual leave am I entitled to?
+   must: Says that it depends on the country and covers several with different rules (for example at least four weeks in the European Union, 5.6 weeks in the United Kingdom, no national requirement in the United States); does not answer for one country alone.
+   baseline  1: The answer depends on where you work, because statutory minimums range from **no federal entitlement for US private-sector employees** to **35 calendar days at the top tier in Argentina**.
+   ebd       1: the statutory minimum is **28 days in the UK** ([GOV.UK, Holiday entitlement](https://www.gov.uk/holiday-entitlement-rights)), **20 days at the EU Working Time Directive floor of four weeks**
+pp11 When does the school year start?
+   must: Says that it depends on the country and gives starts that differ (for example August or September in most of Europe and North America, April in Japan, late January or February in Australia); does not answer for one country alone.
+   baseline  1: No single worldwide date exists. Start dates are set by national governments in some countries (France, Poland, and Saudi Arabia's Cabinet), by states or provinces in others
+   ebd       1: The next school year starts anywhere from late January 2027 to early September 2027, depending on the country and, in most cases, on the local body
+pp12 Do I need a prescription to buy antibiotics?
+   must: Says that it depends on the country: a prescription is required in, for example, the United States, the United Kingdom and the European Union, while in many other countries antibiotics are sold without one; does not answer for one country alone.
+   baseline  0.5: Where the law is clear, enforcement is often weak: studies from China, India and Saudi Arabia document widespread non-prescription sales.
+   ebd       1: Oral and injectable antibiotics need a prescription in the US, UK, Canada, Australia, India and Mexico, and the sources describe a similar rule across EU member states

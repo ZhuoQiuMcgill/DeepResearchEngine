@@ -1,0 +1,159 @@
+[
+ {
+  "id": "f01",
+  "origin": "real",
+  "set": "fresh",
+  "type": "real user query (second random draw)",
+  "question": "why do people break the law?",
+  "checklist": [
+   "What is the definition of breaking the law?",
+   "What are the main factors or motivations that influence people to break the law?",
+   "How do the factors or motivations vary depending on the type or severity of the law being broken?",
+   "How can the law breaking behavior be prevented or reduced?"
+  ]
+ },
+ {
+  "id": "f02",
+  "origin": "real",
+  "set": "fresh",
+  "type": "real user query (second random draw)",
+  "question": "what caused so many casualties in the earthquake",
+  "checklist": [
+   "Where and when did the earthquake occur?",
+   "What were the main factors that contributed to the high number of casualties in the earthquake?",
+   "How could the casualties have been reduced or prevented in the earthquake?"
+  ]
+ },
+ {
+  "id": "f03",
+  "origin": "real",
+  "set": "fresh",
+  "type": "real user query (second random draw)",
+  "question": "what is the importance of literacy, numeracy and digital skills in adult care",
+  "checklist": [
+   "What are literacy, numeracy and digital skills?",
+   "What is adult care?",
+   "How are literacy, numeracy and digital skills relevant to adult care work?",
+   "What are the current levels of literacy, numeracy and digital skills among adult care workers?",
+   "What are the best practices and interventions to improve literacy, numeracy and digital skills among adult care workers?"
+  ]
+ },
+ {
+  "id": "f04",
+  "origin": "real",
+  "set": "fresh",
+  "type": "real user query (second random draw)",
+  "question": "what caused revolutionary war",
+  "checklist": [
+   "What is a revolutionary war?",
+   "Which revolutionary war are you referring to?",
+   "What were the underlying factors that led to the outbreak of the revolutionary war?",
+   "What were the main turning points or outcomes of the revolutionary war?"
+  ]
+ },
+ {
+  "id": "f05",
+  "origin": "real",
+  "set": "fresh",
+  "type": "real user query (second random draw)",
+  "question": "how did apartheid affect peoples lives",
+  "checklist": [
+   "What was apartheid?",
+   "Who were the main groups affected by apartheid?",
+   "What were the consequences and impacts of apartheid on people's lives?",
+   "How did people cope with and challenge apartheid?",
+   "How did apartheid end and what were the outcomes and challenges of the transition?"
+  ]
+ },
+ {
+  "id": "f06",
+  "origin": "real",
+  "set": "fresh",
+  "type": "real user query (second random draw)",
+  "question": "how do we strengthen faith in youth lds",
+  "checklist": [
+   "What is the LDS church and what are its core beliefs and practices?",
+   "What are the challenges and opportunities for youth in the LDS church?",
+   "What are the best practices and resources for strengthening faith in youth in the LDS church?"
+  ]
+ },
+ {
+  "id": "f07",
+  "origin": "real",
+  "set": "fresh",
+  "type": "real user query (second random draw)",
+  "question": "what are some potential shareholder actions that may be taken when a firm holds a high cash balance?",
+  "checklist": [
+   "What is a high cash balance and how is it measured?",
+   "What are some reasons why a firm might hold a high cash balance?",
+   "What are some potential shareholder actions that may be taken when a firm holds a high cash balance?"
+  ]
+ },
+ {
+  "id": "f08",
+  "origin": "real",
+  "set": "fresh",
+  "type": "real user query (second random draw)",
+  "question": "how computers changed all future digital communications and how the process began",
+  "checklist": [
+   "What are the basic components and functions of a computer?",
+   "What are the historical origins and developments of computers?",
+   "What are the different types and applications of digital communications?",
+   "How did computers enable and transform digital communications?"
+  ]
+ },
+ {
+  "id": "f09",
+  "origin": "real",
+  "set": "fresh",
+  "type": "real user query (second random draw)",
+  "question": "how far back does racism go",
+  "checklist": [
+   "What is the definition of racism?",
+   "What are the historical origins of racism?",
+   "What are the different forms and manifestations of racism?",
+   "What are the impacts and consequences of racism?"
+  ]
+ },
+ {
+  "id": "f10",
+  "origin": "real",
+  "set": "fresh",
+  "type": "real user query (second random draw)",
+  "question": "what evidence is there that puberty is driven solely by biological forces?",
+  "checklist": [
+   "What is puberty and what are its main features and stages?",
+   "What are the biological factors that influence puberty onset and progression?",
+   "What are the non-biological factors that influence puberty onset and progression?",
+   "How strong is the evidence for each factor and how do they compare in terms of magnitude and consistency?",
+   "Based on the evidence, what is the most plausible and comprehensive explanation for how puberty is driven?"
+  ]
+ },
+ {
+  "id": "f11",
+  "origin": "real",
+  "set": "fresh",
+  "type": "real user query (second random draw)",
+  "question": "what were the reasons for organizational change within hanna andersson, both internally and externally?",
+  "checklist": [
+   "What is Hanna Andersson?",
+   "What are the types and examples of organizational change?",
+   "What are the internal factors that influenced organizational change within Hanna Andersson?",
+   "What are the external factors that influenced organizational change within Hanna Andersson?",
+   "How did the internal and external factors interact and impact each other during the change process?",
+   "How successful was the organizational change within Hanna Andersson?"
+  ]
+ },
+ {
+  "id": "f12",
+  "origin": "real",
+  "set": "fresh",
+  "type": "real user query (second random draw)",
+  "question": "what was life like as a soldier in ww1",
+  "checklist": [
+   "What were the main causes and events of WW1?",
+   "What were the conditions and challenges faced by soldiers in WW1?",
+   "How did the war end and what were the consequences for the soldiers and the world?"
+  ]
+ }
+]

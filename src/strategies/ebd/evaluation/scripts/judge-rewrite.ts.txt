@@ -1,0 +1,138 @@
+/**
+ * Step 2 of design section 33.7: the judge of the final test on rewritten reports. The approach's
+ * reports of the 12 real queries, written again from the saved notes with another writer input
+ * (rewrite-final-<name>/), against the baseline's recorded reports of the final test, in both orders,
+ * blind (A and B only). Same judge (Claude Opus 5.5, effort medium) and the same pair instruction,
+ * word for word, as local/ebd-heldout/judge.ts; the script stops if it differs. 24 calls. Each result
+ * is saved when it arrives, and a second start asks only for what is missing. The calls are traced to
+ * the self-hosted Langfuse when its keys are set.
+ *
+ * How the result is read, fixed before the run (2026-11-20):
+ * - A question counts for a side only when both orders name it, as in the test.
+ * - The reference is the same judge on the recorded reports of the same questions: approach 4,
+ *   baseline 5, not decided 3; support 0 to 4.
+ * - "Worth the confirming test": the approach has more decided questions than the baseline, and does
+ *   not lose support on more questions than it wins it. "No sign of a gain": the baseline has at
+ *   least as many decided questions as the approach.
+ * - Whatever the count, 12 questions already used for development and one rewrite of each report
+ *   confirm nothing.
+ *
+ *   npx tsx local/ebd-heldout/judge-rewrite.ts <name> --plan    list the reports and the calls; no model call
+ *   npx tsx local/ebd-heldout/judge-rewrite.ts <name>           the pass
+ */
+import "dotenv/config";
+import { createHash } from "node:crypto";
+import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { ChatAnthropic } from "@langchain/anthropic";
+import { HumanMessage, SystemMessage } from "@langchain/core/messages";
+import { shutdownTracing, startTracing } from "../../src/observability/langfuse.js";
+
+const OUT = "local/ebd-heldout";
+const JUDGE_MODEL = "claude-opus-5-5";
+const name = process.argv[2] && !process.argv[2].startsWith("--") ? process.argv[2] : "defs";
+const PLAN = process.argv.includes("--plan");
+const CAND = `rewrite-${name}`;
+const BASE = "baseline";
+const RESULTS = join(OUT, `judge-rewrite-${name}.json`);
+
+type Q = { id: string; origin: string; question: string; checklist: string[] };
+const QUESTIONS = JSON.parse(readFileSync(join(OUT, "final-sealed-questions.json"), "utf8")) as Q[];
+type Summary = { dir: string; status: string; strategy: { label: string }; tags: { task: string } };
+const folder = readdirSync(OUT).filter((d) => d.startsWith("final-sealed-2") && existsSync(join(OUT, d, "summaries.json"))).sort().at(-1)!;
+const SUMMARIES = JSON.parse(readFileSync(join(OUT, folder, "summaries.json"), "utf8")) as Summary[];
+const path = (task: string, arm: string) => (arm === BASE ? join(SUMMARIES.find((s) => s.tags.task === task && s.strategy.label === BASE && s.status === "ok")!.dir, "report.md") : join(OUT, `rewrite-final-${name}`, `${task}.md`));
+const report = (task: string, arm: string) => readFileSync(path(task, arm), "utf8");
+const sha = (text: string) => createHash("sha256").update(text).digest("hex").slice(0, 16);
+const checklistText = (q: Q) => q.checklist.map((c, i) => `${i + 1}. ${c}`).join("\n");
+
+/** The pair instruction of local/ebd-heldout/judge.ts, word for word (checked below). */
+const PAIR_SYSTEM = /const PAIR_SYSTEM = `([\s\S]*?)`;/.exec(readFileSync(join(OUT, "judge-final.ts"), "utf8"))![1]!;
+if (!readFileSync(join(OUT, "judge.ts"), "utf8").includes(PAIR_SYSTEM)) throw new Error("the judge's pair instruction differs from that of judge.ts");
+
+type Job = { key: string; q: Q; first: string; second: string };
+const jobs: Job[] = QUESTIONS.flatMap((q): Job[] => [
+  { key: `pair|${q.id}|${BASE} as A`, q, first: BASE, second: CAND },
+  { key: `pair|${q.id}|${CAND} as A`, q, first: CAND, second: BASE },
+]);
+
+type Result = { key: string; kind: "pair"; task: string; order?: string; verdict?: Record<string, string>; reason?: string; raw?: string; error?: string };
+type Saved = { judge: string; effort: string; arms: { new: string; base: string }; baselineFolder: string; reports: Record<string, { cand: string; base: string }>; usage: { input: number; output: number }; results: Result[] };
+const hashes = Object.fromEntries(QUESTIONS.map((q) => [q.id, { cand: sha(report(q.id, CAND)), base: sha(report(q.id, BASE)) }]));
+const saved: Saved = existsSync(RESULTS) ? (JSON.parse(readFileSync(RESULTS, "utf8")) as Saved) : { judge: JUDGE_MODEL, effort: "medium", arms: { new: CAND, base: BASE }, baselineFolder: folder, reports: hashes, usage: { input: 0, output: 0 }, results: [] };
+for (const q of QUESTIONS) {
+  if (saved.reports[q.id]?.cand !== hashes[q.id]!.cand || saved.reports[q.id]?.base !== hashes[q.id]!.base) throw new Error(`a report of ${q.id} changed since the saved results were made`);
+}
+const done = new Set(saved.results.filter((r) => !r.error).map((r) => r.key));
+const todo = jobs.filter((j) => !done.has(j.key));
+
+if (PLAN) {
+  for (const q of QUESTIONS) console.log(`${q.id} ${CAND} ${report(q.id, CAND).split(/\s+/).length} words | ${BASE} ${report(q.id, BASE).split(/\s+/).length} words  ${q.question.slice(0, 70)}`);
+  const words = jobs.reduce((n, j) => n + report(j.q.id, j.first).split(/\s+/).length + report(j.q.id, j.second).split(/\s+/).length, 0);
+  const chars = jobs.reduce((n, j) => n + report(j.q.id, j.first).length + report(j.q.id, j.second).length + PAIR_SYSTEM.length + checklistText(j.q).length, 0);
+  console.log(`calls: ${jobs.length} pairs; already saved ${jobs.length - todo.length}; report words to read ${words}; about ${Math.round(chars / 3.3 / 1000)} thousand input tokens`);
+  process.exit(0);
+}
+
+const tracing = await startTracing({ runId: `judge-rewrite-${name}-${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 12)}`, tags: ["judge", "rewrite", name] });
+const judge = new ChatAnthropic({ model: JUDGE_MODEL, maxTokens: 20000, outputConfig: { effort: "medium" }, maxRetries: 2 });
+
+function textOf(content: unknown): string {
+  if (typeof content === "string") return content;
+  return (content as { type: string; text?: string }[]).filter((b) => b.type === "text").map((b) => b.text ?? "").join("");
+}
+
+async function ask(system: string, human: string, runName: string): Promise<{ json: Record<string, unknown>; raw: string }> {
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const msg = await judge.invoke([new SystemMessage(system), new HumanMessage(human)], { runName, ...(tracing.handler ? { callbacks: [tracing.handler] } : {}) });
+    const u = (msg as { usage_metadata?: { input_tokens?: number; output_tokens?: number } }).usage_metadata;
+    saved.usage.input += u?.input_tokens ?? 0;
+    saved.usage.output += u?.output_tokens ?? 0;
+    const raw = textOf(msg.content);
+    const m = raw.match(/\{[\s\S]*\}/);
+    if (m) {
+      try {
+        return { json: JSON.parse(m[0]) as Record<string, unknown>, raw };
+      } catch {
+        // asked again below
+      }
+    }
+    if (attempt === 2) throw new Error(`no JSON in reply: ${raw.slice(0, 300)}`);
+  }
+  throw new Error("unreachable");
+}
+
+async function runJob(j: Job): Promise<Result> {
+  const human = `Question:\n${j.q.question}\n\nChecklist of the main items:\n${checklistText(j.q)}\n\n<report_A>\n${report(j.q.id, j.first)}\n</report_A>\n\n<report_B>\n${report(j.q.id, j.second)}\n</report_B>`;
+  const { json, raw } = await ask(PAIR_SYSTEM, human, j.key);
+  const who = (v: string) => (v === "A" ? j.first : v === "B" ? j.second : "tie");
+  const verdict = Object.fromEntries(["coverage", "support", "conflicts", "usefulness", "overall"].map((k) => [k, who(String(json[k]))]));
+  return { key: j.key, kind: "pair", task: j.q.id, order: `${j.first} as A`, verdict, reason: String(json.reason ?? ""), raw };
+}
+
+const started = Date.now();
+let next = 0;
+let failed = 0;
+const save = () => writeFileSync(RESULTS, JSON.stringify(saved, null, 2), "utf8");
+await Promise.all(
+  Array.from({ length: Math.min(4, todo.length) }, async () => {
+    while (next < todo.length) {
+      const j = todo[next++]!;
+      let result: Result;
+      try {
+        result = await runJob(j);
+      } catch (e) {
+        failed += 1;
+        result = { key: j.key, kind: "pair", task: j.q.id, error: String((e as Error).message).slice(0, 400) };
+      }
+      saved.results = [...saved.results.filter((r) => r.key !== j.key), result];
+      save();
+    }
+  }),
+);
+save();
+await tracing.flush().catch(() => {});
+await shutdownTracing();
+const cost = (saved.usage.input * 4 + saved.usage.output * 20) / 1e6;
+console.log(`wrote ${RESULTS}; calls now ${todo.length} (${failed} failed), saved before ${jobs.length - todo.length}; tokens in ${saved.usage.input}, out ${saved.usage.output}; about $${cost.toFixed(2)}; ${Math.round((Date.now() - started) / 1000)} s; traced: ${tracing.handler ? "yes" : "no"}`);
+if (failed) process.exit(1);

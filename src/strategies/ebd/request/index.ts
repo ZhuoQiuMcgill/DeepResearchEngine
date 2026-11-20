@@ -1,6 +1,6 @@
 /** Request analysis rev 2: the EBD strategy's init step, in fixed or agent mode. */
 export { AGENT_DEFAULTS, runAgentAnalysis, type AgentOptions, type Grounding, type GroundingUse } from "./agent.js";
-export { checkAnalysis, counts, newNames, pageKey, salvage, type CheckContext, type CheckResult } from "./checks.js";
+export { BACK_REFERENCE, checkAnalysis, counts, cutAt, minimalAnalysis, namesIn, newNames, pageKey, salvage, type CheckContext, type CheckResult } from "./checks.js";
 export { EXAMPLES, type WorkedExample } from "./examples.js";
 export { runFixedAnalysis } from "./fixed.js";
 export { requestMessage, systemPrompt } from "./prompt.js";

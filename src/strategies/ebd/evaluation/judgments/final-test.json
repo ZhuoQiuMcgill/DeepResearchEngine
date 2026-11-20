@@ -1,0 +1,1402 @@
+{
+ "judge": "claude-opus-5-5",
+ "effort": "medium",
+ "arms": {
+  "new": "ebd-one",
+  "base": "baseline"
+ },
+ "usage": {
+  "input": 558112,
+  "output": 27956
+ },
+ "results": [
+  {
+   "key": "coverage|s01|ebd-one",
+   "kind": "coverage",
+   "task": "s01",
+   "origin": "real",
+   "arm": "ebd-one",
+   "items": [
+    {
+     "n": 1,
+     "score": 0.5,
+     "quote": "Devolved nations use the Barnett formula, which gives them a share of changes in English spending rather than a needs-based allocation.",
+     "wrong": false
+    },
+    {
+     "n": 2,
+     "score": 1,
+     "quote": "Real-terms growth averaged 2.8% a year between 2015/16 and 2022/23, against a long-run average of 3.6%",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 1,
+     "quote": "the slowdown has left the service with longer waits, tighter capacity and a stretched workforce.",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":0.5,\"quote\":\"Devolved nations use the Barnett formula, which gives them a share of changes in English spending rather than a needs-based allocation.\",\"wrong\":false},{\"n\":2,\"score\":1,\"quote\":\"Real-terms growth averaged 2.8% a year between 2015/16 and 2022/23, against a long-run average of 3.6%\",\"wrong\":false},{\"n\":3,\"score\":1,\"quote\":\"the slowdown has left the service with longer waits, tighter capacity and a stretched workforce.\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|s02|ebd-one",
+   "kind": "coverage",
+   "task": "s02",
+   "origin": "real",
+   "arm": "ebd-one",
+   "items": [
+    {
+     "n": 1,
+     "score": 0.5,
+     "quote": "Net inequality, after taxes and transfers, produces more negative estimates than gross measures",
+     "wrong": false
+    },
+    {
+     "n": 2,
+     "score": 1,
+     "quote": "a one-point rise in the Gini is associated with a 6 percentage point higher risk that a growth spell ends in the next year",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 1,
+     "quote": "Because capitalists are assumed to save more than workers, a higher profit share raises aggregate saving and investment",
+     "wrong": false
+    },
+    {
+     "n": 4,
+     "score": 1,
+     "quote": "income moved to wealthy households with a lower consumption propensity raises saving but reduces aggregate demand, possibly causing recession",
+     "wrong": false
+    },
+    {
+     "n": 5,
+     "score": 1,
+     "quote": "The IMF found remarkably little evidence of adverse effects of fiscal redistribution on growth, and after counting its inequality-reducing effect, the total impact is roughly neutral",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":0.5,\"quote\":\"Net inequality, after taxes and transfers, produces more negative estimates than gross measures\",\"wrong\":false},{\"n\":2,\"score\":1,\"quote\":\"a one-point rise in the Gini is associated with a 6 percentage point higher risk that a growth spell ends in the next year\",\"wrong\":false},{\"n\":3,\"score\":1,\"quote\":\"Because capitalists are assumed to save more than workers, a higher profit share raises aggregate saving and investment\",\"wrong\":false},{\"n\":4,\"score\":1,\"quote\":\"income moved to wealthy households with a lower consumption propensity raises saving but reduces aggregate demand, possibly causing recession\",\"wrong\":false},{\"n\":5,\"score\":1,\"quote\":\"The IMF found remarkably little evidence of adverse effects of fiscal redistribution on growth, and after counting its inequality-reducing effect, the total impact is roughly neutral\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|s02|baseline",
+   "kind": "coverage",
+   "task": "s02",
+   "origin": "real",
+   "arm": "baseline",
+   "items": [
+    {
+     "n": 1,
+     "score": 0.5,
+     "quote": "top-end inequality is positively associated with growth while bottom-end inequality is negatively related",
+     "wrong": false
+    },
+    {
+     "n": 2,
+     "score": 1,
+     "quote": "Dabla-Norris et al. (2015) state that inequality dampens investment and therefore growth by fuelling economic, financial and political instability.",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 1,
+     "quote": "Theory offers several routes, including stronger work incentives, higher saving by the rich, and capital accumulation under imperfect credit markets.",
+     "wrong": false
+    },
+    {
+     "n": 4,
+     "score": 1,
+     "quote": "Critics have undermined much of the positive evidence.",
+     "wrong": false
+    },
+    {
+     "n": 5,
+     "score": 1,
+     "quote": "Ostry, Berg and Tsangarides (2014) found that lower net inequality seems to drive faster and more durable growth for a given level of redistribution",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":0.5,\"quote\":\"top-end inequality is positively associated with growth while bottom-end inequality is negatively related\",\"wrong\":false},{\"n\":2,\"score\":1,\"quote\":\"Dabla-Norris et al. (2015) state that inequality dampens investment and therefore growth by fuelling economic, financial and political instability.\",\"wrong\":false},{\"n\":3,\"score\":1,\"quote\":\"Theory offers several routes, including stronger work incentives, higher saving by the rich, and capital accumulation under imperfect credit markets.\",\"wrong\":false},{\"n\":4,\"score\":1,\"quote\":\"Critics have undermined much of the positive evidence.\",\"wrong\":false},{\"n\":5,\"score\":1,\"quote\":\"Ostry, Berg and Tsangarides (2014) found that lower net inequality seems to drive faster and more durable growth for a given level of redistribution\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|s01|baseline",
+   "kind": "coverage",
+   "task": "s01",
+   "origin": "real",
+   "arm": "baseline",
+   "items": [
+    {
+     "n": 1,
+     "score": 0.5,
+     "quote": "the link between English health spending and local NHS budgets runs through the Barnett formula, which",
+     "wrong": false
+    },
+    {
+     "n": 2,
+     "score": 1,
+     "quote": "Real-terms growth was about 1.3–1.7% a year through the 2010s, against a long-run average of about 3.6%",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 1,
+     "quote": "The extra money has bought visible gains on elective waiting lists, mainly through record removals and one-off funding",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":0.5,\"quote\":\"the link between English health spending and local NHS budgets runs through the Barnett formula, which\",\"wrong\":false},{\"n\":2,\"score\":1,\"quote\":\"Real-terms growth was about 1.3–1.7% a year through the 2010s, against a long-run average of about 3.6%\",\"wrong\":false},{\"n\":3,\"score\":1,\"quote\":\"The extra money has bought visible gains on elective waiting lists, mainly through record removals and one-off funding\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|s04|ebd-one",
+   "kind": "coverage",
+   "task": "s04",
+   "origin": "real",
+   "arm": "ebd-one",
+   "items": [
+    {
+     "n": 1,
+     "score": 1,
+     "quote": "The United States changed the First World War most decisively by supplying fresh troops, money and materiel in 1918, when the Allies were near exhaustion.",
+     "wrong": false
+    },
+    {
+     "n": 2,
+     "score": 1,
+     "quote": "The Espionage Act of June 15, 1917 and the Sedition Act of May 16, 1918 led to more than 2,000 prosecutions",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 1,
+     "quote": "The US shaped the peace less than it shaped the war",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":1,\"quote\":\"The United States changed the First World War most decisively by supplying fresh troops, money and materiel in 1918, when the Allies were near exhaustion.\",\"wrong\":false},{\"n\":2,\"score\":1,\"quote\":\"The Espionage Act of June 15, 1917 and the Sedition Act of May 16, 1918 led to more than 2,000 prosecutions\",\"wrong\":false},{\"n\":3,\"score\":1,\"quote\":\"The US shaped the peace less than it shaped the war\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|s03|ebd-one",
+   "kind": "coverage",
+   "task": "s03",
+   "origin": "real",
+   "arm": "ebd-one",
+   "items": [
+    {
+     "n": 1,
+     "score": 0.5,
+     "quote": "Roughly a third of German engineering bachelor's students at universities leave without a first degree",
+     "wrong": false
+    },
+    {
+     "n": 2,
+     "score": 1,
+     "quote": "Rates depend heavily on how each system counts leavers, so the figures below are not directly comparable.",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 1,
+     "quote": "a 2017 DZHW report gives performance problems as the most important reason for leaving, at 89% of engineering dropouts at universities",
+     "wrong": false
+    },
+    {
+     "n": 4,
+     "score": 0,
+     "quote": "",
+     "wrong": false
+    },
+    {
+     "n": 5,
+     "score": 1,
+     "quote": "women beginners with female peer mentors showed higher belonging, motivation, confidence and retention in engineering",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":0.5,\"quote\":\"Roughly a third of German engineering bachelor's students at universities leave without a first degree\",\"wrong\":false},{\"n\":2,\"score\":1,\"quote\":\"Rates depend heavily on how each system counts leavers, so the figures below are not directly comparable.\",\"wrong\":false},{\"n\":3,\"score\":1,\"quote\":\"a 2017 DZHW report gives performance problems as the most important reason for leaving, at 89% of engineering dropouts at universities\",\"wrong\":false},{\"n\":4,\"score\":0,\"quote\":\"\",\"wrong\":false},{\"n\":5,\"score\":1,\"quote\":\"women beginners with female peer mentors showed higher belonging, motivation, confidence and retention in engineering\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|s03|baseline",
+   "kind": "coverage",
+   "task": "s03",
+   "origin": "real",
+   "arm": "baseline",
+   "items": [
+    {
+     "n": 1,
+     "score": 0.5,
+     "quote": "The NCES figure combines engineering with science technologies for small-sample reasons, and it excludes switches within STEM.",
+     "wrong": false
+    },
+    {
+     "n": 2,
+     "score": 1,
+     "quote": "The headline figures use different definitions, so they cannot be compared directly. The table below sets out the main measures.",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 1,
+     "quote": "28 cited high-school preparation, 27 cited classroom or academic climate, 23 cited grades and conceptual understanding, and 14 cited inadequate teaching and advising",
+     "wrong": false
+    },
+    {
+     "n": 4,
+     "score": 0,
+     "quote": "",
+     "wrong": false
+    },
+    {
+     "n": 5,
+     "score": 1,
+     "quote": "Advising, first-year courses and active learning consistently appear as retention-associated practices, but the evidence is mostly observational.",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":0.5,\"quote\":\"The NCES figure combines engineering with science technologies for small-sample reasons, and it excludes switches within STEM.\",\"wrong\":false},{\"n\":2,\"score\":1,\"quote\":\"The headline figures use different definitions, so they cannot be compared directly. The table below sets out the main measures.\",\"wrong\":false},{\"n\":3,\"score\":1,\"quote\":\"28 cited high-school preparation, 27 cited classroom or academic climate, 23 cited grades and conceptual understanding, and 14 cited inadequate teaching and advising\",\"wrong\":false},{\"n\":4,\"score\":0,\"quote\":\"\",\"wrong\":false},{\"n\":5,\"score\":1,\"quote\":\"Advising, first-year courses and active learning consistently appear as retention-associated practices, but the evidence is mostly observational.\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|s04|baseline",
+   "kind": "coverage",
+   "task": "s04",
+   "origin": "real",
+   "arm": "baseline",
+   "items": [
+    {
+     "n": 1,
+     "score": 1,
+     "quote": "American units also fought under British or Australian command in June 1918 at Cantigny, Château-Thierry, Belleau Wood and Soissons",
+     "wrong": true
+    },
+    {
+     "n": 2,
+     "score": 0.5,
+     "quote": "US investment abroad of $5.0bn and foreign investment in the US of $7.2bn in 1914, moving to $9.7bn and $3.3bn by 1919, a net creditor position of $6.4bn",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 1,
+     "quote": "Wilson's Fourteen Points became the basis of the armistice request, but the Allies narrowed them, and the US Senate rejected the Treaty of Versailles and League membership.",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":1,\"quote\":\"American units also fought under British or Australian command in June 1918 at Cantigny, Château-Thierry, Belleau Wood and Soissons\",\"wrong\":true},{\"n\":2,\"score\":0.5,\"quote\":\"US investment abroad of $5.0bn and foreign investment in the US of $7.2bn in 1914, moving to $9.7bn and $3.3bn by 1919, a net creditor position of $6.4bn\",\"wrong\":false},{\"n\":3,\"score\":1,\"quote\":\"Wilson's Fourteen Points became the basis of the armistice request, but the Allies narrowed them, and the US Senate rejected the Treaty of Versailles and League membership.\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|s06|ebd-one",
+   "kind": "coverage",
+   "task": "s06",
+   "origin": "real",
+   "arm": "ebd-one",
+   "items": [
+    {
+     "n": 1,
+     "score": 1,
+     "quote": "The International Dyslexia Association's July 2024 working definition calls structured literacy \"a comprehensive, integrated approach to reading and writing instruction\"",
+     "wrong": false
+    },
+    {
+     "n": 2,
+     "score": 1,
+     "quote": "Typical practice, usually labelled balanced literacy in U.S. early grades, centres on read-alouds, guided reading from leveled texts and independent reading",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 1,
+     "quote": "structured literacy differs from typical practice in what is taught, in the order it is taught and in how explicitly it is taught.",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":1,\"quote\":\"The International Dyslexia Association's July 2024 working definition calls structured literacy \\\"a comprehensive, integrated approach to reading and writing instruction\\\"\",\"wrong\":false},{\"n\":2,\"score\":1,\"quote\":\"Typical practice, usually labelled balanced literacy in U.S. early grades, centres on read-alouds, guided reading from leveled texts and independent reading\",\"wrong\":false},{\"n\":3,\"score\":1,\"quote\":\"structured literacy differs from typical practice in what is taught, in the order it is taught and in how explicitly it is taught.\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|s05|ebd-one",
+   "kind": "coverage",
+   "task": "s05",
+   "origin": "real",
+   "arm": "ebd-one",
+   "items": [
+    {
+     "n": 1,
+     "score": 0.5,
+     "quote": "Executive Order 11246, signed by Lyndon Johnson on September 28, 1965, required federal contractors to take affirmative action",
+     "wrong": false
+    },
+    {
+     "n": 2,
+     "score": 1,
+     "quote": "race-based treatment violates a colorblind constitutional principle, it is unfair to individual applicants in a zero-sum contest, it harms the students it is meant to help through mismatch",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 1,
+     "quote": "Within the 2023 Pew survey, 74% of Republicans and Republican leaners disapproved, against 29% of Democrats",
+     "wrong": false
+    },
+    {
+     "n": 4,
+     "score": 1,
+     "quote": "Critics answer that the colorblind rule is applied inconsistently, and that the majority's own allowance for essays about race undercuts it",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":0.5,\"quote\":\"Executive Order 11246, signed by Lyndon Johnson on September 28, 1965, required federal contractors to take affirmative action\",\"wrong\":false},{\"n\":2,\"score\":1,\"quote\":\"race-based treatment violates a colorblind constitutional principle, it is unfair to individual applicants in a zero-sum contest, it harms the students it is meant to help through mismatch\",\"wrong\":false},{\"n\":3,\"score\":1,\"quote\":\"Within the 2023 Pew survey, 74% of Republicans and Republican leaners disapproved, against 29% of Democrats\",\"wrong\":false},{\"n\":4,\"score\":1,\"quote\":\"Critics answer that the colorblind rule is applied inconsistently, and that the majority's own allowance for essays about race undercuts it\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|s06|baseline",
+   "kind": "coverage",
+   "task": "s06",
+   "origin": "real",
+   "arm": "baseline",
+   "items": [
+    {
+     "n": 1,
+     "score": 1,
+     "quote": "Structured literacy explicitly and systematically teaches the structure of written language, starting with sound-symbol relationships and building cumulatively to morphology, syntax and comprehension",
+     "wrong": false
+    },
+    {
+     "n": 2,
+     "score": 1,
+     "quote": "Balanced and whole-language practice starts with meaningful texts and treats phonics as one part of a mix, often taught in short lessons or incidentally",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 1,
+     "quote": "Structured literacy differs from typical balanced or whole-language practice mainly in what comes first and how explicitly it is taught.",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":1,\"quote\":\"Structured literacy explicitly and systematically teaches the structure of written language, starting with sound-symbol relationships and building cumulatively to morphology, syntax and comprehension\",\"wrong\":false},{\"n\":2,\"score\":1,\"quote\":\"Balanced and whole-language practice starts with meaningful texts and treats phonics as one part of a mix, often taught in short lessons or incidentally\",\"wrong\":false},{\"n\":3,\"score\":1,\"quote\":\"Structured literacy differs from typical balanced or whole-language practice mainly in what comes first and how explicitly it is taught.\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|s05|baseline",
+   "kind": "coverage",
+   "task": "s05",
+   "origin": "real",
+   "arm": "baseline",
+   "items": [
+    {
+     "n": 1,
+     "score": 0.5,
+     "quote": "Louis Pojman separated \"weak\" affirmative action, which aims at equal opportunity to compete, from \"strong\" affirmative action, which gives preferential treatment",
+     "wrong": false
+    },
+    {
+     "n": 2,
+     "score": 1,
+     "quote": "The core case against preferences is that a government may not classify citizens by race even for benign ends.",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 1,
+     "quote": "74% of Republicans and Republican leaners disapproved of considering race in admissions, against 29% of Democrats",
+     "wrong": false
+    },
+    {
+     "n": 4,
+     "score": 1,
+     "quote": "Ending affirmative action led URM applicants to cascade into lower-quality colleges and reduced their degree attainment; Bleemer says this is inconsistent with mismatch",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":0.5,\"quote\":\"Louis Pojman separated \\\"weak\\\" affirmative action, which aims at equal opportunity to compete, from \\\"strong\\\" affirmative action, which gives preferential treatment\",\"wrong\":false},{\"n\":2,\"score\":1,\"quote\":\"The core case against preferences is that a government may not classify citizens by race even for benign ends.\",\"wrong\":false},{\"n\":3,\"score\":1,\"quote\":\"74% of Republicans and Republican leaners disapproved of considering race in admissions, against 29% of Democrats\",\"wrong\":false},{\"n\":4,\"score\":1,\"quote\":\"Ending affirmative action led URM applicants to cascade into lower-quality colleges and reduced their degree attainment; Bleemer says this is inconsistent with mismatch\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|s07|ebd-one",
+   "kind": "coverage",
+   "task": "s07",
+   "origin": "real",
+   "arm": "ebd-one",
+   "items": [
+    {
+     "n": 1,
+     "score": 0.5,
+     "quote": "no two members of a species are \"cast in the very same mould,\" and these differences are the raw material for selection",
+     "wrong": false
+    },
+    {
+     "n": 2,
+     "score": 1,
+     "quote": "His mechanism was **natural selection acting on individual variations that are useful and inherited**",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 1,
+     "quote": "Current teaching names **mutation as the ultimate source of new variation**, with crossing over, independent assortment, random fertilisation and gene flow as further sources",
+     "wrong": false
+    },
+    {
+     "n": 4,
+     "score": 1,
+     "quote": "Selection can then diverge lineages: the more varied the descendants, the more places in nature they can occupy, so the most divergent variations tend to be kept",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":0.5,\"quote\":\"no two members of a species are \\\"cast in the very same mould,\\\" and these differences are the raw material for selection\",\"wrong\":false},{\"n\":2,\"score\":1,\"quote\":\"His mechanism was **natural selection acting on individual variations that are useful and inherited**\",\"wrong\":false},{\"n\":3,\"score\":1,\"quote\":\"Current teaching names **mutation as the ultimate source of new variation**, with crossing over, independent assortment, random fertilisation and gene flow as further sources\",\"wrong\":false},{\"n\":4,\"score\":1,\"quote\":\"Selection can then diverge lineages: the more varied the descendants, the more places in nature they can occupy, so the most divergent variations tend to be kept\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|s08|ebd-one",
+   "kind": "coverage",
+   "task": "s08",
+   "origin": "real",
+   "arm": "ebd-one",
+   "items": [
+    {
+     "n": 1,
+     "score": 0.5,
+     "quote": "\"Sociopath\" is not a legal category, and no statute in the US, UK or EU names it.",
+     "wrong": false
+    },
+    {
+     "n": 2,
+     "score": 0.5,
+     "quote": "found a **pooled correlation of r = .284** between psychopathy and dangerousness, while its authors note the relationship is contested",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 1,
+     "quote": "Stalking, harassment, coercive-control and protection-order regimes apply to the conduct, whatever the offender's personality",
+     "wrong": false
+    },
+    {
+     "n": 4,
+     "score": 1,
+     "quote": "Trait-based detention also faces contested prediction, a disputed \"untreatability\" assumption, and strict European human-rights limits.",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":0.5,\"quote\":\"\\\"Sociopath\\\" is not a legal category, and no statute in the US, UK or EU names it.\",\"wrong\":false},{\"n\":2,\"score\":0.5,\"quote\":\"found a **pooled correlation of r = .284** between psychopathy and dangerousness, while its authors note the relationship is contested\",\"wrong\":false},{\"n\":3,\"score\":1,\"quote\":\"Stalking, harassment, coercive-control and protection-order regimes apply to the conduct, whatever the offender's personality\",\"wrong\":false},{\"n\":4,\"score\":1,\"quote\":\"Trait-based detention also faces contested prediction, a disputed \\\"untreatability\\\" assumption, and strict European human-rights limits.\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|s07|baseline",
+   "kind": "coverage",
+   "task": "s07",
+   "origin": "real",
+   "arm": "baseline",
+   "items": [
+    {
+     "n": 1,
+     "score": 0.5,
+     "quote": "he pointed to slight \"individual differences\" among offspring of the same parents and among individuals in one locality",
+     "wrong": false
+    },
+    {
+     "n": 2,
+     "score": 1,
+     "quote": "The chapter states the principle as \"the preservation of favourable variations and the rejection of injurious variations\"",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 1,
+     "quote": "changed conditions are of the highest importance, acting both directly on the organisation and indirectly by affecting the reproductive system",
+     "wrong": false
+    },
+    {
+     "n": 4,
+     "score": 1,
+     "quote": "Lesser differences between varieties tend to grow into greater differences between species",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":0.5,\"quote\":\"he pointed to slight \\\"individual differences\\\" among offspring of the same parents and among individuals in one locality\",\"wrong\":false},{\"n\":2,\"score\":1,\"quote\":\"The chapter states the principle as \\\"the preservation of favourable variations and the rejection of injurious variations\\\"\",\"wrong\":false},{\"n\":3,\"score\":1,\"quote\":\"changed conditions are of the highest importance, acting both directly on the organisation and indirectly by affecting the reproductive system\",\"wrong\":false},{\"n\":4,\"score\":1,\"quote\":\"Lesser differences between varieties tend to grow into greater differences between species\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|s08|baseline",
+   "kind": "coverage",
+   "task": "s08",
+   "origin": "real",
+   "arm": "baseline",
+   "items": [
+    {
+     "n": 1,
+     "score": 1,
+     "quote": "psychopathy is described as a cluster of traits rather than a standalone diagnosis, and that it appears in neither the DSM nor the ICD.",
+     "wrong": false
+    },
+    {
+     "n": 2,
+     "score": 1,
+     "quote": "A further review concludes that the link between PCL-R scores and violence is only moderate at group level and small in institutional settings",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 1,
+     "quote": "the Supreme Court in R. v. Lyons treated dangerous-offender designation as part of sentencing, based on past antisocial behaviour",
+     "wrong": false
+    },
+    {
+     "n": 4,
+     "score": 1,
+     "quote": "Because psychopathy is rare, misclassifying a low scorer as high is more common than the reverse, and lowering the cut-off increases false positives",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":1,\"quote\":\"psychopathy is described as a cluster of traits rather than a standalone diagnosis, and that it appears in neither the DSM nor the ICD.\",\"wrong\":false},{\"n\":2,\"score\":1,\"quote\":\"A further review concludes that the link between PCL-R scores and violence is only moderate at group level and small in institutional settings\",\"wrong\":false},{\"n\":3,\"score\":1,\"quote\":\"the Supreme Court in R. v. Lyons treated dangerous-offender designation as part of sentencing, based on past antisocial behaviour\",\"wrong\":false},{\"n\":4,\"score\":1,\"quote\":\"Because psychopathy is rare, misclassifying a low scorer as high is more common than the reverse, and lowering the cut-off increases false positives\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|s09|ebd-one",
+   "kind": "coverage",
+   "task": "s09",
+   "origin": "real",
+   "arm": "ebd-one",
+   "items": [
+    {
+     "n": 1,
+     "score": 0,
+     "quote": "",
+     "wrong": false
+    },
+    {
+     "n": 2,
+     "score": 0.5,
+     "quote": "Critics argue that most of the profit from Black music, fashion and style goes to corporations rather than creators",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 0,
+     "quote": "",
+     "wrong": false
+    },
+    {
+     "n": 4,
+     "score": 1,
+     "quote": "Economics has shaped African American culture mainly through exclusion. Because Black Americans were barred from public welfare, mainstream insurance and many white-owned businesses, they built their own mutual aid societies",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":0,\"quote\":\"\",\"wrong\":false},{\"n\":2,\"score\":0.5,\"quote\":\"Critics argue that most of the profit from Black music, fashion and style goes to corporations rather than creators\",\"wrong\":false},{\"n\":3,\"score\":0,\"quote\":\"\",\"wrong\":false},{\"n\":4,\"score\":1,\"quote\":\"Economics has shaped African American culture mainly through exclusion. Because Black Americans were barred from public welfare, mainstream insurance and many white-owned businesses, they built their own mutual aid societies\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|s09|baseline",
+   "kind": "coverage",
+   "task": "s09",
+   "origin": "real",
+   "arm": "baseline",
+   "items": [
+    {
+     "n": 1,
+     "score": 0.5,
+     "quote": "Economics has shaped African American culture mainly through who controlled land, labor, capital and cultural products.",
+     "wrong": false
+    },
+    {
+     "n": 2,
+     "score": 0.5,
+     "quote": "Much of the research on how economics shaped family and musical life is inference rather than measured outcome",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 0,
+     "quote": "",
+     "wrong": false
+    },
+    {
+     "n": 4,
+     "score": 1,
+     "quote": "Race records of the 1920s to 1940s were a segregated market: sales reached five million copies in the 1920s",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":0.5,\"quote\":\"Economics has shaped African American culture mainly through who controlled land, labor, capital and cultural products.\",\"wrong\":false},{\"n\":2,\"score\":0.5,\"quote\":\"Much of the research on how economics shaped family and musical life is inference rather than measured outcome\",\"wrong\":false},{\"n\":3,\"score\":0,\"quote\":\"\",\"wrong\":false},{\"n\":4,\"score\":1,\"quote\":\"Race records of the 1920s to 1940s were a segregated market: sales reached five million copies in the 1920s\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|s10|ebd-one",
+   "kind": "coverage",
+   "task": "s10",
+   "origin": "real",
+   "arm": "ebd-one",
+   "items": [
+    {
+     "n": 1,
+     "score": 0.5,
+     "quote": "Advocates of liberal eugenics agree that past eugenic practices were morally wrong but argue that current individual reproductive technologies differ",
+     "wrong": false
+    },
+    {
+     "n": 2,
+     "score": 1,
+     "quote": "Coerced sterilisation violates bodily integrity and consent, and the UN has called forced sterilisation of disabled girls and young women \"systemic violence\"",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 1,
+     "quote": "Nazi Germany's 1933 law mandated sterilisation for conditions presumed hereditary ([USHMM]), with estimates of **360,000 to 400,000** sterilisations",
+     "wrong": false
+    },
+    {
+     "n": 4,
+     "score": 1,
+     "quote": "Savulescu's procreative beneficence holds that parents should choose the child whose life is expected to go best",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":0.5,\"quote\":\"Advocates of liberal eugenics agree that past eugenic practices were morally wrong but argue that current individual reproductive technologies differ\",\"wrong\":false},{\"n\":2,\"score\":1,\"quote\":\"Coerced sterilisation violates bodily integrity and consent, and the UN has called forced sterilisation of disabled girls and young women \\\"systemic violence\\\"\",\"wrong\":false},{\"n\":3,\"score\":1,\"quote\":\"Nazi Germany's 1933 law mandated sterilisation for conditions presumed hereditary ([USHMM]), with estimates of **360,000 to 400,000** sterilisations\",\"wrong\":false},{\"n\":4,\"score\":1,\"quote\":\"Savulescu's procreative beneficence holds that parents should choose the child whose life is expected to go best\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|s11|ebd-one",
+   "kind": "coverage",
+   "task": "s11",
+   "origin": "real",
+   "arm": "ebd-one",
+   "items": [
+    {
+     "n": 1,
+     "score": 0,
+     "quote": "",
+     "wrong": false
+    },
+    {
+     "n": 2,
+     "score": 0,
+     "quote": "",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 0.5,
+     "quote": "The Virginia Company of London was chartered in 1606 as a joint-stock company, and each share cost **£12 10s**",
+     "wrong": false
+    },
+    {
+     "n": 4,
+     "score": 1,
+     "quote": "By around 1770, tobacco made up **27%** of exports, with wheat at 19% and rice at 11%",
+     "wrong": false
+    },
+    {
+     "n": 5,
+     "score": 1,
+     "quote": "Engerman argued that the colonies' production and high incomes provided a major market for British exports and a source of re-exported imports",
+     "wrong": false
+    },
+    {
+     "n": 6,
+     "score": 1,
+     "quote": "Its land bank of **1716** issued **£100,000** in notes lent on real estate",
+     "wrong": false
+    },
+    {
+     "n": 7,
+     "score": 0.5,
+     "quote": "Sawers argues that the burden was larger and fell on Revolutionary leaders, and notes that turpentine distilling and shipbuilding were protected",
+     "wrong": false
+    },
+    {
+     "n": 8,
+     "score": 1,
+     "quote": "Acemoglu, Johnson and Robinson argue that Atlantic trade helped West European growth between **1500 and 1850**",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":0,\"quote\":\"\",\"wrong\":false},{\"n\":2,\"score\":0,\"quote\":\"\",\"wrong\":false},{\"n\":3,\"score\":0.5,\"quote\":\"The Virginia Company of London was chartered in 1606 as a joint-stock company, and each share cost **£12 10s**\",\"wrong\":false},{\"n\":4,\"score\":1,\"quote\":\"By around 1770, tobacco made up **27%** of exports, with wheat at 19% and rice at 11%\",\"wrong\":false},{\"n\":5,\"score\":1,\"quote\":\"Engerman argued that the colonies' production and high incomes provided a major market for British exports and a source of re-exported imports\",\"wrong\":false},{\"n\":6,\"score\":1,\"quote\":\"Its land bank of **1716** issued **£100,000** in notes lent on real estate\",\"wrong\":false},{\"n\":7,\"score\":0.5,\"quote\":\"Sawers argues that the burden was larger and fell on Revolutionary leaders, and notes that turpentine distilling and shipbuilding were protected\",\"wrong\":false},{\"n\":8,\"score\":1,\"quote\":\"Acemoglu, Johnson and Robinson argue that Atlantic trade helped West European growth between **1500 and 1850**\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|s10|baseline",
+   "kind": "coverage",
+   "task": "s10",
+   "origin": "real",
+   "arm": "baseline",
+   "items": [
+    {
+     "n": 1,
+     "score": 0.5,
+     "quote": "The SEP describes authoritarian eugenics as coercive state programmes, while liberal eugenics rests on prospective parents' free choice and value pluralism",
+     "wrong": false
+    },
+    {
+     "n": 2,
+     "score": 1,
+     "quote": "Sterilisation guidance argues that coerced sterilisation violates respect for autonomy and physical integrity, beneficence and non-maleficence",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 1,
+     "quote": "roughly 60,000 Americans were sterilised across 32 states",
+     "wrong": false
+    },
+    {
+     "n": 4,
+     "score": 1,
+     "quote": "Sparrow argues that Savulescu's consequentialist justification sits in tension with preserving individual reproductive liberty",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":0.5,\"quote\":\"The SEP describes authoritarian eugenics as coercive state programmes, while liberal eugenics rests on prospective parents' free choice and value pluralism\",\"wrong\":false},{\"n\":2,\"score\":1,\"quote\":\"Sterilisation guidance argues that coerced sterilisation violates respect for autonomy and physical integrity, beneficence and non-maleficence\",\"wrong\":false},{\"n\":3,\"score\":1,\"quote\":\"roughly 60,000 Americans were sterilised across 32 states\",\"wrong\":false},{\"n\":4,\"score\":1,\"quote\":\"Sparrow argues that Savulescu's consequentialist justification sits in tension with preserving individual reproductive liberty\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|p01|ebd-one",
+   "kind": "coverage",
+   "task": "p01",
+   "origin": "planted",
+   "arm": "ebd-one",
+   "items": [
+    {
+     "n": 1,
+     "score": 1,
+     "quote": "The Chernobyl accident happened on 26 April 1986, not in 1989.",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":1,\"quote\":\"The Chernobyl accident happened on 26 April 1986, not in 1989.\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|s12|ebd-one",
+   "kind": "coverage",
+   "task": "s12",
+   "origin": "real",
+   "arm": "ebd-one",
+   "items": [
+    {
+     "n": 1,
+     "score": 0,
+     "quote": "",
+     "wrong": false
+    },
+    {
+     "n": 2,
+     "score": 0.5,
+     "quote": "In October 2026 the record showed 696 bankruptcies, 4,064 DROs and 8,427 individual voluntary arrangements (IVAs)",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 1,
+     "quote": "filers have more limited unsecured credit access and pay higher rates than comparable non-filers, and that access improves with time since filing",
+     "wrong": false
+    },
+    {
+     "n": 4,
+     "score": 1,
+     "quote": "87% of these families cited one or more of three reasons: job loss, medical problems, or divorce or separation",
+     "wrong": false
+    },
+    {
+     "n": 5,
+     "score": 1,
+     "quote": "The filer profile in the CBP data is middle-income and indebted, with a median age of 49 and single women making up about 33% of filers",
+     "wrong": false
+    },
+    {
+     "n": 6,
+     "score": 1,
+     "quote": "A debt management plan (DMP) distributes one affordable payment among eligible non-priority creditors",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":0,\"quote\":\"\",\"wrong\":false},{\"n\":2,\"score\":0.5,\"quote\":\"In October 2026 the record showed 696 bankruptcies, 4,064 DROs and 8,427 individual voluntary arrangements (IVAs)\",\"wrong\":false},{\"n\":3,\"score\":1,\"quote\":\"filers have more limited unsecured credit access and pay higher rates than comparable non-filers, and that access improves with time since filing\",\"wrong\":false},{\"n\":4,\"score\":1,\"quote\":\"87% of these families cited one or more of three reasons: job loss, medical problems, or divorce or separation\",\"wrong\":false},{\"n\":5,\"score\":1,\"quote\":\"The filer profile in the CBP data is middle-income and indebted, with a median age of 49 and single women making up about 33% of filers\",\"wrong\":false},{\"n\":6,\"score\":1,\"quote\":\"A debt management plan (DMP) distributes one affordable payment among eligible non-priority creditors\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|s12|baseline",
+   "kind": "coverage",
+   "task": "s12",
+   "origin": "real",
+   "arm": "baseline",
+   "items": [
+    {
+     "n": 1,
+     "score": 0,
+     "quote": "",
+     "wrong": false
+    },
+    {
+     "n": 2,
+     "score": 0.5,
+     "quote": "Reform also shifted filers toward Chapter 13: the means test raised the Chapter 13 share by about 3 percentage points",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 0,
+     "quote": "",
+     "wrong": false
+    },
+    {
+     "n": 4,
+     "score": 1,
+     "quote": "job loss and other income drops are the main trigger for personal bankruptcy",
+     "wrong": false
+    },
+    {
+     "n": 5,
+     "score": 1,
+     "quote": "Black households file at more than twice their population share, according to CBP data for 2013–2019 cases",
+     "wrong": false
+    },
+    {
+     "n": 6,
+     "score": 0.5,
+     "quote": "income protection, including unemployment and disability insurance, may do more to reduce filings than measures aimed only at medical bills",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":0,\"quote\":\"\",\"wrong\":false},{\"n\":2,\"score\":0.5,\"quote\":\"Reform also shifted filers toward Chapter 13: the means test raised the Chapter 13 share by about 3 percentage points\",\"wrong\":false},{\"n\":3,\"score\":0,\"quote\":\"\",\"wrong\":false},{\"n\":4,\"score\":1,\"quote\":\"job loss and other income drops are the main trigger for personal bankruptcy\",\"wrong\":false},{\"n\":5,\"score\":1,\"quote\":\"Black households file at more than twice their population share, according to CBP data for 2013–2019 cases\",\"wrong\":false},{\"n\":6,\"score\":0.5,\"quote\":\"income protection, including unemployment and disability insurance, may do more to reduce filings than measures aimed only at medical bills\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|p01|baseline",
+   "kind": "coverage",
+   "task": "p01",
+   "origin": "planted",
+   "arm": "baseline",
+   "items": [
+    {
+     "n": 1,
+     "score": 0.5,
+     "quote": "The Chernobyl accident occurred on 26 April 1986, not 1989.",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":0.5,\"quote\":\"The Chernobyl accident occurred on 26 April 1986, not 1989.\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|p02|baseline",
+   "kind": "coverage",
+   "task": "p02",
+   "origin": "planted",
+   "arm": "baseline",
+   "items": [
+    {
+     "n": 1,
+     "score": 1,
+     "quote": "Insulin is credited to Frederick Banting, Charles Best, John Macleod and James Collip at the University of Toronto in 1921, not to Alexander Fleming",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":1,\"quote\":\"Insulin is credited to Frederick Banting, Charles Best, John Macleod and James Collip at the University of Toronto in 1921, not to Alexander Fleming\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|p03|ebd-one",
+   "kind": "coverage",
+   "task": "p03",
+   "origin": "planted",
+   "arm": "ebd-one",
+   "items": [
+    {
+     "n": 1,
+     "score": 1,
+     "quote": "The older figures differ mainly because of method, datum and the snow-versus-rock choice, not because the mountain changed.",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":1,\"quote\":\"The older figures differ mainly because of method, datum and the snow-versus-rock choice, not because the mountain changed.\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|p02|ebd-one",
+   "kind": "coverage",
+   "task": "p02",
+   "origin": "planted",
+   "arm": "ebd-one",
+   "items": [
+    {
+     "n": 1,
+     "score": 1,
+     "quote": "Alexander Fleming did not discover insulin. The 1923 Nobel Prize for insulin went to Frederick Banting and John Macleod, working with Charles Best",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":1,\"quote\":\"Alexander Fleming did not discover insulin. The 1923 Nobel Prize for insulin went to Frederick Banting and John Macleod, working with Charles Best\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|p04|ebd-one",
+   "kind": "coverage",
+   "task": "p04",
+   "origin": "planted",
+   "arm": "ebd-one",
+   "items": [
+    {
+     "n": 1,
+     "score": 1,
+     "quote": "For most travellers, the answer is yes, though the type of permission depends on nationality. British and Irish citizens need no visa or ETA",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":1,\"quote\":\"For most travellers, the answer is yes, though the type of permission depends on nationality. British and Irish citizens need no visa or ETA\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|s11|baseline",
+   "kind": "coverage",
+   "task": "s11",
+   "origin": "real",
+   "arm": "baseline",
+   "items": [
+    {
+     "n": 1,
+     "score": 0,
+     "quote": "",
+     "wrong": false
+    },
+    {
+     "n": 2,
+     "score": 0,
+     "quote": "",
+     "wrong": false
+    },
+    {
+     "n": 3,
+     "score": 0.5,
+     "quote": "The Virginia Company of London, chartered in 1606, relied on private investors to pay for transporting colonists and building Jamestown",
+     "wrong": false
+    },
+    {
+     "n": 4,
+     "score": 1,
+     "quote": "The mainland colonies contributed to capitalist growth mainly through staple exports, shipping and insurance, merchant credit, and bound labour",
+     "wrong": true
+    },
+    {
+     "n": 5,
+     "score": 1,
+     "quote": "Credit mostly flowed from London and Glasgow merchant houses to planters and storekeepers",
+     "wrong": false
+    },
+    {
+     "n": 6,
+     "score": 1,
+     "quote": "Legal historians argue that colonial courts promoted a market society",
+     "wrong": false
+    },
+    {
+     "n": 7,
+     "score": 1,
+     "quote": "Planters' indebtedness to British and Glasgow merchants was among the grievances that contributed to the Revolution",
+     "wrong": false
+    },
+    {
+     "n": 8,
+     "score": 1,
+     "quote": "Mokyr argues that trade with the empire \"may have been central before the Industrial Revolution\" but lost primacy after 1780",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":0,\"quote\":\"\",\"wrong\":false},{\"n\":2,\"score\":0,\"quote\":\"\",\"wrong\":false},{\"n\":3,\"score\":0.5,\"quote\":\"The Virginia Company of London, chartered in 1606, relied on private investors to pay for transporting colonists and building Jamestown\",\"wrong\":false},{\"n\":4,\"score\":1,\"quote\":\"The mainland colonies contributed to capitalist growth mainly through staple exports, shipping and insurance, merchant credit, and bound labour\",\"wrong\":true},{\"n\":5,\"score\":1,\"quote\":\"Credit mostly flowed from London and Glasgow merchant houses to planters and storekeepers\",\"wrong\":false},{\"n\":6,\"score\":1,\"quote\":\"Legal historians argue that colonial courts promoted a market society\",\"wrong\":false},{\"n\":7,\"score\":1,\"quote\":\"Planters' indebtedness to British and Glasgow merchants was among the grievances that contributed to the Revolution\",\"wrong\":false},{\"n\":8,\"score\":1,\"quote\":\"Mokyr argues that trade with the empire \\\"may have been central before the Industrial Revolution\\\" but lost primacy after 1780\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|p03|baseline",
+   "kind": "coverage",
+   "task": "p03",
+   "origin": "planted",
+   "arm": "baseline",
+   "items": [
+    {
+     "n": 1,
+     "score": 0.5,
+     "quote": "it is about 0.86 m above the long-used 8,848 m. The gap most likely reflects improved measurement rather than a physical change in the summit",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":0.5,\"quote\":\"it is about 0.86 m above the long-used 8,848 m. The gap most likely reflects improved measurement rather than a physical change in the summit\",\"wrong\":false}]}"
+  },
+  {
+   "key": "coverage|p04|baseline",
+   "kind": "coverage",
+   "task": "p04",
+   "origin": "planted",
+   "arm": "baseline",
+   "items": [
+    {
+     "n": 1,
+     "score": 1,
+     "quote": "For a one-week trip, the answer depends on your nationality.",
+     "wrong": false
+    }
+   ],
+   "raw": "{\"items\":[{\"n\":1,\"score\":1,\"quote\":\"For a one-week trip, the answer depends on your nationality.\",\"wrong\":false}]}"
+  },
+  {
+   "key": "pair|s01|ebd-one as A",
+   "kind": "pair",
+   "task": "s01",
+   "origin": "real",
+   "order": "ebd-one as A",
+   "verdict": {
+    "coverage": "tie",
+    "support": "baseline",
+    "conflicts": "baseline",
+    "usefulness": "baseline",
+    "overall": "baseline"
+   },
+   "reason": "Both cover funding trends and impacts thoroughly, though neither explains well what the NHS is or how it is funded. B handles disagreements more explicitly: it covers growth rate definitions, capital direction, the drivers of the waiting-list gain and bank versus agency costs, and it ties funding changes to concrete impacts such as removals, estates backlog and trust deficits. A has some internal inconsistency and leans on weaker sources.",
+   "raw": "{\"coverage\":\"tie\",\"support\":\"B\",\"conflicts\":\"B\",\"usefulness\":\"B\",\"overall\":\"B\",\"reason\":\"Both cover funding trends and impacts thoroughly, though neither explains well what the NHS is or how it is funded. B handles disagreements more explicitly: it covers growth rate definitions, capital direction, the drivers of the waiting-list gain and bank versus agency costs, and it ties funding changes to concrete impacts such as removals, estates backlog and trust deficits. A has some internal inconsistency and leans on weaker sources.\"}"
+  },
+  {
+   "key": "pair|s03|baseline as A",
+   "kind": "pair",
+   "task": "s03",
+   "origin": "real",
+   "order": "baseline as A",
+   "verdict": {
+    "coverage": "baseline",
+    "support": "tie",
+    "conflicts": "tie",
+    "usefulness": "baseline",
+    "overall": "baseline"
+   },
+   "reason": "A covers group differences (gender, race, first-generation), gateway courses and rate definitions in more depth. It also explicitly flags the unverified 50% US figure, while B relies on a secondary 40–50% estimate; B's stronger intervention evidence (the PNAS mentoring experiment) and its handling of the paid-work conflict roughly offset this.",
+   "raw": "{\"coverage\":\"A\",\"support\":\"tie\",\"conflicts\":\"tie\",\"usefulness\":\"A\",\"overall\":\"A\",\"reason\":\"A covers group differences (gender, race, first-generation), gateway courses and rate definitions in more depth. It also explicitly flags the unverified 50% US figure, while B relies on a secondary 40–50% estimate; B's stronger intervention evidence (the PNAS mentoring experiment) and its handling of the paid-work conflict roughly offset this.\"}"
+  },
+  {
+   "key": "pair|s02|ebd-one as A",
+   "kind": "pair",
+   "task": "s02",
+   "origin": "real",
+   "order": "ebd-one as A",
+   "verdict": {
+    "coverage": "baseline",
+    "support": "baseline",
+    "conflicts": "baseline",
+    "usefulness": "baseline",
+    "overall": "baseline"
+   },
+   "reason": "Report B sets out the pro-inequality case more fully, covering tournament theory, Kaldor, Kuznets, Aghion–Bolton and the innovation evidence from Aghion et al., then weighs it against the counter-evidence. It also explicitly reconciles conflicts, such as the IMF sources on redistribution and the OECD's bottom-end finding versus Voitchovsky's top-end result. Report A mostly argues against the premise, treats the positive case more thinly, and leans on weaker sources such as a UPSC answer page.",
+   "raw": "{\"coverage\":\"B\",\"support\":\"B\",\"conflicts\":\"B\",\"usefulness\":\"B\",\"overall\":\"B\",\"reason\":\"Report B sets out the pro-inequality case more fully, covering tournament theory, Kaldor, Kuznets, Aghion–Bolton and the innovation evidence from Aghion et al., then weighs it against the counter-evidence. It also explicitly reconciles conflicts, such as the IMF sources on redistribution and the OECD's bottom-end finding versus Voitchovsky's top-end result. Report A mostly argues against the premise, treats the positive case more thinly, and leans on weaker sources such as a UPSC answer page.\"}"
+  },
+  {
+   "key": "pair|s02|baseline as A",
+   "kind": "pair",
+   "task": "s02",
+   "origin": "real",
+   "order": "baseline as A",
+   "verdict": {
+    "coverage": "baseline",
+    "support": "baseline",
+    "conflicts": "baseline",
+    "usefulness": "baseline",
+    "overall": "baseline"
+   },
+   "reason": "Report A gives a fuller and more rigorous account of the pro-inequality case, covering tournament theory, Kaldor, Aghion–Bolton and the innovation evidence from Aghion et al. with its limits, and it carefully reconciles horizon and estimator dependence. It also handles source conflicts explicitly, such as the two IMF accounts of redistribution and OECD versus Voitchovsky. Report B states the pro-side arguments weakly and leans on advocacy sources and a UPSC answer, and it says no source measures inequality's effect on innovation, which misses the Aghion et al. evidence that A covers.",
+   "raw": "{\"coverage\":\"A\",\"support\":\"A\",\"conflicts\":\"A\",\"usefulness\":\"A\",\"overall\":\"A\",\"reason\":\"Report A gives a fuller and more rigorous account of the pro-inequality case, covering tournament theory, Kaldor, Aghion–Bolton and the innovation evidence from Aghion et al. with its limits, and it carefully reconciles horizon and estimator dependence. It also handles source conflicts explicitly, such as the two IMF accounts of redistribution and OECD versus Voitchovsky. Report B states the pro-side arguments weakly and leans on advocacy sources and a UPSC answer, and it says no source measures inequality's effect on innovation, which misses the Aghion et al. evidence that A covers.\"}"
+  },
+  {
+   "key": "pair|s01|baseline as A",
+   "kind": "pair",
+   "task": "s01",
+   "origin": "real",
+   "order": "baseline as A",
+   "verdict": {
+    "coverage": "ebd-one",
+    "support": "tie",
+    "conflicts": "tie",
+    "usefulness": "ebd-one",
+    "overall": "ebd-one"
+   },
+   "reason": "B traces funding over a longer span, from the 2010 Spending Review through the Long Term Plan to the 2025 settlement, and links it to concrete effects: bed losses, social care cuts, real pay erosion and devolved divergence. A is strong on recent capital, trust-finance and productivity detail, but neither report explains what the NHS is or how it is funded, and both cite carefully and handle source disagreements comparably.",
+   "raw": "{\"coverage\":\"B\",\"support\":\"tie\",\"conflicts\":\"tie\",\"usefulness\":\"B\",\"overall\":\"B\",\"reason\":\"B traces funding over a longer span, from the 2010 Spending Review through the Long Term Plan to the 2025 settlement, and links it to concrete effects: bed losses, social care cuts, real pay erosion and devolved divergence. A is strong on recent capital, trust-finance and productivity detail, but neither report explains what the NHS is or how it is funded, and both cite carefully and handle source disagreements comparably.\"}"
+  },
+  {
+   "key": "pair|s03|ebd-one as A",
+   "kind": "pair",
+   "task": "s03",
+   "origin": "real",
+   "order": "ebd-one as A",
+   "verdict": {
+    "coverage": "baseline",
+    "support": "baseline",
+    "conflicts": "baseline",
+    "usefulness": "tie",
+    "overall": "baseline"
+   },
+   "reason": "B covers more ground, including gateway courses, subgroup differences, definitional measurement with an explicit table, and interventions, and it flags the unverified 'around 50%' figure that A repeats as a secondary estimate. Both handle conflicts carefully, but B reconciles definitions and contested evidence more thoroughly; A is somewhat more concise and decisive.",
+   "raw": "{\"coverage\":\"B\",\"support\":\"B\",\"conflicts\":\"B\",\"usefulness\":\"tie\",\"overall\":\"B\",\"reason\":\"B covers more ground, including gateway courses, subgroup differences, definitional measurement with an explicit table, and interventions, and it flags the unverified 'around 50%' figure that A repeats as a secondary estimate. Both handle conflicts carefully, but B reconciles definitions and contested evidence more thoroughly; A is somewhat more concise and decisive.\"}"
+  },
+  {
+   "key": "pair|s05|baseline as A",
+   "kind": "pair",
+   "task": "s05",
+   "origin": "real",
+   "order": "baseline as A",
+   "verdict": {
+    "coverage": "ebd-one",
+    "support": "tie",
+    "conflicts": "ebd-one",
+    "usefulness": "baseline",
+    "overall": "ebd-one"
+   },
+   "reason": "B covers more ground, including employment and contracting evidence, race-neutral alternatives, the Harvard record and its contested figures, and the 6-2 versus 6-3 vote conflict, and it handles conflicts more explicitly by saying which source it follows and why. A is a bit tighter and more directly framed around the principle-versus-evidence distinction, but it reports the SFFA vote as 6-2 without flagging that this is disputed.",
+   "raw": "{\"coverage\":\"B\",\"support\":\"tie\",\"conflicts\":\"B\",\"usefulness\":\"A\",\"overall\":\"B\",\"reason\":\"B covers more ground, including employment and contracting evidence, race-neutral alternatives, the Harvard record and its contested figures, and the 6-2 versus 6-3 vote conflict, and it handles conflicts more explicitly by saying which source it follows and why. A is a bit tighter and more directly framed around the principle-versus-evidence distinction, but it reports the SFFA vote as 6-2 without flagging that this is disputed.\"}"
+  },
+  {
+   "key": "pair|s04|baseline as A",
+   "kind": "pair",
+   "task": "s04",
+   "origin": "real",
+   "order": "baseline as A",
+   "verdict": {
+    "coverage": "ebd-one",
+    "support": "tie",
+    "conflicts": "tie",
+    "usefulness": "ebd-one",
+    "overall": "ebd-one"
+   },
+   "reason": "Both reports cover American participation, finance and the peace settlement well, but only B addresses impacts at home: the draft, the Espionage and Sedition Acts, women's work and the shift to creditor status. B therefore answers more of the question, while A's extra detail on naval convoys does not make up for missing that dimension.",
+   "raw": "{\"coverage\":\"B\",\"support\":\"tie\",\"conflicts\":\"tie\",\"usefulness\":\"B\",\"overall\":\"B\",\"reason\":\"Both reports cover American participation, finance and the peace settlement well, but only B addresses impacts at home: the draft, the Espionage and Sedition Acts, women's work and the shift to creditor status. B therefore answers more of the question, while A's extra detail on naval convoys does not make up for missing that dimension.\"}"
+  },
+  {
+   "key": "pair|s06|baseline as A",
+   "kind": "pair",
+   "task": "s06",
+   "origin": "real",
+   "order": "baseline as A",
+   "verdict": {
+    "coverage": "ebd-one",
+    "support": "ebd-one",
+    "conflicts": "ebd-one",
+    "usefulness": "ebd-one",
+    "overall": "ebd-one"
+   },
+   "reason": "Report B covers more of what typical practice actually looks like, including survey data on how prevalent it is, and it adds Reading Recovery evidence and implementation details. It also questions the assumption that typical practice is still the majority approach and resolves source disagreements explicitly, whereas Report A is solid but narrower and spends more space on policy details that matter less to the question.",
+   "raw": "{\"coverage\":\"B\",\"support\":\"B\",\"conflicts\":\"B\",\"usefulness\":\"B\",\"overall\":\"B\",\"reason\":\"Report B covers more of what typical practice actually looks like, including survey data on how prevalent it is, and it adds Reading Recovery evidence and implementation details. It also questions the assumption that typical practice is still the majority approach and resolves source disagreements explicitly, whereas Report A is solid but narrower and spends more space on policy details that matter less to the question.\"}"
+  },
+  {
+   "key": "pair|s04|ebd-one as A",
+   "kind": "pair",
+   "task": "s04",
+   "origin": "real",
+   "order": "ebd-one as A",
+   "verdict": {
+    "coverage": "ebd-one",
+    "support": "ebd-one",
+    "conflicts": "tie",
+    "usefulness": "ebd-one",
+    "overall": "ebd-one"
+   },
+   "reason": "Report A covers all three checklist areas, including domestic political and social effects such as the draft, the Espionage and Sedition Acts, and women in the workforce, which Report B largely omits despite B's richer detail on convoys and the armistice. A also flags weak sources more carefully, while B repeats some questionable claims, such as US units fighting under British or Australian command at Cantigny and Belleau Wood, and leaves troop-number conflicts unresolved.",
+   "raw": "{\"coverage\":\"A\",\"support\":\"A\",\"conflicts\":\"tie\",\"usefulness\":\"A\",\"overall\":\"A\",\"reason\":\"Report A covers all three checklist areas, including domestic political and social effects such as the draft, the Espionage and Sedition Acts, and women in the workforce, which Report B largely omits despite B's richer detail on convoys and the armistice. A also flags weak sources more carefully, while B repeats some questionable claims, such as US units fighting under British or Australian command at Cantigny and Belleau Wood, and leaves troop-number conflicts unresolved.\"}"
+  },
+  {
+   "key": "pair|s06|ebd-one as A",
+   "kind": "pair",
+   "task": "s06",
+   "origin": "real",
+   "order": "ebd-one as A",
+   "verdict": {
+    "coverage": "ebd-one",
+    "support": "tie",
+    "conflicts": "ebd-one",
+    "usefulness": "ebd-one",
+    "overall": "ebd-one"
+   },
+   "reason": "Report A covers more of what typical practice looks like today, citing survey evidence on how common balanced literacy still is and challenging the assumption that most classrooms use it, and it covers the assessment cycle and the time and cost of implementation. Report B gives careful, well-hedged evidence, but it says less about how prevalent typical practice actually is and wanders more into peripheral policy figures.",
+   "raw": "{\"coverage\":\"A\",\"support\":\"tie\",\"conflicts\":\"A\",\"usefulness\":\"A\",\"overall\":\"A\",\"reason\":\"Report A covers more of what typical practice looks like today, citing survey evidence on how common balanced literacy still is and challenging the assumption that most classrooms use it, and it covers the assessment cycle and the time and cost of implementation. Report B gives careful, well-hedged evidence, but it says less about how prevalent typical practice actually is and wanders more into peripheral policy figures.\"}"
+  },
+  {
+   "key": "pair|s07|baseline as A",
+   "kind": "pair",
+   "task": "s07",
+   "origin": "real",
+   "order": "baseline as A",
+   "verdict": {
+    "coverage": "tie",
+    "support": "baseline",
+    "conflicts": "ebd-one",
+    "usefulness": "baseline",
+    "overall": "baseline"
+   },
+   "reason": "A is more focused on Darwin's own account, citing more primary sources and handling sexual selection, divergence and speciation more fully. B adds useful modern sources of variation and handles historiographical disputes well, but it drifts into tangential mutation-rate figures and an odd 2026 preprint, and its claim that the answer is \"yes, but only for sorting\" does not fit the question as asked.",
+   "raw": "{\"coverage\":\"tie\",\"support\":\"A\",\"conflicts\":\"B\",\"usefulness\":\"A\",\"overall\":\"A\",\"reason\":\"A is more focused on Darwin's own account, citing more primary sources and handling sexual selection, divergence and speciation more fully. B adds useful modern sources of variation and handles historiographical disputes well, but it drifts into tangential mutation-rate figures and an odd 2026 preprint, and its claim that the answer is \\\"yes, but only for sorting\\\" does not fit the question as asked.\"}"
+  },
+  {
+   "key": "pair|s05|ebd-one as A",
+   "kind": "pair",
+   "task": "s05",
+   "origin": "real",
+   "order": "ebd-one as A",
+   "verdict": {
+    "coverage": "baseline",
+    "support": "tie",
+    "conflicts": "ebd-one",
+    "usefulness": "baseline",
+    "overall": "baseline"
+   },
+   "reason": "B gives a fuller account of why people oppose affirmative action: philosophical arguments (Pojman's weak/strong distinction), the split between principled and consequentialist objections, organized opposition, and age and gender splits in opinion, all framed clearly around principle versus empirical claims. A is equally well sourced and reconciles conflicting figures (vote count, Prop 209 shares) more explicitly, but its conclusion is muddled and it explains the motives less directly.",
+   "raw": "{\"coverage\":\"B\",\"support\":\"tie\",\"conflicts\":\"A\",\"usefulness\":\"B\",\"overall\":\"B\",\"reason\":\"B gives a fuller account of why people oppose affirmative action: philosophical arguments (Pojman's weak/strong distinction), the split between principled and consequentialist objections, organized opposition, and age and gender splits in opinion, all framed clearly around principle versus empirical claims. A is equally well sourced and reconciles conflicting figures (vote count, Prop 209 shares) more explicitly, but its conclusion is muddled and it explains the motives less directly.\"}"
+  },
+  {
+   "key": "pair|s08|ebd-one as A",
+   "kind": "pair",
+   "task": "s08",
+   "origin": "real",
+   "order": "ebd-one as A",
+   "verdict": {
+    "coverage": "baseline",
+    "support": "baseline",
+    "conflicts": "baseline",
+    "usefulness": "ebd-one",
+    "overall": "baseline"
+   },
+   "reason": "B covers more of the checklist, defining sociopathy against ASPD and PCL-R with prevalence figures and explaining the prediction and base-rate problems in detail. It also flags conflicting counts and commencement dates more thoroughly, though A is more concise and directly organised around the question's false premise.",
+   "raw": "{\"coverage\":\"B\",\"support\":\"B\",\"conflicts\":\"B\",\"usefulness\":\"A\",\"overall\":\"B\",\"reason\":\"B covers more of the checklist, defining sociopathy against ASPD and PCL-R with prevalence figures and explaining the prediction and base-rate problems in detail. It also flags conflicting counts and commencement dates more thoroughly, though A is more concise and directly organised around the question's false premise.\"}"
+  },
+  {
+   "key": "pair|s07|ebd-one as A",
+   "kind": "pair",
+   "task": "s07",
+   "origin": "real",
+   "order": "ebd-one as A",
+   "verdict": {
+    "coverage": "tie",
+    "support": "baseline",
+    "conflicts": "ebd-one",
+    "usefulness": "baseline",
+    "overall": "baseline"
+   },
+   "reason": "B gives a more focused, primary-source-grounded account of how Darwin explained trait differences, covering his causes of variation, divergence, sexual selection and heredity. A is strong on historiographic disputes but answers an odd 'yes/no' framing, drifts into modern mutation-rate tables, and cites a questionable 2026 preprint.",
+   "raw": "{\"coverage\":\"tie\",\"support\":\"B\",\"conflicts\":\"A\",\"usefulness\":\"B\",\"overall\":\"B\",\"reason\":\"B gives a more focused, primary-source-grounded account of how Darwin explained trait differences, covering his causes of variation, divergence, sexual selection and heredity. A is strong on historiographic disputes but answers an odd 'yes/no' framing, drifts into modern mutation-rate tables, and cites a questionable 2026 preprint.\"}"
+  },
+  {
+   "key": "pair|s08|baseline as A",
+   "kind": "pair",
+   "task": "s08",
+   "origin": "real",
+   "order": "baseline as A",
+   "verdict": {
+    "coverage": "baseline",
+    "support": "baseline",
+    "conflicts": "baseline",
+    "usefulness": "ebd-one",
+    "overall": "baseline"
+   },
+   "reason": "Report A covers more of the checklist: it defines the construct clinically, shows prevalence and risk evidence, and works through legal mechanisms and barriers, while handling source conflicts (Canada's commencement, the US state count) with careful caveats. Report B is more concise and direct on why no such law exists, but its definition is thin and its resolution of the coercive-control state count is weakly justified.",
+   "raw": "{\"coverage\":\"A\",\"support\":\"A\",\"conflicts\":\"A\",\"usefulness\":\"B\",\"overall\":\"A\",\"reason\":\"Report A covers more of the checklist: it defines the construct clinically, shows prevalence and risk evidence, and works through legal mechanisms and barriers, while handling source conflicts (Canada's commencement, the US state count) with careful caveats. Report B is more concise and direct on why no such law exists, but its definition is thin and its resolution of the coercive-control state count is weakly justified.\"}"
+  },
+  {
+   "key": "pair|s09|baseline as A",
+   "kind": "pair",
+   "task": "s09",
+   "origin": "real",
+   "order": "baseline as A",
+   "verdict": {
+    "coverage": "ebd-one",
+    "support": "tie",
+    "conflicts": "ebd-one",
+    "usefulness": "tie",
+    "overall": "ebd-one"
+   },
+   "reason": "B ties economics to culture more broadly, covering mutual aid and churches, the Great Migration, music, fashion, philanthropy and the culture-versus-structure debate, and it reconciles more source conflicts. A has a tighter ownership thesis and is more concise, but neither report defines economics or culture, and B drifts into policy detail such as the NIL cap and MBDA staffing.",
+   "raw": "{\"coverage\":\"B\",\"support\":\"tie\",\"conflicts\":\"B\",\"usefulness\":\"tie\",\"overall\":\"B\",\"reason\":\"B ties economics to culture more broadly, covering mutual aid and churches, the Great Migration, music, fashion, philanthropy and the culture-versus-structure debate, and it reconciles more source conflicts. A has a tighter ownership thesis and is more concise, but neither report defines economics or culture, and B drifts into policy detail such as the NIL cap and MBDA staffing.\"}"
+  },
+  {
+   "key": "pair|s10|ebd-one as A",
+   "kind": "pair",
+   "task": "s10",
+   "origin": "real",
+   "order": "ebd-one as A",
+   "verdict": {
+    "coverage": "baseline",
+    "support": "baseline",
+    "conflicts": "tie",
+    "usefulness": "baseline",
+    "overall": "baseline"
+   },
+   "reason": "B answers the question directly and covers more ground: principles (Habermas, Sandel, justice), historical harms including Aktion T4, scientific critiques, law and defenders' arguments, with careful handling of conflicting figures. A spends considerable space disputing a premise the question never asserted (that 'most people' reject eugenics), which weakens how directly it answers, though its handling of conflicts is otherwise comparable.",
+   "raw": "{\"coverage\":\"B\",\"support\":\"B\",\"conflicts\":\"tie\",\"usefulness\":\"B\",\"overall\":\"B\",\"reason\":\"B answers the question directly and covers more ground: principles (Habermas, Sandel, justice), historical harms including Aktion T4, scientific critiques, law and defenders' arguments, with careful handling of conflicting figures. A spends considerable space disputing a premise the question never asserted (that 'most people' reject eugenics), which weakens how directly it answers, though its handling of conflicts is otherwise comparable.\"}"
+  },
+  {
+   "key": "pair|s09|ebd-one as A",
+   "kind": "pair",
+   "task": "s09",
+   "origin": "real",
+   "order": "ebd-one as A",
+   "verdict": {
+    "coverage": "ebd-one",
+    "support": "baseline",
+    "conflicts": "tie",
+    "usefulness": "tie",
+    "overall": "ebd-one"
+   },
+   "reason": "A ties economics more directly to cultural forms: churches, mutual aid, philanthropy, migration-era neighbourhood life, fashion and music appropriation, and the culture-versus-structure debate, which suits the question better. B is slightly more careful in sourcing and explicitly labels its inferences, but it focuses mostly on wealth and ownership metrics.",
+   "raw": "{\"coverage\":\"A\",\"support\":\"B\",\"conflicts\":\"tie\",\"usefulness\":\"tie\",\"overall\":\"A\",\"reason\":\"A ties economics more directly to cultural forms: churches, mutual aid, philanthropy, migration-era neighbourhood life, fashion and music appropriation, and the culture-versus-structure debate, which suits the question better. B is slightly more careful in sourcing and explicitly labels its inferences, but it focuses mostly on wealth and ownership metrics.\"}"
+  },
+  {
+   "key": "pair|s10|baseline as A",
+   "kind": "pair",
+   "task": "s10",
+   "origin": "real",
+   "order": "baseline as A",
+   "verdict": {
+    "coverage": "baseline",
+    "support": "tie",
+    "conflicts": "baseline",
+    "usefulness": "baseline",
+    "overall": "baseline"
+   },
+   "reason": "A covers more ground: the ethical principles from Habermas, Sandel and the disability critics, scientific critiques, a table setting out conflicting historical figures, and the legal and professional positions. B spends much of its length attacking a premise the question never states, namely that 'most people' reject eugenics, and it leaks an internal reference ('A1'), which makes it less direct and less useful.",
+   "raw": "{\"coverage\":\"A\",\"support\":\"tie\",\"conflicts\":\"A\",\"usefulness\":\"A\",\"overall\":\"A\",\"reason\":\"A covers more ground: the ethical principles from Habermas, Sandel and the disability critics, scientific critiques, a table setting out conflicting historical figures, and the legal and professional positions. B spends much of its length attacking a premise the question never states, namely that 'most people' reject eugenics, and it leaks an internal reference ('A1'), which makes it less direct and less useful.\"}"
+  },
+  {
+   "key": "pair|s12|baseline as A",
+   "kind": "pair",
+   "task": "s12",
+   "origin": "real",
+   "order": "baseline as A",
+   "verdict": {
+    "coverage": "ebd-one",
+    "support": "baseline",
+    "conflicts": "tie",
+    "usefulness": "ebd-one",
+    "overall": "ebd-one"
+   },
+   "reason": "B covers more of the checklist, including post-filing consequences, credit recovery and alternatives such as DROs, IVAs and DMPs, while A focuses almost entirely on causes and prevalence. A's sourcing is somewhat more rigorous and leans more on primary studies, but B's broader scope answers the question more completely.",
+   "raw": "{\"coverage\":\"B\",\"support\":\"A\",\"conflicts\":\"tie\",\"usefulness\":\"B\",\"overall\":\"B\",\"reason\":\"B covers more of the checklist, including post-filing consequences, credit recovery and alternatives such as DROs, IVAs and DMPs, while A focuses almost entirely on causes and prevalence. A's sourcing is somewhat more rigorous and leans more on primary studies, but B's broader scope answers the question more completely.\"}"
+  },
+  {
+   "key": "pair|s12|ebd-one as A",
+   "kind": "pair",
+   "task": "s12",
+   "origin": "real",
+   "order": "ebd-one as A",
+   "verdict": {
+    "coverage": "baseline",
+    "support": "baseline",
+    "conflicts": "baseline",
+    "usefulness": "baseline",
+    "overall": "baseline"
+   },
+   "reason": "B goes further on causes, with Keys's panel evidence, the comparative survey table, the effects of debt and law, and prevalence data across demographics and countries. It also reconciles the medical-bankruptcy dispute more convincingly and uses more authoritative primary sources. A covers alternatives and post-filing consequences better, but B answers the question of why people file more directly and with stronger evidence.",
+   "raw": "{\"coverage\":\"B\",\"support\":\"B\",\"conflicts\":\"B\",\"usefulness\":\"B\",\"overall\":\"B\",\"reason\":\"B goes further on causes, with Keys's panel evidence, the comparative survey table, the effects of debt and law, and prevalence data across demographics and countries. It also reconciles the medical-bankruptcy dispute more convincingly and uses more authoritative primary sources. A covers alternatives and post-filing consequences better, but B answers the question of why people file more directly and with stronger evidence.\"}"
+  },
+  {
+   "key": "pair|s11|baseline as A",
+   "kind": "pair",
+   "task": "s11",
+   "origin": "real",
+   "order": "baseline as A",
+   "verdict": {
+    "coverage": "ebd-one",
+    "support": "baseline",
+    "conflicts": "tie",
+    "usefulness": "ebd-one",
+    "overall": "ebd-one"
+   },
+   "reason": "Report A is deeply documented on mainland credit, land, courts, labour and paper money, with careful handling of uncertainty, but it never defines capitalism and is cut off mid-sentence without a conclusion. Report B covers the wider-world impact (shares of British GDP, comparison with other empires) and ends with a clear, actionable synthesis, so it answers the question more directly.",
+   "raw": "{\"coverage\":\"B\",\"support\":\"A\",\"conflicts\":\"tie\",\"usefulness\":\"B\",\"overall\":\"B\",\"reason\":\"Report A is deeply documented on mainland credit, land, courts, labour and paper money, with careful handling of uncertainty, but it never defines capitalism and is cut off mid-sentence without a conclusion. Report B covers the wider-world impact (shares of British GDP, comparison with other empires) and ends with a clear, actionable synthesis, so it answers the question more directly.\"}"
+  },
+  {
+   "key": "pair|s11|ebd-one as A",
+   "kind": "pair",
+   "task": "s11",
+   "origin": "real",
+   "order": "ebd-one as A",
+   "verdict": {
+    "coverage": "tie",
+    "support": "tie",
+    "conflicts": "baseline",
+    "usefulness": "ebd-one",
+    "overall": "ebd-one"
+   },
+   "reason": "Report B goes deeper on credit, courts, labour and paper-money disputes and flags the question of whether colonial society was capitalist at all, but it is cut off mid-sentence and never concludes. Report A is complete and comparably well sourced, covers the colonies' impact on the wider world and other empires, and ends with a clear, usable conclusion.",
+   "raw": "{\"coverage\":\"tie\",\"support\":\"tie\",\"conflicts\":\"B\",\"usefulness\":\"A\",\"overall\":\"A\",\"reason\":\"Report B goes deeper on credit, courts, labour and paper-money disputes and flags the question of whether colonial society was capitalist at all, but it is cut off mid-sentence and never concludes. Report A is complete and comparably well sourced, covers the colonies' impact on the wider world and other empires, and ends with a clear, usable conclusion.\"}"
+  }
+ ]
+}

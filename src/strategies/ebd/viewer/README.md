@@ -54,7 +54,7 @@ disagreements and verdicts. Runs made without tracing have no trace pages.
 | Step | Content |
 |---|---|
 | Overview | Things to check (failed researchers, invalid or dropped briefs, rejected model calls, fallbacks, sections without `[Qn]` headings, unknown citations), the stop kind and its reason, each assumption's verdict and the goals that checked it, the goal tree with the tree metrics, and the conflicts |
-| Init: plan | The request analyst's call (input, reply, check errors), the request analysis (frame, ROM, questions), the goal table, and the first briefs with their full instructions |
+| Init: plan | The environment analyst's call (input, reply, check errors), the analysis of the request (frame, objects, the check of the claims and the client's question), the plan's main parts with their key questions, the goal table, and the first briefs with their full instructions. Records made before 2026-11-20 show the request analysis and the life-cycle map of the earlier planner |
 | Researchers round N | Each researcher's brief, queries, the sources the tools reported (cited or not), its diagnostics, how its sections were mapped to goals, and its notes with an evidence ID on every finding and gap |
 | Observe round N | The conflict checker's and round analyst's calls, with the exact input, the reply and any errors the code checks found; what the code did (goals settled or requeued, the evidence floor, proposals accepted or rejected, moot goals, the stop check); the goal table with its changes since the last step; conflicts; the next briefs |
 | Writer input | The outline, the guidance and the material the writer received, with the platform's provenance diagnostics |

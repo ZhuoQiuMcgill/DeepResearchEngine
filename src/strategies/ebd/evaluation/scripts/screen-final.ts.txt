@@ -1,0 +1,84 @@
+/**
+ * A cheap screen for changes of the writer's input (design section 33): the blind pair instruction of
+ * judge.ts, word for word, answered by Claude Haiku, several samples for each pair and order. A report
+ * of the approach (as recorded, or rewritten in a folder) is set against the baseline's recorded report
+ * of the same question of the final test.
+ *
+ * It is a screen for development on questions that have been read, not a substitute for the judge: on
+ * the earlier questions it favoured the approach more than the Opus judge did. What it can show is the
+ * difference between two versions of the approach's report against the same baseline report.
+ *
+ *   tsx local/ebd-heldout/screen-final.ts <name> [samples]     name: recorded | a folder rewrite-final-<name>
+ */
+import "dotenv/config";
+import { readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { HumanMessage, SystemMessage } from "@langchain/core/messages";
+import { createChatModel, getProfile } from "../../src/config/models.js";
+
+const OUT = "local/ebd-heldout";
+const [name = "recorded", n = "2"] = process.argv.slice(2);
+const samples = Number(n);
+type Q = { id: string; question: string; checklist: string[] };
+type Summary = { dir: string; strategy: { label: string }; tags: { task: string } };
+const QUESTIONS = JSON.parse(readFileSync(join(OUT, "final-sealed-questions.json"), "utf8")) as Q[];
+const folder = readdirSync(OUT).filter((d) => d.startsWith("final-sealed-2")).sort().at(-1)!;
+const runs = JSON.parse(readFileSync(join(OUT, folder, "summaries.json"), "utf8")) as Summary[];
+const recorded = (task: string, arm: string) => readFileSync(join(runs.find((s) => s.tags.task === task && s.strategy.label === arm)!.dir, "report.md"), "utf8");
+const candidate = (task: string) => (name === "recorded" ? recorded(task, "ebd-one") : readFileSync(join(OUT, `rewrite-final-${name}`, `${task}.md`), "utf8"));
+
+const source = readFileSync(join(OUT, "judge.ts"), "utf8");
+const PAIR_SYSTEM = /const PAIR_SYSTEM = `([\s\S]*?)`;/.exec(source)![1]!;
+const model = createChatModel(getProfile("haiku"));
+const usage = { input: 0, output: 0 };
+const KEYS = ["coverage", "support", "conflicts", "usefulness", "overall"] as const;
+
+function textOf(content: unknown): string {
+  if (typeof content === "string") return content;
+  return (content as { type: string; text?: string }[]).filter((b) => b.type === "text").map((b) => b.text ?? "").join("");
+}
+
+async function pair(q: Q, candFirst: boolean) {
+  const [a, b] = candFirst ? [candidate(q.id), recorded(q.id, "baseline")] : [recorded(q.id, "baseline"), candidate(q.id)];
+  const human = `Question:\n${q.question}\n\nChecklist of the main items:\n${q.checklist.map((c, i) => `${i + 1}. ${c}`).join("\n")}\n\n<report_A>\n${a}\n</report_A>\n\n<report_B>\n${b}\n</report_B>`;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const msg = await model.invoke([new SystemMessage(PAIR_SYSTEM), new HumanMessage(human)]);
+    const u = (msg as { usage_metadata?: { input_tokens?: number; output_tokens?: number } }).usage_metadata;
+    usage.input += u?.input_tokens ?? 0;
+    usage.output += u?.output_tokens ?? 0;
+    const m = textOf(msg.content).match(/\{[\s\S]*\}/);
+    try {
+      const json = JSON.parse(m![0]) as Record<string, string>;
+      const who = (v: string) => (v === "A" ? (candFirst ? "cand" : "base") : v === "B" ? (candFirst ? "base" : "cand") : "tie");
+      return { task: q.id, candFirst, verdict: Object.fromEntries(KEYS.map((k) => [k, who(String(json[k]))])) };
+    } catch {
+      // asked again
+    }
+  }
+  return { task: q.id, candFirst, verdict: Object.fromEntries(KEYS.map((k) => [k, "tie"])) };
+}
+
+const jobs = QUESTIONS.flatMap((q) => [true, false].flatMap((first) => Array.from({ length: samples }, () => () => pair(q, first))));
+const results: Awaited<ReturnType<typeof pair>>[] = [];
+let next = 0;
+await Promise.all(Array.from({ length: 6 }, async () => {
+  while (next < jobs.length) results.push(await jobs[next++]!());
+}));
+writeFileSync(join(OUT, `screen-final-${name}.json`), JSON.stringify({ name, samples, usage, results }, null, 1));
+
+console.log(`${name}: ${results.length} judgments by Haiku (${samples} for each pair and order); tokens in ${usage.input}, out ${usage.output}; about $${((usage.input * 0.1 + usage.output * 0.5) / 1e6).toFixed(2)}`);
+for (const k of KEYS) {
+  const c = results.filter((r) => r.verdict[k] === "cand").length;
+  const b = results.filter((r) => r.verdict[k] === "base").length;
+  console.log(`   ${k.padEnd(10)} approach ${String(c).padStart(3)}, baseline ${String(b).padStart(3)}, tie ${String(results.length - c - b).padStart(3)}   (${Math.round((100 * c) / Math.max(1, c + b))}% of the decided)`);
+}
+const perTask = QUESTIONS.map((q) => {
+  const rs = results.filter((r) => r.task === q.id);
+  const share = (first: boolean) => {
+    const x = rs.filter((r) => r.candFirst === first);
+    return x.filter((r) => r.verdict.overall === "cand").length - x.filter((r) => r.verdict.overall === "base").length;
+  };
+  const [a, b] = [share(true), share(false)];
+  return `${q.id}:${a > 0 && b > 0 ? "A" : a < 0 && b < 0 ? "B" : "-"}`;
+});
+console.log(`   by question, both orders agreeing (A approach, B baseline, - neither): ${perTask.join(" ")}`);

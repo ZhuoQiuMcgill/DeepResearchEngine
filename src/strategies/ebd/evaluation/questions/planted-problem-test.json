@@ -1,0 +1,122 @@
+[
+ {
+  "id": "pp01",
+  "origin": "planted",
+  "set": "planted2",
+  "type": "false fact: a wrong date",
+  "question": "How did the Wright brothers' first powered flight in 1908 change transportation?",
+  "checklist": [
+   "States that the Wright brothers' first powered flight was on 17 December 1903, not in 1908."
+  ]
+ },
+ {
+  "id": "pp02",
+  "origin": "planted",
+  "set": "planted2",
+  "type": "false fact: a wrong attribution",
+  "question": "How did Galileo's invention of the telescope change astronomy?",
+  "checklist": [
+   "States that Galileo did not invent the telescope: it appeared in the Netherlands in 1608 (Hans Lipperhey's patent application), and Galileo built his own in 1609 and used it for astronomy."
+  ]
+ },
+ {
+  "id": "pp03",
+  "origin": "planted",
+  "set": "planted2",
+  "type": "false fact: a wrong name",
+  "question": "Why was Pompeii destroyed by the eruption of Mount Etna?",
+  "checklist": [
+   "States that Pompeii was destroyed by the eruption of Mount Vesuvius (AD 79), not of Mount Etna."
+  ]
+ },
+ {
+  "id": "pp04",
+  "origin": "planted",
+  "set": "planted2",
+  "type": "false fact: a wrong circumstance",
+  "question": "Why did the space shuttle Challenger break apart during re-entry in 1986?",
+  "checklist": [
+   "States that Challenger broke apart shortly after launch (73 seconds into its flight, on 28 January 1986), not during re-entry."
+  ]
+ },
+ {
+  "id": "pp05",
+  "origin": "planted",
+  "set": "planted2",
+  "type": "sources that give different figures",
+  "question": "How long is the Nile?",
+  "checklist": [
+   "Gives a length of about 6,650 km and says that sources give different lengths (for example 6,650 km and 6,853 km) because the result depends on where the river is taken to start and how it is measured."
+  ]
+ },
+ {
+  "id": "pp06",
+  "origin": "planted",
+  "set": "planted2",
+  "type": "sources that give different figures",
+  "question": "How many countries are there in the world?",
+  "checklist": [
+   "Says that the number depends on who is counted: gives the 193 member states of the United Nations and names at least one case that is counted differently (for example the two observer states, Taiwan or Kosovo)."
+  ]
+ },
+ {
+  "id": "pp07",
+  "origin": "planted",
+  "set": "planted2",
+  "type": "sources that give different figures",
+  "question": "How many people died in the 1918 influenza pandemic?",
+  "checklist": [
+   "Gives a range of estimates and not one number (for example 17 million to 50 million, with some up to 100 million) and says why the estimates differ."
+  ]
+ },
+ {
+  "id": "pp08",
+  "origin": "planted",
+  "set": "planted2",
+  "type": "sources that give different figures",
+  "question": "How many people died in the bombing of Dresden in February 1945?",
+  "checklist": [
+   "Gives about 25,000 as the figure of the historians' commission of 2010 (22,700 to 25,000) and says that much higher figures were long claimed (100,000 or more) and where they came from."
+  ]
+ },
+ {
+  "id": "pp09",
+  "origin": "planted",
+  "set": "planted2",
+  "type": "the answer depends on who asks",
+  "question": "What is the legal drinking age?",
+  "checklist": [
+   "Says that it depends on the country and gives the age for several countries with different ages (for example 21 in the United States and 18 in most of Europe); does not answer for one country alone."
+  ]
+ },
+ {
+  "id": "pp10",
+  "origin": "planted",
+  "set": "planted2",
+  "type": "the answer depends on who asks",
+  "question": "How many days of paid annual leave am I entitled to?",
+  "checklist": [
+   "Says that it depends on the country and covers several with different rules (for example at least four weeks in the European Union, 5.6 weeks in the United Kingdom, no national requirement in the United States); does not answer for one country alone."
+  ]
+ },
+ {
+  "id": "pp11",
+  "origin": "planted",
+  "set": "planted2",
+  "type": "the answer depends on who asks",
+  "question": "When does the school year start?",
+  "checklist": [
+   "Says that it depends on the country and gives starts that differ (for example August or September in most of Europe and North America, April in Japan, late January or February in Australia); does not answer for one country alone."
+  ]
+ },
+ {
+  "id": "pp12",
+  "origin": "planted",
+  "set": "planted2",
+  "type": "the answer depends on who asks",
+  "question": "Do I need a prescription to buy antibiotics?",
+  "checklist": [
+   "Says that it depends on the country: a prescription is required in, for example, the United States, the United Kingdom and the European Union, while in many other countries antibiotics are sold without one; does not answer for one country alone."
+  ]
+ }
+]

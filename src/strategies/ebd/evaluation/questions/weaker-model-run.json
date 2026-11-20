@@ -1,0 +1,62 @@
+[
+ {
+  "id": "pp01",
+  "origin": "planted",
+  "set": "nano",
+  "type": "false fact: a wrong date",
+  "question": "How did the Wright brothers' first powered flight in 1908 change transportation?",
+  "checklist": [
+   "States that the Wright brothers' first powered flight was on 17 December 1903, not in 1908."
+  ]
+ },
+ {
+  "id": "pp02",
+  "origin": "planted",
+  "set": "nano",
+  "type": "false fact: a wrong attribution",
+  "question": "How did Galileo's invention of the telescope change astronomy?",
+  "checklist": [
+   "States that Galileo did not invent the telescope: it appeared in the Netherlands in 1608 (Hans Lipperhey's patent application), and Galileo built his own in 1609 and used it for astronomy."
+  ]
+ },
+ {
+  "id": "pp03",
+  "origin": "planted",
+  "set": "nano",
+  "type": "false fact: a wrong name",
+  "question": "Why was Pompeii destroyed by the eruption of Mount Etna?",
+  "checklist": [
+   "States that Pompeii was destroyed by the eruption of Mount Vesuvius (AD 79), not of Mount Etna."
+  ]
+ },
+ {
+  "id": "pp04",
+  "origin": "planted",
+  "set": "nano",
+  "type": "false fact: a wrong circumstance",
+  "question": "Why did the space shuttle Challenger break apart during re-entry in 1986?",
+  "checklist": [
+   "States that Challenger broke apart shortly after launch (73 seconds into its flight, on 28 January 1986), not during re-entry."
+  ]
+ },
+ {
+  "id": "p01",
+  "origin": "planted",
+  "set": "nano",
+  "type": "false premise: a wrong date",
+  "question": "Why did the Chernobyl nuclear accident happen in 1989?",
+  "checklist": [
+   "States that the accident happened in 1986 (26 April 1986), not in 1989."
+  ]
+ },
+ {
+  "id": "p02",
+  "origin": "planted",
+  "set": "nano",
+  "type": "false premise: a wrong attribution",
+  "question": "How did Alexander Fleming's discovery of insulin change the treatment of diabetes?",
+  "checklist": [
+   "States that Fleming did not discover insulin, and names Banting (with Best, at Toronto, 1921 to 1922) as its discoverer."
+  ]
+ }
+]

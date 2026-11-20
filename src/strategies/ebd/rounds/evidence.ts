@@ -151,13 +151,19 @@ export function readResult(result: ResearchResult): { record: ResultRecord; evid
   const lines = result.notes.split(/\r?\n/);
   const raw = splitNotes(result.notes);
   const byOrder = raw.length === goalIds.length;
+  // Section 21: a goal can have several key questions, one per planned part. A section without an ID
+  // then maps to the goal of the key question at its position, when the notes have one section per key question.
+  const asked = result.brief.keyQuestions.map((k) => headingGoals(k).filter((id) => goalIds.includes(id)));
+  const byQuestion = !byOrder && asked.length === raw.length && asked.every((ids) => ids.length === 1);
   const sections: NotesSectionRef[] = raw.map((s, i) => {
     const known = headingGoals(s.title).filter((id) => goalIds.includes(id));
     const mapped: Pick<NotesSectionRef, "goalIds" | "mappedBy"> = known.length
       ? { goalIds: known, mappedBy: "id" }
       : byOrder
         ? { goalIds: [goalIds[i]!], mappedBy: "order" }
-        : { goalIds, mappedBy: "brief" };
+        : byQuestion
+          ? { goalIds: asked[i]!, mappedBy: "order" }
+          : { goalIds, mappedBy: "brief" };
     return { title: s.title, ...mapped, start: s.start, end: s.end, takeaway: s.takeaway.join(" ") };
   });
 

@@ -1,0 +1,22 @@
+A FALSE FACT THAT IS WELL KNOWN (6 questions)
+                                                baseline: corrects/checks/granted    EBD: corrects/checks/granted     EBD plan: calls a plan, last-resort plans, failed, marks the claim check
+   Claude Haiku 5.5, effort medium (as tested)  12 /  0 /  0  of 12                   7 /  5 /  0  of 12              1.08, 0, 0, 12 of 12
+   Claude Haiku 5.5, effort low                 11 /  1 /  0  of 12                   1 / 11 /  0  of 12              1.17, 0, 0, 12 of 12
+   Claude Haiku 4.5 (previous Haiku)             5 /  0 /  1  of 6                    1 /  5 /  0  of 6               1.33, 0, 0, 6 of 6
+   OpenAI GPT-6 Luna, effort medium              6 /  0 /  0  of 6                    2 /  4 /  0  of 6               1.00, 0, 0, 6 of 6
+   OpenAI GPT-5 nano, effort medium              6 /  0 /  0  of 6                    1 /  3 /  2  of 6               1.17, 0, 0, 3 of 6
+
+A SPECIFIC FACT NO MODEL CAN KNOW (6 questions)
+                                                baseline: corrects/checks/granted    EBD: corrects/checks/granted     EBD plan: calls a plan, last-resort plans, failed, marks the claim check
+   Claude Haiku 5.5, effort medium (as tested)   0 / 12 /  0  of 12                   0 / 12 /  0  of 12              1.00, 0, 0, 12 of 12
+   Claude Haiku 5.5, effort low                  0 / 12 /  0  of 12                   0 / 12 /  0  of 12              1.08, 0, 0, 12 of 12
+   Claude Haiku 4.5 (previous Haiku)             0 /  4 /  2  of 6                    0 /  6 /  0  of 6               1.00, 0, 0, 6 of 6
+   OpenAI GPT-6 Luna, effort medium              0 /  6 /  0  of 6                    0 /  6 /  0  of 6               1.00, 0, 0, 6 of 6
+   OpenAI GPT-5 nano, effort medium              0 /  6 /  0  of 6                    0 /  6 /  0  of 6               1.00, 0, 0, 5 of 6
+
+Plans that take the fact for granted, both sets together (baseline, EBD)
+   Claude Haiku 5.5, effort medium (as tested)  0 of 24    0 of 24    planning cost $0.088; baseline assignments a plan 3.00
+   Claude Haiku 5.5, effort low                 0 of 24    0 of 24    planning cost $0.076; baseline assignments a plan 3.00
+   Claude Haiku 4.5 (previous Haiku)            3 of 12    0 of 12    planning cost $0.209; baseline assignments a plan 2.42
+   OpenAI GPT-6 Luna, effort medium             0 of 12    0 of 12    planning cost $0.017; baseline assignments a plan 2.67
+   OpenAI GPT-5 nano, effort medium             0 of 12    2 of 12    planning cost $0.060; baseline assignments a plan 4.25

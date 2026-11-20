@@ -1,0 +1,44 @@
+                                             words  links  distinct  scholarly+official  share of notes' links  sections  tables
+baseline, as recorded                         2093   64.3     53.2          20.4              0.45           5.8     3.0
+baseline, written again                       2099   64.2     53.9          20.0              0.45           5.5     2.7
+approach, as recorded                         1913   57.8     49.3          16.4              0.41           5.7     2.5
+defs                                          2264   70.0     56.8          20.7              0.48           5.2     2.9
+approach, outline and full-answer guidance    2073   59.4     51.0          19.1              0.43           4.9     3.5
+lite                                          1925   58.9     49.8          18.0              0.42           5.0     1.4
+approach, no guidance                         1947   58.7     48.0          16.7              0.41           5.7     2.8
+approach, written again                       1801   52.3     44.2          15.8              0.37           5.5     2.0
+
+Paired differences over the 12 questions (mean, standard error)
+   the baseline's writer from one run to the next                       words    +6.0 (±133.4)  urls    +0.7 (±3.9)  strong    -0.4 (±1.3)
+   the approach's writer from one run to the next                       words  -112.4 (±107.6)  urls    -5.2 (±3.3)  strong    -0.6 (±0.8)
+   no guidance against the recorded guidance                            words  +146.1 (±77.4)  urls    +3.8 (±2.0)  strong    +0.8 (±0.9)
+   outline and full-answer guidance against the recorded guidance       words  +272.0 (±55.5)  urls    +6.8 (±2.0)  strong    +3.2 (±1.0)
+   outline and full-answer guidance against the baseline written again  words   -26.3 (±124.4)  urls    -2.9 (±3.2)  strong    -0.9 (±2.1)
+   recorded guidance against the baseline written again                 words  -298.3 (±134.5)  urls    -9.8 (±3.1)  strong    -4.2 (±2.0)
+   no guidance against the baseline written again                       words  -152.2 (±166.4)  urls    -5.9 (±4.3)  strong    -3.3 (±2.1)
+
+How each report opens (title and first sentence), for the questions with a premise that did not hold
+   s02 baseline, as recorded        | Inequality Helps Growth Only in Narrow, Conditional Cases | The case that inequality is good for the economy rests on real mechanisms, but the evidence supports it only in narrow conditions. Theory offers several routes, including
+   s02 baseline, written again      | Evidence Narrows the Case for Inequality | The case that income inequality helps the economy rests on real mechanisms, but the evidence supports it only under narrow conditions. Formal theory gives several routes 
+   s02 approach, as recorded        | Evidence Contradicts the Claim That Inequality Boosts Growth | The claim that income inequality is good for the economy is not supported by the main evidence. The IMF's cross-country work finds that **lower net inequality is robustly
+   s02 defs                         | Inequality's growth case rests on weak evidence; the better evidence p | The claim that income inequality is good for the economy is not supported by the main cross-country evidence. The IMF reports that **lower net inequality is robustly corr
+   s02 approach, outline and full-a | Evidence Undercuts the Case That Inequality Aids Growth | The claim that income inequality is good for the economy is contradicted by the main cross-country evidence. The IMF found in 2014 that **lower net inequality is robustly
+   s02 lite                         | Evidence Undercuts the Case for Inequality | The claim that income inequality is good for the economy is not supported by the main cross-country evidence. The [IMF's 2014 Finance & Development summary] reports that 
+   s02 approach, no guidance        | Evidence weakens the case for inequality | **Bottom line:** The claim that income inequality is good for the economy has a real but narrow evidence base. Its strongest empirical support is Forbes's panel finding t
+   s02 approach, written again      | Evidence Points Against Inequality Boosting Growth | The claim that income inequality is good for the economy is not supported by the main evidence. The strongest cross-country work, from the IMF and OECD and a 2026 meta-an
+   s08 baseline, as recorded        | Law Targets Conduct, Not Personality Types | Law has not overlooked people with antisocial traits. It has mostly declined to create a legal category keyed to the personality itself, and it targets the conduct instea
+   s08 baseline, written again      | Law Targets Conduct Because Personality Labels Fail Testing | Law has no protections keyed to "sociopaths" because the category does not work as a legal trigger, and the attempts to build one largely failed. "Sociopath" has no diagn
+   s08 approach, as recorded        | No law names sociopaths, but conduct-based protections already exist | The question's premise is not supported: laws already protect people from repeated harm by individuals, regardless of diagnosis. "Sociopath" is not a legal category, and 
+   s08 defs                         | Existing Laws Already Reach Repeated Harm | The premise is not accurate. No statute names "sociopaths" as a legal category, but several laws already protect people from repeated harm regardless of the offender's di
+   s08 approach, outline and full-a | Existing Laws Already Reach Harmful Conduct | The evidence does not support the claim that there are no laws to protect people from sociopaths. "Sociopath" is not a legal category, but protective law already applies 
+   s08 lite                         | Existing Laws Cover Conduct, Not Sociopathy as Such | The evidence does not support the premise that there are no laws to protect people from repeated harm by someone with antisocial traits. Conduct-based protections already
+   s08 approach, no guidance        | Laws Target Conduct, Not Personality Labels | The premise that no laws protect people from sociopaths is only partly right. "Sociopath" is not a legal category in the US, UK or EU, and no statute names it. Protection
+   s08 approach, written again      | No Law Names Sociopaths, but Conduct-Based Protections Already Exist | The premise is mistaken. "Sociopath" is not a legal category, but laws protecting people from repeated harm already exist in the US, UK and EU, and they apply whatever th
+   s10 baseline, as recorded        | Why Eugenics Violates Consent, Equality and Dignity | Eugenics is considered unethical for three linked reasons: it overrides the autonomy of the people it touches, it ranks human lives by perceived worth, and it has been ca
+   s10 baseline, written again      | Eugenics Violates Autonomy, Equality and Human Dignity | Eugenics is considered unethical mainly because it treats people as products of design rather than as free and equal moral agents, and because its historical programmes w
+   s10 approach, as recorded        | Why Ethicists Reject Eugenics: Consent, Equality, Uncertainty | The ethical case against eugenics rests on four linked objections. Coerced sterilisation violates bodily integrity and consent, and the UN has called forced sterilisation
+   s10 defs                         | Eugenics Breaks Consent, Equality and Evidence Standards | Eugenics is considered unethical mainly because its coercive forms violate bodily integrity and consent, rest on prejudiced classifications of people, and hand reproducti
+   s10 approach, outline and full-a | Why Eugenics Is Seen as Unethical: Harm, Consent and Equality | Eugenics is considered unethical mainly because it uses the power of the state or of experts to decide who may reproduce, and that power has caused irreversible harm, inc
+   s10 lite                         | Coercion, Harm and Stigma Make Eugenics Unethical | Eugenics is considered unethical mainly because its state-run forms coerced people into sterilisation, harmed people with disabilities, and built discrimination into law.
+   s10 approach, no guidance        | Why Coercion and Prejudice Make Eugenics Unethical | Eugenics is considered unethical mainly because the programmes that actually ran were coercive, were aimed at people chosen by prejudice, and gave the state power over wh
+   s10 approach, written again      | Coercion, Harm and Inequality Drive the Case Against Eugenics | The ethical case against eugenics rests most firmly on coercion: forced or non-consensual sterilisation violates bodily integrity and reproductive rights, and it caused l

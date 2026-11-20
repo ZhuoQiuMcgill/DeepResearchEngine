@@ -1,0 +1,42 @@
+/**
+ * Do researchers read pages when the brief tells them to? (design section 33). In the final test a
+ * researcher made 8 searches and read 0.3 pages, of 4 it may read. Here the platform's researcher is run
+ * on briefs recorded in that test, once as recorded and once with one more line of instructions, with
+ * searches. No strategy call and no writer. About 9 cents a researcher.
+ *
+ *   tsx local/ebd-heldout/deepread.ts <task:brief> [more]      e.g. s03:r1-b1 s08:r1-b1 s12:r1-b1
+ */
+import "dotenv/config";
+import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { getProfile } from "../../src/config/models.js";
+import type { ResearchBrief } from "../../src/core/index.js";
+import { UsageLedger } from "../../src/observability/usage.js";
+import { createResearcher } from "../../src/research/researcher.js";
+
+const OUT = "local/ebd-heldout";
+const dir = join(OUT, "deepread");
+mkdirSync(dir, { recursive: true });
+export const READ_LINE =
+  "Read before you write. After your first searches, open the two to four pages behind your most important numbers, dates and claims, and take them from the page itself, not from a search result: prefer the study, the official statistics page or the primary document over an article about it. Give each figure with its year and what it measures.";
+type Summary = { dir: string; question: string; strategy: { label: string }; tags: { task: string } };
+const folder = readdirSync(OUT).filter((d) => d.startsWith("final-sealed-2")).sort().at(-1)!;
+const runs = (JSON.parse(readFileSync(join(OUT, folder, "summaries.json"), "utf8")) as Summary[]).filter((s) => s.strategy.label === "ebd-one");
+const profile = getProfile("haiku");
+
+const jobs = process.argv.slice(2).flatMap((spec) => {
+  const [task, briefId] = spec.split(":");
+  const run = runs.find((s) => s.tags.task === task)!;
+  const events = readFileSync(join(run.dir, "events.jsonl"), "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l) as { type: string; data: { accepted?: ResearchBrief[] } });
+  const brief = events.filter((e) => e.type === "decision").flatMap((e) => e.data.accepted ?? []).find((b) => b.id === briefId)!;
+  return (["as-recorded", "read"] as const).map((variant) => ({ task: task!, variant, question: run.question, brief: variant === "read" ? { ...brief, instructions: `${brief.instructions ?? ""}\n${READ_LINE}`.trim() } : brief }));
+});
+
+await Promise.all(jobs.map(async (j) => {
+  const ledger = new UsageLedger(profile.pricing);
+  const result = await createResearcher({ profile, ledger, timeoutMs: 480_000, today: "2026-11-20" })(j.question, j.brief);
+  const name = `${j.task}-${j.brief.id}-${j.variant}`;
+  writeFileSync(join(dir, `${name}.md`), result.notes);
+  writeFileSync(join(dir, `${name}.json`), JSON.stringify({ ...result, costUsd: ledger.total().costUsd }, null, 1));
+  console.log(`${name}: ${result.status}; searches ${result.usage.searches}, pages read ${result.usage.pageReads}; tokens in ${result.usage.inputTokens} out ${result.usage.outputTokens}; $${ledger.total().costUsd.toFixed(3)}; ${Math.round(result.durationMs / 1000)} s; notes ${result.notes.split(/\s+/).length} words; sources ${result.sources.length}${result.diagnostics.length ? `; ${result.diagnostics.join("; ").slice(0, 160)}` : ""}`);
+}));

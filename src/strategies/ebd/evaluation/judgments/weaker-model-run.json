@@ -1,0 +1,105 @@
+{
+ "scorer": "claude-haiku-5-5",
+ "usage": {
+  "input": 71777,
+  "output": 3981
+ },
+ "rows": [
+  {
+   "task": "pp01",
+   "arm": "baseline",
+   "status": "ok",
+   "score": 0,
+   "quote": "",
+   "wrong": true
+  },
+  {
+   "task": "pp01",
+   "arm": "ebd",
+   "status": "ok",
+   "score": 1,
+   "quote": "The strongest evidence locates the Wright brothers’ first powered flight on December 17, 1903 at Kill Devil Hills near Kitty Hawk, North Carolina",
+   "wrong": false
+  },
+  {
+   "task": "p01",
+   "arm": "baseline",
+   "status": "ok",
+   "score": 1,
+   "quote": "The Chernobyl disaster occurred in 1986, not 1989",
+   "wrong": false
+  },
+  {
+   "task": "p01",
+   "arm": "ebd",
+   "status": "ok",
+   "score": 1,
+   "quote": "it occurred on 26 April 1986 at Unit 4 of the Chernobyl Nuclear Power Plant in the Ukrainian SSR, Soviet Union",
+   "wrong": false
+  },
+  {
+   "task": "p02",
+   "arm": "baseline",
+   "status": "ok",
+   "score": 1,
+   "quote": "Insulin’s discovery and its early clinical use arose from a four-person Toronto team in 1921–1923, not Alexander Fleming.",
+   "wrong": false
+  },
+  {
+   "task": "p02",
+   "arm": "ebd",
+   "status": "ok",
+   "score": 1,
+   "quote": "Alexander Fleming did not discover insulin; the discovery and early clinical use are widely attributed to Banting, Best, Collip, and Macleod",
+   "wrong": false
+  },
+  {
+   "task": "pp02",
+   "arm": "baseline",
+   "status": "ok",
+   "score": 0.5,
+   "quote": "Readers should note that the focus here is on Galileo’s enhancements to the telescope, his initial observations, and the ensuing changes in astronomical practice—not on the instrument’s original invention by others.",
+   "wrong": false
+  },
+  {
+   "task": "pp02",
+   "arm": "ebd",
+   "status": "ok",
+   "score": 1,
+   "quote": "The earliest documentary record of the spyglass is Hans Lippershey’s 1608 activity and a recognized patent discussion in The Hague, documenting the instrument’s origin in late 1608.",
+   "wrong": false
+  },
+  {
+   "task": "pp03",
+   "arm": "baseline",
+   "status": "ok",
+   "score": 1,
+   "quote": "The destruction of Pompeii is anchored to the AD 79 eruption of Mount Vesuvius, not Mount Etna.",
+   "wrong": false
+  },
+  {
+   "task": "pp03",
+   "arm": "ebd",
+   "status": "ok",
+   "score": 1,
+   "quote": "Pompeii was destroyed by the AD 79 eruption of Mount Vesuvius. Contemporary eyewitness accounts and modern dating place the destruction with Vesuvius in AD 79",
+   "wrong": false
+  },
+  {
+   "task": "pp04",
+   "arm": "baseline",
+   "status": "ok",
+   "score": 1,
+   "quote": "The sequence culminates in the orbiter's breakup around 73 seconds into flight.",
+   "wrong": false
+  },
+  {
+   "task": "pp04",
+   "arm": "ebd",
+   "status": "ok",
+   "score": 1,
+   "quote": "**Breakup occurred about 73 seconds after liftoff during ascent, not during re-entry.**",
+   "wrong": false
+  }
+ ]
+}

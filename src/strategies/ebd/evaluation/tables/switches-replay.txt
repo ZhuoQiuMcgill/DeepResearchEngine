@@ -1,0 +1,46 @@
+WHAT THE TWO SWITCHES CHANGED: recorded runs of the strategy replayed with no model call
+28 runs (final test 16, planted-problem test 12), replayed on commit a4e5cb2, the last with the switches
+recorded runs in which a researcher was sent after the first round: 1 of 28 (pp10)
+in all the others the notes come from the first round, which neither switch touches
+
+(1) New goals off, against both switches on: 28 runs
+   researchers sent to the same goals in every round: 28 of 28
+   the writer gets the same notes: 28 of 28
+   the writer gets the same outline: 28 of 28
+   the writer gets the same guidance: 28 of 28
+   words of guidance a run: 213 with both on, 213 with the switch off
+   how the run's end is recorded: both on {'researchers ran out': 10, 'complete': 18}; switch off {'researchers ran out': 3, 'complete': 25}
+   runs in which the strategy asks for a researcher when none is left: both on 8, switch off 0
+   goals that exist only with new goals on: 21 in 15 runs; marked necessary: 10 in 8 runs (pp07, pp08, s06, s07, s08, s09, s10, s12)
+   of these, goals that had a researcher: 0
+
+(2) Conflict checker off, against both switches on: 27 runs
+   researchers sent to the same goals in every round: 27 of 27
+   the writer gets the same notes: 27 of 27
+   the writer gets the same outline: 27 of 27
+   the writer gets the same guidance: 10 of 27
+   words of guidance a run: 209 with both on, 116 with the switch off
+   how the run's end is recorded: both on {'researchers ran out': 10, 'complete': 17}; switch off {'researchers ran out': 9, 'complete': 18}
+   runs in which the strategy asks for a researcher when none is left: both on 8, switch off 9
+   not replayed: pp10 (see 3)
+   parts of the guidance only with the checker on:
+      "The answer depends on these points...": 17 runs, 28 lines, 1 to 3 a run (p01, p02, p03, p04, s03, s05, s06, s09, s10, s11, s12, pp09, pp03, pp04, pp07, pp08, pp12)
+      "Evidence to keep apart:...": 1 runs, 1 lines, 1 to 1 a run (p02)
+   parts of the guidance only with the checker off: none
+   runs in which the writer is told to correct a claim of the question: checker on 10, off 10; the same runs and the same text: True
+   disagreements recorded: checker on 153 (45 critical), off 0
+   goals only with the checker on: 5 in 3 runs, all made to settle a disagreement: True; with a researcher: 0
+   goals only with the checker off: 2 in 2 runs (p02 completing, pp06 necessary); with a researcher: 0
+
+(3) The run with a second round
+   pp10 "How many days of paid annual leave am I entitled to?": researchers 5 of 5
+   round 2: a researcher to Q7 (settle, made from conflict); afterwards exhausted, claim verdicts {'A1': 'unsettled'}
+      the disagreement it was to settle (evidence_vs_assumption): The assumption says the client is entitled to paid annual leave; the US findings say no federal law requires private employers to give paid vacation, that most states do not mandate it, and that the US has no statutory minimum.
+   replayed with new goals off: the same researcher is asked for: True
+   replayed with the conflict checker off: not possible: the researcher of the second round was sent to a goal that only the conflict checker makes, so the record does not hold what the run would have done without it
+
+(4) Time and cost of the strategy's own model calls in the 28 recorded runs
+   a run of the strategy: 184 s and $0.302; of the baseline (28 runs): 118 s and $0.311
+   the plan             31 calls, 3 of them rejected and asked again; a run: 16.9 s (9% of its time) and $0.0025 (0.8% of its cost)
+   the conflict checker 42 calls, 13 of them rejected and asked again; a run: 39.9 s (22% of its time) and $0.0081 (2.7% of its cost)
+   the round analyst    30 calls, 1 of them rejected and asked again; a run: 24.2 s (13% of its time) and $0.0056 (1.9% of its cost)
