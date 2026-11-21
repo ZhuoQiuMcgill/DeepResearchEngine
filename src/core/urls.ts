@@ -19,13 +19,32 @@ export function cleanUrl(url: string): string {
   }
 }
 
+/** Characters whose escape changes how a path or query splits; they stay escaped (upper case) in keys. */
+const STRUCTURAL = /[/?#%&=+]/g;
+
+/**
+ * Decode percent-escapes for comparison, so `%3A`, `%3a` and `:` give the same key.
+ * `decodeURI` leaves reserved characters such as `:` escaped, which made one page
+ * written two ways look like two pages. Escapes of structural characters stay
+ * escaped, normalized to upper case; a malformed escape is kept as written.
+ */
+function decodeForKey(part: string): string {
+  return part.replace(/(?:%[0-9a-f]{2})+/gi, (run) => {
+    try {
+      return decodeURIComponent(run).replace(STRUCTURAL, (c) => encodeURIComponent(c));
+    } catch {
+      return run.toUpperCase();
+    }
+  });
+}
+
 /** Comparison key: no scheme, no www, no trailing slash, no fragment, no tracking parameters. */
 export function urlKey(url: string): string {
   try {
     const u = new URL(cleanUrl(url));
     const host = u.hostname.toLowerCase().replace(/^www\./, "");
-    const path = decodeURI(u.pathname).replace(/\/+$/, "");
-    return `${host}${path}${u.search}`;
+    const path = decodeForKey(u.pathname).replace(/\/+$/, "");
+    return `${host}${path}${decodeForKey(u.search)}`;
   } catch {
     return url.trim().replace(/\/+$/, "");
   }
