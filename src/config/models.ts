@@ -16,6 +16,11 @@ export interface Pricing {
    * profiles use the base rate only.
    */
   inputPerM: (promptTokens: number) => number;
+  /**
+   * USD per million input tokens the provider served from its prompt cache.
+   * Without it, cached tokens are priced at `inputPerM`.
+   */
+  cachedInputPerM?: (promptTokens: number) => number;
   outputPerM: (promptTokens: number) => number;
   /** USD per billed search operation. */
   perSearch: number;
@@ -46,7 +51,45 @@ export interface OpenAIProfile extends ProfileBase {
   webSearch: { searchContextSize: "low" | "medium" | "high"; maxToolCalls: number };
 }
 
-export type ModelProfile = AnthropicProfile | OpenAIProfile;
+/**
+ * DeepSeek through two of its compatible endpoints (probes E9, docs/plan.md):
+ * the researcher uses the Anthropic-compatible Messages endpoint, which carries
+ * DeepSeek's web tools (and is the only one where `max_uses` caps web search);
+ * strategy roles and the writer use the Responses endpoint, the only one that
+ * honours a `json_schema` output format.
+ */
+export interface DeepSeekProfile extends ProfileBase {
+  provider: "deepseek";
+  /**
+   * Thinking effort, sent as output_config.effort (Messages) and reasoning.effort
+   * (Responses) with thinking enabled. DeepSeek accepts low, high and max and maps
+   * a requested medium to high.
+   */
+  effort: "low" | "high" | "max";
+  /** Base URL for ChatAnthropic (researcher). */
+  messagesBaseUrl: string;
+  /** Base URL for ChatOpenAI with the Responses API (strategy roles, writer). */
+  responsesBaseUrl: string;
+  /**
+   * `deepseek_web_search` (the profile's mode): deep thinking search with page opens, no
+   * enforceable cap (the API ignored both `max_uses` and `max_tool_calls`); every result
+   * carries a diagnostic saying so.
+   * `web_search_20250305` with `max_uses` (alternative): plain searches, no page reads, cap
+   * enforced by the API, which in E9 also stopped every request after 5 executed searches.
+   */
+  webSearch: { type: "web_search_20250305"; maxUses: number } | { type: "deepseek_web_search" };
+}
+
+export type ModelProfile = AnthropicProfile | OpenAIProfile | DeepSeekProfile;
+
+/** Environment variable that holds the DeepSeek API key. */
+export const DEEPSEEK_KEY_VAR = "DEEPSEEK_API_KEY";
+
+export function deepseekApiKey(): string {
+  const key = process.env[DEEPSEEK_KEY_VAR];
+  if (!key) throw new Error(`${DEEPSEEK_KEY_VAR} is not set`);
+  return key;
+}
 
 export const PROFILES: Record<string, ModelProfile> = {
   haiku: {
@@ -84,6 +127,36 @@ export const PROFILES: Record<string, ModelProfile> = {
       perSearch: 0.01,
     },
   },
+  deepseek: {
+    name: "deepseek",
+    provider: "deepseek",
+    // Served by DeepSeek-V4.1-Flash-1017 (pricing page and change log, 2026-10-17; the alias is upgraded in place). Web tools work on it (E9).
+    model: "deepseek-flash",
+    effort: "high",
+    // Below the Anthropic SDK's non-streaming limit (~21.3k), which ChatAnthropic enforces for any model.
+    maxOutputTokens: 21000,
+    messagesBaseUrl: "https://api.deepseek.com/anthropic",
+    responsesBaseUrl: "https://api.deepseek.com",
+    // DeepSeek's built-in deep search (searches and page opens). It has no hard per-researcher
+    // cap, so every result says so; runs are bounded by maxRounds and researchersTotal.
+    // Documented alternative: { type: "web_search_20250305", maxUses: 12 }, capped by the API
+    // (5 searches in effect) but searches only.
+    webSearch: { type: "deepseek_web_search" },
+    // Soft budget stated in the shared researcher prompt, the same for every model.
+    toolCallsPerResearcher: 12,
+    // https://api-docs.deepseek.com/quick_start/pricing (read 2026-11-20), USD per 1M tokens.
+    // Off-peak rates. Peak hours (01:00-04:00 and 06:00-10:00 UTC, Monday to Friday,
+    // except Chinese public holidays) bill at twice these rates; the estimate keeps
+    // the off-peak rate so a run's cost depends on its tokens, not on the hour.
+    pricing: {
+      inputPerM: () => 0.15,
+      cachedInputPerM: () => 0.003,
+      outputPerM: () => 0.6,
+      // Server-side search and fetch during model calls are unbilled since
+      // 2026-11-18 12:00 UTC+8 (pricing page and Web Tools guide); only tokens are billed.
+      perSearch: 0,
+    },
+  },
 };
 
 export function getProfile(name: string): ModelProfile {
@@ -99,6 +172,21 @@ export function createChatModel(profile: ModelProfile, callbacks?: Callbacks): B
       model: profile.model,
       maxTokens: profile.maxOutputTokens,
       outputConfig: { effort: profile.effort },
+      maxRetries: 2,
+      callbacks,
+    });
+  }
+  if (profile.provider === "deepseek") {
+    // The Responses endpoint: the Messages endpoint ignores output_config.format and
+    // Chat Completions rejects json_schema, which the baseline's planner needs (E9).
+    // ChatOpenAI drops `reasoning` for non-OpenAI model names, so it goes in modelKwargs.
+    return new ChatOpenAI({
+      model: profile.model,
+      apiKey: deepseekApiKey(),
+      configuration: { baseURL: profile.responsesBaseUrl },
+      useResponsesApi: true,
+      modelKwargs: { reasoning: { effort: profile.effort } },
+      maxTokens: profile.maxOutputTokens,
       maxRetries: 2,
       callbacks,
     });

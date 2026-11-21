@@ -1,0 +1,45 @@
+{
+ "_note": "Recorded 2026-11-20 by replaying baseline brief r1-b1 of local/checks/20261121-034659-baseline-deepseek-b06a5d-e950 (deepseek_web_search): one sentence, no thinking, no tool call, end_turn.",
+ "request": {
+  "model": "deepseek-flash",
+  "max_tokens": 21000,
+  "tools": [
+   {
+    "type": "deepseek_web_search",
+    "name": "deepseek_web_search"
+   }
+  ],
+  "thinking": {
+   "type": "adaptive"
+  },
+  "output_config": {
+   "effort": "high"
+  }
+ },
+ "response": {
+  "id": "1ba278d8-7e0c-475a-a9ce-2d1015ff59a6",
+  "model": "deepseek-flash",
+  "stop_reason": "end_turn",
+  "usage": {
+   "input_tokens": 1219,
+   "cache_creation_input_tokens": 0,
+   "cache_read_input_tokens": 896,
+   "output_tokens": 21,
+   "service_tier": "standard",
+   "output_tokens_details": {
+    "thinking_tokens": 0
+   }
+  },
+  "content": [
+   {
+    "type": "thinking",
+    "thinking": "",
+    "signature": ""
+   },
+   {
+    "type": "text",
+    "text": "I'll start with searches to find the founding literature."
+   }
+  ]
+ }
+}

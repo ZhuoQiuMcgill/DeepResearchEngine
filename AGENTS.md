@@ -23,8 +23,10 @@ not as code to port. Its two main lessons:
   hosted observability services.
 - Web search uses each model API's built-in search tool. Do not add
   self-hosted search, fetching or content extraction.
-- Models: `gpt-6-luna` and `claude-haiku-5-5`. Each provider searches with its
-  own backend, so compare baseline and EBD within the same model.
+- Models: `gpt-6-luna`, `claude-haiku-5-5` and `deepseek-flash` (DeepSeek's
+  Anthropic-compatible and Responses endpoints, key `DEEPSEEK_API_KEY`). Each
+  provider searches with its own backend, so compare baseline and EBD within
+  the same model.
 
 ## Rules
 

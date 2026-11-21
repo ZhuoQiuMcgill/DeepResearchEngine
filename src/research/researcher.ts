@@ -10,6 +10,7 @@ import { parseNotes } from "../core/notes.js";
 import { extractUrls, pageKey, urlKey } from "../core/urls.js";
 import type { UsageLedger } from "../observability/usage.js";
 import { runAnthropic } from "./adapters/anthropic.js";
+import { runDeepSeek } from "./adapters/deepseek.js";
 import { runOpenAI } from "./adapters/openai.js";
 import type { AdapterOutput } from "./adapters/types.js";
 import { researcherPrompt, researcherPromptValues } from "./prompts.js";
@@ -40,7 +41,11 @@ export function createResearcher(deps: ResearcherDeps): ResearchFn {
         signal: AbortSignal.timeout(deps.timeoutMs),
       };
       const out: AdapterOutput =
-        deps.profile.provider === "anthropic" ? await runAnthropic(deps.profile, call) : await runOpenAI(deps.profile, call);
+        deps.profile.provider === "anthropic"
+          ? await runAnthropic(deps.profile, call)
+          : deps.profile.provider === "deepseek"
+            ? await runDeepSeek(deps.profile, call)
+            : await runOpenAI(deps.profile, call);
       const usage = {
         inputTokens: out.inputTokens,
         outputTokens: out.outputTokens,

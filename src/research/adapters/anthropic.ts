@@ -47,7 +47,8 @@ export async function runAnthropic(profile: AnthropicProfile, call: AdapterCall)
     const pageReads = usage.server_tool_use?.web_fetch_requests ?? 0;
     const inputTokens = msg.usage_metadata?.input_tokens ?? 0;
     const outputTokens = msg.usage_metadata?.output_tokens ?? 0;
-    call.ledger.record(call.role, { inputTokens, outputTokens, searches, pageReads });
+    const cachedInputTokens = msg.usage_metadata?.input_token_details?.cache_read ?? 0;
+    call.ledger.record(call.role, { inputTokens, outputTokens, cachedInputTokens, searches, pageReads });
     out.inputTokens += inputTokens;
     out.outputTokens += outputTokens;
     out.searches += searches;

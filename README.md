@@ -7,7 +7,7 @@ same models and the same search tools.
 - Language: TypeScript on Node.js 22, managed with npm.
 - Framework: LangGraph.js for both arms, LangChain.js integrations, self-hosted Langfuse tracing.
 - Search: each model API's built-in web search tool.
-- Models: `gpt-6-luna` and `claude-haiku-5-5`.
+- Models: `gpt-6-luna`, `claude-haiku-5-5` and `deepseek-flash` (profiles `luna`, `haiku`, `deepseek`).
 
 The project restarted on 2026-10-08. The earlier concept experiments are on
 branch `archive/concept-experiments` (tag `concept-experiments-final`).

@@ -178,3 +178,66 @@ Decision: the EBD team develops the whole EBD strategy module. The platform side
   - `runOne` and `runExperiment` handle strategy and model resolution, records, tracing and cost.
   - Experiment specs (`experiments/*.json`) choose tasks × strategies (with options and labels) × models × repeats × budget, and names are validated before any spend.
 - **Verified live:** `check-strategy` passed all checks on baseline (Haiku, EBD question). `experiments/smoke.json` completed on both models.
+
+### 2026-11-20: E9 (DeepSeek provider)
+
+Question: can DeepSeek run both strategies with the same contracts and records as the other two providers? Probes are in `scripts/explore/e9-deepseek.ts` (single API calls) and `scripts/explore/e9-researcher.ts` (one researcher through the real adapter and prompt). Raw response bodies are in `local/explore-deepseek/`; the trimmed ones under `tests/fixtures/deepseek/` back the adapter tests.
+
+- **Model: `deepseek-flash`** (DeepSeek-V4.1-Flash on the pricing page). Web tools worked on it on both the Anthropic-compatible Messages endpoint and Responses, as the Web Tools guide says. `deepseek-v4-pro`, used in the Anthropic page's example, was not probed.
+- **Tools on the Messages endpoint.** It accepts `web_search_20250305`, `web_search_20260209`, `deepseek_web_search` and `deepseek_read_url`. `web_fetch_20250910` returns 422, so there is no page reading next to a capped search. `ChatAnthropic.bindTools` rejects the `deepseek_*` types, so the adapter sends tools as raw request fields.
+- **Cap.** `max_uses` on `web_search_20250305`/`20260209` is enforced: further attempts get `max_uses_exceeded` (cap 2: 2 run, 2 rejected; cap 3: 3 run, 1 rejected). With `max_uses: 12`, every request stopped after 5 executed searches and rejected the 6th: a probe that asked for 10 searches, 4 probe researchers and all 19 researchers of the acceptance runs below. `deepseek_web_search` (deep thinking search with `open_page`) cannot be capped. It accepted `max_uses: 2` silently and made 5 tool calls; on Responses, `max_tool_calls: 3` came back as `null` and 10 calls ran.
+- **Response contents.**
+  - `web_search_20250305`: one `input.query` per `server_tool_use`. Each `web_search_tool_result` lists `title`, `url`, `page_age` and `snippet`. A rejected search is an array holding one `web_search_tool_result_error`; Anthropic sends an object instead.
+  - With thinking on, the text had no structured citations; URLs are inline.
+  - Deep search: `input.action` is `search` with up to 3 `queries`, or `open_page` with a `url`. Each page open returns a `web_fetch_tool_result` with URL and title, but no page text. `web_search_result_location` citations came back in 1 of 2 runs.
+  - URLs carry DeepSeek result markers (`#1`, `#1#6#1`). The adapter removes them in sources, citations and notes.
+- **Usage.**
+  - `input_tokens` excludes cache hits. `cache_read_input_tokens` was 49–59% of researcher input in the acceptance runs, so the ledger now records cached input tokens and prices them at the profile's cache rate. Profiles without that rate (Haiku, Luna) are priced as before.
+  - In `server_tool_use`, `web_search_requests` counts every search result block, rejected ones included. `web_fetch_requests` counts fetch blocks. `tool_search` counts executed queries that returned results. `tool_fetch` stayed 0 with page opens.
+  - The adapter checks the blocks against these counters. They agreed in all 23 researcher runs (19 in acceptance, 4 in probes).
+- **`stop_reason: "tool_use"`.** When the model kept searching after rejections, the server sometimes ended the turn with no notes. This happened to 6 of 11 researchers in the first acceptance runs (empty failures). Re-sending the reply as the last message returns 400. Adding a user turn that asks for the notes, with `tool_choice: "none"`, returned the notes. The adapter does this once and records it as a diagnostic.
+- **Structured output.**
+  - Baseline's `jsonSchema`: the Messages endpoint ignores `output_config.format` (Markdown reply, nothing parsed). Chat Completions rejects `json_schema` with 400. Responses honours `text.format` `json_schema` with reasoning on.
+  - EBD's unforced submit tool works on both Messages and Responses.
+- **Settings.** The Messages endpoint takes `output_config.effort` (`low`, `high`, `max`; `medium` maps to `high`) and treats `thinking: adaptive` as enabled. Thinking is on by default. `ChatOpenAI` drops `reasoning` for non-OpenAI model names, so the profile sends it in `modelKwargs`; the response echoed effort `high`.
+- **First decision, superseded the same day (see "Deep search" below).**
+  - Profile `deepseek`: the researcher used the Messages endpoint with `web_search_20250305` and `max_uses: 12` (enforced by the API; 5 in effect). Strategy roles and the writer use Responses. All calls run with thinking on at effort `high`.
+  - `toolCallsPerResearcher` stays 12, as for the other profiles. This capped setup is now the documented alternative.
+- **Pricing** (pricing page, read 2026-11-20): $0.15 per 1M input tokens on a cache miss, $0.003 on a cache hit, $0.6 per 1M output tokens, at off-peak rates. Peak hours (01:00–04:00 and 06:00–10:00 UTC on weekdays) cost twice as much; the estimate ignores them so cost follows tokens only. Server-side search and fetch are unbilled since 2026-11-18 (pricing page and Web Tools guide), so `perSearch` is 0.
+
+Live acceptance of the capped setup (`check-strategy`, EBD question, 6 researchers, run records in `local/checks/`):
+
+| Run | Checks | Researchers (ok/failed) | Searches | Cost | Time |
+| --- | --- | --- | --- | --- | --- |
+| baseline, before the continuation (`20261121-025819-baseline-deepseek-b06a5d-9531`) | all pass | 5 (2/3) | 25 | $0.055 | 285 s |
+| EBD, before the continuation (`20261121-025819-ebd-deepseek-b06a5d-1c5b`) | all pass | 6 (3/3) | 30 | $0.102 | 532 s |
+| baseline (`20261121-031335-baseline-deepseek-b06a5d-3aa5`) | required pass; 1 warning | 4 (4/0) | 20 | $0.072 | 163 s |
+| EBD (`20261121-031336-ebd-deepseek-b06a5d-9912`) | all pass | 4 (4/0) | 20 | $0.101 | 401 s |
+
+In each accepted run, one researcher needed the continuation. EBD's three structured calls were accepted on the first attempt. The baseline warning comes from the writer: it changed `environment-based_design` to `environment_based_design` in a designsociety.org URL.
+
+Recorded for the capped setup, not fixed:
+- Model behaviour: researchers make no page reads with the capped tool. Notes are long (23–44k characters, 9–16k output tokens). Most researchers cite one URL the tools never reported.
+- The prompt and `BudgetView` state 12 tool calls while DeepSeek runs at most 5 searches. The model then attempts further searches, which are rejected; those rejections trigger the `tool_use` stops above.
+**Deep search (2026-11-20, the profile's mode).** DeepSeek becomes a separate test target, analysed apart from Haiku and Luna. Its researchers use `deepseek_web_search` with no hard per-researcher cap. Run length is bounded by `maxRounds` in the experiment spec and by `researchersTotal`. `toolCallsPerResearcher` stays 12 as the soft budget the shared prompt states, and every result records that the cap is not enforced. The capped `web_search_20250305` setup above is the documented alternative.
+
+- **Replies that only announce the research.** In the first deep-search runs, 5 of 11 researchers returned one sentence ("I'll start by searching ...") with no thinking and no tool call, and were recorded as `ok` with about 100 characters of notes. Sending the same request again rarely helped: on two replayed briefs, 2 of 18 tries searched, with thinking `enabled`, `adaptive` or omitted, an extra system line, or on the Responses endpoint. Effort `max` searched, but its thinking alone used the whole output limit. Adding a user turn, "Go ahead with your research now.", started the research in 3 of 6 tries on the harder brief. The adapter now sends that turn up to 8 times on the same conversation. A reply that neither used a tool nor wrote notes in the shared format never becomes notes; if the model never starts, the researcher fails as `empty`.
+- **Error bodies with HTTP 200.** One probe got `{"type":"error","error":{"type":"api_error","message":"The model failed to generate a complete response. Please retry."}}` after 16 tool calls, with usage. The adapter retries it once and counts its tokens.
+- **`stop_reason: "tool_use"` after deep search.** A follow-up turn after deep search had about 100 input tokens, whether sent through LangChain, which drops `web_fetch_tool_result` blocks, or raw with every block. The model wrote notes from memory, with wrong facts and DOI-style URLs that no tool had returned. So after deep search the adapter only records such a stop and does not continue. No accepted run had one.
+- **Page actions on the open page.** `open_page` or `find_in_page` with `url: ""` acts on the page already open. A result without an error now counts as a page read with no new source.
+
+Live acceptance in deep-search mode (`check-strategy`, EBD question, 6 researchers):
+
+| Run | Checks | Researchers (ok/failed) | Searches / page reads | Tool calls per researcher (min/median/max) | Cost | Time | Longest researcher |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| baseline, before the follow-up turn (`20261121-034659-baseline-deepseek-b06a5d-e950`) | all pass | 6 (6/0, 3 of them announcements) | 16 / 37 | 0 / 8.5 / 19 | $0.061 | 300 s | 108 s |
+| EBD, before the follow-up turn (`20261121-034659-ebd-deepseek-b06a5d-60da`) | required pass; 1 warning | 5 (5/0, 2 of them announcements) | 20 / 44 | 0 / 16 / 26 | $0.104 | 487 s | 118 s |
+| baseline (`20261121-041042-baseline-deepseek-b06a5d-8b2e`) | all pass | 3 (3/0) | 16 / 62 | 20 / 25 / 33 | $0.069 | 178 s | 106 s |
+| EBD (`20261121-041042-ebd-deepseek-b06a5d-9d27`) | required pass; 1 warning | 6 (6/0) | 40 / 98 | 17 / 23.5 / 28 | $0.183 | 795 s | 105 s |
+
+In the accepted runs, 8 of 9 researchers first only announced the research. They started after 1, 2 and 4 follow-up turns (baseline) and 1, 1, 3, 1 and 3 (EBD); that run allowed at most 4 turns, raised to 8 afterwards. No `tool_use` stop, error body or counter mismatch occurred. Each warning is a writer URL error, e.g. `verification.asmedigitalcollection.asmedigitalcollection.asme.org`. The researcher timeout of `check-strategy` is 8 minutes; the longest researcher took 118 s.
+
+Recorded, not fixed:
+- Tool calls per researcher (17–33) exceed the soft budget of 12.
+- Deep-search notes cite many links that no tool reported. They are mostly site roots (`https://dl.acm.org/`) or cut paths (`https://scholar.google.com.au/citations?user=`): 35 and 51 per accepted run, and 58 and 86 links marked "(unverified link)" in the writer's material. The capped setup had 6 and 1. The text carried no structured citations.
+- EBD's strategy calls dominate the run time (8 calls, 107k output tokens in the accepted EBD run).

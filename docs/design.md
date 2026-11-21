@@ -151,16 +151,45 @@ tools under a per-researcher tool-call cap. Its prompt is shared and has one
 slot, `{instructions}`, filled from `brief.instructions`. That slot is the only
 way a strategy changes researcher behaviour.
 
-| | Anthropic (`claude-haiku-5-5`) | OpenAI (`gpt-6-luna`) |
-| --- | --- | --- |
-| Tools | `web_search_20250305` and `web_fetch_20250910` server tools (direct calls; the dynamic-filtering versions made Haiku's generated code send malformed searches) | `web_search` (search, open_page, find_in_page) |
-| Cap | `max_uses` per tool | `max_tool_calls` per response |
-| Recorded | queries, result URLs, citations, `server_tool_use` counts | queries, sources, `url_citation` annotations |
+| | Anthropic (`claude-haiku-5-5`) | OpenAI (`gpt-6-luna`) | DeepSeek (`deepseek-flash`) |
+| --- | --- | --- | --- |
+| Tools | `web_search_20250305` and `web_fetch_20250910` server tools (direct calls; the dynamic-filtering versions made Haiku's generated code send malformed searches) | `web_search` (search, open_page, find_in_page) | `deepseek_web_search` deep thinking search (search, open_page, find_in_page) on DeepSeek's Anthropic-compatible Messages endpoint |
+| Cap | `max_uses` per tool | `max_tool_calls` per response | none: the API ignores `max_uses` and `max_tool_calls` for deep search. The prompt states the same soft budget of 12 tool calls, and every result records that the cap is not enforced |
+| Recorded | queries, result URLs, citations, `server_tool_use` counts | queries, sources, `url_citation` annotations | queries, result and opened URLs (DeepSeek's `#1` result markers removed), `web_search_result_location` citations, cached input tokens; block counts checked against `usage.server_tool_use` |
+
+DeepSeek is analysed separately from Haiku and Luna, because its researchers
+have no hard tool-call cap. Its runs are bounded by the round cap and the
+researcher budget. The documented alternative is `web_search_20250305` with
+`max_uses: 12` (profile field `webSearch`). The API enforces that cap, but in
+E9 it stopped every request after 5 searches, and it allows no page reads,
+because DeepSeek rejects `web_fetch` beside its own tools.
+
+DeepSeek's strategy roles and writer use its Responses endpoint. The baseline's
+planning calls need a `json_schema` output format, which the Messages endpoint
+ignores (`output_config.format`) and Chat Completions rejects. Both endpoints run
+the same model with thinking enabled at effort `high` (DeepSeek maps `medium`
+to `high`). Cached input tokens are priced at DeepSeek's cache-hit rate. The
+estimate uses off-peak rates; calls in DeepSeek's weekday peak hours are
+billed at twice that.
 
 A provider adapter turns each response into a `ResearchResult`. Provider errors
 become `status: "failed"` with a failure kind (`provider`, `timeout`, `empty`)
-rather than disappearing. One model call per researcher is enough on both
-providers. The Anthropic adapter continues `pause_turn` up to three times.
+rather than disappearing. One model call per researcher is enough on the
+Anthropic and OpenAI providers. The Anthropic adapter continues `pause_turn` up to three times.
+The DeepSeek adapter handles three provider behaviours and records each as a
+diagnostic:
+- In deep-search mode 13 of 20 first replies in E9 only announced the
+  research ("I'll start by searching ...") and ended without thinking or tool
+  calls. The adapter then adds one user turn, "Go ahead with your research
+  now.", and resends that conversation up to eight times. If the model never
+  starts, the result has no notes and fails as `empty`.
+- An error body sent with HTTP 200 ("The model failed to generate a complete
+  response") is retried once. Its tokens are counted.
+- DeepSeek can end its search loop with `stop_reason: "tool_use"` and no notes.
+  With the capped alternative, the adapter asks once for the notes in a new user
+  turn with tools disabled (`tool_choice: "none"`). After deep search it only
+  records the stop, because DeepSeek does not re-read deep-search results in a
+  follow-up turn and the model would write from memory.
 
 ## 7. Writer
 
@@ -185,8 +214,9 @@ only to compare runs.
 
 | Layer | Limit | Enforced by |
 | --- | --- | --- |
-| Researcher | tool-call cap (`max_uses` / `max_tool_calls`) | provider API |
+| Researcher | tool-call cap (`max_uses` / `max_tool_calls`); DeepSeek: a soft budget stated in the prompt (section 6) | provider API; DeepSeek: not enforced |
 | Run | total researchers (`researchersTotal`) | skeleton |
+| Run | rounds (`maxRounds`); for DeepSeek it is also what bounds run length | skeleton |
 | Concurrency | parallel researchers at once | skeleton (engineering only) |
 
 Both arms get the same search budget. Tokens and cost are not capped. They are

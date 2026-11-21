@@ -72,6 +72,7 @@ export async function runOpenAI(profile: OpenAIProfile, call: AdapterCall): Prom
   call.ledger.record(call.role, {
     inputTokens: out.inputTokens,
     outputTokens: out.outputTokens,
+    cachedInputTokens: msg.usage_metadata?.input_token_details?.cache_read ?? 0,
     searches: out.searches,
     pageReads: out.pageReads,
   });
