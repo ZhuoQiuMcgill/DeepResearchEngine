@@ -12,3 +12,4 @@
 .python-version text eol=lf
 *.docx binary
 *.pdf binary
+*.sse text eol=lf
