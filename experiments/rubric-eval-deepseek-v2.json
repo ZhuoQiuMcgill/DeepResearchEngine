@@ -1,0 +1,44 @@
+{
+  "name": "rubric-eval-deepseek-v2",
+  "description": "Rerun of rubric-eval-deepseek on the final code: DeepSeek error bodies handled (no researcher crashes), researcher streamed at 64k and writer at 64k output tokens, and a step with only invalid briefs is retried. Deep search, same six prompts, ceiling of 6 researchers, maxRounds 3, one run per cell. The first DeepSeek run is discarded.",
+  "tasks": [
+    {
+      "id": "q1",
+      "question": "Give me an article on the Probably Approximately Correct (PAC) theorem in Machine Learning for an audience completely unfamiliar with Machine Learning or probability. Include formulas and derivations for all the formulae defined in a beginner friendly manner."
+    },
+    {
+      "id": "q2",
+      "question": "Write a comprehensive analysis for a graduate-level seminar on technology and society, evaluating the principles and practices of responsible AI use in the legal field. The analysis should compare the ethical, social, and economic implications of AI systems in two distinct contexts: (1) predictive policing (e.g., AI algorithms used to forecast crime hotspots or assess recidivism risk) and (2) AI-assisted contract analysis (e.g., AI tools for reviewing and drafting legal contracts).\n\nYour report must:\n* Detail the ethical considerations of AI in predictive policing, including issues of bias, transparency, and civil liberties, and their impact on public trust in law enforcement.\n* Analyze the social and economic benefits and risks of AI in predictive policing, such as improved resource allocation versus perpetuation of systemic biases.\n* Evaluate the ethical challenges of AI in contract analysis, including concerns about data privacy, accuracy of outputs, and accountability for errors.\n* Assess the social and economic impacts of AI-assisted contract analysis, including efficiency gains in legal practice versus potential job displacement for legal professionals.\n* Synthesize these two cases to draw broader conclusions about the principles of responsible AI in the legal field, including strategies for ensuring fairness, accountability, and transparency.\n* Support all claims with citations from peer-reviewed studies, industry reports, or ethical frameworks (e.g., IEEE Ethically Aligned Design, EU AI Act, or legal ethics guidelines)."
+    },
+    {
+      "id": "q3",
+      "question": "Consider the Korean company KCTech. The company is looking to enter the American market with its materials-selling business, as its equipment-selling business is not mature enough yet. The focus is on selling slurries, and the headquarters will be in Portland, Oregon. The initial team will be led by newly promoted USA branch CEO Dr. Sunghoon Lee, with experience at Intel, Global Foundries, SMARTPAD, Coherent, and Draper. He will be supported by one sales/research team member and two researchers. One of the main clients should be Intel, but there are certainly others on the table.\n\nPlease provide detailed, data-supported estimates of the U.S. branch's potential yearly revenue within its first few years (starting from late 2025), using comparable market data, industry benchmarks (average deal sizes in the Korean branch, market share assumptions), competitor analysis, and regional/national demand for semiconductor slurry materials. Include any numbers that you arrive at on the way to these estimates.\n\nAdditionally, provide any other useful context or strategic considerations that might help this branch succeed, such as customer acquisition strategies (divide into conventional strategies like sending samples and using personal connections, vs. more unexpected strategies), expected costs, regional competitors, or potential difficulties."
+    },
+    {
+      "id": "q4",
+      "question": "Conduct a comprehensive comparative analysis of the causes, processes, and outcomes of the French Revolution (1789), Russian Revolution (1917), and Iranian Revolution (1979). Your analysis should examine: socioeconomic preconditions, ideological frameworks, revolutionary leadership structures, international influences, counter-revolutionary responses, institutional transformations, and long-term societal impacts. Develop a theoretical framework for understanding revolutionary dynamics and apply it to predict potential future revolutionary scenarios."
+    },
+    {
+      "id": "q5",
+      "question": "Prove definitely whether a self-improving artificial intelligence system can be mathematically guaranteed to maintain alignment with human values indefinitely through recursive self-modification."
+    },
+    {
+      "id": "q6",
+      "question": "I am a software engineer at a small startup, trying to scale our product to around 1M users / day from around the world. The service is a social media app similar to twitter, where users can write a message and follow others. Right now we have a simple web interface with a local mySQL database. Please write a technical report on the transition to more scaled software and provide recommendations for anything you consider a necessary change."
+    }
+  ],
+  "strategies": [
+    "baseline",
+    "ebd"
+  ],
+  "repeats": 1,
+  "budget": {
+    "researchersTotal": 6
+  },
+  "concurrency": 4,
+  "parallelRuns": 3,
+  "models": [
+    "deepseek"
+  ],
+  "maxRounds": 3
+}
