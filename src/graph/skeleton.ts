@@ -35,6 +35,11 @@ export interface DecisionRecord {
   budgetBefore: number;
   strategyState: JsonValue;
   at: string;
+  /**
+   * Set when every brief of the step was invalid while the strategy did not stop:
+   * the step counts as failed and is attempted again (docs/design.md section 3, rule 5).
+   */
+  retried?: true;
 }
 
 export type StopReason = "strategy-stop" | "no-briefs" | "budget-exhausted" | "max-rounds";
@@ -130,6 +135,15 @@ export function buildResearchGraph(deps: SkeletonDeps) {
       round > maxRounds
         ? { ...applyDecision(step.decision, round, { ...budget, researchersRemaining: 0 }) }
         : applyDecision(step.decision, round, budget);
+    // The strategy wanted research but returned only briefs that fail the contract (seen
+    // when a provider ignores the structured-output schema): a failed step, not a stop.
+    const allInvalid =
+      !step.decision.stop &&
+      applied.invalid.length > 0 &&
+      applied.accepted.length === 0 &&
+      applied.dropped.length === 0 &&
+      round <= maxRounds &&
+      budget.researchersRemaining > 0;
     const record: DecisionRecord = {
       phase,
       round,
@@ -142,8 +156,12 @@ export function buildResearchGraph(deps: SkeletonDeps) {
       budgetBefore: budget.researchersRemaining,
       strategyState,
       at: new Date().toISOString(),
+      ...(allInvalid ? { retried: true as const } : {}),
     };
     await hooks?.onDecision?.(record);
+    if (allInvalid) {
+      throw new Error(`Every brief of the ${phase} step was invalid (${applied.invalid.length}); first reason: ${applied.invalid[0]!.reason}`);
+    }
     let stopReason: StopReason | undefined;
     if (applied.accepted.length === 0) {
       if (step.decision.stop) stopReason = "strategy-stop";

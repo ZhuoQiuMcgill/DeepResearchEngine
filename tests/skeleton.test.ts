@@ -107,6 +107,50 @@ describe("skeleton", () => {
     expect(final.stopReason).toBe("max-rounds");
   });
 
+  it("retries a step whose briefs are all invalid, and records the rejected attempt", async () => {
+    let calls = 0;
+    const flaky: ResearchStrategy<number> = {
+      name: "flaky",
+      init: async () => {
+        calls += 1;
+        const briefs = calls === 1 ? [{ objective: "x", keyQuestions: [] }] : [brief("x")];
+        return { state: 0, decision: { briefs, stop: false, rationale: `attempt ${calls}` } };
+      },
+      observe: async (s) => ({ state: s, decision: { briefs: [], stop: true, rationale: "" } }),
+      finalize: async () => ({ material: [] }),
+    };
+    const { final, decisions } = await run(flaky);
+    expect(calls).toBe(2);
+    expect(decisions.map((d) => [d.phase, d.retried ?? false, d.accepted.length])).toEqual([
+      ["init", true, 0],
+      ["init", false, 1],
+      ["observe", false, 0],
+    ]);
+    expect(final.researchersUsed).toBe(1);
+  });
+
+  it("fails the run when a step returns only invalid briefs three times", async () => {
+    const broken: ResearchStrategy<number> = {
+      name: "broken",
+      init: async () => ({ state: 0, decision: { briefs: [{ objective: "x", keyQuestions: [] }], stop: false, rationale: "" } }),
+      observe: async (s) => ({ state: s, decision: { briefs: [], stop: true, rationale: "" } }),
+      finalize: async () => ({ material: [] }),
+    };
+    await expect(run(broken)).rejects.toThrow(/Every brief of the init step was invalid/);
+  });
+
+  it("still stops when a strategy returns no briefs at all", async () => {
+    const empty: ResearchStrategy<number> = {
+      name: "empty",
+      init: async () => ({ state: 0, decision: { briefs: [], stop: false, rationale: "" } }),
+      observe: async (s) => ({ state: s, decision: { briefs: [], stop: true, rationale: "" } }),
+      finalize: async () => ({ material: [] }),
+    };
+    const { final, decisions } = await run(empty);
+    expect(final.stopReason).toBe("no-briefs");
+    expect(decisions).toHaveLength(1);
+  });
+
   it("rejects strategy state that does not round-trip through JSON", async () => {
     const bad: ResearchStrategy<any> = {
       name: "bad",

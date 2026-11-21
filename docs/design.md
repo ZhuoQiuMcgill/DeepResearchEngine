@@ -84,7 +84,11 @@ Rules for every implementation:
 4. The question is passed verbatim. A strategy may write its own search
    objectives, but it never rewrites `question` for the writer.
 5. Briefs beyond the remaining budget are dropped by priority, highest first,
-   and the drop is recorded. Invalid briefs are dropped and recorded.
+   and the drop is recorded. Invalid briefs are dropped and recorded. When every
+   brief of a step is invalid and the strategy did not stop, the step counts as
+   failed (rule 7): the decision is recorded with `retried: true` and the step is
+   attempted again. Added 2026-11-21 after DeepSeek returned a plan that ignored
+   the schema, and the run would otherwise have ended with no research at all.
 6. Material passed to the writer is researcher notes: selected, reordered or
    excerpted by whole lines, optionally under the strategy's own headings. The
    strategy's analysis goes into `outline` or `guidance`, never into material.
