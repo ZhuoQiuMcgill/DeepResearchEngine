@@ -18,7 +18,7 @@
  *   deep-search blocks from a follow-up turn, so such a stop is only recorded.
  */
 import { ChatAnthropic } from "@langchain/anthropic";
-import { HumanMessage, type AIMessage, type BaseMessage } from "@langchain/core/messages";
+import { AIMessage, HumanMessage, type BaseMessage } from "@langchain/core/messages";
 import { deepseekApiKey, type DeepSeekProfile } from "../../config/models.js";
 import { parseNotes } from "../../core/notes.js";
 import { cleanUrl, cleanUrlsInText } from "../../core/urls.js";
@@ -97,23 +97,185 @@ export function withErrorBodyContent(base?: typeof fetch): typeof fetch {
   };
 }
 
-/** The model call of the researcher; `options` replace the network and the key in tests. */
+/** The Anthropic SDK refuses larger `max_tokens` values without streaming. */
+export const NON_STREAMING_MAX_TOKENS = 21_000;
+
+/** Server-sent events of one response body: event name (if any) and data. Comment lines are skipped. */
+export function parseSse(text: string): { event?: string; data: string }[] {
+  const events: { event?: string; data: string }[] = [];
+  for (const raw of text.split(/\r?\n\r?\n/)) {
+    let event: string | undefined;
+    const data: string[] = [];
+    for (const line of raw.split(/\r?\n/)) {
+      if (line.startsWith("event:")) event = line.slice(6).trim();
+      else if (line.startsWith("data:")) data.push(line.slice(5).replace(/^ /, ""));
+    }
+    if (data.length) events.push({ ...(event ? { event } : {}), data: data.join("\n") });
+  }
+  return events;
+}
+
+/**
+ * Rebuild the Messages API response from DeepSeek's stream, as the non-streaming body
+ * would carry it (E9 streaming probe, 2026-11-21):
+ * - every block arrives whole in `content_block_start` (server tool inputs and results
+ *   included); text, thinking, signatures and citations arrive as deltas;
+ * - `message_start.usage` holds only the first prompt; the final `message_delta.usage`
+ *   holds the whole call, `server_tool_use` counters included;
+ * - a failure arrives as `event: error` with an error body and usage, like the HTTP 200
+ *   error body of the non-streaming call.
+ * A stream that ends without `message_stop` and without an error is marked as an error too.
+ * LangChain's own stream handling cannot be used for this: it drops `web_fetch_tool_result`
+ * blocks, replaces server tool inputs with "" and keeps only the first prompt's input tokens.
+ */
+export function assembleStream(text: string): DeepSeekResponse {
+  const content: Block[] = [];
+  const partialJson = new Map<number, string>();
+  let startUsage: Block | undefined;
+  let usage: Block | undefined;
+  let stop_reason: string | null | undefined;
+  let error: Block | undefined;
+  let complete = false;
+  for (const { data } of parseSse(text)) {
+    let ev: Block;
+    try {
+      ev = JSON.parse(data) as Block;
+    } catch {
+      continue;
+    }
+    const index = Number(ev.index);
+    if (ev.type === "message_start") startUsage = ev.message?.usage;
+    else if (ev.type === "content_block_start" && ev.content_block) content[index] = structuredClone(ev.content_block);
+    else if (ev.type === "content_block_delta" && content[index]) {
+      const b = content[index]!;
+      const d = (ev.delta ?? {}) as Block;
+      if (d.type === "text_delta") b.text = String(b.text ?? "") + String(d.text ?? "");
+      else if (d.type === "thinking_delta") b.thinking = String(b.thinking ?? "") + String(d.thinking ?? "");
+      else if (d.type === "signature_delta") b.signature = d.signature;
+      else if (d.type === "citations_delta" && d.citation) (b.citations ??= []).push(d.citation);
+      else if (d.type === "input_json_delta") partialJson.set(index, (partialJson.get(index) ?? "") + String(d.partial_json ?? ""));
+    } else if (ev.type === "content_block_stop" && partialJson.has(index) && content[index]) {
+      try {
+        content[index]!.input = JSON.parse(partialJson.get(index)!);
+      } catch {
+        // Keep the input from content_block_start.
+      }
+    } else if (ev.type === "message_delta") {
+      if (ev.delta && "stop_reason" in ev.delta) stop_reason = ev.delta.stop_reason;
+      if (ev.usage) usage = ev.usage;
+    } else if (ev.type === "message_stop") complete = true;
+    else if (ev.type === "error") {
+      error = ev.error ?? { type: "error" };
+      if (ev.usage) usage = ev.usage;
+    }
+  }
+  if (!error && !complete) error = { type: "incomplete_stream", message: "the stream ended before message_stop" };
+  return { content: content.filter(Boolean), usage: usage ?? startUsage, stop_reason, ...(error ? { error } : {}) };
+}
+
+/**
+ * fetch for streamed calls: hands the SDK the same bytes, and keeps a copy of every chunk
+ * before the SDK reads it, so the response can be rebuilt even when the SDK stops early
+ * (error event, abort). A JSON error body is passed on as in `withErrorBodyContent`.
+ */
+function recordingStreamFetch(base: typeof fetch | undefined, onResponse: (r: Promise<DeepSeekResponse>) => void): typeof fetch {
+  return async (input, init) => {
+    const res = await (base ?? globalThis.fetch)(input, init);
+    if (res.status !== 200 || !res.body || !(res.headers.get("content-type") ?? "").includes("event-stream")) {
+      if (res.status === 200) {
+        const body = (await res.clone().json().catch(() => undefined)) as Block | undefined;
+        if (body?.type === "error") onResponse(Promise.resolve({ content: [], usage: body.usage, error: body.error ?? {} }));
+      }
+      return withErrorBodyContent(async () => res)(input, init);
+    }
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let text = "";
+    let finish!: () => void;
+    onResponse(new Promise<DeepSeekResponse>((resolve) => (finish = () => resolve(assembleStream(text + decoder.decode())))));
+    const copy = new ReadableStream<Uint8Array>({
+      async pull(controller) {
+        try {
+          const { value, done } = await reader.read();
+          if (done) {
+            finish();
+            controller.close();
+            return;
+          }
+          text += decoder.decode(value, { stream: true });
+          controller.enqueue(value);
+        } catch (err) {
+          finish();
+          controller.error(err);
+        }
+      },
+      async cancel(reason) {
+        finish();
+        await reader.cancel(reason).catch(() => undefined);
+      },
+    });
+    const headers = new Headers(res.headers);
+    headers.delete("content-length");
+    headers.delete("content-encoding");
+    return new Response(copy, { status: res.status, statusText: res.statusText, headers });
+  };
+}
+
+/**
+ * The response rebuilt from a stream, in the form `toResponse` reads. A failed stream keeps
+ * only its error and usage, like the non-streaming error body: the blocks it streamed
+ * before failing belong to a discarded attempt and are not counted as research.
+ */
+function streamedMessage(r: DeepSeekResponse): AIMessage {
+  return new AIMessage({
+    content: (r.error ? [] : r.content) as never,
+    response_metadata: { usage: r.usage, stop_reason: r.stop_reason, ...(r.error ? { type: "error", error: r.error } : {}) },
+  });
+}
+
+/**
+ * The model call of the researcher; `options` replace the network and the key in tests.
+ * Above the SDK's non-streaming limit the call streams, and the reply is rebuilt from the
+ * stream (`assembleStream`) instead of LangChain's streamed message.
+ */
 export function deepseekInvoke(profile: DeepSeekProfile, call: AdapterCall, options: { fetch?: typeof fetch; apiKey?: string } = {}): DeepSeekInvoke {
+  const maxTokens = profile.researcherMaxOutputTokens ?? profile.maxOutputTokens;
+  const streaming = maxTokens > NON_STREAMING_MAX_TOKENS;
+  let streamed: Promise<DeepSeekResponse> | undefined;
   const model = new ChatAnthropic({
     model: profile.model,
     apiKey: options.apiKey ?? deepseekApiKey(),
     anthropicApiUrl: profile.messagesBaseUrl,
-    maxTokens: profile.maxOutputTokens,
+    maxTokens,
     // Sent explicitly so a change of DeepSeek's default cannot alter runs; DeepSeek treats adaptive as enabled.
     thinking: { type: "adaptive" },
     outputConfig: { effort: profile.effort },
     // Raw request fields: LangChain's tool formatting rejects the deepseek_* tool types.
     invocationKwargs: { tools: deepseekTools(profile) },
     maxRetries: 2,
-    clientOptions: { fetch: withErrorBodyContent(options.fetch) },
+    // LangChain's streamed usage covers the first prompt only; the adapter records the real usage.
+    ...(streaming ? { streaming: true, streamUsage: false } : {}),
+    clientOptions: { fetch: streaming ? recordingStreamFetch(options.fetch, (r) => (streamed = r)) : withErrorBodyContent(options.fetch) },
     callbacks: call.callbacks,
   });
-  return async (messages, opts) => (await model.invoke(messages, opts as never)) as AIMessage;
+  if (!streaming) return async (messages, opts) => (await model.invoke(messages, opts as never)) as AIMessage;
+
+  return async (messages, opts) => {
+    streamed = undefined;
+    let failure: unknown;
+    try {
+      await model.invoke(messages, opts as never);
+    } catch (err) {
+      failure = err;
+    }
+    // On abort the SDK ends the stream quietly and LangChain returns what it has; never use that.
+    if (opts.signal.aborted) throw opts.signal.reason ?? failure ?? new DOMException("This operation was aborted", "AbortError");
+    const pending = streamed as Promise<DeepSeekResponse> | undefined;
+    const response = pending ? await pending : undefined;
+    // HTTP errors and code errors are thrown as before; an error inside the stream is a reply.
+    if (!response || (failure && !response.error)) throw failure ?? new Error("the streamed response was not recorded");
+    return streamedMessage(response);
+  };
 }
 
 /**

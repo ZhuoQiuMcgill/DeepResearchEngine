@@ -189,6 +189,14 @@ diagnostic:
   starts, the result has no notes and fails as `empty`.
 - An error body sent with HTTP 200 ("The model failed to generate a complete
   response") is retried once. Its tokens are counted.
+- The researcher streams with an output limit of 64,000 tokens
+  (`researcherMaxOutputTokens`). Thinking counts toward the limit, and at 21,000
+  (the SDK's non-streaming ceiling) 4 of 57 researchers were cut off. The
+  adapter rebuilds each reply from the stream's events, because LangChain's
+  streamed message drops `web_fetch_tool_result` blocks, replaces server tool
+  inputs with "" and keeps only the first prompt's input tokens. A stream that
+  fails with `event: error`, or ends before `message_stop`, is treated like the
+  HTTP 200 error body. An aborted stream throws.
 - DeepSeek can end its search loop with `stop_reason: "tool_use"` and no notes.
   With the capped alternative, the adapter asks once for the notes in a new user
   turn with tools disabled (`tool_choice: "none"`). After deep search it only

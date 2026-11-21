@@ -75,6 +75,13 @@ export interface DeepSeekProfile extends ProfileBase {
    * a requested medium to high.
    */
   effort: "low" | "high" | "max";
+  /**
+   * Output limit of the researcher when it needs more than `maxOutputTokens`. Above the
+   * Anthropic SDK's non-streaming ceiling (~21.3k) the researcher call streams, and the
+   * adapter rebuilds the reply from the stream. Added 2026-11-21: 4 of 57 DeepSeek
+   * researchers were cut at 21,000 tokens (thinking counts toward the limit).
+   */
+  researcherMaxOutputTokens?: number;
   /** Base URL for ChatAnthropic (researcher). */
   messagesBaseUrl: string;
   /** Base URL for ChatOpenAI with the Responses API (strategy roles, writer). */
@@ -148,6 +155,8 @@ export const PROFILES: Record<string, ModelProfile> = {
     maxOutputTokens: 21000,
     // The writer runs on ChatOpenAI (Responses), which has no such ceiling; DeepSeek allows 393k.
     writerMaxOutputTokens: 64000,
+    // The researcher streams above 21,000; the adapter rebuilds the reply from the stream.
+    researcherMaxOutputTokens: 64000,
     messagesBaseUrl: "https://api.deepseek.com/anthropic",
     responsesBaseUrl: "https://api.deepseek.com",
     // DeepSeek's built-in deep search (searches and page opens). It has no hard per-researcher

@@ -1,6 +1,6 @@
 // E9: replay one researcher brief of a recorded run through the DeepSeek adapter,
 // outside the researcher's catch, so an error keeps its stack.
-//   npx tsx scripts/explore/e9-replay-brief.ts <run dir> <brief id> [tag]
+//   npx tsx scripts/explore/e9-replay-brief.ts <run dir> <brief id> [tag] [timeout ms]
 // Request and response bodies (never headers) go to local/explore-deepseek/.
 import "dotenv/config";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -11,7 +11,8 @@ import { UsageLedger } from "../../src/observability/usage.js";
 import { runDeepSeek } from "../../src/research/adapters/deepseek.js";
 import { researcherPrompt, researcherPromptValues } from "../../src/research/prompts.js";
 
-const [runDir, briefId, tag = "replay"] = process.argv.slice(2);
+const [runDir, briefId, tag = "replay", timeoutArg] = process.argv.slice(2);
+const timeoutMs = Number(timeoutArg ?? 8 * 60_000);
 if (!runDir || !briefId) throw new Error("usage: e9-replay-brief.ts <run dir> <brief id> [tag]");
 const key = process.env.DEEPSEEK_API_KEY ?? "";
 const redact = (s: string) => (key ? s.split(key).join("<redacted>") : s);
@@ -44,7 +45,8 @@ const messages = await researcherPrompt.formatMessages(researcherPromptValues(qu
 const ledger = new UsageLedger(profile.pricing);
 const t0 = Date.now();
 try {
-  const out = await runDeepSeek(profile, { messages, ledger, role: "researcher", signal: AbortSignal.timeout(8 * 60_000) });
+  const out = await runDeepSeek(profile, { messages, ledger, role: "researcher", signal: AbortSignal.timeout(timeoutMs) });
+  writeFileSync(`${outDir}/replay-${tag}-${briefId}-output.json`, redact(JSON.stringify({ output: out, ledger: ledger.byRole }, null, 1)));
   console.log(
     JSON.stringify({ ok: true, ms: Date.now() - t0, searches: out.searches, pageReads: out.pageReads, notes: out.notes.length, diagnostics: out.diagnostics, calls: ledger.byRole.researcher?.calls }),
   );

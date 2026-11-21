@@ -241,3 +241,12 @@ Recorded, not fixed:
 - Tool calls per researcher (17–33) exceed the soft budget of 12.
 - Deep-search notes cite many links that no tool reported. They are mostly site roots (`https://dl.acm.org/`) or cut paths (`https://scholar.google.com.au/citations?user=`): 35 and 51 per accepted run, and 58 and 86 links marked "(unverified link)" in the writer's material. The capped setup had 6 and 1. The text carried no structured citations.
 - EBD's strategy calls dominate the run time (8 calls, 107k output tokens in the accepted EBD run).
+
+**Streamed researcher (2026-11-21).** In the first ResearchRubrics DeepSeek experiment, 4 of 57 researchers stopped at `max_tokens` with notes cut mid-sentence. DeepSeek returned 23.7k–26.5k output tokens for a 21,000 request, thinking included. The 21,000 ceiling is the Anthropic SDK's guard for non-streaming calls, so the researcher now streams with `researcherMaxOutputTokens: 64000`. Recorded streams (`scripts/explore/e9-stream.ts`) showed:
+- Every block arrives whole in `content_block_start`, server tool inputs and results included, with no `input_json_delta`. Text, thinking and signatures come as deltas.
+- `message_start.usage` covers only the first prompt (1,288 input tokens), while the final `message_delta.usage` covers the whole call (259,318 input tokens) and carries the `server_tool_use` counters.
+- A failure arrives as `event: error` with the same error body and usage as the HTTP 200 error body.
+
+LangChain's streamed message drops the `web_fetch_tool_result` blocks, replaces server tool inputs with "" and keeps `message_start`'s input tokens. On abort, the SDK ends the stream quietly and LangChain returns the partial message. The adapter therefore keeps a copy of the stream, rebuilds the reply from its events, and throws when the signal has aborted. A stream that ends without `message_stop` counts as an error body.
+
+Four truncated briefs replayed with streaming (`scripts/explore/e9-replay-brief.ts`) all completed: output tokens 15.8k–29.8k, notes 33–41k characters, 21–23 tool calls, 124–199 s. Two used the follow-up turn. For each, the adapter output matched the same recorded responses served to the non-streaming path (`scripts/explore/e9-stream-compare.ts`), field for field, ledger included. A live replay with a 20 s timeout threw `TimeoutError`.

@@ -333,7 +333,9 @@ describe("deepseek adapter: URLs and tools", () => {
   });
 });
 
-describe("deepseek adapter: error body without content, through ChatAnthropic", () => {
+describe("deepseek adapter: error body without content, through ChatAnthropic (non-streaming)", () => {
+  /** The non-streaming researcher: the profile without its higher, streamed output limit. */
+  const deep: DeepSeekProfile = { ...(PROFILES.deepseek as DeepSeekProfile), researcherMaxOutputTokens: undefined };
   /** Recorded HTTP 200 reply with `type`, `error` and `usage` but no `content`. */
   const errorBody = (JSON.parse(readFileSync(new URL("./fixtures/deepseek/error-body.json", import.meta.url), "utf8")) as { response: object }).response;
   const reply = (name: string) => ({ type: "message", role: "assistant", ...fixture(name) });
