@@ -84,7 +84,9 @@ export function createWriter(model: BaseChatModel, today: string): WriteFn {
     ).trim();
     const diagnostics: string[] = [];
     const stop = (msg.response_metadata as { stop_reason?: string; status?: string } | undefined) ?? {};
-    if (stop.stop_reason === "max_tokens" || stop.status === "incomplete") diagnostics.push("report output truncated");
+    // A streamed ChatAnthropic reply carries stop_reason in additional_kwargs, not response_metadata.
+    const stopReason = stop.stop_reason ?? (msg.additional_kwargs as { stop_reason?: unknown } | undefined)?.stop_reason;
+    if (stopReason === "max_tokens" || stop.status === "incomplete") diagnostics.push("report output truncated");
     if (!report) diagnostics.push("writer returned an empty report");
     return { report, diagnostics };
   };

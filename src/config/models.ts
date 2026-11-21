@@ -30,10 +30,19 @@ interface ProfileBase {
   name: string;
   model: string;
   maxOutputTokens: number;
+  /**
+   * Output limit of the writer role, when it needs more than `maxOutputTokens`. On
+   * Anthropic a limit above the SDK's non-streaming ceiling (~21.3k) streams the call.
+   * Added 2026-11-21: EBD reports on Haiku and DeepSeek reports were cut at 21,000 tokens.
+   */
+  writerMaxOutputTokens?: number;
   /** Tool-call cap reported to strategies as `toolCallsPerResearcher`. */
   toolCallsPerResearcher: number;
   pricing: Pricing;
 }
+
+/** The Anthropic SDK refuses larger non-streaming `max_tokens` values. */
+const ANTHROPIC_NON_STREAMING_MAX = 21_000;
 
 export interface AnthropicProfile extends ProfileBase {
   provider: "anthropic";
@@ -99,6 +108,8 @@ export const PROFILES: Record<string, ModelProfile> = {
     effort: "medium",
     // Highest value the Anthropic SDK accepts without streaming (~21.3k); thinking counts toward it.
     maxOutputTokens: 21000,
+    // The writer streams; Haiku 5.5 allows up to 128k output tokens.
+    writerMaxOutputTokens: 64000,
     // Direct (basic) tool versions: with the dynamic-filtering versions Haiku's
     // generated code often called web_search with a malformed input (round 1).
     webSearch: { type: "web_search_20250305", maxUses: 8 },
@@ -135,6 +146,8 @@ export const PROFILES: Record<string, ModelProfile> = {
     effort: "high",
     // Below the Anthropic SDK's non-streaming limit (~21.3k), which ChatAnthropic enforces for any model.
     maxOutputTokens: 21000,
+    // The writer runs on ChatOpenAI (Responses), which has no such ceiling; DeepSeek allows 393k.
+    writerMaxOutputTokens: 64000,
     messagesBaseUrl: "https://api.deepseek.com/anthropic",
     responsesBaseUrl: "https://api.deepseek.com",
     // DeepSeek's built-in deep search (searches and page opens). It has no hard per-researcher
@@ -165,13 +178,16 @@ export function getProfile(name: string): ModelProfile {
   return profile;
 }
 
-/** A plain chat model for one role, without web tools. */
-export function createChatModel(profile: ModelProfile, callbacks?: Callbacks): BaseChatModel {
+/** A plain chat model for one role, without web tools. `role: "writer"` uses the writer's output limit. */
+export function createChatModel(profile: ModelProfile, callbacks?: Callbacks, opts: { role?: "writer" } = {}): BaseChatModel {
+  const maxTokens = opts.role === "writer" ? (profile.writerMaxOutputTokens ?? profile.maxOutputTokens) : profile.maxOutputTokens;
   if (profile.provider === "anthropic") {
     return new ChatAnthropic({
       model: profile.model,
-      maxTokens: profile.maxOutputTokens,
+      maxTokens,
       outputConfig: { effort: profile.effort },
+      // invoke() still returns one message; usage and stop_reason are aggregated from the stream.
+      ...(maxTokens > ANTHROPIC_NON_STREAMING_MAX ? { streaming: true, streamUsage: true } : {}),
       maxRetries: 2,
       callbacks,
     });
@@ -186,7 +202,7 @@ export function createChatModel(profile: ModelProfile, callbacks?: Callbacks): B
       configuration: { baseURL: profile.responsesBaseUrl },
       useResponsesApi: true,
       modelKwargs: { reasoning: { effort: profile.effort } },
-      maxTokens: profile.maxOutputTokens,
+      maxTokens,
       maxRetries: 2,
       callbacks,
     });
@@ -195,7 +211,7 @@ export function createChatModel(profile: ModelProfile, callbacks?: Callbacks): B
     model: profile.model,
     useResponsesApi: true,
     reasoning: { effort: profile.reasoningEffort },
-    maxTokens: profile.maxOutputTokens,
+    maxTokens,
     maxRetries: 2,
     callbacks,
   });

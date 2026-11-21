@@ -69,7 +69,7 @@ export async function runResearchModule(input: ResearchModuleInput): Promise<Res
     strategy: input.strategy,
     strategyModel: createChatModel(profile, [ledger.handler("strategy")]),
     research: createResearcher({ profile, ledger, timeoutMs: input.researcherTimeoutMs, today }),
-    write: createWriter(createChatModel(profile, [ledger.handler("writer")]), today),
+    write: createWriter(createChatModel(profile, [ledger.handler("writer")], { role: "writer" }), today),
     limits: { researchersTotal: input.researchersTotal, toolCallsPerResearcher: profile.toolCallsPerResearcher },
     maxRounds: input.maxRounds,
     concurrency: input.concurrency,
