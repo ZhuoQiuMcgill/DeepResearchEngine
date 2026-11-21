@@ -69,10 +69,39 @@ export const NOTES_REQUEST = "The search tool is no longer available. Write your
 
 export type DeepSeekInvoke = (messages: BaseMessage[], options: { signal: AbortSignal; tool_choice?: "none" }) => Promise<AIMessage>;
 
-function defaultInvoke(profile: DeepSeekProfile, call: AdapterCall): DeepSeekInvoke {
+/**
+ * fetch for the Messages endpoint. DeepSeek sometimes answers HTTP 200 with an error body
+ * that has `type`, `error` and `usage` but no `content` ("The model failed to generate a
+ * complete response", after a deep search had run for a while). ChatAnthropic then throws
+ * "Cannot read properties of undefined (reading 'length')" in
+ * anthropicResponseToChatMessages, and the error and its billed usage are lost. Five
+ * researchers of the 2026-11-21 ResearchRubrics experiment failed this way. Adding an empty
+ * `content` lets the adapter see the error body, count its tokens and retry once.
+ */
+export function withErrorBodyContent(base?: typeof fetch): typeof fetch {
+  return async (input, init) => {
+    const res = await (base ?? globalThis.fetch)(input, init);
+    if (res.status !== 200) return res;
+    let body: unknown;
+    try {
+      body = await res.clone().json();
+    } catch {
+      return res;
+    }
+    const b = body as Block | null;
+    if (!b || typeof b !== "object" || b.type !== "error" || Array.isArray(b.content)) return res;
+    const headers = new Headers(res.headers);
+    headers.delete("content-length");
+    headers.delete("content-encoding");
+    return new Response(JSON.stringify({ ...b, content: [] }), { status: res.status, statusText: res.statusText, headers });
+  };
+}
+
+/** The model call of the researcher; `options` replace the network and the key in tests. */
+export function deepseekInvoke(profile: DeepSeekProfile, call: AdapterCall, options: { fetch?: typeof fetch; apiKey?: string } = {}): DeepSeekInvoke {
   const model = new ChatAnthropic({
     model: profile.model,
-    apiKey: deepseekApiKey(),
+    apiKey: options.apiKey ?? deepseekApiKey(),
     anthropicApiUrl: profile.messagesBaseUrl,
     maxTokens: profile.maxOutputTokens,
     // Sent explicitly so a change of DeepSeek's default cannot alter runs; DeepSeek treats adaptive as enabled.
@@ -81,9 +110,10 @@ function defaultInvoke(profile: DeepSeekProfile, call: AdapterCall): DeepSeekInv
     // Raw request fields: LangChain's tool formatting rejects the deepseek_* tool types.
     invocationKwargs: { tools: deepseekTools(profile) },
     maxRetries: 2,
+    clientOptions: { fetch: withErrorBodyContent(options.fetch) },
     callbacks: call.callbacks,
   });
-  return async (messages, options) => (await model.invoke(messages, options as never)) as AIMessage;
+  return async (messages, opts) => (await model.invoke(messages, opts as never)) as AIMessage;
 }
 
 /**
@@ -119,7 +149,7 @@ export function toResponse(msg: AIMessage): DeepSeekResponse {
 
 /** `invoke` replaces the model call in tests. */
 export async function runDeepSeek(profile: DeepSeekProfile, call: AdapterCall, invoke?: DeepSeekInvoke): Promise<AdapterOutput> {
-  const send = invoke ?? defaultInvoke(profile, call);
+  const send = invoke ?? deepseekInvoke(profile, call);
   const responses: DeepSeekResponse[] = [];
   const extra: string[] = [];
   let errorRetries = 1;
@@ -157,9 +187,11 @@ export async function runDeepSeek(profile: DeepSeekProfile, call: AdapterCall, i
     }
     conversation = asked;
     extra.push(
-      isAnnouncement(response)
-        ? `the model only announced its research; ${tries} follow-up turn(s) did not start it`
-        : `the model only announced its research; it started after ${tries} follow-up turn(s)`,
+      response.error
+        ? `the model only announced its research; follow-up turn ${tries} ended with a provider error`
+        : isAnnouncement(response)
+          ? `the model only announced its research; ${tries} follow-up turn(s) did not start it`
+          : `the model only announced its research; it started after ${tries} follow-up turn(s)`,
     );
   }
 

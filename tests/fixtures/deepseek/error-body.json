@@ -1,0 +1,28 @@
+{
+ "_note": "Recorded 2026-11-20: a DeepSeek Messages reply sent with HTTP 200 after a deep search ran for 35 s (scripts/explore/e9-deepseek.ts replay-raw nudge). The body has type, error and usage but no content.",
+ "status": 200,
+ "response": {
+  "type": "error",
+  "error": {
+   "type": "api_error",
+   "message": "The model failed to generate a complete response. Please retry."
+  },
+  "usage": {
+   "input_tokens": 29746,
+   "cache_creation_input_tokens": 0,
+   "cache_read_input_tokens": 154112,
+   "output_tokens": 3345,
+   "service_tier": "standard",
+   "server_tool_use": {
+    "web_search_requests": 4,
+    "web_fetch_requests": 12,
+    "tool_search": 16,
+    "tool_fetch": 0,
+    "tool_image_search": 0
+   },
+   "output_tokens_details": {
+    "thinking_tokens": 2406
+   }
+  }
+ }
+}

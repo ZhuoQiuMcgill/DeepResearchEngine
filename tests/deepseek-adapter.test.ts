@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { ChatAnthropic } from "@langchain/anthropic";
 import { AIMessage, HumanMessage } from "@langchain/core/messages";
 import { describe, expect, it } from "vitest";
 import { PROFILES, type DeepSeekProfile } from "../src/config/models.js";
@@ -9,12 +10,15 @@ import {
   RESEARCH_REQUEST,
   cleanDeepSeekUrl,
   cleanDeepSeekUrlsInText,
+  deepseekInvoke,
   deepseekTools,
   parseDeepSeekResponse,
   runDeepSeek,
+  withErrorBodyContent,
   type DeepSeekInvoke,
   type DeepSeekResponse,
 } from "../src/research/adapters/deepseek.js";
+import { failureMessage } from "../src/research/researcher.js";
 
 /** The profile's mode, deep search, and the documented capped alternative. */
 const deep = PROFILES.deepseek as DeepSeekProfile;
@@ -326,5 +330,96 @@ describe("deepseek adapter: URLs and tools", () => {
   it("sends max_uses only with the capped search tool", () => {
     expect(deepseekTools(capped)).toEqual([{ type: "web_search_20250305", name: "web_search", max_uses: 12 }]);
     expect(deepseekTools(deep)).toEqual([{ type: "deepseek_web_search", name: "deepseek_web_search" }]);
+  });
+});
+
+describe("deepseek adapter: error body without content, through ChatAnthropic", () => {
+  /** Recorded HTTP 200 reply with `type`, `error` and `usage` but no `content`. */
+  const errorBody = (JSON.parse(readFileSync(new URL("./fixtures/deepseek/error-body.json", import.meta.url), "utf8")) as { response: object }).response;
+  const reply = (name: string) => ({ type: "message", role: "assistant", ...fixture(name) });
+
+  /** A fetch that answers each request with the next body, as DeepSeek's endpoint does. */
+  function serving(bodies: object[]) {
+    const requests: Record<string, unknown>[] = [];
+    const fetch: typeof globalThis.fetch = async (_input, init) => {
+      requests.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+      const body = bodies.shift() ?? { type: "error", error: { type: "test", message: "no scripted reply" } };
+      return new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } });
+    };
+    return { fetch, requests };
+  }
+
+  it("is the cause of the experiment's failures: LangChain throws on it", async () => {
+    const { fetch } = serving([errorBody]);
+    const model = new ChatAnthropic({ model: deep.model, apiKey: "test-key", anthropicApiUrl: deep.messagesBaseUrl, maxRetries: 0, clientOptions: { fetch } });
+    const err = await model.invoke("brief").catch((e: unknown) => e as Error);
+    expect(err).toBeInstanceOf(TypeError);
+    expect((err as Error).message).toBe("Cannot read properties of undefined (reading 'length')");
+    expect(failureMessage(err)).toMatch(/^Cannot read properties of undefined \(reading 'length'\) \[TypeError at @langchain\/anthropic\/.*message_outputs\.[jt]s:\d+, @langchain\/anthropic\/.*chat_models\.[jt]s:\d+\]$/);
+  });
+
+  it("is retried once, with its tokens counted", async () => {
+    const { fetch, requests } = serving([errorBody, reply("deep-search")]);
+    const ledger = new UsageLedger(deep.pricing);
+    const call = callWith(ledger);
+    const out = await runDeepSeek(deep, call, deepseekInvoke(deep, call, { fetch, apiKey: "test-key" }));
+    expect(requests).toHaveLength(2);
+    expect(requests[0]).toMatchObject({ model: "deepseek-flash", tools: [{ type: "deepseek_web_search", name: "deepseek_web_search" }] });
+    expect(out.notes).toContain("EBD is described as a question-driven design methodology.");
+    expect(out.searches).toBe(2);
+    expect(out.pageReads).toBe(4);
+    expect(out.inputTokens).toBe(29746 + 154112 + 8790 + 19968);
+    expect(out.diagnostics).toContain(
+      "provider error in a 200 response, retried once: api_error: The model failed to generate a complete response. Please retry.",
+    );
+    expect(ledger.byRole.researcher).toMatchObject({ calls: 2, inputTokens: out.inputTokens });
+  });
+
+  it("leaves the researcher without notes when it comes twice", async () => {
+    const { fetch } = serving([errorBody, errorBody]);
+    const call = callWith(new UsageLedger(deep.pricing));
+    const out = await runDeepSeek(deep, call, deepseekInvoke(deep, call, { fetch, apiKey: "test-key" }));
+    expect(out.notes).toBe("");
+    expect(out.inputTokens).toBe(2 * (29746 + 154112));
+    expect(out.diagnostics).toContain("provider error in a 200 response: api_error: The model failed to generate a complete response. Please retry.");
+    expect(out.diagnostics).toContain(
+      "provider error in a 200 response, retried once: api_error: The model failed to generate a complete response. Please retry.",
+    );
+  });
+
+  it("is handled during the follow-up turn after an announcement", async () => {
+    const { fetch, requests } = serving([reply("announcement"), errorBody, reply("deep-search")]);
+    const call = callWith(new UsageLedger(deep.pricing));
+    const out = await runDeepSeek(deep, call, deepseekInvoke(deep, call, { fetch, apiKey: "test-key" }));
+    expect(requests).toHaveLength(3);
+    expect((requests[1]!.messages as unknown[]).length).toBe(3);
+    expect(out.notes).toContain("question-driven");
+    expect(out.diagnostics).toContain("the model only announced its research; it started after 1 follow-up turn(s)");
+  });
+
+  it("passes every other response through unchanged", async () => {
+    const original = new Response(JSON.stringify(reply("deep-search")), { status: 200, headers: { "content-type": "application/json" } });
+    const res = await withErrorBodyContent(async () => original)("https://api.deepseek.com/anthropic/v1/messages");
+    expect(res).toBe(original);
+  });
+});
+
+describe("researcher failure message", () => {
+  it("adds the error name and two frames as file:line, nothing else", () => {
+    const err = new TypeError("Cannot read properties of undefined (reading 'length')");
+    err.stack = [
+      "TypeError: Cannot read properties of undefined (reading 'length')",
+      "    at anthropicResponseToChatMessages (/mnt/d/Projects/DeepResearchEngine/node_modules/@langchain/anthropic/src/utils/message_outputs.ts:285:16)",
+      "    at async Promise.allSettled (index 0)",
+      "    at ChatAnthropic._generateNonStreaming (/mnt/d/Projects/DeepResearchEngine/node_modules/@langchain/anthropic/src/chat_models.ts:1584:25)",
+      "    at runDeepSeek (/mnt/d/Projects/DeepResearchEngine/src/research/adapters/deepseek.ts:160:19)",
+    ].join("\n");
+    expect(failureMessage(err)).toBe(
+      "Cannot read properties of undefined (reading 'length') [TypeError at @langchain/anthropic/src/utils/message_outputs.ts:285, @langchain/anthropic/src/chat_models.ts:1584]",
+    );
+    expect(failureMessage("plain text")).toBe("plain text");
+    const own = new Error("boom");
+    own.stack = "Error: boom\n    at runDeepSeek (D:\\Projects\\DeepResearchEngine\\src\\research\\adapters\\deepseek.ts:160:19)";
+    expect(failureMessage(own)).toBe("boom [Error at src/research/adapters/deepseek.ts:160]");
   });
 });

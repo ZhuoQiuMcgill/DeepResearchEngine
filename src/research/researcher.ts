@@ -88,7 +88,7 @@ export function createResearcher(deps: ResearcherDeps): ResearchFn {
       return {
         ...base,
         status: "failed",
-        failure: { kind: timeout ? "timeout" : "provider", message: String(e?.message ?? err).slice(0, 2000) },
+        failure: { kind: timeout ? "timeout" : "provider", message: failureMessage(err) },
         notes: "",
         usage: { inputTokens: 0, outputTokens: 0, searches: 0, pageReads: 0 },
         durationMs: Date.now() - started,
@@ -97,6 +97,35 @@ export function createResearcher(deps: ResearcherDeps): ResearchFn {
       };
     }
   };
+}
+
+/**
+ * The error message followed by the error's name and its first two stack frames as
+ * file:line, e.g. `... [TypeError at @langchain/anthropic/src/utils/message_outputs.ts:285, ...]`,
+ * so a code error can be told from a provider error in run records. No values are included.
+ */
+export function failureMessage(err: unknown): string {
+  const e = err as { name?: unknown; message?: unknown; stack?: unknown } | null | undefined;
+  const message = String(e?.message ?? err).slice(0, 1800);
+  if (!e || typeof e !== "object" || typeof e.stack !== "string") return message;
+  const name = typeof e.name === "string" && e.name ? e.name : "Error";
+  const frames = e.stack
+    .split("\n")
+    .filter((line) => /^\s+at /.test(line))
+    .map(frameLocation)
+    .filter((f): f is string => Boolean(f))
+    .slice(0, 2);
+  return `${message} [${name}${frames.length ? ` at ${frames.join(", ")}` : ""}]`;
+}
+
+/** `file:line` of one stack line, relative to node_modules or the project's top folders. */
+function frameLocation(line: string): string | undefined {
+  const m = line.match(/\(?([^\s()]+):(\d+):\d+\)?\s*$/);
+  if (!m) return undefined;
+  const file = m[1]!.replace(/\\/g, "/").replace(/^file:\/\//, "");
+  const modules = file.lastIndexOf("node_modules/");
+  const short = modules >= 0 ? file.slice(modules + "node_modules/".length) : file.replace(/^.*?\/(src|scripts|tests)\//, "$1/");
+  return `${short}:${m[2]}`;
 }
 
 /**
